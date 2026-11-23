@@ -55,3 +55,10 @@ export function splitStatements(sql: string): string[] {
   out.push(sql.slice(start))
   return out.map((s) => s.trim()).filter((s) => s && s !== ';')
 }
+
+/** A value from a query result as the text Postgres would accept back. */
+export function toText(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  if (typeof value === 'object') return JSON.stringify(value)
+  return String(value)
+}
