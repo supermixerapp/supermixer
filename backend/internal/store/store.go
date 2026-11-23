@@ -105,3 +105,16 @@ func (s *Store) Close() {
 	_ = s.sqlDB.Close()
 	s.Pool.Close()
 }
+
+// InTx runs fn in a transaction, committing if it returns nil.
+func (s *Store) InTx(ctx context.Context, fn func(q *db.Queries) error) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback(context.WithoutCancel(ctx)) }()
+	if err := fn(s.Queries.WithTx(tx)); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

@@ -5,11 +5,196 @@
 package db
 
 import (
+	"database/sql/driver"
+	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
+
+type OrgRole string
+
+const (
+	OrgRoleOwner         OrgRole = "owner"
+	OrgRoleAdministrator OrgRole = "administrator"
+	OrgRoleDeveloper     OrgRole = "developer"
+	OrgRoleReadOnly      OrgRole = "read_only"
+	OrgRoleNoAccess      OrgRole = "no_access"
+)
+
+func (e *OrgRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = OrgRole(s)
+	case string:
+		*e = OrgRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for OrgRole: %T", src)
+	}
+	return nil
+}
+
+type NullOrgRole struct {
+	OrgRole OrgRole `json:"org_role"`
+	Valid   bool    `json:"valid"` // Valid is true if OrgRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullOrgRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.OrgRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.OrgRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullOrgRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.OrgRole), nil
+}
+
+type ProjectRole string
+
+const (
+	ProjectRoleAdministrator ProjectRole = "administrator"
+	ProjectRoleDeveloper     ProjectRole = "developer"
+	ProjectRoleReadOnly      ProjectRole = "read_only"
+)
+
+func (e *ProjectRole) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = ProjectRole(s)
+	case string:
+		*e = ProjectRole(s)
+	default:
+		return fmt.Errorf("unsupported scan type for ProjectRole: %T", src)
+	}
+	return nil
+}
+
+type NullProjectRole struct {
+	ProjectRole ProjectRole `json:"project_role"`
+	Valid       bool        `json:"valid"` // Valid is true if ProjectRole is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullProjectRole) Scan(value interface{}) error {
+	if value == nil {
+		ns.ProjectRole, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.ProjectRole.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullProjectRole) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.ProjectRole), nil
+}
+
+type AuditLog struct {
+	ID             int64      `json:"id"`
+	OrganizationID *uuid.UUID `json:"organization_id"`
+	ProjectID      *uuid.UUID `json:"project_id"`
+	ActorID        *uuid.UUID `json:"actor_id"`
+	ActorUsername  string     `json:"actor_username"`
+	Action         string     `json:"action"`
+	TargetType     string     `json:"target_type"`
+	TargetID       string     `json:"target_id"`
+	TargetName     string     `json:"target_name"`
+	Metadata       []byte     `json:"metadata"`
+	Ip             string     `json:"ip"`
+	UserAgent      string     `json:"user_agent"`
+	CreatedAt      time.Time  `json:"created_at"`
+}
 
 type InstanceSetting struct {
 	Key       string    `json:"key"`
 	Value     []byte    `json:"value"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Invitation struct {
+	ID             uuid.UUID  `json:"id"`
+	OrganizationID uuid.UUID  `json:"organization_id"`
+	TokenHash      []byte     `json:"token_hash"`
+	Email          string     `json:"email"`
+	Role           OrgRole    `json:"role"`
+	ProjectRoles   []byte     `json:"project_roles"`
+	InvitedBy      *uuid.UUID `json:"invited_by"`
+	CreatedAt      time.Time  `json:"created_at"`
+	ExpiresAt      time.Time  `json:"expires_at"`
+	AcceptedAt     *time.Time `json:"accepted_at"`
+	AcceptedBy     *uuid.UUID `json:"accepted_by"`
+}
+
+type OrgMember struct {
+	OrganizationID uuid.UUID `json:"organization_id"`
+	UserID         uuid.UUID `json:"user_id"`
+	Role           OrgRole   `json:"role"`
+	CreatedAt      time.Time `json:"created_at"`
+}
+
+type Organization struct {
+	ID        uuid.UUID `json:"id"`
+	Slug      string    `json:"slug"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type Project struct {
+	ID             uuid.UUID  `json:"id"`
+	Ref            string     `json:"ref"`
+	OrganizationID uuid.UUID  `json:"organization_id"`
+	Name           string     `json:"name"`
+	ApiUrl         string     `json:"api_url"`
+	StudioUrl      string     `json:"studio_url"`
+	DbHost         string     `json:"db_host"`
+	DbPort         int32      `json:"db_port"`
+	DbName         string     `json:"db_name"`
+	DbUser         string     `json:"db_user"`
+	DbSslmode      string     `json:"db_sslmode"`
+	Secrets        []byte     `json:"secrets"`
+	CreatedBy      *uuid.UUID `json:"created_by"`
+	CreatedAt      time.Time  `json:"created_at"`
+	UpdatedAt      time.Time  `json:"updated_at"`
+}
+
+type ProjectMemberRole struct {
+	ProjectID uuid.UUID   `json:"project_id"`
+	UserID    uuid.UUID   `json:"user_id"`
+	Role      ProjectRole `json:"role"`
+}
+
+type Session struct {
+	ID         uuid.UUID `json:"id"`
+	UserID     uuid.UUID `json:"user_id"`
+	TokenHash  []byte    `json:"token_hash"`
+	Ip         string    `json:"ip"`
+	UserAgent  string    `json:"user_agent"`
+	CreatedAt  time.Time `json:"created_at"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type User struct {
+	ID              uuid.UUID  `json:"id"`
+	Username        string     `json:"username"`
+	Email           *string    `json:"email"`
+	DisplayName     string     `json:"display_name"`
+	PasswordHash    string     `json:"password_hash"`
+	IsInstanceAdmin bool       `json:"is_instance_admin"`
+	DefaultPassword bool       `json:"default_password"`
+	DisabledAt      *time.Time `json:"disabled_at"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }

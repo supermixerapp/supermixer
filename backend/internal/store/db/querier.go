@@ -7,10 +7,65 @@ package db
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Querier interface {
+	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
+	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
+	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountUsers(ctx context.Context) (int64, error)
+	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
+	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
+	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteExpiredSessions(ctx context.Context) error
+	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
+	DeleteMemberProjectRoles(ctx context.Context, arg DeleteMemberProjectRolesParams) error
+	DeleteOrganization(ctx context.Context, id uuid.UUID) error
+	DeleteOtherUserSessions(ctx context.Context, arg DeleteOtherUserSessionsParams) error
+	DeleteProject(ctx context.Context, id uuid.UUID) error
+	DeleteProjectRoles(ctx context.Context, projectID uuid.UUID) error
+	DeleteSession(ctx context.Context, id uuid.UUID) error
+	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
+	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	// The session for a token, if it is unexpired and its user is enabled.
+	GetActiveSession(ctx context.Context, tokenHash []byte) (GetActiveSessionRow, error)
 	GetInstalledAt(ctx context.Context) (time.Time, error)
+	GetInvitationByTokenHash(ctx context.Context, tokenHash []byte) (GetInvitationByTokenHashRow, error)
+	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (OrgRole, error)
+	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
+	GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error)
+	GetProjectByRef(ctx context.Context, ref string) (GetProjectByRefRow, error)
+	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
+	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
+	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
+	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
+	ListOrganizationProjectRoles(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationProjectRolesRow, error)
+	ListOrganizationsForUser(ctx context.Context, userID uuid.UUID) ([]ListOrganizationsForUserRow, error)
+	ListPendingInvitations(ctx context.Context, organizationID uuid.UUID) ([]ListPendingInvitationsRow, error)
+	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
+	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
+	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
+	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
+	ListUsers(ctx context.Context) ([]User, error)
+	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
+	MoveProject(ctx context.Context, arg MoveProjectParams) error
+	OrganizationSlugExists(ctx context.Context, slug string) (bool, error)
+	ProjectRefExists(ctx context.Context, ref string) (bool, error)
+	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
+	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
+	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	TouchSession(ctx context.Context, id uuid.UUID) error
+	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error
+	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (Organization, error)
+	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
+	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 
 var _ Querier = (*Queries)(nil)
