@@ -235,7 +235,7 @@ export const productMenus: Record<string, ProductMenu> = {
       {
         title: 'Integrations',
         items: [
-          { label: 'Data API', path: 'settings/api', stage: 2 },
+          { label: 'Data API', path: 'integrations/data_api/docs', stage: 2 },
           { label: 'Vault', path: 'integrations/vault', stage: 3 },
         ],
       },

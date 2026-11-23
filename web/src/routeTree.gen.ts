@@ -33,6 +33,7 @@ import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
 import { Route as AppProjectRefAuthPoliciesRouteImport } from './routes/_app/project.$ref.auth.policies'
 import { Route as AppProjectRefAuthUsersRouteImport } from './routes/_app/project.$ref.auth.users'
+import { Route as AppProjectRefDatabaseColumnPrivilegesRouteImport } from './routes/_app/project.$ref.database.column-privileges'
 import { Route as AppProjectRefDatabaseExtensionsRouteImport } from './routes/_app/project.$ref.database.extensions'
 import { Route as AppProjectRefDatabaseFunctionsRouteImport } from './routes/_app/project.$ref.database.functions'
 import { Route as AppProjectRefDatabaseIndexesRouteImport } from './routes/_app/project.$ref.database.indexes'
@@ -53,6 +54,7 @@ import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/proj
 import { Route as AppProjectRefSqlIndexRouteImport } from './routes/_app/project.$ref.sql.index'
 import { Route as AppProjectRefSqlIdRouteImport } from './routes/_app/project.$ref.sql.$id'
 import { Route as AppProjectRefStoragePoliciesRouteImport } from './routes/_app/project.$ref.storage.policies'
+import { Route as AppProjectRefIntegrationsData_apiDocsRouteImport } from './routes/_app/project.$ref.integrations.data_api.docs'
 import { Route as AppProjectRefStorageBucketsIndexRouteImport } from './routes/_app/project.$ref.storage.buckets.index'
 import { Route as AppProjectRefStorageBucketsBucketRouteImport } from './routes/_app/project.$ref.storage.buckets.$bucket'
 
@@ -176,6 +178,12 @@ const AppProjectRefAuthUsersRoute = AppProjectRefAuthUsersRouteImport.update({
   path: '/auth/users',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefDatabaseColumnPrivilegesRoute =
+  AppProjectRefDatabaseColumnPrivilegesRouteImport.update({
+    id: '/database/column-privileges',
+    path: '/database/column-privileges',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefDatabaseExtensionsRoute =
   AppProjectRefDatabaseExtensionsRouteImport.update({
     id: '/database/extensions',
@@ -293,6 +301,12 @@ const AppProjectRefStoragePoliciesRoute =
     path: '/storage/policies',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefIntegrationsData_apiDocsRoute =
+  AppProjectRefIntegrationsData_apiDocsRouteImport.update({
+    id: '/integrations/data_api/docs',
+    path: '/integrations/data_api/docs',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefStorageBucketsIndexRoute =
   AppProjectRefStorageBucketsIndexRouteImport.update({
     id: '/storage/buckets/',
@@ -330,6 +344,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/': typeof AppProjectRefIndexRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
+  '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
   '/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
@@ -350,6 +365,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
+  '/project/$ref/integrations/data_api/docs': typeof AppProjectRefIntegrationsData_apiDocsRoute
   '/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
   '/project/$ref/storage/buckets/': typeof AppProjectRefStorageBucketsIndexRoute
 }
@@ -373,6 +389,7 @@ export interface FileRoutesByTo {
   '/project/$ref': typeof AppProjectRefIndexRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
+  '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
   '/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
@@ -393,6 +410,7 @@ export interface FileRoutesByTo {
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/sql': typeof AppProjectRefSqlIndexRoute
+  '/project/$ref/integrations/data_api/docs': typeof AppProjectRefIntegrationsData_apiDocsRoute
   '/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
   '/project/$ref/storage/buckets': typeof AppProjectRefStorageBucketsIndexRoute
 }
@@ -422,6 +440,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
   '/_app/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/_app/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
+  '/_app/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/_app/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/_app/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
   '/_app/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
@@ -442,6 +461,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/_app/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
+  '/_app/project/$ref/integrations/data_api/docs': typeof AppProjectRefIntegrationsData_apiDocsRoute
   '/_app/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
   '/_app/project/$ref/storage/buckets/': typeof AppProjectRefStorageBucketsIndexRoute
 }
@@ -471,6 +491,7 @@ export interface FileRouteTypes {
     | '/project/$ref/'
     | '/project/$ref/auth/policies'
     | '/project/$ref/auth/users'
+    | '/project/$ref/database/column-privileges'
     | '/project/$ref/database/extensions'
     | '/project/$ref/database/functions'
     | '/project/$ref/database/indexes'
@@ -491,6 +512,7 @@ export interface FileRouteTypes {
     | '/project/$ref/storage/policies'
     | '/project/$ref/editor/'
     | '/project/$ref/sql/'
+    | '/project/$ref/integrations/data_api/docs'
     | '/project/$ref/storage/buckets/$bucket'
     | '/project/$ref/storage/buckets/'
   fileRoutesByTo: FileRoutesByTo
@@ -514,6 +536,7 @@ export interface FileRouteTypes {
     | '/project/$ref'
     | '/project/$ref/auth/policies'
     | '/project/$ref/auth/users'
+    | '/project/$ref/database/column-privileges'
     | '/project/$ref/database/extensions'
     | '/project/$ref/database/functions'
     | '/project/$ref/database/indexes'
@@ -534,6 +557,7 @@ export interface FileRouteTypes {
     | '/project/$ref/storage/policies'
     | '/project/$ref/editor'
     | '/project/$ref/sql'
+    | '/project/$ref/integrations/data_api/docs'
     | '/project/$ref/storage/buckets/$bucket'
     | '/project/$ref/storage/buckets'
   id:
@@ -562,6 +586,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/'
     | '/_app/project/$ref/auth/policies'
     | '/_app/project/$ref/auth/users'
+    | '/_app/project/$ref/database/column-privileges'
     | '/_app/project/$ref/database/extensions'
     | '/_app/project/$ref/database/functions'
     | '/_app/project/$ref/database/indexes'
@@ -582,6 +607,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/storage/policies'
     | '/_app/project/$ref/editor/'
     | '/_app/project/$ref/sql/'
+    | '/_app/project/$ref/integrations/data_api/docs'
     | '/_app/project/$ref/storage/buckets/$bucket'
     | '/_app/project/$ref/storage/buckets/'
   fileRoutesById: FileRoutesById
@@ -763,6 +789,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefAuthUsersRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/database/column-privileges': {
+      id: '/_app/project/$ref/database/column-privileges'
+      path: '/database/column-privileges'
+      fullPath: '/project/$ref/database/column-privileges'
+      preLoaderRoute: typeof AppProjectRefDatabaseColumnPrivilegesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/database/extensions': {
       id: '/_app/project/$ref/database/extensions'
       path: '/database/extensions'
@@ -903,6 +936,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefStoragePoliciesRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/integrations/data_api/docs': {
+      id: '/_app/project/$ref/integrations/data_api/docs'
+      path: '/integrations/data_api/docs'
+      fullPath: '/project/$ref/integrations/data_api/docs'
+      preLoaderRoute: typeof AppProjectRefIntegrationsData_apiDocsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/storage/buckets/': {
       id: '/_app/project/$ref/storage/buckets/'
       path: '/storage/buckets'
@@ -977,6 +1017,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
   AppProjectRefAuthPoliciesRoute: typeof AppProjectRefAuthPoliciesRoute
   AppProjectRefAuthUsersRoute: typeof AppProjectRefAuthUsersRoute
+  AppProjectRefDatabaseColumnPrivilegesRoute: typeof AppProjectRefDatabaseColumnPrivilegesRoute
   AppProjectRefDatabaseExtensionsRoute: typeof AppProjectRefDatabaseExtensionsRoute
   AppProjectRefDatabaseFunctionsRoute: typeof AppProjectRefDatabaseFunctionsRoute
   AppProjectRefDatabaseIndexesRoute: typeof AppProjectRefDatabaseIndexesRoute
@@ -993,6 +1034,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
   AppProjectRefStoragePoliciesRoute: typeof AppProjectRefStoragePoliciesRoute
+  AppProjectRefIntegrationsData_apiDocsRoute: typeof AppProjectRefIntegrationsData_apiDocsRoute
   AppProjectRefStorageBucketsBucketRoute: typeof AppProjectRefStorageBucketsBucketRoute
   AppProjectRefStorageBucketsIndexRoute: typeof AppProjectRefStorageBucketsIndexRoute
 }
@@ -1004,6 +1046,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
   AppProjectRefAuthPoliciesRoute: AppProjectRefAuthPoliciesRoute,
   AppProjectRefAuthUsersRoute: AppProjectRefAuthUsersRoute,
+  AppProjectRefDatabaseColumnPrivilegesRoute:
+    AppProjectRefDatabaseColumnPrivilegesRoute,
   AppProjectRefDatabaseExtensionsRoute: AppProjectRefDatabaseExtensionsRoute,
   AppProjectRefDatabaseFunctionsRoute: AppProjectRefDatabaseFunctionsRoute,
   AppProjectRefDatabaseIndexesRoute: AppProjectRefDatabaseIndexesRoute,
@@ -1021,6 +1065,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefSettingsGeneralRoute: AppProjectRefSettingsGeneralRoute,
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
   AppProjectRefStoragePoliciesRoute: AppProjectRefStoragePoliciesRoute,
+  AppProjectRefIntegrationsData_apiDocsRoute:
+    AppProjectRefIntegrationsData_apiDocsRoute,
   AppProjectRefStorageBucketsBucketRoute:
     AppProjectRefStorageBucketsBucketRoute,
   AppProjectRefStorageBucketsIndexRoute: AppProjectRefStorageBucketsIndexRoute,

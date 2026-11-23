@@ -2,23 +2,13 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { Button } from '@/components/ui/button'
-import { CopyButton, CopyField } from '@/components/ui/copy'
+import { CodeBlock } from '@/components/ui/code-block'
+import { CopyField } from '@/components/ui/copy'
 import { FormField } from '@/components/ui/form-field'
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetSection, SheetTitle } from '@/components/ui/sheet'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Schemas } from '@/lib/api/client'
 import { apiKeysQuery } from '@/lib/api/queries'
-
-function CodeBlock({ code }: { code: string }) {
-  return (
-    <div className="relative">
-      <pre className="overflow-x-auto rounded-md border bg-surface-100 p-4 font-mono text-xs leading-5 text-foreground">
-        {code}
-      </pre>
-      <CopyButton value={code} className="absolute top-2 right-2" />
-    </div>
-  )
-}
 
 /** Studio's "Connect" sheet: connection string, app snippets, env vars. */
 export function ConnectSheet({ project }: { project: Schemas['Project'] }) {
