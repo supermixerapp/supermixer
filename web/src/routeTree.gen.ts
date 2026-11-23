@@ -60,6 +60,7 @@ import { Route as AppProjectRefIntegrationsGraphiqlRouteImport } from './routes/
 import { Route as AppProjectRefIntegrationsQueuesRouteImport } from './routes/_app/project.$ref.integrations.queues'
 import { Route as AppProjectRefIntegrationsVaultRouteImport } from './routes/_app/project.$ref.integrations.vault'
 import { Route as AppProjectRefIntegrationsWebhooksRouteImport } from './routes/_app/project.$ref.integrations.webhooks'
+import { Route as AppProjectRefIntegrationsWrappersRouteImport } from './routes/_app/project.$ref.integrations.wrappers'
 import { Route as AppProjectRefLogsCollectionRouteImport } from './routes/_app/project.$ref.logs.$collection'
 import { Route as AppProjectRefLogsExplorerRouteImport } from './routes/_app/project.$ref.logs.explorer'
 import { Route as AppProjectRefObservabilityIndexRouteImport } from './routes/_app/project.$ref.observability.index'
@@ -356,6 +357,12 @@ const AppProjectRefIntegrationsWebhooksRoute =
     path: '/integrations/webhooks',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefIntegrationsWrappersRoute =
+  AppProjectRefIntegrationsWrappersRouteImport.update({
+    id: '/integrations/wrappers',
+    path: '/integrations/wrappers',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefLogsCollectionRoute =
   AppProjectRefLogsCollectionRouteImport.update({
     id: '/logs/$collection',
@@ -493,6 +500,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/project/$ref/integrations/wrappers': typeof AppProjectRefIntegrationsWrappersRoute
   '/project/$ref/logs/$collection': typeof AppProjectRefLogsCollectionRoute
   '/project/$ref/logs/explorer': typeof AppProjectRefLogsExplorerRoute
   '/project/$ref/observability/api': typeof AppProjectRefObservabilityApiRoute
@@ -556,6 +564,7 @@ export interface FileRoutesByTo {
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/project/$ref/integrations/wrappers': typeof AppProjectRefIntegrationsWrappersRoute
   '/project/$ref/logs/$collection': typeof AppProjectRefLogsCollectionRoute
   '/project/$ref/logs/explorer': typeof AppProjectRefLogsExplorerRoute
   '/project/$ref/observability/api': typeof AppProjectRefObservabilityApiRoute
@@ -625,6 +634,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/_app/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/_app/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/_app/project/$ref/integrations/wrappers': typeof AppProjectRefIntegrationsWrappersRoute
   '/_app/project/$ref/logs/$collection': typeof AppProjectRefLogsCollectionRoute
   '/_app/project/$ref/logs/explorer': typeof AppProjectRefLogsExplorerRoute
   '/_app/project/$ref/observability/api': typeof AppProjectRefObservabilityApiRoute
@@ -694,6 +704,7 @@ export interface FileRouteTypes {
     | '/project/$ref/integrations/queues'
     | '/project/$ref/integrations/vault'
     | '/project/$ref/integrations/webhooks'
+    | '/project/$ref/integrations/wrappers'
     | '/project/$ref/logs/$collection'
     | '/project/$ref/logs/explorer'
     | '/project/$ref/observability/api'
@@ -757,6 +768,7 @@ export interface FileRouteTypes {
     | '/project/$ref/integrations/queues'
     | '/project/$ref/integrations/vault'
     | '/project/$ref/integrations/webhooks'
+    | '/project/$ref/integrations/wrappers'
     | '/project/$ref/logs/$collection'
     | '/project/$ref/logs/explorer'
     | '/project/$ref/observability/api'
@@ -825,6 +837,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/integrations/queues'
     | '/_app/project/$ref/integrations/vault'
     | '/_app/project/$ref/integrations/webhooks'
+    | '/_app/project/$ref/integrations/wrappers'
     | '/_app/project/$ref/logs/$collection'
     | '/_app/project/$ref/logs/explorer'
     | '/_app/project/$ref/observability/api'
@@ -1211,6 +1224,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefIntegrationsWebhooksRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/integrations/wrappers': {
+      id: '/_app/project/$ref/integrations/wrappers'
+      path: '/integrations/wrappers'
+      fullPath: '/project/$ref/integrations/wrappers'
+      preLoaderRoute: typeof AppProjectRefIntegrationsWrappersRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/logs/$collection': {
       id: '/_app/project/$ref/logs/$collection'
       path: '/logs/$collection'
@@ -1398,6 +1418,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefIntegrationsQueuesRoute: typeof AppProjectRefIntegrationsQueuesRoute
   AppProjectRefIntegrationsVaultRoute: typeof AppProjectRefIntegrationsVaultRoute
   AppProjectRefIntegrationsWebhooksRoute: typeof AppProjectRefIntegrationsWebhooksRoute
+  AppProjectRefIntegrationsWrappersRoute: typeof AppProjectRefIntegrationsWrappersRoute
   AppProjectRefLogsCollectionRoute: typeof AppProjectRefLogsCollectionRoute
   AppProjectRefLogsExplorerRoute: typeof AppProjectRefLogsExplorerRoute
   AppProjectRefObservabilityApiRoute: typeof AppProjectRefObservabilityApiRoute
@@ -1449,6 +1470,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefIntegrationsVaultRoute: AppProjectRefIntegrationsVaultRoute,
   AppProjectRefIntegrationsWebhooksRoute:
     AppProjectRefIntegrationsWebhooksRoute,
+  AppProjectRefIntegrationsWrappersRoute:
+    AppProjectRefIntegrationsWrappersRoute,
   AppProjectRefLogsCollectionRoute: AppProjectRefLogsCollectionRoute,
   AppProjectRefLogsExplorerRoute: AppProjectRefLogsExplorerRoute,
   AppProjectRefObservabilityApiRoute: AppProjectRefObservabilityApiRoute,

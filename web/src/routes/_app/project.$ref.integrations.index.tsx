@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 
 import { DatabasePage } from '@/components/database/catalog-page'
-import { ApiIcon, BoltIcon, HistoryIcon, KeyIcon, ListIcon, SchemaIcon } from '@/components/icons'
+import { ApiIcon, BoltIcon, CableIcon, HistoryIcon, KeyIcon, ListIcon, SchemaIcon } from '@/components/icons'
 import type { Icon } from '@/components/icon'
 import { Badge } from '@/components/ui/badge'
 import { usePg } from '@/lib/pg/run'
@@ -54,6 +54,15 @@ const INTEGRATIONS: Integration[] = [
     icon: BoltIcon,
     path: 'integrations/webhooks',
     extensions: ['pg_net'],
+  },
+  {
+    key: 'wrappers',
+    title: 'Wrappers',
+    description: 'Query Stripe, S3, BigQuery, ClickHouse and other services as Postgres tables.',
+    icon: CableIcon,
+    path: 'integrations/wrappers',
+    // Wrappers keep their credentials in Vault.
+    extensions: ['wrappers', 'supabase_vault'],
   },
   {
     key: 'graphiql',

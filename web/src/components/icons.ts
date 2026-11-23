@@ -88,6 +88,7 @@ import ArrowBackIconSvg from '@material-design-icons/svg/two-tone/arrow_back.svg
 import ArrowUpIconSvg from '@material-design-icons/svg/two-tone/arrow_upward.svg?react'
 import ArrowDownIconSvg from '@material-design-icons/svg/two-tone/arrow_downward.svg?react'
 import LinkIconSvg from '@material-design-icons/svg/two-tone/link.svg?react'
+import CableIconSvg from '@material-design-icons/svg/two-tone/cable.svg?react'
 import SaveIconSvg from '@material-design-icons/svg/two-tone/save.svg?react'
 import VisibilityIconSvg from '@material-design-icons/svg/two-tone/visibility.svg?react'
 
@@ -220,5 +221,6 @@ export const ArrowBackIcon = createIcon(ArrowBackIconSvg, 'arrow_back')
 export const ArrowUpIcon = createIcon(ArrowUpIconSvg, 'arrow_upward')
 export const ArrowDownIcon = createIcon(ArrowDownIconSvg, 'arrow_downward')
 export const LinkIcon = createIcon(LinkIconSvg, 'link')
+export const CableIcon = createIcon(CableIconSvg, 'cable')
 export const SaveIcon = createIcon(SaveIconSvg, 'save')
 export const VisibilityIcon = createIcon(VisibilityIconSvg, 'visibility')

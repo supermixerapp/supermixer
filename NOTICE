@@ -11,6 +11,10 @@ This product bundles:
   - splinter, Supabase's database linter (backend/internal/advisors/splinter.sql,
     unchanged), Copyright (c) 2024 Supabase, PostgreSQL License; the full
     licence is in backend/internal/advisors/SPLINTER_LICENSE
+  - Supabase Studio's foreign data wrapper definitions (web/src/lib/pg/
+    wrapper-types.json, from apps/studio/components/interfaces/Integrations/
+    Wrappers/Wrappers.constants.ts by web/scripts/import-wrappers.mjs),
+    Copyright Supabase, Apache License 2.0
   - Material Icons (Two-Tone), Copyright Google LLC, Apache License 2.0
     (https://github.com/google/material-design-icons)
   - Inter, Copyright The Inter Project Authors, SIL Open Font License 1.1
