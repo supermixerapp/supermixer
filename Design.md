@@ -304,7 +304,8 @@ When adding an icon, add it to `web/src/components/icons.ts` and to this table.
 
 ## 9. Theming behaviour
 
-- `appearance.default_theme` (`dark`, `light` or `system`) is written into `index.html` by the server. Each user's choice overrides it and is stored in `localStorage["supermixer.theme"]`.
+- `appearance.default_theme` (`dark`, `light` or `system`, default `light`) is written into `index.html` by the server and applies to users who haven't chosen a theme.
+- Each user's choice is made under Account › Appearance (or the user menu) and saved on their account (`users.theme`), so it follows them across browsers. The browser keeps a copy in `localStorage["supermixer.theme"]` for first paint; it is replaced from the account when the profile loads and cleared on sign-out.
 - An inline script in `index.html` sets `data-theme` before first paint, so the page never flashes the wrong theme. `system` follows `prefers-color-scheme` live.
 - Dark-mode variants use `@custom-variant dark` on `[data-theme*='dark']`, as in Studio.
 - Theme tokens are resolved on `<html>`. A nested `data-theme` does **not** re-theme a subtree. Previews of the other theme, such as the theme picker, use fixed colours.

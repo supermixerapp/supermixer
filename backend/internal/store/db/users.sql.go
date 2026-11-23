@@ -37,7 +37,7 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password)
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme
 `
 
 type CreateUserParams struct {
@@ -70,12 +70,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Theme,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -92,12 +93,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Theme,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at FROM users WHERE username = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -114,6 +116,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Theme,
 	)
 	return i, err
 }
@@ -143,7 +146,7 @@ func (q *Queries) ListDefaultPasswordUsers(ctx context.Context) ([]string, error
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at FROM users ORDER BY username
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme FROM users ORDER BY username
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -166,6 +169,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.DisabledAt,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Theme,
 		); err != nil {
 			return nil, err
 		}
@@ -192,11 +196,40 @@ func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams
 	return err
 }
 
+const setUserTheme = `-- name: SetUserTheme :one
+UPDATE users SET theme = $2, updated_at = now() WHERE id = $1
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme
+`
+
+type SetUserThemeParams struct {
+	ID    uuid.UUID `json:"id"`
+	Theme *string   `json:"theme"`
+}
+
+func (q *Queries) SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error) {
+	row := q.db.QueryRow(ctx, setUserTheme, arg.ID, arg.Theme)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.DisplayName,
+		&i.PasswordHash,
+		&i.IsInstanceAdmin,
+		&i.DefaultPassword,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Theme,
+	)
+	return i, err
+}
+
 const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET display_name = $2, email = $3, is_instance_admin = $4, disabled_at = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme
 `
 
 type UpdateUserParams struct {
@@ -227,6 +260,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.DisabledAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Theme,
 	)
 	return i, err
 }

@@ -20,7 +20,7 @@ import { useTheme, type ThemePreference } from '@/lib/theme'
 
 /** Account menu (Studio's UserDropdown): preferences, theme, sign out. */
 export function UserDropdown() {
-  const { preference, setPreference } = useTheme()
+  const { preference, setPreference, forget } = useTheme()
   const { data: me } = useProfile()
   const queryClient = useQueryClient()
   const navigate = useNavigate()
@@ -28,6 +28,8 @@ export function UserDropdown() {
     mutationFn: () => unwrap(api.POST('/auth/sign-out')),
     onSettled: () => {
       queryClient.clear()
+      // The theme was this user's; the next one starts from the default.
+      forget()
       void navigate({ to: '/sign-in', search: { redirect: undefined } })
     },
   })

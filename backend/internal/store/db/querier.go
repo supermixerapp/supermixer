@@ -66,6 +66,7 @@ type Querier interface {
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
 	SetSnippetFavorite(ctx context.Context, arg SetSnippetFavoriteParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
+	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
 	TouchSession(ctx context.Context, id uuid.UUID) error
 	UnsetSnippetFavorite(ctx context.Context, arg UnsetSnippetFavoriteParams) error
 	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error

@@ -54,7 +54,7 @@ func validDisplayName(s string) (string, error) {
 }
 
 func toProfile(u db.User) api.Profile {
-	return api.Profile{
+	p := api.Profile{
 		Id:              u.ID,
 		Username:        u.Username,
 		Email:           u.Email,
@@ -63,6 +63,11 @@ func toProfile(u db.User) api.Profile {
 		DefaultPassword: u.DefaultPassword,
 		CreatedAt:       u.CreatedAt,
 	}
+	if u.Theme != nil {
+		t := api.ThemePreference(*u.Theme)
+		p.Theme = &t
+	}
+	return p
 }
 
 // withCookies wraps a JSON response so it can also set cookies.
@@ -170,13 +175,27 @@ func (h *handlers) UpdateProfile(ctx context.Context, req api.UpdateProfileReque
 			return nil, err
 		}
 	}
-	updated, err := h.deps.Store.Queries.UpdateUser(ctx, db.UpdateUserParams{
-		ID: u.ID, DisplayName: u.DisplayName, Email: u.Email, IsInstanceAdmin: u.IsInstanceAdmin, DisabledAt: u.DisabledAt,
-	})
-	if isUniqueViolation(err) {
-		return nil, conflict("another account already uses that email address")
-	} else if err != nil {
-		return nil, err
+	if req.Body.Theme != nil && !req.Body.Theme.Valid() {
+		return nil, badRequest("theme must be dark, light or system")
+	}
+	updated := u
+	if req.Body.DisplayName != nil || req.Body.Email != nil {
+		updated, err = h.deps.Store.Queries.UpdateUser(ctx, db.UpdateUserParams{
+			ID: u.ID, DisplayName: u.DisplayName, Email: u.Email, IsInstanceAdmin: u.IsInstanceAdmin, DisabledAt: u.DisabledAt,
+		})
+		if isUniqueViolation(err) {
+			return nil, conflict("another account already uses that email address")
+		} else if err != nil {
+			return nil, err
+		}
+	}
+	// A personal preference: not audited, and kept out of UpdateUser, which
+	// instance admins use too.
+	if req.Body.Theme != nil {
+		theme := string(*req.Body.Theme)
+		if updated, err = h.deps.Store.Queries.SetUserTheme(ctx, db.SetUserThemeParams{ID: u.ID, Theme: &theme}); err != nil {
+			return nil, err
+		}
 	}
 	return api.UpdateProfile200JSONResponse(toProfile(updated)), nil
 }

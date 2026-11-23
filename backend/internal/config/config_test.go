@@ -33,7 +33,7 @@ func TestLoadDefaults(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
-	if cfg.Appearance.BrandColor != "#0019A8" || cfg.Server.Listen != ":8080" || cfg.Appearance.DefaultTheme != "dark" {
+	if cfg.Appearance.BrandColor != "#0019A8" || cfg.Server.Listen != ":8080" || cfg.Appearance.DefaultTheme != "light" {
 		t.Errorf("unexpected defaults: %+v", cfg)
 	}
 	if cfg.Security.SignIn.MaxFailures != 10 || cfg.Projects.QueryTimeout != time.Minute {

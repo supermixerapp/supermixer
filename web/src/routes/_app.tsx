@@ -1,5 +1,7 @@
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 
+import { ThemeSync } from '@/components/layout/theme-sync'
+
 import { isApiError } from '@/lib/api/client'
 import { profileQuery } from '@/lib/api/queries'
 
@@ -15,5 +17,14 @@ export const Route = createFileRoute('/_app')({
       throw e
     }
   },
-  component: Outlet,
+  component: AppLayout,
 })
+
+function AppLayout() {
+  return (
+    <>
+      <ThemeSync />
+      <Outlet />
+    </>
+  )
+}

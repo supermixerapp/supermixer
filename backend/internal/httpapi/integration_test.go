@@ -444,3 +444,35 @@ func valueOf(keys []struct {
 	}
 	return ""
 }
+
+func TestProfileTheme(t *testing.T) {
+	env := newTestEnv(t)
+	admin := env.client(t)
+	admin.signIn("admin", "admin")
+
+	var p struct {
+		DisplayName string  `json:"display_name"`
+		Theme       *string `json:"theme"`
+	}
+	admin.must(200, "GET", "/profile", nil, &p)
+	if p.Theme != nil {
+		t.Fatalf("a new user has theme %q; want none, so the default applies", *p.Theme)
+	}
+	name := p.DisplayName
+
+	admin.must(200, "PATCH", "/profile", map[string]any{"theme": "dark"}, &p)
+	if p.Theme == nil || *p.Theme != "dark" || p.DisplayName != name {
+		t.Fatalf("after saving dark: %+v", p)
+	}
+	admin.must(200, "GET", "/profile", nil, &p)
+	if p.Theme == nil || *p.Theme != "dark" {
+		t.Fatalf("theme wasn't kept: %+v", p)
+	}
+	admin.must(400, "PATCH", "/profile", map[string]any{"theme": "sepia"}, nil)
+
+	// Updating the name leaves the theme alone.
+	admin.must(200, "PATCH", "/profile", map[string]any{"display_name": "Ada"}, &p)
+	if p.Theme == nil || *p.Theme != "dark" || p.DisplayName != "Ada" {
+		t.Fatalf("after renaming: %+v", p)
+	}
+}

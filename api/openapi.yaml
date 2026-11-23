@@ -941,12 +941,20 @@ components:
         default_password:
           type: boolean
           description: Still using the well-known bootstrap password.
+        theme:
+          allOf: [{ $ref: "#/components/schemas/ThemePreference" }]
+          nullable: true
+          description: The theme the user chose; null if they haven't, and the instance default applies.
         created_at: { type: string, format: date-time }
+    ThemePreference:
+      type: string
+      enum: [dark, light, system]
     ProfileUpdate:
       type: object
       properties:
         display_name: { type: string, maxLength: 64 }
         email: { type: string, nullable: true }
+        theme: { $ref: "#/components/schemas/ThemePreference" }
     PasswordChange:
       type: object
       required: [current_password, new_password]

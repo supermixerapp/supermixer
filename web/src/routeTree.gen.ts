@@ -15,6 +15,7 @@ import { Route as JoinRouteImport } from './routes/join'
 import { Route as SignInRouteImport } from './routes/sign-in'
 import { Route as AppDesignSystemRouteImport } from './routes/_app/design-system'
 import { Route as AppOrganizationsRouteImport } from './routes/_app/organizations'
+import { Route as AppAccountAppearanceRouteImport } from './routes/_app/account.appearance'
 import { Route as AppAccountMeRouteImport } from './routes/_app/account.me'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
 import { Route as AppNewSlugRouteImport } from './routes/_app/new.$slug'
@@ -102,6 +103,11 @@ const AppDesignSystemRoute = AppDesignSystemRouteImport.update({
 const AppOrganizationsRoute = AppOrganizationsRouteImport.update({
   id: '/organizations',
   path: '/organizations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountAppearanceRoute = AppAccountAppearanceRouteImport.update({
+  id: '/account/appearance',
+  path: '/account/appearance',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAccountMeRoute = AppAccountMeRouteImport.update({
@@ -445,6 +451,7 @@ export interface FileRoutesByFullPath {
   '/sign-in': typeof SignInRoute
   '/design-system': typeof AppDesignSystemRoute
   '/organizations': typeof AppOrganizationsRoute
+  '/account/appearance': typeof AppAccountAppearanceRoute
   '/account/me': typeof AppAccountMeRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
@@ -511,6 +518,7 @@ export interface FileRoutesByTo {
   '/sign-in': typeof SignInRoute
   '/design-system': typeof AppDesignSystemRoute
   '/organizations': typeof AppOrganizationsRoute
+  '/account/appearance': typeof AppAccountAppearanceRoute
   '/account/me': typeof AppAccountMeRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
@@ -575,6 +583,7 @@ export interface FileRoutesById {
   '/sign-in': typeof SignInRoute
   '/_app/design-system': typeof AppDesignSystemRoute
   '/_app/organizations': typeof AppOrganizationsRoute
+  '/_app/account/appearance': typeof AppAccountAppearanceRoute
   '/_app/account/me': typeof AppAccountMeRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/new/$slug': typeof AppNewSlugRoute
@@ -643,6 +652,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/design-system'
     | '/organizations'
+    | '/account/appearance'
     | '/account/me'
     | '/admin/users'
     | '/new/$slug'
@@ -709,6 +719,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/design-system'
     | '/organizations'
+    | '/account/appearance'
     | '/account/me'
     | '/admin/users'
     | '/new/$slug'
@@ -772,6 +783,7 @@ export interface FileRouteTypes {
     | '/sign-in'
     | '/_app/design-system'
     | '/_app/organizations'
+    | '/_app/account/appearance'
     | '/_app/account/me'
     | '/_app/admin/users'
     | '/_app/new/$slug'
@@ -882,6 +894,13 @@ declare module '@tanstack/react-router' {
       path: '/organizations'
       fullPath: '/organizations'
       preLoaderRoute: typeof AppOrganizationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/account/appearance': {
+      id: '/_app/account/appearance'
+      path: '/account/appearance'
+      fullPath: '/account/appearance'
+      preLoaderRoute: typeof AppAccountAppearanceRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/account/me': {
@@ -1456,6 +1475,7 @@ const AppProjectRefRouteWithChildren = AppProjectRefRoute._addFileChildren(
 interface AppRouteChildren {
   AppDesignSystemRoute: typeof AppDesignSystemRoute
   AppOrganizationsRoute: typeof AppOrganizationsRoute
+  AppAccountAppearanceRoute: typeof AppAccountAppearanceRoute
   AppAccountMeRoute: typeof AppAccountMeRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppNewSlugRoute: typeof AppNewSlugRoute
@@ -1466,6 +1486,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppDesignSystemRoute: AppDesignSystemRoute,
   AppOrganizationsRoute: AppOrganizationsRoute,
+  AppAccountAppearanceRoute: AppAccountAppearanceRoute,
   AppAccountMeRoute: AppAccountMeRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppNewSlugRoute: AppNewSlugRoute,

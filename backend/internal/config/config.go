@@ -81,7 +81,7 @@ type BootstrapAdmin struct {
 type Appearance struct {
 	// BrandColor replaces Supabase's green throughout the UI.
 	BrandColor   string `toml:"brand_color"`
-	DefaultTheme string `toml:"default_theme"` // dark | light | system
+	DefaultTheme string `toml:"default_theme"` // dark | light | system; for users who haven't chosen
 }
 
 // Projects tunes how Supermixer talks to the Supabase stacks it manages.
@@ -104,7 +104,7 @@ func Default() Config {
 		Log:            Log{Level: "info", Format: "text"},
 		Security:       Security{SessionTTL: 168 * time.Hour, SignIn: SignIn{MaxFailures: 10, Lockout: 15 * time.Minute}},
 		BootstrapAdmin: BootstrapAdmin{Username: "admin", Password: "admin"},
-		Appearance:     Appearance{BrandColor: "#0019A8", DefaultTheme: "dark"},
+		Appearance:     Appearance{BrandColor: "#0019A8", DefaultTheme: "light"},
 		Projects: Projects{
 			HealthCheckTimeout: 5 * time.Second, HealthCacheTTL: 15 * time.Second,
 			QueryTimeout: 60 * time.Second, QueryMaxRows: 1000, DBPoolSize: 4, GatewayTimeout: 60 * time.Second,

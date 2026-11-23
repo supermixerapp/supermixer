@@ -31,7 +31,10 @@ import { orgNav, productMenus, projectNavGroups } from '@/lib/navigation'
 import { useTheme, type ThemePreference } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
-const CommandMenuContext = createContext<{ open: boolean; setOpen: (open: boolean) => void } | null>(null)
+const CommandMenuContext = createContext<{
+  open: boolean
+  setOpen: (open: boolean) => void
+} | null>(null)
 
 export function CommandMenuProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
@@ -73,12 +76,14 @@ export function CommandMenuTrigger() {
         onClick={() => setOpen(true)}
         className={cn(
           'hidden h-[26px] min-w-32 items-center gap-2 rounded-full border border-control bg-field pr-1 pl-2 text-xs text-foreground-lighter transition-colors md:flex',
-          'hover:border-control-hover hover:text-foreground-light focus-ring'
+          'focus-ring hover:border-control-hover hover:text-foreground-light'
         )}
       >
         <SearchIcon size={14} />
         <span className="flex-1 text-left">Search...</span>
-        <kbd className="pr-1 font-sans text-[11px] text-foreground-lighter">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+        <kbd className="pr-1 font-sans text-[11px] text-foreground-lighter">
+          {isMac ? '⌘K' : 'Ctrl K'}
+        </kbd>
       </button>
       <Button
         variant="text"
@@ -127,7 +132,11 @@ export function CommandMenu() {
       })
     : []
   const orgEntries: Entry[] = org
-    ? orgNav.map((r) => ({ label: r.label, icon: r.icon, to: `/org/${org.slug}${r.path ? `/${r.path}` : ''}` }))
+    ? orgNav.map((r) => ({
+        label: r.label,
+        icon: r.icon,
+        to: `/org/${org.slug}${r.path ? `/${r.path}` : ''}`,
+      }))
     : []
 
   const go = (to: string) => {
@@ -169,12 +178,28 @@ export function CommandMenu() {
               </CommandGroup>
             )}
             <CommandGroup heading="Supermixer">
-              <NavItem entry={{ label: 'All organizations', icon: SearchIcon, to: '/organizations' }} onSelect={go} />
-              <NavItem entry={{ label: 'Preferences', icon: TuneIcon, to: '/account/me' }} onSelect={go} />
+              <NavItem
+                entry={{ label: 'All organizations', icon: SearchIcon, to: '/organizations' }}
+                onSelect={go}
+              />
+              <NavItem
+                entry={{ label: 'Preferences', icon: TuneIcon, to: '/account/me' }}
+                onSelect={go}
+              />
+              <NavItem
+                entry={{ label: 'Appearance', icon: DarkModeIcon, to: '/account/appearance' }}
+                onSelect={go}
+              />
               {me?.is_instance_admin && (
-                <NavItem entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }} onSelect={go} />
+                <NavItem
+                  entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }}
+                  onSelect={go}
+                />
               )}
-              <NavItem entry={{ label: 'Design system', icon: PaletteIcon, to: '/design-system' }} onSelect={go} />
+              <NavItem
+                entry={{ label: 'Design system', icon: PaletteIcon, to: '/design-system' }}
+                onSelect={go}
+              />
             </CommandGroup>
             <CommandSeparator />
             <CommandGroup heading="Theme">
@@ -201,7 +226,9 @@ function NavItem({ entry, onSelect }: { entry: Entry; onSelect: (to: string) => 
     <CommandItem value={`${entry.label} ${entry.to}`} onSelect={() => onSelect(entry.to)}>
       <Icon size={16} className="text-foreground-lighter" />
       {entry.label}
-      <CommandShortcut className="font-mono text-[10px] tracking-normal">{entry.to}</CommandShortcut>
+      <CommandShortcut className="font-mono text-[10px] tracking-normal">
+        {entry.to}
+      </CommandShortcut>
     </CommandItem>
   )
 }

@@ -255,4 +255,5 @@ type User struct {
 	DisabledAt      *time.Time `json:"disabled_at"`
 	CreatedAt       time.Time  `json:"created_at"`
 	UpdatedAt       time.Time  `json:"updated_at"`
+	Theme           *string    `json:"theme"`
 }

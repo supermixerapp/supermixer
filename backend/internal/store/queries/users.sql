@@ -29,3 +29,7 @@ SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL;
 
 -- name: ListDefaultPasswordUsers :many
 SELECT username FROM users WHERE default_password AND disabled_at IS NULL;
+
+-- name: SetUserTheme :one
+UPDATE users SET theme = $2, updated_at = now() WHERE id = $1
+RETURNING *;

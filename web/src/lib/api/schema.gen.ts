@@ -794,12 +794,17 @@ export interface components {
             is_instance_admin: boolean;
             /** @description Still using the well-known bootstrap password. */
             default_password: boolean;
+            /** @description The theme the user chose; null if they haven't, and the instance default applies. */
+            theme?: components["schemas"]["ThemePreference"] | null;
             /** Format: date-time */
             created_at: string;
         };
+        /** @enum {string} */
+        ThemePreference: "dark" | "light" | "system";
         ProfileUpdate: {
             display_name?: string;
             email?: string | null;
+            theme?: components["schemas"]["ThemePreference"];
         };
         PasswordChange: {
             current_password: string;

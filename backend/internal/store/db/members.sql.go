@@ -84,7 +84,7 @@ func (q *Queries) GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (O
 }
 
 const listMembers = `-- name: ListMembers :many
-SELECT m.role, m.created_at AS joined_at, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at
+SELECT m.role, m.created_at AS joined_at, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme
 FROM org_members m
 JOIN users u ON u.id = m.user_id
 WHERE m.organization_id = $1
@@ -119,6 +119,7 @@ func (q *Queries) ListMembers(ctx context.Context, organizationID uuid.UUID) ([]
 			&i.User.DisabledAt,
 			&i.User.CreatedAt,
 			&i.User.UpdatedAt,
+			&i.User.Theme,
 		); err != nil {
 			return nil, err
 		}
