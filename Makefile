@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs
+.PHONY: help setup env app app-stacks db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -24,6 +24,20 @@ env: ## Create .env.toml from .env.example.toml with a fresh encryption key (nev
 app: ## Run Supermixer and its Postgres in containers (reads .env.toml)
 	@test -f .env.toml || { echo "no .env.toml; run make env first" >&2; exit 1; }
 	SUPERMIXER_UID=$$(id -u) SUPERMIXER_GID=$$(id -g) $(COMPOSE) --profile app up -d --build
+
+# provisioning.stacks_dir from .env.toml (its default if unset).
+STACKS_DIR = $(shell awk -F'"' '/^\[/{s=($$0 ~ /^\[provisioning\]/)} s && /^[ \t]*stacks_dir[ \t]*=/{print $$2; exit}' .env.toml 2>/dev/null)
+
+app-stacks: ## Like app, but the container may create Supabase stacks (Docker socket; see deploy/docker-compose.provisioning.yml)
+	@test -f .env.toml || { echo "no .env.toml; run make env first" >&2; exit 1; }
+	@dir="$(or $(STACKS_DIR),/var/lib/supermixer/stacks)"; \
+	test -d "$$dir" -a -w "$$dir" || { \
+	  echo "the stacks folder $$dir must exist and be writable by $$(id -un); for example:" >&2; \
+	  echo "  sudo install -d -o $$(id -u) -g $$(id -g) -m 750 $$dir" >&2; exit 1; }
+	SUPERMIXER_UID=$$(id -u) SUPERMIXER_GID=$$(id -g) \
+	SUPERMIXER_STACKS_DIR="$(or $(STACKS_DIR),/var/lib/supermixer/stacks)" \
+	DOCKER_GID=$$(stat -c %g /var/run/docker.sock 2>/dev/null || stat -f %g /var/run/docker.sock) \
+	$(COMPOSE) -f deploy/docker-compose.provisioning.yml --profile app up -d --build
 
 db: ## Start Supermixer's Postgres (port 5433)
 	$(COMPOSE) up -d --wait db

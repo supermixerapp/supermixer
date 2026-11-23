@@ -1,0 +1,30 @@
+# Lets the Supermixer container create Supabase stacks (provisioning).
+#
+#   make app-stacks
+#
+# Also set [provisioning] enabled = true in .env.toml. make app-stacks reads
+# provisioning.stacks_dir from there and passes it as SUPERMIXER_STACKS_DIR;
+# the folder must already exist, owned by the user the container runs as.
+#
+# This gives the container the Docker socket, which is root-equivalent on the
+# host: only enable it on a server dedicated to Supermixer and its stacks.
+services:
+  supermixer:
+    # The socket's group, so the non-root user can use it.
+    group_add:
+      - "${DOCKER_GID:?set DOCKER_GID to the group id of /var/run/docker.sock}"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      # Compose resolves the stacks' bind mounts on the host, so the folder
+      # has the same path inside the container as outside. Not created here:
+      # Docker would make it root's, and Supermixer couldn't write to it.
+      - type: bind
+        source: ${SUPERMIXER_STACKS_DIR:?set SUPERMIXER_STACKS_DIR to provisioning.stacks_dir from .env.toml}
+        target: ${SUPERMIXER_STACKS_DIR}
+        bind:
+          create_host_path: false
+    environment:
+      # Stacks publish their ports on the host; reach them through it.
+      SUPERMIXER_PROVISIONING_CONNECT_HOST: host.docker.internal
+    extra_hosts:
+      - host.docker.internal:host-gateway

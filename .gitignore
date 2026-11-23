@@ -21,6 +21,8 @@ coverage/
 # Dev Supabase stack (deploy/dev-stacks/up.sh)
 /deploy/dev-stacks/.stack/
 /deploy/dev-stacks/.src/
+# Stacks Supermixer creates in development (provisioning.stacks_dir)
+/deploy/dev-stacks/.managed/
 
 # Python bytecode (deploy/dev-stacks tests)
 __pycache__/

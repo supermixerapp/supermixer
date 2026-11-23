@@ -38,6 +38,8 @@ Then use **New project** in Supermixer. **Fill from Supabase .env** fills the fo
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
 | `make app` | Runs Supermixer and its database in containers, reading `.env.toml` |
+| `make app-stacks` | Like `make app`, but the container may create Supabase stacks (see below) |
+| `make stack-check-logs` | Checks the dev stack's Logs pages get its own logs and no other container's |
 
 ## Configuration
 
@@ -54,6 +56,24 @@ lockout = "15m"
 
 - `supermixer --config path/to/file.toml` picks another file; so does `SUPERMIXER_CONFIG`.
 - Any setting can be overridden by an environment variable named after its key: `SUPERMIXER_<SECTION>_<KEY>`, for example `SUPERMIXER_DATABASE_URL` or `SUPERMIXER_SECURITY_SIGN_IN_LOCKOUT`. Containers can inject secrets this way without a file.
+
+## Creating stacks
+
+Besides connecting to Supabase stacks that already run, Supermixer can create them: **New project › Create a new stack**. It runs Supabase's official compose files (bundled at a pinned commit, see `backend/internal/provision/template/VERSION`) with the `docker compose` CLI, generates every secret, gives each stack its own ports, and can pause, restart and delete them from **Settings › Infrastructure**.
+
+It is off by default, because control of the Docker daemon is root-equivalent on the host. To turn it on:
+
+```toml
+[provisioning]
+enabled = true
+stacks_dir = "/var/lib/supermixer/stacks"   # one folder per stack
+public_host = "supabase.example.internal"   # the host name in stacks' URLs
+```
+
+- Running Supermixer in a container: create `stacks_dir` owned by your user first (`sudo install -d -o $(id -u) -g $(id -g) -m 750 /var/lib/supermixer/stacks`), then `make app-stacks`. It mounts the Docker socket, and `stacks_dir` at the same path inside the container (Compose resolves the stacks' bind mounts on the host).
+- Run one Supermixer server per metadata database when provisioning: operations on a stack are coordinated within a server. (A stuck create or delete is still noticed across servers: a running operation keeps its status fresh, and one left untouched for three minutes is marked failed.)
+- Each stack takes one port from each of `api_ports`, `db_ports` and `pooler_ports`; widen them for more stacks.
+- To update the bundled Supabase version, run `backend/internal/provision/sync-template.sh <commit>`, then the tests, and create a stack before committing.
 
 ## Layout
 
