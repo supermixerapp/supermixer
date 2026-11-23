@@ -1,0 +1,13 @@
+# Live reload for `make dev`. Rebuilds the API when Go files or migrations change.
+root = "."
+tmp_dir = "tmp"
+
+[build]
+  cmd = "go build -o ./tmp/supermixer ./cmd/supermixer"
+  entrypoint = ["./tmp/supermixer", "--env-file", "../.env"]
+  include_ext = ["go", "sql", "yaml"]
+  exclude_dir = ["tmp", "internal/webui/dist"]
+  delay = 300
+
+[log]
+  main_only = true

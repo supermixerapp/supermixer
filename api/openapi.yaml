@@ -1,0 +1,87 @@
+openapi: 3.0.3
+info:
+  title: Supermixer API
+  version: 0.1.0
+  description: |
+    Management API for Supermixer, an on-premise management plane for
+    self-hosted Supabase. Resource paths follow the shape of the Supabase
+    Management API (https://api.supabase.com/api/v1) where a concept exists in both.
+servers:
+  - url: /api/v1
+tags:
+  - name: System
+    description: Health and instance configuration.
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      tags: [System]
+      summary: Report service and database health
+      responses:
+        "200":
+          description: Supermixer and its database are reachable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        "503":
+          description: The database is unreachable.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Health" }
+        default: { $ref: "#/components/responses/Error" }
+  /ui-config:
+    get:
+      operationId: getUiConfig
+      tags: [System]
+      summary: Settings the web UI needs before sign-in
+      responses:
+        "200":
+          description: UI configuration.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UiConfig" }
+        default: { $ref: "#/components/responses/Error" }
+components:
+  responses:
+    Error:
+      description: Error response.
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+  schemas:
+    Error:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+    Health:
+      type: object
+      required: [status, version, database]
+      properties:
+        status:
+          type: string
+          enum: [healthy, unhealthy]
+        version: { type: string, example: "0.1.0" }
+        database:
+          type: object
+          required: [status]
+          properties:
+            status:
+              type: string
+              enum: [healthy, unhealthy]
+            schema_version: { type: integer, format: int64 }
+            installed_at: { type: string, format: date-time }
+            error: { type: string }
+    UiConfig:
+      type: object
+      required: [app_name, version, brand_color, default_theme]
+      properties:
+        app_name: { type: string, example: Supermixer }
+        version: { type: string }
+        brand_color:
+          type: string
+          description: The configured BRAND_COLOR, as #rrggbb.
+          example: "#0019a8"
+        default_theme:
+          type: string
+          enum: [dark, light, system]
