@@ -9,7 +9,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"regexp"
-	"strings"
 	"time"
 )
 
@@ -145,10 +144,11 @@ func opaqueKey(prefix string) (string, error) {
 	return intermediate + "_" + base64.RawURLEncoding.EncodeToString(sum[:])[:8], nil
 }
 
-// OpaqueKeyValid checks an sb_ key's checksum.
+// OpaqueKeyValid checks an sb_ key's checksum: its last 8 characters,
+// after a "_". (The checksum is base64url, so it may contain "_" itself.)
 func OpaqueKeyValid(key string) bool {
-	i := strings.LastIndex(key, "_")
-	if i < 0 || len(key)-i-1 != 8 {
+	i := len(key) - 9
+	if i < 1 || key[i] != '_' {
 		return false
 	}
 	sum := sha256.Sum256([]byte(opaqueKeyProject + "|" + key[:i]))

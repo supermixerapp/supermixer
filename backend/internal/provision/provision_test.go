@@ -265,6 +265,13 @@ func TestGenerateAPIKeys(t *testing.T) {
 	if OpaqueKeyValid(k.Publishable[:len(k.Publishable)-1] + "x") {
 		t.Error("a bad checksum passed")
 	}
+	// Checksums can contain "_" (base64url); a key whose checksum does still checks.
+	for i := 0; i < 2000; i++ {
+		key, err := opaqueKey("sb_secret_")
+		if err != nil || !OpaqueKeyValid(key) {
+			t.Fatalf("%q didn't validate", key)
+		}
+	}
 
 	// The public JWKS has the EC key (no private part) and the legacy secret.
 	var jwks struct {
