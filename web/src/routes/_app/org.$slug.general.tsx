@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { PageContainer, PageHeader } from '@/components/layout/page'
@@ -13,7 +13,7 @@ import { CopyField } from '@/components/ui/copy'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toaster'
-import { api, unwrap } from '@/lib/api/client'
+import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
 
 export const Route = createFileRoute('/_app/org/$slug/general')({
@@ -21,13 +21,17 @@ export const Route = createFileRoute('/_app/org/$slug/general')({
 })
 
 function OrgGeneralPage() {
-  const { slug } = Route.useParams()
   const org = useSelectedOrganization()
+  // Remount when the saved name changes so the form starts from it.
+  return org ? <OrgGeneral key={org.name} org={org} /> : null
+}
+
+function OrgGeneral({ org }: { org: Schemas['Organization'] }) {
+  const slug = org.slug
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const [name, setName] = useState(org?.name ?? '')
+  const [name, setName] = useState(org.name)
   const [deleting, setDeleting] = useState(false)
-  useEffect(() => setName(org?.name ?? ''), [org?.name])
 
   const canUpdate = can(org, 'org:update')
   const save = useMutation({
@@ -40,7 +44,7 @@ function OrgGeneralPage() {
   const remove = useMutation({
     mutationFn: () => unwrap(api.DELETE('/organizations/{slug}', { params: { path: { slug } } })),
     onSuccess: async () => {
-      toast.success(`Deleted ${org?.name}`)
+      toast.success(`Deleted ${org.name}`)
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
       void navigate({ to: '/organizations' })
     },
@@ -50,7 +54,6 @@ function OrgGeneralPage() {
     },
   })
 
-  if (!org) return null
   return (
     <>
       <PageHeader title="General" size="small" />

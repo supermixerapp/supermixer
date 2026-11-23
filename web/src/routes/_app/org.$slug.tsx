@@ -1,13 +1,16 @@
 import { createFileRoute, notFound, Outlet, useLocation } from '@tanstack/react-router'
 
 import { AppShell } from '@/components/layout/app-shell'
+import { ProductMenu, WithProductMenu } from '@/components/layout/product-menu'
 import { Sidebar, type SidebarLink } from '@/components/layout/sidebar'
-import { organizationsQuery } from '@/lib/api/fixtures'
-import { orgNav } from '@/lib/navigation'
+import { organizationsQuery } from '@/lib/api/queries'
+import { orgNav, orgSettingsMenu } from '@/lib/navigation'
 
-import { NotFound } from './__root'
+import { NotFound } from '../__root'
 
-export const Route = createFileRoute('/org/$slug')({
+const settingsPaths = orgSettingsMenu.groups.flatMap((g) => g.items.map((i) => i.path))
+
+export const Route = createFileRoute('/_app/org/$slug')({
   loader: async ({ context, params }) => {
     const orgs = await context.queryClient.ensureQueryData(organizationsQuery)
     if (!orgs.some((o) => o.slug === params.slug)) throw notFound()
@@ -20,23 +23,30 @@ function OrgLayout() {
   const { slug } = Route.useParams()
   const { pathname } = useLocation()
   const base = `/org/${slug}`
+  const sub = pathname.slice(base.length).replace(/^\/+|\/+$/g, '')
+  const inSettings = settingsPaths.includes(sub.split('/')[0])
 
   const links: SidebarLink[] = orgNav.map((r) => {
     const to = r.path ? `${base}/${r.path}` : base
-    return {
-      key: r.key,
-      label: r.label,
-      icon: r.icon,
-      to,
-      active: r.path ? pathname.startsWith(to) : pathname === base || pathname === `${base}/`,
-    }
+    const active = r.key === 'settings' ? inSettings : r.path ? sub.startsWith(r.path) : sub === ''
+    return { key: r.key, label: r.label, icon: r.icon, to, active }
   })
+
+  const menu = inSettings ? (
+    <ProductMenu
+      title={orgSettingsMenu.title}
+      sections={orgSettingsMenu.groups.map((g) => ({
+        title: g.title,
+        links: g.items.map((i) => ({ label: i.label, to: `${base}/${i.path}`, active: sub === i.path })),
+      }))}
+    />
+  ) : undefined
 
   return (
     <AppShell sidebar={<Sidebar groups={[links]} />}>
-      <div className="flex h-full flex-col overflow-y-auto">
+      <WithProductMenu menu={menu}>
         <Outlet />
-      </div>
+      </WithProductMenu>
     </AppShell>
   )
 }
