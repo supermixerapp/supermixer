@@ -421,18 +421,15 @@ func ValidSecretValue(name, v string) error {
 
 // ReadFunctionSecrets reads a stack's function secrets (none if the file is missing).
 func ReadFunctionSecrets(stackDir string) (map[string]string, error) {
-	b, err := os.ReadFile(filepath.Join(stackDir, functionSecretsFile))
-	if errors.Is(err, fs.ErrNotExist) {
-		return map[string]string{}, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	// Supermixer writes KEY="escaped" lines, but people edit the file by
-	// hand: unquoted and single-quoted values, export, CRLF and lines without
-	// = are read as Compose would (roughly), not refused.
+	return readEnvFile(filepath.Join(stackDir, functionSecretsFile))
+}
+
+// parseQuotedEnv reads KEY="escaped" lines as Supermixer writes them. People
+// edit these files by hand too: unquoted and single-quoted values, export,
+// CRLF and lines without = are read as Compose would (roughly), not refused.
+func parseQuotedEnv(text string) map[string]string {
 	out := map[string]string{}
-	for _, line := range strings.Split(string(b), "\n") {
+	for _, line := range strings.Split(text, "\n") {
 		line = strings.TrimSpace(strings.TrimSuffix(line, "\r"))
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue
@@ -445,26 +442,13 @@ func ReadFunctionSecrets(stackDir string) (map[string]string, error) {
 		}
 		out[k] = unquoteEnv(strings.TrimSpace(v))
 	}
-	return out, nil
+	return out
 }
 
 // WriteFunctionSecrets replaces a stack's function secrets.
 func WriteFunctionSecrets(stackDir string, secrets map[string]string) error {
-	names := make([]string, 0, len(secrets))
-	for k := range secrets {
-		names = append(names, k)
-	}
-	sort.Strings(names)
-	var b strings.Builder
-	b.WriteString("# Edge Function secrets, written by Supermixer. Edit them in Supermixer.\n")
-	for _, k := range names {
-		b.WriteString(k + "=" + quoteEnv(secrets[k]) + "\n")
-	}
-	tmp := filepath.Join(stackDir, "."+functionSecretsFile+".tmp")
-	if err := os.WriteFile(tmp, []byte(b.String()), 0o600); err != nil {
-		return err
-	}
-	return os.Rename(tmp, filepath.Join(stackDir, functionSecretsFile))
+	return writeEnvFile(filepath.Join(stackDir, functionSecretsFile), secrets,
+		"# Edge Function secrets, written by Supermixer. Edit them in Supermixer.")
 }
 
 // quoteEnv writes v as a double-quoted env_file value, which Compose reads
@@ -539,16 +523,29 @@ func RefreshOverlay(stackDir string) error {
 	if err := ensureSecretsFile(stackDir); err != nil {
 		return err
 	}
-	return os.WriteFile(filepath.Join(stackDir, overlayName), []byte(overlay), 0o644)
+	o, err := renderOverlay(stackDir)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(filepath.Join(stackDir, overlayName), []byte(o), 0o644)
 }
 
-// ensureSecretsFile creates an empty functions.env if there's none: the
-// overlay names it, and Compose before 2.24 can't mark an env_file optional.
+// ensureSecretsFile creates empty functions.env and auth.env files if
+// they're missing: the overlay names them, and Compose before 2.24 can't
+// mark an env_file optional.
 func ensureSecretsFile(stackDir string) error {
-	if _, err := os.Stat(filepath.Join(stackDir, functionSecretsFile)); err == nil {
-		return nil
+	if _, err := os.Stat(filepath.Join(stackDir, functionSecretsFile)); err != nil {
+		if err := WriteFunctionSecrets(stackDir, map[string]string{}); err != nil {
+			return err
+		}
 	}
-	return WriteFunctionSecrets(stackDir, map[string]string{})
+	if _, err := os.Stat(filepath.Join(stackDir, authEnvFile)); err != nil {
+		if err := writeEnvFile(filepath.Join(stackDir, authEnvFile), map[string]string{},
+			"# Auth settings, written by Supermixer. Change them in Supermixer: Authentication."); err != nil {
+			return err
+		}
+	}
+	return os.MkdirAll(filepath.Join(stackDir, filepath.FromSlash(authTemplatesDir)), 0o755)
 }
 
 // SecretDigest is how a secret is shown without its value, as the Supabase

@@ -36,7 +36,15 @@ import { Route as AppProjectRefAdvisorsPerformanceRouteImport } from './routes/_
 import { Route as AppProjectRefAdvisorsQueryPerformanceRouteImport } from './routes/_app/project.$ref.advisors.query-performance'
 import { Route as AppProjectRefAdvisorsSecurityRouteImport } from './routes/_app/project.$ref.advisors.security'
 import { Route as AppProjectRefAuthAuditLogsRouteImport } from './routes/_app/project.$ref.auth.audit-logs'
+import { Route as AppProjectRefAuthHooksRouteImport } from './routes/_app/project.$ref.auth.hooks'
+import { Route as AppProjectRefAuthMfaRouteImport } from './routes/_app/project.$ref.auth.mfa'
 import { Route as AppProjectRefAuthPoliciesRouteImport } from './routes/_app/project.$ref.auth.policies'
+import { Route as AppProjectRefAuthProtectionRouteImport } from './routes/_app/project.$ref.auth.protection'
+import { Route as AppProjectRefAuthProvidersRouteImport } from './routes/_app/project.$ref.auth.providers'
+import { Route as AppProjectRefAuthRateLimitsRouteImport } from './routes/_app/project.$ref.auth.rate-limits'
+import { Route as AppProjectRefAuthSessionsRouteImport } from './routes/_app/project.$ref.auth.sessions'
+import { Route as AppProjectRefAuthTemplatesRouteImport } from './routes/_app/project.$ref.auth.templates'
+import { Route as AppProjectRefAuthUrlConfigurationRouteImport } from './routes/_app/project.$ref.auth.url-configuration'
 import { Route as AppProjectRefAuthUsersRouteImport } from './routes/_app/project.$ref.auth.users'
 import { Route as AppProjectRefDatabaseColumnPrivilegesRouteImport } from './routes/_app/project.$ref.database.column-privileges'
 import { Route as AppProjectRefDatabaseExtensionsRouteImport } from './routes/_app/project.$ref.database.extensions'
@@ -218,10 +226,56 @@ const AppProjectRefAuthAuditLogsRoute =
     path: '/auth/audit-logs',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefAuthHooksRoute = AppProjectRefAuthHooksRouteImport.update({
+  id: '/auth/hooks',
+  path: '/auth/hooks',
+  getParentRoute: () => AppProjectRefRoute,
+} as any)
+const AppProjectRefAuthMfaRoute = AppProjectRefAuthMfaRouteImport.update({
+  id: '/auth/mfa',
+  path: '/auth/mfa',
+  getParentRoute: () => AppProjectRefRoute,
+} as any)
 const AppProjectRefAuthPoliciesRoute =
   AppProjectRefAuthPoliciesRouteImport.update({
     id: '/auth/policies',
     path: '/auth/policies',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthProtectionRoute =
+  AppProjectRefAuthProtectionRouteImport.update({
+    id: '/auth/protection',
+    path: '/auth/protection',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthProvidersRoute =
+  AppProjectRefAuthProvidersRouteImport.update({
+    id: '/auth/providers',
+    path: '/auth/providers',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthRateLimitsRoute =
+  AppProjectRefAuthRateLimitsRouteImport.update({
+    id: '/auth/rate-limits',
+    path: '/auth/rate-limits',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthSessionsRoute =
+  AppProjectRefAuthSessionsRouteImport.update({
+    id: '/auth/sessions',
+    path: '/auth/sessions',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthTemplatesRoute =
+  AppProjectRefAuthTemplatesRouteImport.update({
+    id: '/auth/templates',
+    path: '/auth/templates',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthUrlConfigurationRoute =
+  AppProjectRefAuthUrlConfigurationRouteImport.update({
+    id: '/auth/url-configuration',
+    path: '/auth/url-configuration',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
 const AppProjectRefAuthUsersRoute = AppProjectRefAuthUsersRouteImport.update({
@@ -500,7 +554,15 @@ export interface FileRoutesByFullPath {
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
   '/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
   '/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
+  '/project/$ref/auth/hooks': typeof AppProjectRefAuthHooksRoute
+  '/project/$ref/auth/mfa': typeof AppProjectRefAuthMfaRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
+  '/project/$ref/auth/protection': typeof AppProjectRefAuthProtectionRoute
+  '/project/$ref/auth/providers': typeof AppProjectRefAuthProvidersRoute
+  '/project/$ref/auth/rate-limits': typeof AppProjectRefAuthRateLimitsRoute
+  '/project/$ref/auth/sessions': typeof AppProjectRefAuthSessionsRoute
+  '/project/$ref/auth/templates': typeof AppProjectRefAuthTemplatesRoute
+  '/project/$ref/auth/url-configuration': typeof AppProjectRefAuthUrlConfigurationRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
@@ -567,7 +629,15 @@ export interface FileRoutesByTo {
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
   '/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
   '/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
+  '/project/$ref/auth/hooks': typeof AppProjectRefAuthHooksRoute
+  '/project/$ref/auth/mfa': typeof AppProjectRefAuthMfaRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
+  '/project/$ref/auth/protection': typeof AppProjectRefAuthProtectionRoute
+  '/project/$ref/auth/providers': typeof AppProjectRefAuthProvidersRoute
+  '/project/$ref/auth/rate-limits': typeof AppProjectRefAuthRateLimitsRoute
+  '/project/$ref/auth/sessions': typeof AppProjectRefAuthSessionsRoute
+  '/project/$ref/auth/templates': typeof AppProjectRefAuthTemplatesRoute
+  '/project/$ref/auth/url-configuration': typeof AppProjectRefAuthUrlConfigurationRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
@@ -640,7 +710,15 @@ export interface FileRoutesById {
   '/_app/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
   '/_app/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
   '/_app/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
+  '/_app/project/$ref/auth/hooks': typeof AppProjectRefAuthHooksRoute
+  '/_app/project/$ref/auth/mfa': typeof AppProjectRefAuthMfaRoute
   '/_app/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
+  '/_app/project/$ref/auth/protection': typeof AppProjectRefAuthProtectionRoute
+  '/_app/project/$ref/auth/providers': typeof AppProjectRefAuthProvidersRoute
+  '/_app/project/$ref/auth/rate-limits': typeof AppProjectRefAuthRateLimitsRoute
+  '/_app/project/$ref/auth/sessions': typeof AppProjectRefAuthSessionsRoute
+  '/_app/project/$ref/auth/templates': typeof AppProjectRefAuthTemplatesRoute
+  '/_app/project/$ref/auth/url-configuration': typeof AppProjectRefAuthUrlConfigurationRoute
   '/_app/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/_app/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/_app/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
@@ -713,7 +791,15 @@ export interface FileRouteTypes {
     | '/project/$ref/advisors/query-performance'
     | '/project/$ref/advisors/security'
     | '/project/$ref/auth/audit-logs'
+    | '/project/$ref/auth/hooks'
+    | '/project/$ref/auth/mfa'
     | '/project/$ref/auth/policies'
+    | '/project/$ref/auth/protection'
+    | '/project/$ref/auth/providers'
+    | '/project/$ref/auth/rate-limits'
+    | '/project/$ref/auth/sessions'
+    | '/project/$ref/auth/templates'
+    | '/project/$ref/auth/url-configuration'
     | '/project/$ref/auth/users'
     | '/project/$ref/database/column-privileges'
     | '/project/$ref/database/extensions'
@@ -780,7 +866,15 @@ export interface FileRouteTypes {
     | '/project/$ref/advisors/query-performance'
     | '/project/$ref/advisors/security'
     | '/project/$ref/auth/audit-logs'
+    | '/project/$ref/auth/hooks'
+    | '/project/$ref/auth/mfa'
     | '/project/$ref/auth/policies'
+    | '/project/$ref/auth/protection'
+    | '/project/$ref/auth/providers'
+    | '/project/$ref/auth/rate-limits'
+    | '/project/$ref/auth/sessions'
+    | '/project/$ref/auth/templates'
+    | '/project/$ref/auth/url-configuration'
     | '/project/$ref/auth/users'
     | '/project/$ref/database/column-privileges'
     | '/project/$ref/database/extensions'
@@ -852,7 +946,15 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/advisors/query-performance'
     | '/_app/project/$ref/advisors/security'
     | '/_app/project/$ref/auth/audit-logs'
+    | '/_app/project/$ref/auth/hooks'
+    | '/_app/project/$ref/auth/mfa'
     | '/_app/project/$ref/auth/policies'
+    | '/_app/project/$ref/auth/protection'
+    | '/_app/project/$ref/auth/providers'
+    | '/_app/project/$ref/auth/rate-limits'
+    | '/_app/project/$ref/auth/sessions'
+    | '/_app/project/$ref/auth/templates'
+    | '/_app/project/$ref/auth/url-configuration'
     | '/_app/project/$ref/auth/users'
     | '/_app/project/$ref/database/column-privileges'
     | '/_app/project/$ref/database/extensions'
@@ -1095,11 +1197,67 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefAuthAuditLogsRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/auth/hooks': {
+      id: '/_app/project/$ref/auth/hooks'
+      path: '/auth/hooks'
+      fullPath: '/project/$ref/auth/hooks'
+      preLoaderRoute: typeof AppProjectRefAuthHooksRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/mfa': {
+      id: '/_app/project/$ref/auth/mfa'
+      path: '/auth/mfa'
+      fullPath: '/project/$ref/auth/mfa'
+      preLoaderRoute: typeof AppProjectRefAuthMfaRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/auth/policies': {
       id: '/_app/project/$ref/auth/policies'
       path: '/auth/policies'
       fullPath: '/project/$ref/auth/policies'
       preLoaderRoute: typeof AppProjectRefAuthPoliciesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/protection': {
+      id: '/_app/project/$ref/auth/protection'
+      path: '/auth/protection'
+      fullPath: '/project/$ref/auth/protection'
+      preLoaderRoute: typeof AppProjectRefAuthProtectionRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/providers': {
+      id: '/_app/project/$ref/auth/providers'
+      path: '/auth/providers'
+      fullPath: '/project/$ref/auth/providers'
+      preLoaderRoute: typeof AppProjectRefAuthProvidersRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/rate-limits': {
+      id: '/_app/project/$ref/auth/rate-limits'
+      path: '/auth/rate-limits'
+      fullPath: '/project/$ref/auth/rate-limits'
+      preLoaderRoute: typeof AppProjectRefAuthRateLimitsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/sessions': {
+      id: '/_app/project/$ref/auth/sessions'
+      path: '/auth/sessions'
+      fullPath: '/project/$ref/auth/sessions'
+      preLoaderRoute: typeof AppProjectRefAuthSessionsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/templates': {
+      id: '/_app/project/$ref/auth/templates'
+      path: '/auth/templates'
+      fullPath: '/project/$ref/auth/templates'
+      preLoaderRoute: typeof AppProjectRefAuthTemplatesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/url-configuration': {
+      id: '/_app/project/$ref/auth/url-configuration'
+      path: '/auth/url-configuration'
+      fullPath: '/project/$ref/auth/url-configuration'
+      preLoaderRoute: typeof AppProjectRefAuthUrlConfigurationRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/auth/users': {
@@ -1458,7 +1616,15 @@ interface AppProjectRefRouteChildren {
   AppProjectRefAdvisorsQueryPerformanceRoute: typeof AppProjectRefAdvisorsQueryPerformanceRoute
   AppProjectRefAdvisorsSecurityRoute: typeof AppProjectRefAdvisorsSecurityRoute
   AppProjectRefAuthAuditLogsRoute: typeof AppProjectRefAuthAuditLogsRoute
+  AppProjectRefAuthHooksRoute: typeof AppProjectRefAuthHooksRoute
+  AppProjectRefAuthMfaRoute: typeof AppProjectRefAuthMfaRoute
   AppProjectRefAuthPoliciesRoute: typeof AppProjectRefAuthPoliciesRoute
+  AppProjectRefAuthProtectionRoute: typeof AppProjectRefAuthProtectionRoute
+  AppProjectRefAuthProvidersRoute: typeof AppProjectRefAuthProvidersRoute
+  AppProjectRefAuthRateLimitsRoute: typeof AppProjectRefAuthRateLimitsRoute
+  AppProjectRefAuthSessionsRoute: typeof AppProjectRefAuthSessionsRoute
+  AppProjectRefAuthTemplatesRoute: typeof AppProjectRefAuthTemplatesRoute
+  AppProjectRefAuthUrlConfigurationRoute: typeof AppProjectRefAuthUrlConfigurationRoute
   AppProjectRefAuthUsersRoute: typeof AppProjectRefAuthUsersRoute
   AppProjectRefDatabaseColumnPrivilegesRoute: typeof AppProjectRefDatabaseColumnPrivilegesRoute
   AppProjectRefDatabaseExtensionsRoute: typeof AppProjectRefDatabaseExtensionsRoute
@@ -1509,7 +1675,16 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
     AppProjectRefAdvisorsQueryPerformanceRoute,
   AppProjectRefAdvisorsSecurityRoute: AppProjectRefAdvisorsSecurityRoute,
   AppProjectRefAuthAuditLogsRoute: AppProjectRefAuthAuditLogsRoute,
+  AppProjectRefAuthHooksRoute: AppProjectRefAuthHooksRoute,
+  AppProjectRefAuthMfaRoute: AppProjectRefAuthMfaRoute,
   AppProjectRefAuthPoliciesRoute: AppProjectRefAuthPoliciesRoute,
+  AppProjectRefAuthProtectionRoute: AppProjectRefAuthProtectionRoute,
+  AppProjectRefAuthProvidersRoute: AppProjectRefAuthProvidersRoute,
+  AppProjectRefAuthRateLimitsRoute: AppProjectRefAuthRateLimitsRoute,
+  AppProjectRefAuthSessionsRoute: AppProjectRefAuthSessionsRoute,
+  AppProjectRefAuthTemplatesRoute: AppProjectRefAuthTemplatesRoute,
+  AppProjectRefAuthUrlConfigurationRoute:
+    AppProjectRefAuthUrlConfigurationRoute,
   AppProjectRefAuthUsersRoute: AppProjectRefAuthUsersRoute,
   AppProjectRefDatabaseColumnPrivilegesRoute:
     AppProjectRefDatabaseColumnPrivilegesRoute,

@@ -17,6 +17,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -574,6 +575,9 @@ func TestOldStacksArePrepared(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("POSTGRES_PASSWORD=abc123\nPOSTGRES_HOST=db\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), []byte("services:\n  studio:\n    image: supabase/studio:x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	if err := PrepareStack(dir); err != nil {
 		t.Fatal(err)
 	}
@@ -642,5 +646,210 @@ func TestFunctionsDatabaseURLAsComposeResolvesIt(t *testing.T) {
 	}
 	if got := url(); got != "postgresql://postgres:"+secrets.PostgresPassword+"@db:5432/postgres" {
 		t.Fatalf("after choosing postgres: %q", got)
+	}
+}
+
+func writtenStack(t *testing.T) string {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "s")
+	secrets, _ := GenerateSecrets(time.Now())
+	env := secrets.Env()
+	env["API_EXTERNAL_URL"] = "http://stacks.example:8201"
+	if err := WriteStack(Layout{Dir: dir, Project: "supermixer-x"}, env); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareStack(dir); err != nil {
+		t.Fatal(err)
+	}
+	return dir
+}
+
+func TestAuthConfig(t *testing.T) {
+	dir := writtenStack(t)
+	cfg, err := ReadAuthConfig(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Defaults: .env-wired settings have the example's values; the rest are unset.
+	if cfg.Values["site_url"] != "http://localhost:3000" || cfg.Values["disable_signup"] != false || cfg.Values["sessions_timebox"] != nil {
+		t.Fatalf("defaults: site_url=%v disable_signup=%v sessions_timebox=%v", cfg.Values["site_url"], cfg.Values["disable_signup"], cfg.Values["sessions_timebox"])
+	}
+
+	changed, err := ApplyAuthChanges(dir, []AuthChange{
+		{"site_url", "https://app.example.com"},
+		{"uri_allow_list", " https://app.example.com/**, http://localhost:3000/* ,"},
+		{"disable_signup", true},
+		{"sessions_timebox", float64(86400)},
+		{"rate_limit_email_sent", float64(2.5)},
+		{"external_github_enabled", true},
+		{"external_github_client_id", "abc"},
+		{"external_github_secret", "shh"},
+		{"smtp_pass", "mail-pass"},
+		{"mailer_subjects_invite", "Join us"},
+		{"mailer_templates_invite_content", "<h2>Hi</h2><a href=\"{{ .ConfirmationURL }}\">Accept</a>"},
+		{"hook_custom_access_token_uri", "pg-functions://postgres/public/claims_hook"},
+		{"hook_send_email_secrets", "v1,whsec_VGhpcyBpcyBhbiBleGFtcGxlIG9mIGEgc2hvcnRlcg=="},
+	})
+	if err != nil || len(changed) != 13 {
+		t.Fatalf("apply: %v %v", changed, err)
+	}
+	cfg, _ = ReadAuthConfig(dir)
+	want := map[string]any{
+		"site_url": "https://app.example.com", "uri_allow_list": "https://app.example.com/**,http://localhost:3000/*",
+		"disable_signup": true, "sessions_timebox": float64(86400), "rate_limit_email_sent": 2.5,
+		"external_github_enabled": true, "external_github_client_id": "abc", "mailer_subjects_invite": "Join us",
+	}
+	for k, v := range want {
+		if cfg.Values[k] != v {
+			t.Errorf("%s = %#v, want %#v", k, cfg.Values[k], v)
+		}
+	}
+	// Secrets are reported as set, never returned.
+	if _, ok := cfg.Values["external_github_secret"]; ok || !slices.Contains(cfg.SecretsSet, "external_github_secret") ||
+		!slices.Contains(cfg.SecretsSet, "smtp_pass") || !slices.Contains(cfg.SecretsSet, "hook_send_email_secrets") {
+		t.Errorf("secrets: %v, values has github secret: %v", cfg.SecretsSet, cfg.Values["external_github_secret"])
+	}
+	auth, _ := readEnvFile(filepath.Join(dir, authEnvFile))
+	// Callback URLs come from the overlay (following API_EXTERNAL_URL), not auth.env.
+	if auth["GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI"] != "" ||
+		auth["GOTRUE_SESSIONS_TIMEBOX"] != "86400s" ||
+		auth["GOTRUE_MAILER_TEMPLATES_INVITE"] != "http://auth-templates:8080/invite.html" {
+		t.Errorf("auth.env = %v", auth)
+	}
+	if fi, _ := os.Stat(filepath.Join(dir, authEnvFile)); fi.Mode().Perm() != 0o600 {
+		t.Errorf("auth.env mode %v", fi.Mode())
+	}
+
+	// Back to defaults; the SMTP login is emptied, not set to the example's fake one.
+	if _, err := ApplyAuthChanges(dir, []AuthChange{{"site_url", nil}, {"external_github_enabled", nil}, {"mailer_templates_invite_content", nil}, {"smtp_pass", nil}}); err != nil {
+		t.Fatal(err)
+	}
+	cfg, _ = ReadAuthConfig(dir)
+	if slices.Contains(cfg.SecretsSet, "smtp_pass") {
+		t.Error("smtp_pass still set after removing it")
+	}
+	auth, _ = readEnvFile(filepath.Join(dir, authEnvFile))
+	if cfg.Values["site_url"] != "http://localhost:3000" || cfg.Values["external_github_enabled"] != nil ||
+		auth["GOTRUE_EXTERNAL_GITHUB_REDIRECT_URI"] != "" || auth["GOTRUE_MAILER_TEMPLATES_INVITE"] != "" {
+		t.Errorf("after reset: site_url=%v github=%v auth.env=%v", cfg.Values["site_url"], cfg.Values["external_github_enabled"], auth)
+	}
+
+	for _, bad := range []AuthChange{
+		{"nope", true}, {"disable_signup", "yes"}, {"site_url", "ftp://x"}, {"site_url", "https://x\nEVIL=1"},
+		{"sessions_timebox", float64(-1)}, {"sessions_timebox", 1.5}, {"smtp_port", float64(70000)},
+		{"sms_provider", "carrier-pigeon"}, {"hook_send_email_secrets", "hunter2"},
+		{"hook_custom_access_token_uri", "pg-functions://postgres/public; drop table x"},
+		{"uri_allow_list", "not a url"}, {"smtp_admin_email", "nobody"},
+	} {
+		if err := ValidateAuthChanges([]AuthChange{bad}); err == nil {
+			t.Errorf("accepted %v = %#v", bad.Name, bad.Value)
+		}
+	}
+	// Combinations Auth would refuse at startup.
+	for _, bad := range [][]AuthChange{
+		{{"hook_send_email_enabled", true}}, // no target
+		{{"hook_send_sms_enabled", true}, {"hook_send_sms_uri", "https://hooks.example.com/sms"}}, // no secret
+		{{"security_captcha_enabled", true}, {"security_captcha_secret", "s"}},                    // no provider
+		{{"security_captcha_enabled", true}, {"security_captcha_provider", "turnstile"}},          // no secret
+	} {
+		if _, err := ApplyAuthChanges(dir, bad); err == nil {
+			t.Errorf("accepted %v", bad)
+		}
+	}
+	if _, err := ApplyAuthChanges(dir, []AuthChange{{"hook_custom_access_token_enabled", true}}); err != nil {
+		t.Errorf("a pg-functions hook with a target was refused: %v", err) // its URI was set above
+	}
+	if _, err := ApplyAuthChanges(dir, []AuthChange{{"security_captcha_enabled", true}, {"security_captcha_provider", "turnstile"}, {"security_captcha_secret", "s"}}); err != nil {
+		t.Errorf("complete CAPTCHA settings were refused: %v", err)
+	}
+	for _, uri := range []string{"http://functions:9000/email", "http://hooks.example.com/x"} {
+		if err := ValidateAuthChanges([]AuthChange{{"hook_send_email_uri", uri}}); err == nil {
+			t.Errorf("accepted plain http hook %s", uri)
+		}
+	}
+	if err := ValidateAuthChanges([]AuthChange{{"hook_send_email_uri", "http://host.docker.internal:54321/functions/v1/email"}}); err != nil {
+		t.Errorf("refused http to host.docker.internal: %v", err)
+	}
+
+	if _, err := ApplyAuthChanges(dir, []AuthChange{{"disable_signup", false}, {"site_url", "ftp://x"}}); err == nil {
+		t.Error("applied a batch with an invalid value")
+	} else if cfg2, _ := ReadAuthConfig(dir); cfg2.Values["disable_signup"] != true {
+		t.Error("a rejected batch was partly applied")
+	}
+}
+
+// What Compose gives the auth service and the template server (needs the docker CLI).
+func TestAuthConfigAsComposeResolvesIt(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("no docker CLI")
+	}
+	dir := writtenStack(t)
+	tricky := `pa$sw0rd ${HOME} #1 "q" \x`
+	if _, err := ApplyAuthChanges(dir, []AuthChange{
+		{"site_url", "https://app.example.com"}, {"external_google_enabled", true}, {"mailer_templates_recovery_content", "<p>Reset</p>"},
+		{"smtp_pass", tricky}, {"smtp_sender_name", "Acme #1 Support"},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("docker", "compose", "config", "--format", "json")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Skipf("docker compose config: %v", err)
+	}
+	var cfg struct {
+		Services map[string]struct {
+			Image       string             `json:"image"`
+			Entrypoint  []string           `json:"entrypoint"`
+			Environment map[string]*string `json:"environment"`
+			Healthcheck struct {
+				Test []string `json:"test"`
+			} `json:"healthcheck"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(out, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	auth := cfg.Services["auth"].Environment
+	for k, v := range map[string]string{
+		"GOTRUE_SITE_URL":                     "https://app.example.com",
+		"GOTRUE_EXTERNAL_GOOGLE_ENABLED":      "true",
+		"GOTRUE_EXTERNAL_GOOGLE_REDIRECT_URI": "http://stacks.example:8201/callback",
+		"GOTRUE_MAILER_TEMPLATES_RECOVERY":    "http://auth-templates:8080/recovery.html",
+		"GOTRUE_SMTP_PASS":                    tricky,
+		"GOTRUE_SMTP_SENDER_NAME":             "Acme #1 Support",
+	} {
+		// config's output escapes $ as $$ again; the container gets single ones.
+		if strings.ReplaceAll(deref(auth[k]), "$$", "$") != v {
+			t.Errorf("auth %s = %q, want %q", k, deref(auth[k]), v)
+		}
+	}
+	tpl := cfg.Services["auth-templates"]
+	studio := cfg.Services["studio"]
+	// Its own healthcheck: Studio's image's would never pass, failing `up --wait`.
+	if len(tpl.Healthcheck.Test) < 2 || !strings.Contains(strings.Join(tpl.Healthcheck.Test, " "), "127.0.0.1:8080") {
+		t.Errorf("auth-templates healthcheck = %v", tpl.Healthcheck.Test)
+	}
+	if tpl.Image == "" || tpl.Image != studio.Image || len(tpl.Entrypoint) != 3 || tpl.Entrypoint[0] != "node" {
+		t.Errorf("auth-templates = %+v", tpl)
+	}
+}
+
+func TestOverlayWithoutStudioInCompose(t *testing.T) {
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("POSTGRES_PASSWORD=x\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "docker-compose.yml"), []byte("services:\n  db:\n    image: x\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareStack(dir); err != nil {
+		t.Fatalf("a compose file without studio: %v", err)
+	}
+	compose, _ := fs.ReadFile(templateFS, "template/docker-compose.yml")
+	bundled, _ := imageIn(compose, "studio")
+	o, _ := os.ReadFile(filepath.Join(dir, overlayName))
+	if bundled == "" || !strings.Contains(string(o), "image: "+bundled) {
+		t.Errorf("overlay doesn't use the bundled Studio image %q", bundled)
 	}
 }

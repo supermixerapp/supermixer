@@ -599,6 +599,34 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/auth-config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Auth settings of a stack Supermixer created
+         * @description Named as in Supabase's Management API (/v1/projects/{ref}/config/auth). A value is null when
+         *     it's left to Auth's default. Secrets are never returned; secrets_set names those that are set.
+         */
+        get: operations["getAuthConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change Auth settings, then restart the auth service
+         * @description Only the given settings change; null puts one back to its default. Needs project settings
+         *     access (Owners and Administrators), and is recorded in the audit log (names only).
+         */
+        patch: operations["updateAuthConfig"];
+        trace?: never;
+    };
     "/projects/{ref}/function-settings": {
         parameters: {
             query?: never;
@@ -1011,6 +1039,17 @@ export interface components {
             function?: components["schemas"]["EdgeFunction"];
             /** @description Whether the functions service was recreated; false while the stack isn't running. */
             restarted: boolean;
+        };
+        AuthConfig: {
+            /** @description Setting name → true/false, a number, text, or null (Auth's default). */
+            values: {
+                [key: string]: unknown;
+            };
+            secrets_set: string[];
+            /** @description The redirect URL to register with OAuth providers. */
+            callback_url: string;
+            /** @description After a change */
+            restarted?: boolean;
         };
         FunctionSettings: {
             /**
@@ -2459,6 +2498,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getAuthConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthConfig"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateAuthConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: unknown;
+                };
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuthConfig"];
                 };
             };
             default: components["responses"]["Error"];

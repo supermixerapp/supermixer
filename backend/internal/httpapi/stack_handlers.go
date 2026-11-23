@@ -229,6 +229,9 @@ func stackEnv(pv config.Provisioning, ref string, p provision.Ports) map[string]
 		"POOLER_TENANT_ID":              ref,
 		"SUPABASE_PUBLIC_URL":           public,
 		"API_EXTERNAL_URL":              public + "/auth/v1",
+		// Not the example's fake SMTP login: none until one is set (Emails).
+		"SMTP_USER": "",
+		"SMTP_PASS": "",
 	}
 }
 

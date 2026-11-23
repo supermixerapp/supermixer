@@ -5,6 +5,7 @@ package provision
 
 import (
 	"embed"
+	"encoding/json"
 	"fmt"
 	"io/fs"
 	"os"
@@ -41,7 +42,10 @@ const overlayName = "supermixer.yml"
 //   - Storage's file backend needs extended attributes, which some bind mounts
 //     (Docker Desktop's) don't support.
 //
-// It also gives the functions service the stack's Edge Function secrets.
+// It also gives the functions service the stack's Edge Function secrets, the
+// auth service its settings (auth.env), and adds auth-templates: a tiny file
+// server for custom email templates, since Auth only fetches them over HTTP.
+// It runs on the stack's own Studio image (already pulled; it has Node).
 //
 // Compose merges a service's volumes by their path in the container, so these
 // replace the bind mounts of the same paths.
@@ -60,6 +64,24 @@ services:
       # Not the postgres login: functions_user, which acts as service_role
       # (see functions_db.go), unless the project chose otherwise.
       SUPABASE_DB_URL: postgresql://${FUNCTIONS_DB_LOGIN}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+  auth:
+    env_file:
+      - ./auth.env
+    environment:
+{{AUTH_ENVIRONMENT}}
+  auth-templates:
+    image: {{STUDIO_IMAGE}}
+    restart: unless-stopped
+    user: "1000:1000"
+    entrypoint: ["node", "-e", {{TEMPLATE_SERVER}}]
+    # Its own check: the Studio image's would probe Studio's port.
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://127.0.0.1:8080/',r=>process.exit(r.statusCode===404?0:1)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ./volumes/auth-templates:/templates:ro,z
   storage:
     volumes:
       - storage-files:/var/lib/storage
@@ -228,27 +250,16 @@ func parseEnvText(b []byte) map[string]string {
 		line = strings.TrimRight(line, "\r\n")
 		if m := envKey.FindStringSubmatch(line); m != nil {
 			if _, seen := out[m[1]]; !seen {
-				out[m[1]] = line[len(m[0]):]
+				// As Compose reads it: quotes, escapes, $$ and inline comments.
+				out[m[1]] = unquoteEnv(line[len(m[0]):])
 			}
 		}
 	}
 	return out
 }
 
-var dbImage = regexp.MustCompile(`(?m)^  db:\s*\n(?:    .*\n|\s*\n)*?    image:\s*(\S+)`)
-
 // StackImage is the image of a stack's Postgres service, from its compose file.
-func StackImage(dir string) (string, error) {
-	b, err := os.ReadFile(filepath.Join(dir, "docker-compose.yml"))
-	if err != nil {
-		return "", err
-	}
-	m := dbImage.FindSubmatch(b)
-	if m == nil {
-		return "", fmt.Errorf("no db image in %s", filepath.Join(dir, "docker-compose.yml"))
-	}
-	return string(m[1]), nil
-}
+func StackImage(dir string) (string, error) { return serviceImage(dir, "db") }
 
 // The edge runtime's router hands every function its own environment. Only
 // the router needs JWT_SECRET (to check tokens); a function with it could
@@ -265,4 +276,55 @@ func hideJWTSecret(router string) (string, error) {
 		return "", fmt.Errorf("volumes/functions/main/index.ts: can't find where functions get their environment; update hideJWTSecret for this template")
 	}
 	return strings.Replace(router, workerEnvLine, workerEnvHidden, 1), nil
+}
+
+const authTemplatesService = "auth-templates"
+
+// templateServer serves /templates/<name>.html, and nothing else.
+const templateServer = `const h=require('http'),f=require('fs'),p=require('path');` +
+	`h.createServer((q,r)=>{const n=p.basename((q.url||'').split('?')[0]);` +
+	`if(q.method!=='GET'||!/^[a-z_]+\.html$/.test(n)){r.writeHead(404);return r.end()}` +
+	`f.readFile(p.join('/templates',n),(e,b)=>{if(e){r.writeHead(404);return r.end()}` +
+	`r.writeHead(200,{'content-type':'text/html; charset=utf-8'});r.end(b)})}).listen(8080)`
+
+// renderOverlay is the overlay for a stack, with its Studio image.
+func renderOverlay(stackDir string) (string, error) {
+	image, err := serviceImage(stackDir, "studio")
+	if err != nil {
+		// A hand-edited compose file: use the bundled template's Studio image.
+		compose, _ := fs.ReadFile(templateFS, "template/docker-compose.yml")
+		if image, err = imageIn(compose, "studio"); err != nil {
+			return "", err
+		}
+	}
+	server, _ := json.Marshal(templateServer)
+	// Each OAuth provider's callback follows the stack's API URL.
+	var env strings.Builder
+	for _, p := range OAuthProviders {
+		env.WriteString("      GOTRUE_EXTERNAL_" + strings.ToUpper(p) + "_REDIRECT_URI: ${API_EXTERNAL_URL}/callback\n")
+	}
+	return strings.NewReplacer("{{STUDIO_IMAGE}}", image, "{{TEMPLATE_SERVER}}", string(server),
+		"{{AUTH_ENVIRONMENT}}\n", env.String()).Replace(overlay), nil
+}
+
+// serviceImage is a service's image, from the stack's compose file.
+func serviceImage(stackDir, service string) (string, error) {
+	b, err := os.ReadFile(filepath.Join(stackDir, "docker-compose.yml"))
+	if err != nil {
+		return "", err
+	}
+	image, err := imageIn(b, service)
+	if err != nil {
+		return "", fmt.Errorf("%w in %s", err, filepath.Join(stackDir, "docker-compose.yml"))
+	}
+	return image, nil
+}
+
+func imageIn(b []byte, service string) (string, error) {
+	re := regexp.MustCompile(`(?m)^  ` + regexp.QuoteMeta(service) + `:\s*\n(?:    .*\n|\s*\n)*?    image:\s*(\S+)`)
+	m := re.FindSubmatch(b)
+	if m == nil {
+		return "", fmt.Errorf("no %s image", service)
+	}
+	return string(m[1]), nil
 }

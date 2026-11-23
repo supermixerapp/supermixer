@@ -687,6 +687,44 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/auth-config:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getAuthConfig
+      tags: [Auth]
+      summary: Auth settings of a stack Supermixer created
+      description: |
+        Named as in Supabase's Management API (/v1/projects/{ref}/config/auth). A value is null when
+        it's left to Auth's default. Secrets are never returned; secrets_set names those that are set.
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthConfig" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateAuthConfig
+      tags: [Auth]
+      summary: Change Auth settings, then restart the auth service
+      description: |
+        Only the given settings change; null puts one back to its default. Needs project settings
+        access (Owners and Administrators), and is recorded in the audit log (names only).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: true
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuthConfig" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/function-settings:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1238,6 +1276,19 @@ components:
       properties:
         function: { $ref: "#/components/schemas/EdgeFunction" }
         restarted: { type: boolean, description: Whether the functions service was recreated; false while the stack isn't running. }
+    AuthConfig:
+      type: object
+      required: [values, secrets_set, callback_url]
+      properties:
+        values:
+          type: object
+          additionalProperties: true
+          description: Setting name → true/false, a number, text, or null (Auth's default).
+        secrets_set:
+          type: array
+          items: { type: string }
+        callback_url: { type: string, description: The redirect URL to register with OAuth providers. }
+        restarted: { type: boolean, description: After a change, whether the auth service was recreated. }
     FunctionSettings:
       type: object
       required: [database_access]

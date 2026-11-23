@@ -258,6 +258,12 @@ func (c Compose) Recreate(ctx context.Context, log io.Writer, service string) er
 	return c.Run(ctx, log, "up", "--detach", "--wait", "--no-deps", "--force-recreate", service)
 }
 
+// Ensure starts a service if it isn't running (new in the overlay, say),
+// leaving it alone if it is.
+func (c Compose) Ensure(ctx context.Context, log io.Writer, service string) error {
+	return c.Run(ctx, log, "up", "--detach", "--wait", "--no-deps", service)
+}
+
 // RemoveStackDir deletes a stack's folder. Anything in it a container's user
 // owns (Linux bind mounts) is removed from inside a container first, using
 // the stack's own Postgres image so nothing is downloaded.

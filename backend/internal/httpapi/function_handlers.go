@@ -36,10 +36,16 @@ func (h *handlers) managedFunctions(ctx context.Context, ref string, perm rbac.P
 	return p, h.stackLayout(p.Ref).Dir, nil
 }
 
-// changeFunctions runs change, then recreates the functions service if the
-// stack is running, as one operation on the stack (so it can't overlap a
-// start, pause or delete). It reports whether the service was recreated.
+// changeFunctions changes Edge Functions; see changeService.
 func (h *handlers) changeFunctions(ctx context.Context, p db.Project, what string, change func() error) (bool, error) {
+	return h.changeService(ctx, p, what, "functions", nil, change)
+}
+
+// changeService runs change, then recreates service if the stack is
+// running, as one operation on the stack (so it can't overlap a start, pause
+// or delete). Services in ensure are started first if they aren't running
+// (ones a newer overlay added). It reports whether service was recreated.
+func (h *handlers) changeService(ctx context.Context, p db.Project, what, service string, ensure []string, change func() error) (bool, error) {
 	if !h.deps.Config.Provisioning.Enabled {
 		return false, errProvisioningOff()
 	}
@@ -66,15 +72,22 @@ func (h *handlers) changeFunctions(ctx context.Context, p db.Project, what strin
 	}
 	log := &stackLog{dir: h.stackLayout(p.Ref).Dir}
 	defer log.Close()
-	fmt.Fprintf(log, "\n== %s: %s; recreating functions ==\n", time.Now().UTC().Format(time.RFC3339), what)
+	fmt.Fprintf(log, "\n== %s: %s; recreating %s ==\n", time.Now().UTC().Format(time.RFC3339), what, service)
 	rctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), functionsRestartTimeout)
 	defer cancel()
-	if err := h.compose(p.Ref).Recreate(rctx, log, "functions"); err != nil {
-		fmt.Fprintf(log, "\nrecreating functions failed: %v\n", err)
-		return false, newError(http.StatusBadGateway,
-			"saved, but the functions service didn't restart: %v (see Settings › Infrastructure › Output)", firstLine(err.Error()))
+	for _, s := range ensure {
+		if err := h.compose(p.Ref).Ensure(rctx, log, s); err != nil {
+			fmt.Fprintf(log, "\nstarting %s failed: %v\n", s, err)
+			return false, newError(http.StatusBadGateway,
+				"saved, but the %s service didn't start: %v (see Settings › Infrastructure › Output)", s, firstLine(err.Error()))
+		}
 	}
-	fmt.Fprintf(log, "\nfunctions recreated\n")
+	if err := h.compose(p.Ref).Recreate(rctx, log, service); err != nil {
+		fmt.Fprintf(log, "\nrecreating %s failed: %v\n", service, err)
+		return false, newError(http.StatusBadGateway,
+			"saved, but the %s service didn't restart: %v (see Settings › Infrastructure › Output)", service, firstLine(err.Error()))
+	}
+	fmt.Fprintf(log, "\n%s recreated\n", service)
 	return true, nil
 }
 
