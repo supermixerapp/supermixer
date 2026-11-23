@@ -53,6 +53,43 @@ import ArticleIconSvg from '@material-design-icons/svg/two-tone/article.svg?reac
 import TuneIconSvg from '@material-design-icons/svg/two-tone/tune.svg?react'
 import ManageAccountsIconSvg from '@material-design-icons/svg/two-tone/manage_accounts.svg?react'
 import AppIconSvg from '@/assets/icons/graphic_eq.svg?react'
+import PlayIconSvg from '@material-design-icons/svg/two-tone/play_arrow.svg?react'
+import StarIconSvg from '@material-design-icons/svg/two-tone/star.svg?react'
+import StarBorderIconSvg from '@material-design-icons/svg/two-tone/star_border.svg?react'
+import MoreIconSvg from '@material-design-icons/svg/two-tone/more_horiz.svg?react'
+import MoreVertIconSvg from '@material-design-icons/svg/two-tone/more_vert.svg?react'
+import SnippetIconSvg from '@material-design-icons/svg/two-tone/description.svg?react'
+import FolderIconSvg from '@material-design-icons/svg/two-tone/folder.svg?react'
+import FolderOpenIconSvg from '@material-design-icons/svg/two-tone/folder_open.svg?react'
+import FileIconSvg from '@material-design-icons/svg/two-tone/insert_drive_file.svg?react'
+import ImageIconSvg from '@material-design-icons/svg/two-tone/image.svg?react'
+import LockIconSvg from '@material-design-icons/svg/two-tone/lock.svg?react'
+import LockOpenIconSvg from '@material-design-icons/svg/two-tone/lock_open.svg?react'
+import PublicIconSvg from '@material-design-icons/svg/two-tone/public.svg?react'
+import KeyIconSvg from '@material-design-icons/svg/two-tone/key.svg?react'
+import CodeIconSvg from '@material-design-icons/svg/two-tone/code.svg?react'
+import TableViewIconSvg from '@material-design-icons/svg/two-tone/table_view.svg?react'
+import RefreshIconSvg from '@material-design-icons/svg/two-tone/refresh.svg?react'
+import DownloadIconSvg from '@material-design-icons/svg/two-tone/download.svg?react'
+import UploadIconSvg from '@material-design-icons/svg/two-tone/upload.svg?react'
+import DeleteIconSvg from '@material-design-icons/svg/two-tone/delete.svg?react'
+import EditIconSvg from '@material-design-icons/svg/two-tone/edit.svg?react'
+import FilterIconSvg from '@material-design-icons/svg/two-tone/filter_list.svg?react'
+import SortIconSvg from '@material-design-icons/svg/two-tone/sort.svg?react'
+import ColumnsIconSvg from '@material-design-icons/svg/two-tone/view_column.svg?react'
+import PersonAddIconSvg from '@material-design-icons/svg/two-tone/person_add.svg?react'
+import BlockIconSvg from '@material-design-icons/svg/two-tone/block.svg?react'
+import MailIconSvg from '@material-design-icons/svg/two-tone/mail.svg?react'
+import HistoryIconSvg from '@material-design-icons/svg/two-tone/history.svg?react'
+import SchemaIconSvg from '@material-design-icons/svg/two-tone/schema.svg?react'
+import BoltIconSvg from '@material-design-icons/svg/two-tone/bolt.svg?react'
+import ListIconSvg from '@material-design-icons/svg/two-tone/list.svg?react'
+import ArrowBackIconSvg from '@material-design-icons/svg/two-tone/arrow_back.svg?react'
+import ArrowUpIconSvg from '@material-design-icons/svg/two-tone/arrow_upward.svg?react'
+import ArrowDownIconSvg from '@material-design-icons/svg/two-tone/arrow_downward.svg?react'
+import LinkIconSvg from '@material-design-icons/svg/two-tone/link.svg?react'
+import SaveIconSvg from '@material-design-icons/svg/two-tone/save.svg?react'
+import VisibilityIconSvg from '@material-design-icons/svg/two-tone/visibility.svg?react'
 
 /** Project overview (`home`) */
 export const HomeIcon = createIcon(HomeIconSvg, 'home')
@@ -146,3 +183,42 @@ export const TuneIcon = createIcon(TuneIconSvg, 'tune')
 export const ManageAccountsIcon = createIcon(ManageAccountsIconSvg, 'manage_accounts')
 /** Supermixer app icon (`graphic_eq`) */
 export const AppIcon = createIcon(AppIconSvg, 'graphic_eq')
+
+// Stage 2: SQL, tables, auth users, storage
+export const PlayIcon = createIcon(PlayIconSvg, 'play_arrow')
+export const StarIcon = createIcon(StarIconSvg, 'star')
+export const StarBorderIcon = createIcon(StarBorderIconSvg, 'star_border')
+export const MoreIcon = createIcon(MoreIconSvg, 'more_horiz')
+export const MoreVertIcon = createIcon(MoreVertIconSvg, 'more_vert')
+export const SnippetIcon = createIcon(SnippetIconSvg, 'description')
+export const FolderIcon = createIcon(FolderIconSvg, 'folder')
+export const FolderOpenIcon = createIcon(FolderOpenIconSvg, 'folder_open')
+export const FileIcon = createIcon(FileIconSvg, 'insert_drive_file')
+export const ImageIcon = createIcon(ImageIconSvg, 'image')
+export const LockIcon = createIcon(LockIconSvg, 'lock')
+export const LockOpenIcon = createIcon(LockOpenIconSvg, 'lock_open')
+export const PublicIcon = createIcon(PublicIconSvg, 'public')
+export const KeyIcon = createIcon(KeyIconSvg, 'key')
+export const CodeIcon = createIcon(CodeIconSvg, 'code')
+export const TableViewIcon = createIcon(TableViewIconSvg, 'table_view')
+export const RefreshIcon = createIcon(RefreshIconSvg, 'refresh')
+export const DownloadIcon = createIcon(DownloadIconSvg, 'download')
+export const UploadIcon = createIcon(UploadIconSvg, 'upload')
+export const DeleteIcon = createIcon(DeleteIconSvg, 'delete')
+export const EditIcon = createIcon(EditIconSvg, 'edit')
+export const FilterIcon = createIcon(FilterIconSvg, 'filter_list')
+export const SortIcon = createIcon(SortIconSvg, 'sort')
+export const ColumnsIcon = createIcon(ColumnsIconSvg, 'view_column')
+export const PersonAddIcon = createIcon(PersonAddIconSvg, 'person_add')
+export const BlockIcon = createIcon(BlockIconSvg, 'block')
+export const MailIcon = createIcon(MailIconSvg, 'mail')
+export const HistoryIcon = createIcon(HistoryIconSvg, 'history')
+export const SchemaIcon = createIcon(SchemaIconSvg, 'schema')
+export const BoltIcon = createIcon(BoltIconSvg, 'bolt')
+export const ListIcon = createIcon(ListIconSvg, 'list')
+export const ArrowBackIcon = createIcon(ArrowBackIconSvg, 'arrow_back')
+export const ArrowUpIcon = createIcon(ArrowUpIconSvg, 'arrow_upward')
+export const ArrowDownIcon = createIcon(ArrowDownIconSvg, 'arrow_downward')
+export const LinkIcon = createIcon(LinkIconSvg, 'link')
+export const SaveIcon = createIcon(SaveIconSvg, 'save')
+export const VisibilityIcon = createIcon(VisibilityIconSvg, 'visibility')

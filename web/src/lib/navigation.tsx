@@ -27,7 +27,7 @@ import {
 import type { Icon } from '@/components/icon'
 
 /** The implementation stage Supermixer is currently at. */
-export const CURRENT_STAGE = 1
+export const CURRENT_STAGE = 2
 
 export interface NavRoute {
   key: string

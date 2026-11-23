@@ -1,0 +1,29 @@
+/* react-data-grid, restyled to match Studio's grid (Table Editor, results). */
+@import 'react-data-grid/lib/styles.css';
+
+.rdg.sm-grid {
+  --rdg-background-color: var(--background-dash-sidebar);
+  --rdg-header-background-color: var(--background-surface-75);
+  --rdg-row-hover-background-color: var(--background-surface-200);
+  --rdg-row-selected-background-color: var(--background-selection);
+  --rdg-row-selected-hover-background-color: var(--background-selection);
+  --rdg-border-color: var(--border-default);
+  --rdg-color: var(--foreground-default);
+  --rdg-selection-color: var(--brand-600);
+  --rdg-checkbox-focus-color: var(--brand-600);
+  --rdg-font-size: 12px;
+  border: 0;
+  height: 100%;
+  font-family: var(--font-mono, 'Source Code Pro Variable', monospace);
+  color-scheme: inherit;
+}
+.rdg.sm-grid .rdg-header-row {
+  font-family: var(--font-sans, 'Inter Variable', sans-serif);
+  color: var(--foreground-light);
+  font-weight: 450;
+}
+.rdg.sm-grid .rdg-cell {
+  border-inline-end-color: var(--border-muted);
+  border-block-end-color: var(--border-muted);
+  padding-inline: 8px;
+}

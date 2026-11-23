@@ -123,3 +123,16 @@ export const invitationQuery = (token: string) =>
     queryFn: () => unwrap(api.GET('/invitations/{token}', { params: { path: { token } } })),
     retry: false,
   })
+
+export const snippetsQuery = (ref: string) =>
+  queryOptions({
+    queryKey: ['projects', ref, 'snippets'],
+    queryFn: () => unwrap(api.GET('/projects/{ref}/snippets', { params: { path: { ref } } })),
+  })
+
+export const snippetQuery = (ref: string, id: string) =>
+  queryOptions({
+    queryKey: ['projects', ref, 'snippets', id],
+    queryFn: () => unwrap(api.GET('/projects/{ref}/snippets/{snippet_id}', { params: { path: { ref, snippet_id: id } } })),
+    staleTime: Infinity, // the editor owns the content once loaded
+  })
