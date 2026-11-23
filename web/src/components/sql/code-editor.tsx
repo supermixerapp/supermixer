@@ -30,6 +30,7 @@ export function CodeEditor({
   readOnly,
   handleRef,
   autoFocus = false,
+  language = 'pgsql',
 }: {
   value: string
   onChange: (v: string) => void
@@ -39,6 +40,8 @@ export function CodeEditor({
   readOnly?: boolean
   handleRef?: React.Ref<CodeEditorHandle>
   autoFocus?: boolean
+  /** 'pgsql' (with schema completion) or 'graphql'. */
+  language?: 'pgsql' | 'graphql'
 }) {
   const { resolved } = useTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -98,7 +101,7 @@ export function CodeEditor({
 
   return (
     <Editor
-      language="pgsql"
+      language={language}
       theme="supermixer"
       value={value}
       onChange={(v) => onChange(v ?? '')}
