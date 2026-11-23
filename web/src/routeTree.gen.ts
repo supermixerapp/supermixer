@@ -29,7 +29,10 @@ import { Route as AppOrgSlugTeamRouteImport } from './routes/_app/org.$slug.team
 import { Route as AppOrgSlugUsageRouteImport } from './routes/_app/org.$slug.usage'
 import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$ref.index'
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
+import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppProjectRefEditorIndexRouteImport } from './routes/_app/project.$ref.editor.index'
+import { Route as AppProjectRefEditorIdRouteImport } from './routes/_app/project.$ref.editor.$id'
 import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/project.$ref.settings.api-keys'
 import { Route as AppProjectRefSettingsGeneralRouteImport } from './routes/_app/project.$ref.settings.general'
 import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/project.$ref.settings.jwt'
@@ -135,10 +138,26 @@ const AppProjectRefSplatRoute = AppProjectRefSplatRouteImport.update({
   path: '/$',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefEditorRoute = AppProjectRefEditorRouteImport.update({
+  id: '/editor',
+  path: '/editor',
+  getParentRoute: () => AppProjectRefRoute,
+} as any)
 const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   id: '/sql',
   path: '/sql',
   getParentRoute: () => AppProjectRefRoute,
+} as any)
+const AppProjectRefEditorIndexRoute =
+  AppProjectRefEditorIndexRouteImport.update({
+    id: '/',
+    path: '/',
+    getParentRoute: () => AppProjectRefEditorRoute,
+  } as any)
+const AppProjectRefEditorIdRoute = AppProjectRefEditorIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AppProjectRefEditorRoute,
 } as any)
 const AppProjectRefSettingsApiKeysRoute =
   AppProjectRefSettingsApiKeysRouteImport.update({
@@ -187,13 +206,16 @@ export interface FileRoutesByFullPath {
   '/org/$slug/team': typeof AppOrgSlugTeamRoute
   '/org/$slug/usage': typeof AppOrgSlugUsageRoute
   '/project/$ref/$': typeof AppProjectRefSplatRoute
+  '/project/$ref/editor': typeof AppProjectRefEditorRouteWithChildren
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
+  '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
 }
 export interface FileRoutesByTo {
@@ -214,10 +236,12 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
+  '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/sql': typeof AppProjectRefSqlIndexRoute
 }
 export interface FileRoutesById {
@@ -240,13 +264,16 @@ export interface FileRoutesById {
   '/_app/org/$slug/team': typeof AppOrgSlugTeamRoute
   '/_app/org/$slug/usage': typeof AppOrgSlugUsageRoute
   '/_app/project/$ref/$': typeof AppProjectRefSplatRoute
+  '/_app/project/$ref/editor': typeof AppProjectRefEditorRouteWithChildren
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
   '/_app/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/_app/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/_app/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
+  '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/_app/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
 }
 export interface FileRouteTypes {
@@ -269,13 +296,16 @@ export interface FileRouteTypes {
     | '/org/$slug/team'
     | '/org/$slug/usage'
     | '/project/$ref/$'
+    | '/project/$ref/editor'
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/editor/$id'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
+    | '/project/$ref/editor/'
     | '/project/$ref/sql/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -296,10 +326,12 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/editor/$id'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
+    | '/project/$ref/editor'
     | '/project/$ref/sql'
   id:
     | '__root__'
@@ -321,13 +353,16 @@ export interface FileRouteTypes {
     | '/_app/org/$slug/team'
     | '/_app/org/$slug/usage'
     | '/_app/project/$ref/$'
+    | '/_app/project/$ref/editor'
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/project/$ref/editor/$id'
     | '/_app/project/$ref/settings/api-keys'
     | '/_app/project/$ref/settings/general'
     | '/_app/project/$ref/settings/jwt'
     | '/_app/project/$ref/sql/$id'
+    | '/_app/project/$ref/editor/'
     | '/_app/project/$ref/sql/'
   fileRoutesById: FileRoutesById
 }
@@ -480,12 +515,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSplatRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/editor': {
+      id: '/_app/project/$ref/editor'
+      path: '/editor'
+      fullPath: '/project/$ref/editor'
+      preLoaderRoute: typeof AppProjectRefEditorRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/sql': {
       id: '/_app/project/$ref/sql'
       path: '/sql'
       fullPath: '/project/$ref/sql'
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
       parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/editor/': {
+      id: '/_app/project/$ref/editor/'
+      path: '/'
+      fullPath: '/project/$ref/editor/'
+      preLoaderRoute: typeof AppProjectRefEditorIndexRouteImport
+      parentRoute: typeof AppProjectRefEditorRoute
+    }
+    '/_app/project/$ref/editor/$id': {
+      id: '/_app/project/$ref/editor/$id'
+      path: '/$id'
+      fullPath: '/project/$ref/editor/$id'
+      preLoaderRoute: typeof AppProjectRefEditorIdRouteImport
+      parentRoute: typeof AppProjectRefEditorRoute
     }
     '/_app/project/$ref/settings/api-keys': {
       id: '/_app/project/$ref/settings/api-keys'
@@ -549,6 +605,19 @@ const AppOrgSlugRouteWithChildren = AppOrgSlugRoute._addFileChildren(
   AppOrgSlugRouteChildren,
 )
 
+interface AppProjectRefEditorRouteChildren {
+  AppProjectRefEditorIdRoute: typeof AppProjectRefEditorIdRoute
+  AppProjectRefEditorIndexRoute: typeof AppProjectRefEditorIndexRoute
+}
+
+const AppProjectRefEditorRouteChildren: AppProjectRefEditorRouteChildren = {
+  AppProjectRefEditorIdRoute: AppProjectRefEditorIdRoute,
+  AppProjectRefEditorIndexRoute: AppProjectRefEditorIndexRoute,
+}
+
+const AppProjectRefEditorRouteWithChildren =
+  AppProjectRefEditorRoute._addFileChildren(AppProjectRefEditorRouteChildren)
+
 interface AppProjectRefSqlRouteChildren {
   AppProjectRefSqlIdRoute: typeof AppProjectRefSqlIdRoute
   AppProjectRefSqlIndexRoute: typeof AppProjectRefSqlIndexRoute
@@ -564,6 +633,7 @@ const AppProjectRefSqlRouteWithChildren =
 
 interface AppProjectRefRouteChildren {
   AppProjectRefSplatRoute: typeof AppProjectRefSplatRoute
+  AppProjectRefEditorRoute: typeof AppProjectRefEditorRouteWithChildren
   AppProjectRefSqlRoute: typeof AppProjectRefSqlRouteWithChildren
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
   AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
@@ -573,6 +643,7 @@ interface AppProjectRefRouteChildren {
 
 const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefSplatRoute: AppProjectRefSplatRoute,
+  AppProjectRefEditorRoute: AppProjectRefEditorRouteWithChildren,
   AppProjectRefSqlRoute: AppProjectRefSqlRouteWithChildren,
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
   AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,
