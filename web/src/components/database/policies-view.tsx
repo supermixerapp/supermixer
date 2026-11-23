@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { useState, type ReactNode } from 'react'
 
 import { AddIcon } from '@/components/icons'
 import { DatabasePage, SchemaPicker, SearchBox, useCanChange, useDdl } from '@/components/database/catalog-page'
@@ -21,31 +22,54 @@ import {
   POLICIES_SQL,
   POLICY_TABLES_SQL,
   POLICY_TEMPLATES,
+  storagePolicyTemplates,
   type PolicyDef,
   type PolicyRow,
   type PolicyTableRow,
 } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
 import { setRls } from '@/lib/pg/table-sql'
+import { listBuckets } from '@/lib/storage-api'
 
-/** Row Level Security per table, shared by Database › Policies and Auth › Policies. */
-export function PoliciesView({ projectRef: ref, schema, onSchemaChange }: { projectRef: string; schema: string; onSchemaChange: (s: string) => void }) {
+/**
+ * Row Level Security per table, shared by Database › Policies, Auth › Policies
+ * and Storage › Policies. With `storage`, it shows Storage's own tables: their
+ * policies can be changed, but RLS stays as Storage set it.
+ */
+export function PoliciesView({
+  projectRef: ref,
+  schema,
+  onSchemaChange,
+  storage = false,
+  description = 'Row Level Security policies decide which rows each role can read and write through the API.',
+}: {
+  projectRef: string
+  schema: string
+  onSchemaChange?: (s: string) => void
+  storage?: boolean
+  description?: ReactNode
+}) {
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<PolicyRow | null>(null)
   const tables = usePg<PolicyTableRow>(ref, ['policy-tables', schema], POLICY_TABLES_SQL, [schema])
   const policies = usePg<PolicyRow>(ref, ['policies', schema], POLICIES_SQL, [schema])
-  const canChange = useCanChange(schema)
+  const canChangeSchema = useCanChange(schema)
+  // Storage's schema is Supabase's, but its policies are yours to write.
+  const canWrite = useCanChange()
+  const canChange = storage ? canWrite : canChangeSchema
   const ddl = useDdl(ref)
-  const rows = (tables.data ?? []).filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
+  const rows = (tables.data ?? [])
+    .filter((t) => !storage || STORAGE_TABLES.includes(t.name))
+    .filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <DatabasePage
       title="Policies"
-      description="Row Level Security policies decide which rows each role can read and write through the API."
+      description={description}
       toolbar={
         <>
-          <SchemaPicker projectRef={ref} value={schema} onChange={onSchemaChange} />
+          {onSchemaChange && <SchemaPicker projectRef={ref} value={schema} onChange={onSchemaChange} />}
           <SearchBox value={search} onChange={setSearch} placeholder="Filter tables" />
         </>
       }
@@ -65,6 +89,10 @@ export function PoliciesView({ projectRef: ref, schema, onSchemaChange }: { proj
               <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
                 <span className="text-sm text-foreground">{t.name}</span>
                 {!t.rls && <Badge variant="warning">RLS disabled</Badge>}
+                {storage && <span className="text-xs text-foreground-lighter">{STORAGE_TABLE_HINTS[t.name]}</span>}
+                {storage ? (
+                  <span className="ml-auto" />
+                ) : (
                 <label className="ml-auto flex items-center gap-2 text-xs text-foreground-light">
                   Row Level Security
                   <Switch
@@ -74,6 +102,7 @@ export function PoliciesView({ projectRef: ref, schema, onSchemaChange }: { proj
                     onCheckedChange={(on) => ddl.mutate({ sql: setRls(schema, t.name, on), done: `RLS ${on ? 'enabled' : 'disabled'} on ${t.name}` })}
                   />
                 </label>
+                )}
                 <PermissionButton allowed={canChange} action="create policies here" variant="default" size="tiny" icon={<AddIcon />} onClick={() => setCreating(t.name)}>
                   Create policy
                 </PermissionButton>
@@ -108,7 +137,7 @@ export function PoliciesView({ projectRef: ref, schema, onSchemaChange }: { proj
           )
         })
       )}
-      {creating && <PolicySheet projectRef={ref} schema={schema} table={creating} onClose={() => setCreating(null)} />}
+      {creating && <PolicySheet projectRef={ref} schema={schema} table={creating} storage={storage} onClose={() => setCreating(null)} />}
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
@@ -126,8 +155,35 @@ export function PoliciesView({ projectRef: ref, schema, onSchemaChange }: { proj
 
 const COMMON_ROLES = ['anon', 'authenticated', 'service_role']
 
-function PolicySheet({ projectRef, schema, table, onClose }: { projectRef: string; schema: string; table: string; onClose: () => void }) {
+const STORAGE_TABLES = ['objects', 'buckets']
+const STORAGE_TABLE_HINTS: Record<string, string> = {
+  objects: 'Who can read, upload, change and delete files',
+  buckets: 'Who can list and manage buckets through the API',
+}
+
+function PolicySheet({
+  projectRef,
+  schema,
+  table,
+  storage,
+  onClose,
+}: {
+  projectRef: string
+  schema: string
+  table: string
+  storage: boolean
+  onClose: () => void
+}) {
   const [p, setP] = useState<PolicyDef>({ schema, table, name: '', command: 'SELECT', permissive: true, roles: [], using: '', check: '' })
+  const bucketTemplates = storage && table === 'objects'
+  const buckets = useQuery({
+    queryKey: ['projects', projectRef, 'storage', 'buckets'],
+    queryFn: ({ signal }) => listBuckets(projectRef, signal),
+    enabled: bucketTemplates,
+  })
+  const [bucket, setBucket] = useState<string | null>(null)
+  const chosenBucket = bucket ?? buckets.data?.[0]?.name ?? null
+  const templates = bucketTemplates ? (chosenBucket ? storagePolicyTemplates(chosenBucket) : []) : POLICY_TEMPLATES
   const ddl = useDdl(projectRef)
   const set = (patch: Partial<PolicyDef>) => setP((x) => ({ ...x, ...patch }))
   const sql = p.name.trim() ? createPolicy({ ...p, name: p.name.trim() }) : ''
@@ -144,13 +200,29 @@ function PolicySheet({ projectRef, schema, table, onClose }: { projectRef: strin
       disabled={!sql}
       onSubmit={() => ddl.mutate({ sql, done: `Created ${p.name}` }, { onSuccess: onClose })}
     >
+      {bucketTemplates && (
+        <FormField label="Bucket" description={buckets.data?.length === 0 ? 'No buckets yet; templates need one.' : 'Templates below apply to this bucket.'}>
+          <Select value={chosenBucket ?? ''} onValueChange={setBucket}>
+            <SelectTrigger aria-label="Bucket">
+              <SelectValue placeholder="Choose a bucket" />
+            </SelectTrigger>
+            <SelectContent>
+              {(buckets.data ?? []).map((b) => (
+                <SelectItem key={b.id} value={b.name}>
+                  {b.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </FormField>
+      )}
       <FormField label="Start from a template">
         <div className="grid gap-1 sm:grid-cols-2">
-          {POLICY_TEMPLATES.map((t) => (
+          {templates.map((t) => (
             <button
               key={t.title}
               className="rounded-md border px-2 py-1.5 text-left text-xs text-foreground-light hover:bg-surface-200 hover:text-foreground"
-              onClick={() => set({ name: t.title, command: t.command, roles: t.roles, using: t.using, check: t.check })}
+              onClick={() => set({ name: t.name ?? t.title, command: t.command, roles: t.roles, using: t.using, check: t.check })}
             >
               {t.title}
             </button>

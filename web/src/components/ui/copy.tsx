@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils'
 import { Button } from './button'
 import { toast } from './toaster'
 
-async function writeClipboard(text: string) {
+export async function writeClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     return true

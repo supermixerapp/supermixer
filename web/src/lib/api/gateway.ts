@@ -15,15 +15,17 @@ function errorMessage(body: unknown, fallback: string): string {
   return fallback
 }
 
-/** JSON request to `/projects/{ref}/gateway/{path}`; throws ApiError with the stack's message. */
-export async function gateway<T = unknown>(
-  ref: string,
-  path: string,
-  init: { method?: string; body?: unknown; signal?: AbortSignal } = {}
-): Promise<T> {
+export interface GatewayInit {
+  method?: string
+  body?: BodyInit
+  headers?: Record<string, string>
+  signal?: AbortSignal
+}
+
+/** Any request to `/projects/{ref}/gateway/{path}`; throws ApiError with the stack's message. */
+export async function gatewayFetch(ref: string, path: string, init: GatewayInit = {}): Promise<Response> {
   const method = init.method ?? 'GET'
-  const headers: Record<string, string> = { Accept: 'application/json' }
-  if (init.body !== undefined) headers['Content-Type'] = 'application/json'
+  const headers: Record<string, string> = { ...init.headers }
   if (method !== 'GET' && method !== 'HEAD') {
     const token = readCookie('sm_csrf')
     if (token) headers['X-CSRF-Token'] = decodeURIComponent(token)
@@ -32,16 +34,38 @@ export async function gateway<T = unknown>(
     method,
     headers,
     credentials: 'same-origin',
-    ...(init.body !== undefined && { body: JSON.stringify(init.body) }),
+    ...(init.body !== undefined && { body: init.body }),
     ...(init.signal && { signal: init.signal }),
   })
-  const text = await res.text()
-  let body: unknown
-  try {
-    body = text ? JSON.parse(text) : undefined
-  } catch {
-    body = text
+  if (!res.ok) {
+    const text = await res.text()
+    let body: unknown
+    try {
+      body = text ? JSON.parse(text) : undefined
+    } catch {
+      body = text
+    }
+    throw new ApiError(res.status, errorMessage(body, res.statusText || `Request failed (${res.status})`))
   }
-  if (!res.ok) throw new ApiError(res.status, errorMessage(body, res.statusText || `Request failed (${res.status})`))
-  return body as T
+  return res
+}
+
+/** JSON request through the gateway. */
+export async function gateway<T = unknown>(
+  ref: string,
+  path: string,
+  init: { method?: string; body?: unknown; signal?: AbortSignal } = {}
+): Promise<T> {
+  const res = await gatewayFetch(ref, path, {
+    ...(init.method && { method: init.method }),
+    ...(init.signal && { signal: init.signal }),
+    headers: { Accept: 'application/json', ...(init.body !== undefined && { 'Content-Type': 'application/json' }) },
+    ...(init.body !== undefined && { body: JSON.stringify(init.body) }),
+  })
+  const text = await res.text()
+  try {
+    return (text ? JSON.parse(text) : undefined) as T
+  } catch {
+    return text as T
+  }
 }

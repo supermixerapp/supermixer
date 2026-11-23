@@ -51,6 +51,9 @@ import { Route as AppProjectRefSettingsGeneralRouteImport } from './routes/_app/
 import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/project.$ref.settings.jwt'
 import { Route as AppProjectRefSqlIndexRouteImport } from './routes/_app/project.$ref.sql.index'
 import { Route as AppProjectRefSqlIdRouteImport } from './routes/_app/project.$ref.sql.$id'
+import { Route as AppProjectRefStoragePoliciesRouteImport } from './routes/_app/project.$ref.storage.policies'
+import { Route as AppProjectRefStorageBucketsIndexRouteImport } from './routes/_app/project.$ref.storage.buckets.index'
+import { Route as AppProjectRefStorageBucketsBucketRouteImport } from './routes/_app/project.$ref.storage.buckets.$bucket'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -277,6 +280,24 @@ const AppProjectRefSqlIdRoute = AppProjectRefSqlIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppProjectRefSqlRoute,
 } as any)
+const AppProjectRefStoragePoliciesRoute =
+  AppProjectRefStoragePoliciesRouteImport.update({
+    id: '/storage/policies',
+    path: '/storage/policies',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefStorageBucketsIndexRoute =
+  AppProjectRefStorageBucketsIndexRouteImport.update({
+    id: '/storage/buckets/',
+    path: '/storage/buckets/',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefStorageBucketsBucketRoute =
+  AppProjectRefStorageBucketsBucketRouteImport.update({
+    id: '/storage/buckets/$bucket',
+    path: '/storage/buckets/$bucket',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -318,8 +339,11 @@ export interface FileRoutesByFullPath {
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
+  '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
+  '/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
+  '/project/$ref/storage/buckets/': typeof AppProjectRefStorageBucketsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -357,8 +381,11 @@ export interface FileRoutesByTo {
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
+  '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/sql': typeof AppProjectRefSqlIndexRoute
+  '/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
+  '/project/$ref/storage/buckets': typeof AppProjectRefStorageBucketsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -402,8 +429,11 @@ export interface FileRoutesById {
   '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/_app/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/_app/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
+  '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/_app/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
+  '/_app/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
+  '/_app/project/$ref/storage/buckets/': typeof AppProjectRefStorageBucketsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -447,8 +477,11 @@ export interface FileRouteTypes {
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
+    | '/project/$ref/storage/policies'
     | '/project/$ref/editor/'
     | '/project/$ref/sql/'
+    | '/project/$ref/storage/buckets/$bucket'
+    | '/project/$ref/storage/buckets/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -486,8 +519,11 @@ export interface FileRouteTypes {
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
+    | '/project/$ref/storage/policies'
     | '/project/$ref/editor'
     | '/project/$ref/sql'
+    | '/project/$ref/storage/buckets/$bucket'
+    | '/project/$ref/storage/buckets'
   id:
     | '__root__'
     | '/'
@@ -530,8 +566,11 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/settings/general'
     | '/_app/project/$ref/settings/jwt'
     | '/_app/project/$ref/sql/$id'
+    | '/_app/project/$ref/storage/policies'
     | '/_app/project/$ref/editor/'
     | '/_app/project/$ref/sql/'
+    | '/_app/project/$ref/storage/buckets/$bucket'
+    | '/_app/project/$ref/storage/buckets/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -837,6 +876,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSqlIdRouteImport
       parentRoute: typeof AppProjectRefSqlRoute
     }
+    '/_app/project/$ref/storage/policies': {
+      id: '/_app/project/$ref/storage/policies'
+      path: '/storage/policies'
+      fullPath: '/project/$ref/storage/policies'
+      preLoaderRoute: typeof AppProjectRefStoragePoliciesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/storage/buckets/': {
+      id: '/_app/project/$ref/storage/buckets/'
+      path: '/storage/buckets'
+      fullPath: '/project/$ref/storage/buckets/'
+      preLoaderRoute: typeof AppProjectRefStorageBucketsIndexRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/storage/buckets/$bucket': {
+      id: '/_app/project/$ref/storage/buckets/$bucket'
+      path: '/storage/buckets/$bucket'
+      fullPath: '/project/$ref/storage/buckets/$bucket'
+      preLoaderRoute: typeof AppProjectRefStorageBucketsBucketRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
   }
 }
 
@@ -911,6 +971,9 @@ interface AppProjectRefRouteChildren {
   AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
   AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
+  AppProjectRefStoragePoliciesRoute: typeof AppProjectRefStoragePoliciesRoute
+  AppProjectRefStorageBucketsBucketRoute: typeof AppProjectRefStorageBucketsBucketRoute
+  AppProjectRefStorageBucketsIndexRoute: typeof AppProjectRefStorageBucketsIndexRoute
 }
 
 const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
@@ -935,6 +998,10 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,
   AppProjectRefSettingsGeneralRoute: AppProjectRefSettingsGeneralRoute,
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
+  AppProjectRefStoragePoliciesRoute: AppProjectRefStoragePoliciesRoute,
+  AppProjectRefStorageBucketsBucketRoute:
+    AppProjectRefStorageBucketsBucketRoute,
+  AppProjectRefStorageBucketsIndexRoute: AppProjectRefStorageBucketsIndexRoute,
 }
 
 const AppProjectRefRouteWithChildren = AppProjectRefRoute._addFileChildren(

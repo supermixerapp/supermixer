@@ -390,7 +390,71 @@ export function dropPolicy(schema: string, table: string, name: string): string 
 }
 
 /** Studio's policy templates, adapted. */
-export const POLICY_TEMPLATES: { title: string; command: PolicyRow['command']; roles: string[]; using: string; check: string }[] = [
+export interface PolicyTemplate {
+  title: string
+  /** Policy name to use; defaults to the title. */
+  name?: string
+  command: PolicyRow['command']
+  roles: string[]
+  using: string
+  check: string
+}
+
+/**
+ * "<bucket>: <what>", kept within Postgres's 63-byte identifier limit. A long
+ * bucket name is shortened and given a short hash, so two long names that
+ * share a beginning still get different policy names.
+ */
+export function bucketPolicyName(bucket: string, what: string): string {
+  const enc = new TextEncoder()
+  const full = `${bucket}: ${what}`
+  if (enc.encode(full).length <= 63) return full
+  let h = 5381
+  for (const ch of bucket) h = ((h * 33) ^ ch.codePointAt(0)!) >>> 0
+  const tag = `~${h.toString(36).slice(0, 5)}`
+  const room = 63 - enc.encode(`${tag}: ${what}`).length
+  let short = ''
+  for (const ch of bucket) {
+    if (enc.encode(short + ch).length > room) break
+    short += ch
+  }
+  return `${short}${tag}: ${what}`
+}
+
+/** Storage policies for one bucket, as Studio offers them. */
+export function storagePolicyTemplates(bucket: string): PolicyTemplate[] {
+  const b = `bucket_id = ${literal(bucket)}`
+  const ownFolder = `${b} and (select auth.uid()::text) = (storage.foldername(name))[1]`
+  return [
+    { title: `Allow public read access to ${bucket}`, name: bucketPolicyName(bucket, 'public read'), command: 'SELECT', roles: [], using: b, check: '' },
+    {
+      title: `Allow authenticated uploads to ${bucket}`,
+      name: bucketPolicyName(bucket, 'authenticated uploads'),
+      command: 'INSERT',
+      roles: ['authenticated'],
+      using: '',
+      check: b,
+    },
+    {
+      title: `Give users access to their own folder in ${bucket}`,
+      name: bucketPolicyName(bucket, 'own folder'),
+      command: 'ALL',
+      roles: ['authenticated'],
+      using: ownFolder,
+      check: ownFolder,
+    },
+    {
+      title: `Allow users to delete files they uploaded to ${bucket}`,
+      name: bucketPolicyName(bucket, 'delete own files'),
+      command: 'DELETE',
+      roles: ['authenticated'],
+      using: `${b} and owner_id = (select auth.uid()::text)`,
+      check: '',
+    },
+  ]
+}
+
+export const POLICY_TEMPLATES: PolicyTemplate[] = [
   { title: 'Enable read access for all users', command: 'SELECT', roles: [], using: 'true', check: '' },
   { title: 'Enable insert for authenticated users only', command: 'INSERT', roles: ['authenticated'], using: '', check: 'true' },
   {

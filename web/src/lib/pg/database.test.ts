@@ -55,3 +55,15 @@ $sm$;`)
     )
   })
 })
+
+describe('storage policy names', () => {
+  it('stay within 63 bytes and stay distinct for long bucket names', async () => {
+    const { bucketPolicyName } = await import('./database')
+    const eu = bucketPolicyName('customer-uploads-production-eu-west-archive', 'delete own files')
+    const us = bucketPolicyName('customer-uploads-production-us-east-archive', 'delete own files')
+    expect(new TextEncoder().encode(eu).length).toBeLessThanOrEqual(63)
+    expect(eu).not.toBe(us)
+    expect(eu.endsWith(': delete own files')).toBe(true)
+    expect(bucketPolicyName('avatars', 'public read')).toBe('avatars: public read')
+  })
+})
