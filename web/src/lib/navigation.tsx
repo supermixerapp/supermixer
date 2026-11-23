@@ -167,8 +167,8 @@ export const productMenus: Record<string, ProductMenu> = {
       {
         title: 'Configuration',
         items: [
-          { label: 'Settings', path: 'storage/settings', stage: 2 },
-          { label: 'S3 Connection', path: 'storage/s3', stage: 2 },
+          { label: 'Settings', path: 'storage/settings', stage: 4 },
+          { label: 'S3 Connection', path: 'storage/s3', stage: 4 },
         ],
       },
     ],
