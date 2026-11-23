@@ -5,7 +5,15 @@ import { useNavigate } from '@tanstack/react-router'
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 
 import type { Icon } from '@/components/icon'
-import { DarkModeIcon, LightModeIcon, PaletteIcon, SearchIcon, SystemThemeIcon, TuneIcon } from '@/components/icons'
+import {
+  DarkModeIcon,
+  LightModeIcon,
+  ManageAccountsIcon,
+  PaletteIcon,
+  SearchIcon,
+  SystemThemeIcon,
+  TuneIcon,
+} from '@/components/icons'
 import {
   Command,
   CommandEmpty,
@@ -18,7 +26,7 @@ import {
 } from '@/components/ui/command'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { useSelectedOrganization, useSelectedProject } from '@/lib/api/hooks'
+import { useProfile, useSelectedOrganization, useSelectedProject } from '@/lib/api/hooks'
 import { orgNav, productMenus, projectNavGroups } from '@/lib/navigation'
 import { useTheme, type ThemePreference } from '@/lib/theme'
 import { cn } from '@/lib/utils'
@@ -96,6 +104,7 @@ export function CommandMenu() {
   const { setPreference } = useTheme()
   const org = useSelectedOrganization()
   const project = useSelectedProject()
+  const { data: me } = useProfile()
 
   const projectEntries: Entry[] = project
     ? projectNavGroups.flat().map((r) => ({
@@ -162,6 +171,9 @@ export function CommandMenu() {
             <CommandGroup heading="Supermixer">
               <NavItem entry={{ label: 'All organizations', icon: SearchIcon, to: '/organizations' }} onSelect={go} />
               <NavItem entry={{ label: 'Preferences', icon: TuneIcon, to: '/account/me' }} onSelect={go} />
+              {me?.is_instance_admin && (
+                <NavItem entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }} onSelect={go} />
+              )}
               <NavItem entry={{ label: 'Design system', icon: PaletteIcon, to: '/design-system' }} onSelect={go} />
             </CommandGroup>
             <CommandSeparator />

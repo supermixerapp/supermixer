@@ -1,14 +1,10 @@
-import { queryOptions } from '@tanstack/react-query'
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 
-import { api } from './client'
+import { api, unwrap } from './client'
 
 export const uiConfigQuery = queryOptions({
   queryKey: ['ui-config'],
-  queryFn: async () => {
-    const { data, error } = await api.GET('/ui-config')
-    if (error) throw new Error(error.message)
-    return data
-  },
+  queryFn: () => unwrap(api.GET('/ui-config')),
   staleTime: Infinity,
 })
 
@@ -28,3 +24,102 @@ export const healthQuery = queryOptions({
   },
   refetchInterval: 30_000,
 })
+
+export const profileQuery = queryOptions({
+  queryKey: ['profile'],
+  queryFn: () => unwrap(api.GET('/profile')),
+  staleTime: 60_000,
+})
+
+export const sessionsQuery = queryOptions({
+  queryKey: ['profile', 'sessions'],
+  queryFn: () => unwrap(api.GET('/profile/sessions')),
+})
+
+export const organizationsQuery = queryOptions({
+  queryKey: ['organizations'],
+  queryFn: () => unwrap(api.GET('/organizations')),
+  staleTime: 30_000,
+})
+
+export const projectsQuery = queryOptions({
+  queryKey: ['projects'],
+  queryFn: () => unwrap(api.GET('/projects')),
+  staleTime: 30_000,
+})
+
+export const projectQuery = (ref: string) =>
+  queryOptions({
+    queryKey: ['projects', ref],
+    queryFn: () => unwrap(api.GET('/projects/{ref}', { params: { path: { ref } } })),
+    staleTime: 30_000,
+  })
+
+export const projectHealthQuery = (ref: string) =>
+  queryOptions({
+    queryKey: ['projects', ref, 'health'],
+    queryFn: () => unwrap(api.GET('/projects/{ref}/health', { params: { path: { ref } } })),
+    refetchInterval: 30_000,
+  })
+
+export const apiKeysQuery = (ref: string, reveal = false) =>
+  queryOptions({
+    queryKey: ['projects', ref, 'api-keys', { reveal }],
+    queryFn: () =>
+      unwrap(api.GET('/projects/{ref}/api-keys', { params: { path: { ref }, query: { reveal } } })),
+    // Revealed secrets are dropped from the cache as soon as nothing shows them.
+    gcTime: reveal ? 0 : undefined,
+    staleTime: reveal ? Infinity : undefined,
+  })
+
+export const membersQuery = (slug: string) =>
+  queryOptions({
+    queryKey: ['organizations', slug, 'members'],
+    queryFn: () => unwrap(api.GET('/organizations/{slug}/members', { params: { path: { slug } } })),
+  })
+
+export const invitationsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: ['organizations', slug, 'invitations'],
+    queryFn: () => unwrap(api.GET('/organizations/{slug}/invitations', { params: { path: { slug } } })),
+  })
+
+export interface AuditFilters {
+  action?: string
+  actor_id?: string
+  since?: string
+}
+
+export const auditLogsQuery = (slug: string, filters: AuditFilters) =>
+  infiniteQueryOptions({
+    queryKey: ['organizations', slug, 'audit-logs', filters],
+    queryFn: ({ pageParam }) =>
+      unwrap(
+        api.GET('/organizations/{slug}/audit-logs', {
+          params: {
+            path: { slug },
+            query: {
+              action: filters.action || undefined,
+              actor_id: filters.actor_id || undefined,
+              since: filters.since || undefined,
+              before: pageParam,
+              limit: 50,
+            },
+          },
+        })
+      ),
+    initialPageParam: undefined as number | undefined,
+    getNextPageParam: (last) => last.next_before ?? undefined,
+  })
+
+export const usersQuery = queryOptions({
+  queryKey: ['admin', 'users'],
+  queryFn: () => unwrap(api.GET('/admin/users')),
+})
+
+export const invitationQuery = (token: string) =>
+  queryOptions({
+    queryKey: ['invitations', token],
+    queryFn: () => unwrap(api.GET('/invitations/{token}', { params: { path: { token } } })),
+    retry: false,
+  })

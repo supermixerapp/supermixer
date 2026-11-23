@@ -3,10 +3,10 @@ import { createFileRoute } from '@tanstack/react-router'
 import { ComingSoon } from '@/components/layout/page'
 import { describeProjectPath } from '@/lib/navigation'
 
-import { NotFoundContent } from './__root'
+import { NotFoundContent } from '../__root'
 
 /** Every project page not built yet: shows which stage brings it. */
-export const Route = createFileRoute('/project/$ref/$')({
+export const Route = createFileRoute('/_app/project/$ref/$')({
   component: ProjectPlaceholder,
 })
 

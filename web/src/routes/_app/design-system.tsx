@@ -47,7 +47,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from '@/components/ui/toaster'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 
-export const Route = createFileRoute('/design-system')({
+export const Route = createFileRoute('/_app/design-system')({
   component: DesignSystemPage,
 })
 

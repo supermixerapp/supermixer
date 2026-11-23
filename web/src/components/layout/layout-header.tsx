@@ -10,6 +10,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import { useSelectedOrganization, useSelectedProject } from '@/lib/api/hooks'
 import { cn } from '@/lib/utils'
 
+import { ConnectSheet } from '@/components/project/connect-sheet'
+
 import { CommandMenuTrigger } from './command-menu'
 import { OrganizationSwitcher, ProjectSwitcher } from './switchers'
 import { UserDropdown } from './user-dropdown'
@@ -74,6 +76,9 @@ export function LayoutHeader({ title }: { title?: string }) {
               <>
                 <LayoutHeaderDivider />
                 <ProjectSwitcher />
+                <div className="ml-3 hidden md:block">
+                  <ConnectSheet project={project} />
+                </div>
               </>
             )}
             {title && (

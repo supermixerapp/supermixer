@@ -10,148 +10,234 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as DesignSystemRouteImport } from './routes/design-system'
-import { Route as OrganizationsRouteImport } from './routes/organizations'
-import { Route as AccountMeRouteImport } from './routes/account.me'
-import { Route as OrgSlugRouteImport } from './routes/org.$slug'
-import { Route as ProjectRefRouteImport } from './routes/project.$ref'
-import { Route as OrgSlugIndexRouteImport } from './routes/org.$slug.index'
-import { Route as OrgSlugSplatRouteImport } from './routes/org.$slug.$'
-import { Route as OrgSlugGeneralRouteImport } from './routes/org.$slug.general'
-import { Route as OrgSlugIntegrationsRouteImport } from './routes/org.$slug.integrations'
-import { Route as OrgSlugTeamRouteImport } from './routes/org.$slug.team'
-import { Route as OrgSlugUsageRouteImport } from './routes/org.$slug.usage'
-import { Route as ProjectRefIndexRouteImport } from './routes/project.$ref.index'
-import { Route as ProjectRefSplatRouteImport } from './routes/project.$ref.$'
+import { Route as AppRouteImport } from './routes/_app'
+import { Route as JoinRouteImport } from './routes/join'
+import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as AppDesignSystemRouteImport } from './routes/_app/design-system'
+import { Route as AppOrganizationsRouteImport } from './routes/_app/organizations'
+import { Route as AppAccountMeRouteImport } from './routes/_app/account.me'
+import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
+import { Route as AppNewSlugRouteImport } from './routes/_app/new.$slug'
+import { Route as AppOrgSlugRouteImport } from './routes/_app/org.$slug'
+import { Route as AppProjectRefRouteImport } from './routes/_app/project.$ref'
+import { Route as AppOrgSlugIndexRouteImport } from './routes/_app/org.$slug.index'
+import { Route as AppOrgSlugSplatRouteImport } from './routes/_app/org.$slug.$'
+import { Route as AppOrgSlugAuditRouteImport } from './routes/_app/org.$slug.audit'
+import { Route as AppOrgSlugGeneralRouteImport } from './routes/_app/org.$slug.general'
+import { Route as AppOrgSlugIntegrationsRouteImport } from './routes/_app/org.$slug.integrations'
+import { Route as AppOrgSlugTeamRouteImport } from './routes/_app/org.$slug.team'
+import { Route as AppOrgSlugUsageRouteImport } from './routes/_app/org.$slug.usage'
+import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$ref.index'
+import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
+import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/project.$ref.settings.api-keys'
+import { Route as AppProjectRefSettingsGeneralRouteImport } from './routes/_app/project.$ref.settings.general'
+import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/project.$ref.settings.jwt'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DesignSystemRoute = DesignSystemRouteImport.update({
+const AppRoute = AppRouteImport.update({
+  id: '/_app',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInRoute = SignInRouteImport.update({
+  id: '/sign-in',
+  path: '/sign-in',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AppDesignSystemRoute = AppDesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const OrganizationsRoute = OrganizationsRouteImport.update({
+const AppOrganizationsRoute = AppOrganizationsRouteImport.update({
   id: '/organizations',
   path: '/organizations',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const AccountMeRoute = AccountMeRouteImport.update({
+const AppAccountMeRoute = AppAccountMeRouteImport.update({
   id: '/account/me',
   path: '/account/me',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const OrgSlugRoute = OrgSlugRouteImport.update({
+const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppNewSlugRoute = AppNewSlugRouteImport.update({
+  id: '/new/$slug',
+  path: '/new/$slug',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppOrgSlugRoute = AppOrgSlugRouteImport.update({
   id: '/org/$slug',
   path: '/org/$slug',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const ProjectRefRoute = ProjectRefRouteImport.update({
+const AppProjectRefRoute = AppProjectRefRouteImport.update({
   id: '/project/$ref',
   path: '/project/$ref',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => AppRoute,
 } as any)
-const OrgSlugIndexRoute = OrgSlugIndexRouteImport.update({
+const AppOrgSlugIndexRoute = AppOrgSlugIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => OrgSlugRoute,
+  getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const OrgSlugSplatRoute = OrgSlugSplatRouteImport.update({
+const AppOrgSlugSplatRoute = AppOrgSlugSplatRouteImport.update({
   id: '/$',
   path: '/$',
-  getParentRoute: () => OrgSlugRoute,
+  getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const OrgSlugGeneralRoute = OrgSlugGeneralRouteImport.update({
+const AppOrgSlugAuditRoute = AppOrgSlugAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => AppOrgSlugRoute,
+} as any)
+const AppOrgSlugGeneralRoute = AppOrgSlugGeneralRouteImport.update({
   id: '/general',
   path: '/general',
-  getParentRoute: () => OrgSlugRoute,
+  getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const OrgSlugIntegrationsRoute = OrgSlugIntegrationsRouteImport.update({
+const AppOrgSlugIntegrationsRoute = AppOrgSlugIntegrationsRouteImport.update({
   id: '/integrations',
   path: '/integrations',
-  getParentRoute: () => OrgSlugRoute,
+  getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const OrgSlugTeamRoute = OrgSlugTeamRouteImport.update({
+const AppOrgSlugTeamRoute = AppOrgSlugTeamRouteImport.update({
   id: '/team',
   path: '/team',
-  getParentRoute: () => OrgSlugRoute,
+  getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const OrgSlugUsageRoute = OrgSlugUsageRouteImport.update({
+const AppOrgSlugUsageRoute = AppOrgSlugUsageRouteImport.update({
   id: '/usage',
   path: '/usage',
-  getParentRoute: () => OrgSlugRoute,
+  getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const ProjectRefIndexRoute = ProjectRefIndexRouteImport.update({
+const AppProjectRefIndexRoute = AppProjectRefIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => ProjectRefRoute,
+  getParentRoute: () => AppProjectRefRoute,
 } as any)
-const ProjectRefSplatRoute = ProjectRefSplatRouteImport.update({
+const AppProjectRefSplatRoute = AppProjectRefSplatRouteImport.update({
   id: '/$',
   path: '/$',
-  getParentRoute: () => ProjectRefRoute,
+  getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefSettingsApiKeysRoute =
+  AppProjectRefSettingsApiKeysRouteImport.update({
+    id: '/settings/api-keys',
+    path: '/settings/api-keys',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefSettingsGeneralRoute =
+  AppProjectRefSettingsGeneralRouteImport.update({
+    id: '/settings/general',
+    path: '/settings/general',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefSettingsJwtRoute =
+  AppProjectRefSettingsJwtRouteImport.update({
+    id: '/settings/jwt',
+    path: '/settings/jwt',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/design-system': typeof DesignSystemRoute
-  '/organizations': typeof OrganizationsRoute
-  '/account/me': typeof AccountMeRoute
-  '/org/$slug': typeof OrgSlugRouteWithChildren
-  '/project/$ref': typeof ProjectRefRouteWithChildren
-  '/org/$slug/$': typeof OrgSlugSplatRoute
-  '/org/$slug/general': typeof OrgSlugGeneralRoute
-  '/org/$slug/integrations': typeof OrgSlugIntegrationsRoute
-  '/org/$slug/team': typeof OrgSlugTeamRoute
-  '/org/$slug/usage': typeof OrgSlugUsageRoute
-  '/project/$ref/$': typeof ProjectRefSplatRoute
-  '/org/$slug/': typeof OrgSlugIndexRoute
-  '/project/$ref/': typeof ProjectRefIndexRoute
+  '/join': typeof JoinRoute
+  '/sign-in': typeof SignInRoute
+  '/design-system': typeof AppDesignSystemRoute
+  '/organizations': typeof AppOrganizationsRoute
+  '/account/me': typeof AppAccountMeRoute
+  '/admin/users': typeof AppAdminUsersRoute
+  '/new/$slug': typeof AppNewSlugRoute
+  '/org/$slug': typeof AppOrgSlugRouteWithChildren
+  '/project/$ref': typeof AppProjectRefRouteWithChildren
+  '/org/$slug/$': typeof AppOrgSlugSplatRoute
+  '/org/$slug/audit': typeof AppOrgSlugAuditRoute
+  '/org/$slug/general': typeof AppOrgSlugGeneralRoute
+  '/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
+  '/org/$slug/team': typeof AppOrgSlugTeamRoute
+  '/org/$slug/usage': typeof AppOrgSlugUsageRoute
+  '/project/$ref/$': typeof AppProjectRefSplatRoute
+  '/org/$slug/': typeof AppOrgSlugIndexRoute
+  '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
+  '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
+  '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/design-system': typeof DesignSystemRoute
-  '/organizations': typeof OrganizationsRoute
-  '/account/me': typeof AccountMeRoute
-  '/org/$slug/$': typeof OrgSlugSplatRoute
-  '/org/$slug/general': typeof OrgSlugGeneralRoute
-  '/org/$slug/integrations': typeof OrgSlugIntegrationsRoute
-  '/org/$slug/team': typeof OrgSlugTeamRoute
-  '/org/$slug/usage': typeof OrgSlugUsageRoute
-  '/project/$ref/$': typeof ProjectRefSplatRoute
-  '/org/$slug': typeof OrgSlugIndexRoute
-  '/project/$ref': typeof ProjectRefIndexRoute
+  '/join': typeof JoinRoute
+  '/sign-in': typeof SignInRoute
+  '/design-system': typeof AppDesignSystemRoute
+  '/organizations': typeof AppOrganizationsRoute
+  '/account/me': typeof AppAccountMeRoute
+  '/admin/users': typeof AppAdminUsersRoute
+  '/new/$slug': typeof AppNewSlugRoute
+  '/org/$slug/$': typeof AppOrgSlugSplatRoute
+  '/org/$slug/audit': typeof AppOrgSlugAuditRoute
+  '/org/$slug/general': typeof AppOrgSlugGeneralRoute
+  '/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
+  '/org/$slug/team': typeof AppOrgSlugTeamRoute
+  '/org/$slug/usage': typeof AppOrgSlugUsageRoute
+  '/project/$ref/$': typeof AppProjectRefSplatRoute
+  '/org/$slug': typeof AppOrgSlugIndexRoute
+  '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
+  '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
+  '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/design-system': typeof DesignSystemRoute
-  '/organizations': typeof OrganizationsRoute
-  '/account/me': typeof AccountMeRoute
-  '/org/$slug': typeof OrgSlugRouteWithChildren
-  '/project/$ref': typeof ProjectRefRouteWithChildren
-  '/org/$slug/$': typeof OrgSlugSplatRoute
-  '/org/$slug/general': typeof OrgSlugGeneralRoute
-  '/org/$slug/integrations': typeof OrgSlugIntegrationsRoute
-  '/org/$slug/team': typeof OrgSlugTeamRoute
-  '/org/$slug/usage': typeof OrgSlugUsageRoute
-  '/project/$ref/$': typeof ProjectRefSplatRoute
-  '/org/$slug/': typeof OrgSlugIndexRoute
-  '/project/$ref/': typeof ProjectRefIndexRoute
+  '/_app': typeof AppRouteWithChildren
+  '/join': typeof JoinRoute
+  '/sign-in': typeof SignInRoute
+  '/_app/design-system': typeof AppDesignSystemRoute
+  '/_app/organizations': typeof AppOrganizationsRoute
+  '/_app/account/me': typeof AppAccountMeRoute
+  '/_app/admin/users': typeof AppAdminUsersRoute
+  '/_app/new/$slug': typeof AppNewSlugRoute
+  '/_app/org/$slug': typeof AppOrgSlugRouteWithChildren
+  '/_app/project/$ref': typeof AppProjectRefRouteWithChildren
+  '/_app/org/$slug/$': typeof AppOrgSlugSplatRoute
+  '/_app/org/$slug/audit': typeof AppOrgSlugAuditRoute
+  '/_app/org/$slug/general': typeof AppOrgSlugGeneralRoute
+  '/_app/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
+  '/_app/org/$slug/team': typeof AppOrgSlugTeamRoute
+  '/_app/org/$slug/usage': typeof AppOrgSlugUsageRoute
+  '/_app/project/$ref/$': typeof AppProjectRefSplatRoute
+  '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
+  '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
+  '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
+  '/_app/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/join'
+    | '/sign-in'
     | '/design-system'
     | '/organizations'
     | '/account/me'
+    | '/admin/users'
+    | '/new/$slug'
     | '/org/$slug'
     | '/project/$ref'
     | '/org/$slug/$'
+    | '/org/$slug/audit'
     | '/org/$slug/general'
     | '/org/$slug/integrations'
     | '/org/$slug/team'
@@ -159,13 +245,21 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/settings/api-keys'
+    | '/project/$ref/settings/general'
+    | '/project/$ref/settings/jwt'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/join'
+    | '/sign-in'
     | '/design-system'
     | '/organizations'
     | '/account/me'
+    | '/admin/users'
+    | '/new/$slug'
     | '/org/$slug/$'
+    | '/org/$slug/audit'
     | '/org/$slug/general'
     | '/org/$slug/integrations'
     | '/org/$slug/team'
@@ -173,31 +267,41 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/settings/api-keys'
+    | '/project/$ref/settings/general'
+    | '/project/$ref/settings/jwt'
   id:
     | '__root__'
     | '/'
-    | '/design-system'
-    | '/organizations'
-    | '/account/me'
-    | '/org/$slug'
-    | '/project/$ref'
-    | '/org/$slug/$'
-    | '/org/$slug/general'
-    | '/org/$slug/integrations'
-    | '/org/$slug/team'
-    | '/org/$slug/usage'
-    | '/project/$ref/$'
-    | '/org/$slug/'
-    | '/project/$ref/'
+    | '/_app'
+    | '/join'
+    | '/sign-in'
+    | '/_app/design-system'
+    | '/_app/organizations'
+    | '/_app/account/me'
+    | '/_app/admin/users'
+    | '/_app/new/$slug'
+    | '/_app/org/$slug'
+    | '/_app/project/$ref'
+    | '/_app/org/$slug/$'
+    | '/_app/org/$slug/audit'
+    | '/_app/org/$slug/general'
+    | '/_app/org/$slug/integrations'
+    | '/_app/org/$slug/team'
+    | '/_app/org/$slug/usage'
+    | '/_app/project/$ref/$'
+    | '/_app/org/$slug/'
+    | '/_app/project/$ref/'
+    | '/_app/project/$ref/settings/api-keys'
+    | '/_app/project/$ref/settings/general'
+    | '/_app/project/$ref/settings/jwt'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  DesignSystemRoute: typeof DesignSystemRoute
-  OrganizationsRoute: typeof OrganizationsRoute
-  AccountMeRoute: typeof AccountMeRoute
-  OrgSlugRoute: typeof OrgSlugRouteWithChildren
-  ProjectRefRoute: typeof ProjectRefRouteWithChildren
+  AppRoute: typeof AppRouteWithChildren
+  JoinRoute: typeof JoinRoute
+  SignInRoute: typeof SignInRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -209,142 +313,234 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/design-system': {
-      id: '/design-system'
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AppRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in': {
+      id: '/sign-in'
+      path: '/sign-in'
+      fullPath: '/sign-in'
+      preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_app/design-system': {
+      id: '/_app/design-system'
       path: '/design-system'
       fullPath: '/design-system'
-      preLoaderRoute: typeof DesignSystemRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppDesignSystemRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/organizations': {
-      id: '/organizations'
+    '/_app/organizations': {
+      id: '/_app/organizations'
       path: '/organizations'
       fullPath: '/organizations'
-      preLoaderRoute: typeof OrganizationsRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppOrganizationsRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/account/me': {
-      id: '/account/me'
+    '/_app/account/me': {
+      id: '/_app/account/me'
       path: '/account/me'
       fullPath: '/account/me'
-      preLoaderRoute: typeof AccountMeRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppAccountMeRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/org/$slug': {
-      id: '/org/$slug'
+    '/_app/admin/users': {
+      id: '/_app/admin/users'
+      path: '/admin/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/new/$slug': {
+      id: '/_app/new/$slug'
+      path: '/new/$slug'
+      fullPath: '/new/$slug'
+      preLoaderRoute: typeof AppNewSlugRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/org/$slug': {
+      id: '/_app/org/$slug'
       path: '/org/$slug'
       fullPath: '/org/$slug'
-      preLoaderRoute: typeof OrgSlugRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppOrgSlugRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/project/$ref': {
-      id: '/project/$ref'
+    '/_app/project/$ref': {
+      id: '/_app/project/$ref'
       path: '/project/$ref'
       fullPath: '/project/$ref'
-      preLoaderRoute: typeof ProjectRefRouteImport
-      parentRoute: typeof rootRouteImport
+      preLoaderRoute: typeof AppProjectRefRouteImport
+      parentRoute: typeof AppRoute
     }
-    '/org/$slug/': {
-      id: '/org/$slug/'
+    '/_app/org/$slug/': {
+      id: '/_app/org/$slug/'
       path: '/'
       fullPath: '/org/$slug/'
-      preLoaderRoute: typeof OrgSlugIndexRouteImport
-      parentRoute: typeof OrgSlugRoute
+      preLoaderRoute: typeof AppOrgSlugIndexRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
-    '/org/$slug/$': {
-      id: '/org/$slug/$'
+    '/_app/org/$slug/$': {
+      id: '/_app/org/$slug/$'
       path: '/$'
       fullPath: '/org/$slug/$'
-      preLoaderRoute: typeof OrgSlugSplatRouteImport
-      parentRoute: typeof OrgSlugRoute
+      preLoaderRoute: typeof AppOrgSlugSplatRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
-    '/org/$slug/general': {
-      id: '/org/$slug/general'
+    '/_app/org/$slug/audit': {
+      id: '/_app/org/$slug/audit'
+      path: '/audit'
+      fullPath: '/org/$slug/audit'
+      preLoaderRoute: typeof AppOrgSlugAuditRouteImport
+      parentRoute: typeof AppOrgSlugRoute
+    }
+    '/_app/org/$slug/general': {
+      id: '/_app/org/$slug/general'
       path: '/general'
       fullPath: '/org/$slug/general'
-      preLoaderRoute: typeof OrgSlugGeneralRouteImport
-      parentRoute: typeof OrgSlugRoute
+      preLoaderRoute: typeof AppOrgSlugGeneralRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
-    '/org/$slug/integrations': {
-      id: '/org/$slug/integrations'
+    '/_app/org/$slug/integrations': {
+      id: '/_app/org/$slug/integrations'
       path: '/integrations'
       fullPath: '/org/$slug/integrations'
-      preLoaderRoute: typeof OrgSlugIntegrationsRouteImport
-      parentRoute: typeof OrgSlugRoute
+      preLoaderRoute: typeof AppOrgSlugIntegrationsRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
-    '/org/$slug/team': {
-      id: '/org/$slug/team'
+    '/_app/org/$slug/team': {
+      id: '/_app/org/$slug/team'
       path: '/team'
       fullPath: '/org/$slug/team'
-      preLoaderRoute: typeof OrgSlugTeamRouteImport
-      parentRoute: typeof OrgSlugRoute
+      preLoaderRoute: typeof AppOrgSlugTeamRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
-    '/org/$slug/usage': {
-      id: '/org/$slug/usage'
+    '/_app/org/$slug/usage': {
+      id: '/_app/org/$slug/usage'
       path: '/usage'
       fullPath: '/org/$slug/usage'
-      preLoaderRoute: typeof OrgSlugUsageRouteImport
-      parentRoute: typeof OrgSlugRoute
+      preLoaderRoute: typeof AppOrgSlugUsageRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
-    '/project/$ref/': {
-      id: '/project/$ref/'
+    '/_app/project/$ref/': {
+      id: '/_app/project/$ref/'
       path: '/'
       fullPath: '/project/$ref/'
-      preLoaderRoute: typeof ProjectRefIndexRouteImport
-      parentRoute: typeof ProjectRefRoute
+      preLoaderRoute: typeof AppProjectRefIndexRouteImport
+      parentRoute: typeof AppProjectRefRoute
     }
-    '/project/$ref/$': {
-      id: '/project/$ref/$'
+    '/_app/project/$ref/$': {
+      id: '/_app/project/$ref/$'
       path: '/$'
       fullPath: '/project/$ref/$'
-      preLoaderRoute: typeof ProjectRefSplatRouteImport
-      parentRoute: typeof ProjectRefRoute
+      preLoaderRoute: typeof AppProjectRefSplatRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/settings/api-keys': {
+      id: '/_app/project/$ref/settings/api-keys'
+      path: '/settings/api-keys'
+      fullPath: '/project/$ref/settings/api-keys'
+      preLoaderRoute: typeof AppProjectRefSettingsApiKeysRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/settings/general': {
+      id: '/_app/project/$ref/settings/general'
+      path: '/settings/general'
+      fullPath: '/project/$ref/settings/general'
+      preLoaderRoute: typeof AppProjectRefSettingsGeneralRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/settings/jwt': {
+      id: '/_app/project/$ref/settings/jwt'
+      path: '/settings/jwt'
+      fullPath: '/project/$ref/settings/jwt'
+      preLoaderRoute: typeof AppProjectRefSettingsJwtRouteImport
+      parentRoute: typeof AppProjectRefRoute
     }
   }
 }
 
-interface OrgSlugRouteChildren {
-  OrgSlugSplatRoute: typeof OrgSlugSplatRoute
-  OrgSlugGeneralRoute: typeof OrgSlugGeneralRoute
-  OrgSlugIntegrationsRoute: typeof OrgSlugIntegrationsRoute
-  OrgSlugTeamRoute: typeof OrgSlugTeamRoute
-  OrgSlugUsageRoute: typeof OrgSlugUsageRoute
-  OrgSlugIndexRoute: typeof OrgSlugIndexRoute
+interface AppOrgSlugRouteChildren {
+  AppOrgSlugSplatRoute: typeof AppOrgSlugSplatRoute
+  AppOrgSlugAuditRoute: typeof AppOrgSlugAuditRoute
+  AppOrgSlugGeneralRoute: typeof AppOrgSlugGeneralRoute
+  AppOrgSlugIntegrationsRoute: typeof AppOrgSlugIntegrationsRoute
+  AppOrgSlugTeamRoute: typeof AppOrgSlugTeamRoute
+  AppOrgSlugUsageRoute: typeof AppOrgSlugUsageRoute
+  AppOrgSlugIndexRoute: typeof AppOrgSlugIndexRoute
 }
 
-const OrgSlugRouteChildren: OrgSlugRouteChildren = {
-  OrgSlugSplatRoute: OrgSlugSplatRoute,
-  OrgSlugGeneralRoute: OrgSlugGeneralRoute,
-  OrgSlugIntegrationsRoute: OrgSlugIntegrationsRoute,
-  OrgSlugTeamRoute: OrgSlugTeamRoute,
-  OrgSlugUsageRoute: OrgSlugUsageRoute,
-  OrgSlugIndexRoute: OrgSlugIndexRoute,
+const AppOrgSlugRouteChildren: AppOrgSlugRouteChildren = {
+  AppOrgSlugSplatRoute: AppOrgSlugSplatRoute,
+  AppOrgSlugAuditRoute: AppOrgSlugAuditRoute,
+  AppOrgSlugGeneralRoute: AppOrgSlugGeneralRoute,
+  AppOrgSlugIntegrationsRoute: AppOrgSlugIntegrationsRoute,
+  AppOrgSlugTeamRoute: AppOrgSlugTeamRoute,
+  AppOrgSlugUsageRoute: AppOrgSlugUsageRoute,
+  AppOrgSlugIndexRoute: AppOrgSlugIndexRoute,
 }
 
-const OrgSlugRouteWithChildren =
-  OrgSlugRoute._addFileChildren(OrgSlugRouteChildren)
-
-interface ProjectRefRouteChildren {
-  ProjectRefSplatRoute: typeof ProjectRefSplatRoute
-  ProjectRefIndexRoute: typeof ProjectRefIndexRoute
-}
-
-const ProjectRefRouteChildren: ProjectRefRouteChildren = {
-  ProjectRefSplatRoute: ProjectRefSplatRoute,
-  ProjectRefIndexRoute: ProjectRefIndexRoute,
-}
-
-const ProjectRefRouteWithChildren = ProjectRefRoute._addFileChildren(
-  ProjectRefRouteChildren,
+const AppOrgSlugRouteWithChildren = AppOrgSlugRoute._addFileChildren(
+  AppOrgSlugRouteChildren,
 )
+
+interface AppProjectRefRouteChildren {
+  AppProjectRefSplatRoute: typeof AppProjectRefSplatRoute
+  AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
+  AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
+  AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
+  AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
+}
+
+const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
+  AppProjectRefSplatRoute: AppProjectRefSplatRoute,
+  AppProjectRefIndexRoute: AppProjectRefIndexRoute,
+  AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,
+  AppProjectRefSettingsGeneralRoute: AppProjectRefSettingsGeneralRoute,
+  AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
+}
+
+const AppProjectRefRouteWithChildren = AppProjectRefRoute._addFileChildren(
+  AppProjectRefRouteChildren,
+)
+
+interface AppRouteChildren {
+  AppDesignSystemRoute: typeof AppDesignSystemRoute
+  AppOrganizationsRoute: typeof AppOrganizationsRoute
+  AppAccountMeRoute: typeof AppAccountMeRoute
+  AppAdminUsersRoute: typeof AppAdminUsersRoute
+  AppNewSlugRoute: typeof AppNewSlugRoute
+  AppOrgSlugRoute: typeof AppOrgSlugRouteWithChildren
+  AppProjectRefRoute: typeof AppProjectRefRouteWithChildren
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppDesignSystemRoute: AppDesignSystemRoute,
+  AppOrganizationsRoute: AppOrganizationsRoute,
+  AppAccountMeRoute: AppAccountMeRoute,
+  AppAdminUsersRoute: AppAdminUsersRoute,
+  AppNewSlugRoute: AppNewSlugRoute,
+  AppOrgSlugRoute: AppOrgSlugRouteWithChildren,
+  AppProjectRefRoute: AppProjectRefRouteWithChildren,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  DesignSystemRoute: DesignSystemRoute,
-  OrganizationsRoute: OrganizationsRoute,
-  AccountMeRoute: AccountMeRoute,
-  OrgSlugRoute: OrgSlugRouteWithChildren,
-  ProjectRefRoute: ProjectRefRouteWithChildren,
+  AppRoute: AppRouteWithChildren,
+  JoinRoute: JoinRoute,
+  SignInRoute: SignInRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

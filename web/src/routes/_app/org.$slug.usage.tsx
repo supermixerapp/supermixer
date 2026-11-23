@@ -2,7 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { ComingSoon } from '@/components/layout/page'
 
-export const Route = createFileRoute('/org/$slug/usage')({
+export const Route = createFileRoute('/_app/org/$slug/usage')({
   component: UsagePage,
 })
 

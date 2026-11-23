@@ -27,7 +27,7 @@ import {
 import type { Icon } from '@/components/icon'
 
 /** The implementation stage Supermixer is currently at. */
-export const CURRENT_STAGE = 0
+export const CURRENT_STAGE = 1
 
 export interface NavRoute {
   key: string
@@ -241,6 +241,23 @@ export const productMenus: Record<string, ProductMenu> = {
       },
     ],
   },
+}
+
+/** Organization settings menu (Studio's OrganizationSettingsLayout). Paths are relative to /org/$slug. */
+export const orgSettingsMenu: ProductMenu = {
+  title: 'Organization Settings',
+  groups: [
+    {
+      title: 'Configuration',
+      items: [
+        { label: 'General', path: 'general', stage: 1 },
+        { label: 'Security', path: 'security', stage: 5 },
+        { label: 'SSO', path: 'sso', stage: 5 },
+        { label: 'OAuth Apps', path: 'apps', stage: 5 },
+        { label: 'Audit Logs', path: 'audit', stage: 1 },
+      ],
+    },
+  ],
 }
 
 /** Looks up the label and stage for any project sub-path, for page titles. */

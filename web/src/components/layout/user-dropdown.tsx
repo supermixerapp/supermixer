@@ -1,6 +1,7 @@
-import { Link } from '@tanstack/react-router'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { Link, useNavigate } from '@tanstack/react-router'
 
-import { AccountIcon, LogoutIcon, PaletteIcon, TuneIcon } from '@/components/icons'
+import { AccountIcon, LogoutIcon, ManageAccountsIcon, PaletteIcon, TuneIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -13,11 +14,24 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import { api, unwrap } from '@/lib/api/client'
+import { useProfile } from '@/lib/api/hooks'
 import { useTheme, type ThemePreference } from '@/lib/theme'
 
 /** Account menu (Studio's UserDropdown): preferences, theme, sign out. */
 export function UserDropdown() {
   const { preference, setPreference } = useTheme()
+  const { data: me } = useProfile()
+  const queryClient = useQueryClient()
+  const navigate = useNavigate()
+  const signOut = useMutation({
+    mutationFn: () => unwrap(api.POST('/auth/sign-out')),
+    onSettled: () => {
+      queryClient.clear()
+      void navigate({ to: '/sign-in', search: { redirect: undefined } })
+    },
+  })
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -30,7 +44,12 @@ export function UserDropdown() {
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Not signed in. Sign-in arrives in Stage 1.</DropdownMenuLabel>
+        {me && (
+          <div className="flex flex-col px-2 py-1.5">
+            <span className="truncate text-sm text-foreground">{me.display_name || me.username}</span>
+            <span className="truncate text-xs text-foreground-lighter">{me.email ?? me.username}</span>
+          </div>
+        )}
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuItem asChild>
@@ -39,6 +58,14 @@ export function UserDropdown() {
               Preferences
             </Link>
           </DropdownMenuItem>
+          {me?.is_instance_admin && (
+            <DropdownMenuItem asChild>
+              <Link to="/admin/users">
+                <ManageAccountsIcon size={14} className="text-foreground-lighter" />
+                Users
+              </Link>
+            </DropdownMenuItem>
+          )}
           <DropdownMenuItem asChild>
             <Link to="/design-system">
               <PaletteIcon size={14} className="text-foreground-lighter" />
@@ -54,7 +81,7 @@ export function UserDropdown() {
           <DropdownMenuRadioItem value="system">System</DropdownMenuRadioItem>
         </DropdownMenuRadioGroup>
         <DropdownMenuSeparator />
-        <DropdownMenuItem disabled>
+        <DropdownMenuItem onSelect={() => signOut.mutate()}>
           <LogoutIcon size={14} className="text-foreground-lighter" />
           Log out
         </DropdownMenuItem>

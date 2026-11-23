@@ -3,15 +3,20 @@ import { createFileRoute, notFound, Outlet, useLocation } from '@tanstack/react-
 import { AppShell } from '@/components/layout/app-shell'
 import { ProductMenu, WithProductMenu } from '@/components/layout/product-menu'
 import { Sidebar, type SidebarLink } from '@/components/layout/sidebar'
-import { projectsQuery } from '@/lib/api/fixtures'
+import { isApiError } from '@/lib/api/client'
+import { projectQuery } from '@/lib/api/queries'
 import { productMenus, projectNavGroups } from '@/lib/navigation'
 
-import { NotFound } from './__root'
+import { NotFound } from '../__root'
 
-export const Route = createFileRoute('/project/$ref')({
+export const Route = createFileRoute('/_app/project/$ref')({
   loader: async ({ context, params }) => {
-    const projects = await context.queryClient.ensureQueryData(projectsQuery)
-    if (!projects.some((p) => p.ref === params.ref)) throw notFound()
+    try {
+      await context.queryClient.ensureQueryData(projectQuery(params.ref))
+    } catch (e) {
+      if (isApiError(e, 404)) throw notFound()
+      throw e
+    }
   },
   component: ProjectLayout,
   notFoundComponent: NotFound,

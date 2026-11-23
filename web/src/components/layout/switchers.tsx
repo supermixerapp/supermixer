@@ -17,9 +17,8 @@ import {
   CommandSeparator,
 } from '@/components/ui/command'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { useOrganizations, useProjects, useSelectedOrganization, useSelectedProject } from '@/lib/api/hooks'
-import { CURRENT_STAGE } from '@/lib/navigation'
+import { NewOrganizationDialog } from '@/components/organization/new-organization-dialog'
+import { can, useOrganizations, useProjects, useSelectedOrganization, useSelectedProject } from '@/lib/api/hooks'
 
 function SwitcherShell({
   href,
@@ -62,25 +61,10 @@ function SwitcherShell({
   )
 }
 
-/** "New …" entries are wired up in Stage 1. */
-function NotYetItem({ children }: { children: ReactNode }) {
-  return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <div>
-          <CommandItem disabled className="gap-2">
-            <AddIcon size={14} />
-            {children}
-          </CommandItem>
-        </div>
-      </TooltipTrigger>
-      <TooltipContent side="right">Available in Stage 1 (currently Stage {CURRENT_STAGE})</TooltipContent>
-    </Tooltip>
-  )
-}
 
 export function OrganizationSwitcher() {
   const [open, setOpen] = useState(false)
+  const [creating, setCreating] = useState(false)
   const navigate = useNavigate()
   const { data: orgs = [] } = useOrganizations()
   const selected = useSelectedOrganization()
@@ -125,10 +109,19 @@ export function OrganizationSwitcher() {
             >
               All Organizations
             </CommandItem>
-            <NotYetItem>New organization</NotYetItem>
+            <CommandItem
+              onSelect={() => {
+                setOpen(false)
+                setCreating(true)
+              }}
+            >
+              <AddIcon size={14} />
+              New organization
+            </CommandItem>
           </CommandGroup>
         </CommandList>
       </Command>
+      <NewOrganizationDialog open={creating} onOpenChange={setCreating} />
     </SwitcherShell>
   )
 }
@@ -140,7 +133,7 @@ export function ProjectSwitcher() {
   const org = useSelectedOrganization()
   const selected = useSelectedProject()
   if (!selected) return null
-  const siblings = projects.filter((p) => p.organizationSlug === selected.organizationSlug)
+  const siblings = projects.filter((p) => p.organization_slug === selected.organization_slug)
 
   return (
     <SwitcherShell
@@ -182,7 +175,17 @@ export function ProjectSwitcher() {
                 All Projects
               </CommandItem>
             )}
-            <NotYetItem>New project</NotYetItem>
+            {org && can(org, 'projects:create') && (
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false)
+                  void navigate({ to: '/new/$slug', params: { slug: org.slug } })
+                }}
+              >
+                <AddIcon size={14} />
+                New project
+              </CommandItem>
+            )}
           </CommandGroup>
         </CommandList>
       </Command>
