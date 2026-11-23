@@ -13,6 +13,7 @@ import { can, useProjects, useSelectedOrganization } from '@/lib/api/hooks'
 import { projectHealthQuery } from '@/lib/api/queries'
 
 import { HealthBadge } from '@/components/health-badge'
+import { StackBadge, stackBusy, stackQuery, stackUp, useStackGone } from '@/components/project/stack'
 
 export const Route = createFileRoute('/_app/org/$slug/')({
   component: ProjectsPage,
@@ -91,7 +92,12 @@ function ProjectsPage() {
 }
 
 function ProjectCard({ project }: { project: Schemas['Project'] }) {
-  const health = useQuery(projectHealthQuery(project.ref))
+  // Follow stacks that are changing, so the card doesn't go stale.
+  const live = useQuery({ ...stackQuery(project.ref), enabled: stackBusy(project.stack) })
+  const stack = live.data ?? project.stack
+  useStackGone(live.error)
+  // A paused, failed or still-starting stack has nothing to check yet.
+  const health = useQuery({ ...projectHealthQuery(project.ref), enabled: stackUp(stack) })
   return (
     <li>
       <Link to="/project/$ref" params={{ ref: project.ref }} className="group block rounded-panel focus-ring">
@@ -101,8 +107,12 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
             <p className="truncate font-mono text-xs text-foreground-lighter">{project.api_url}</p>
           </div>
           <div className="flex items-center gap-2">
-            <HealthBadge status={health.data?.status} loading={health.isPending} />
-            {health.data?.postgres_version && (
+            {stackUp(stack) ? (
+              <HealthBadge status={health.data?.status} loading={health.isPending} />
+            ) : (
+              <StackBadge stack={stack!} />
+            )}
+            {stackUp(stack) && health.data?.postgres_version && (
               <span className="text-xs text-foreground-lighter">Postgres {health.data.postgres_version}</span>
             )}
           </div>

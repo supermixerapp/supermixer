@@ -55,6 +55,11 @@ type Querier interface {
 	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
 	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
 	ListSnippets(ctx context.Context, arg ListSnippetsParams) ([]ListSnippetsRow, error)
+	ListStackPorts(ctx context.Context) ([]ListStackPortsRow, error)
+	// Stacks in one of these statuses whose status hasn't changed (or been
+	// touched by a running operation) since before. Compared as text: pgx can't
+	// send an array of the stack_status enum.
+	ListStacksWithStatus(ctx context.Context, arg ListStacksWithStatusParams) ([]Project, error)
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
 	ListUsers(ctx context.Context) ([]User, error)
@@ -64,10 +69,14 @@ type Querier interface {
 	ProjectRefExists(ctx context.Context, ref string) (bool, error)
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
+	SetProjectStack(ctx context.Context, arg SetProjectStackParams) (Project, error)
 	SetSnippetFavorite(ctx context.Context, arg SetSnippetFavoriteParams) error
+	SetStackStatus(ctx context.Context, arg SetStackStatusParams) (Project, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
 	TouchSession(ctx context.Context, id uuid.UUID) error
+	// A running operation's heartbeat, so other servers don't think it's stuck.
+	TouchStack(ctx context.Context, id uuid.UUID) error
 	UnsetSnippetFavorite(ctx context.Context, arg UnsetSnippetFavoriteParams) error
 	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (Organization, error)

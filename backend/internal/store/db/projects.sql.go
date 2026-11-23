@@ -7,6 +7,7 @@ package db
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -15,7 +16,7 @@ const createProject = `-- name: CreateProject :one
 INSERT INTO projects (ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user,
                       db_sslmode, secrets, created_by)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at
+RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port
 `
 
 type CreateProjectParams struct {
@@ -65,6 +66,14 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Managed,
+		&i.StackStatus,
+		&i.StackError,
+		&i.StackStatusAt,
+		&i.StackTemplate,
+		&i.StackApiPort,
+		&i.StackDbPort,
+		&i.StackPoolerPort,
 	)
 	return i, err
 }
@@ -79,7 +88,7 @@ func (q *Queries) DeleteProject(ctx context.Context, id uuid.UUID) error {
 }
 
 const getProjectByRef = `-- name: GetProjectByRef :one
-SELECT p.id, p.ref, p.organization_id, p.name, p.api_url, p.studio_url, p.db_host, p.db_port, p.db_name, p.db_user, p.db_sslmode, p.secrets, p.created_by, p.created_at, p.updated_at, o.slug AS organization_slug, o.name AS organization_name
+SELECT p.id, p.ref, p.organization_id, p.name, p.api_url, p.studio_url, p.db_host, p.db_port, p.db_name, p.db_user, p.db_sslmode, p.secrets, p.created_by, p.created_at, p.updated_at, p.managed, p.stack_status, p.stack_error, p.stack_status_at, p.stack_template, p.stack_api_port, p.stack_db_port, p.stack_pooler_port, o.slug AS organization_slug, o.name AS organization_name
 FROM projects p
 JOIN organizations o ON o.id = p.organization_id
 WHERE p.ref = $1
@@ -110,6 +119,14 @@ func (q *Queries) GetProjectByRef(ctx context.Context, ref string) (GetProjectBy
 		&i.Project.CreatedBy,
 		&i.Project.CreatedAt,
 		&i.Project.UpdatedAt,
+		&i.Project.Managed,
+		&i.Project.StackStatus,
+		&i.Project.StackError,
+		&i.Project.StackStatusAt,
+		&i.Project.StackTemplate,
+		&i.Project.StackApiPort,
+		&i.Project.StackDbPort,
+		&i.Project.StackPoolerPort,
 		&i.OrganizationSlug,
 		&i.OrganizationName,
 	)
@@ -117,7 +134,7 @@ func (q *Queries) GetProjectByRef(ctx context.Context, ref string) (GetProjectBy
 }
 
 const listProjectsByOrganization = `-- name: ListProjectsByOrganization :many
-SELECT id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at FROM projects WHERE organization_id = $1 ORDER BY name
+SELECT id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port FROM projects WHERE organization_id = $1 ORDER BY name
 `
 
 func (q *Queries) ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error) {
@@ -145,6 +162,14 @@ func (q *Queries) ListProjectsByOrganization(ctx context.Context, organizationID
 			&i.CreatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+			&i.Managed,
+			&i.StackStatus,
+			&i.StackError,
+			&i.StackStatusAt,
+			&i.StackTemplate,
+			&i.StackApiPort,
+			&i.StackDbPort,
+			&i.StackPoolerPort,
 		); err != nil {
 			return nil, err
 		}
@@ -157,7 +182,7 @@ func (q *Queries) ListProjectsByOrganization(ctx context.Context, organizationID
 }
 
 const listProjectsInOrganizations = `-- name: ListProjectsInOrganizations :many
-SELECT p.id, p.ref, p.organization_id, p.name, p.api_url, p.studio_url, p.db_host, p.db_port, p.db_name, p.db_user, p.db_sslmode, p.secrets, p.created_by, p.created_at, p.updated_at, o.slug AS organization_slug, o.name AS organization_name
+SELECT p.id, p.ref, p.organization_id, p.name, p.api_url, p.studio_url, p.db_host, p.db_port, p.db_name, p.db_user, p.db_sslmode, p.secrets, p.created_by, p.created_at, p.updated_at, p.managed, p.stack_status, p.stack_error, p.stack_status_at, p.stack_template, p.stack_api_port, p.stack_db_port, p.stack_pooler_port, o.slug AS organization_slug, o.name AS organization_name
 FROM projects p
 JOIN organizations o ON o.id = p.organization_id
 WHERE p.organization_id = ANY($1::uuid[])
@@ -195,8 +220,104 @@ func (q *Queries) ListProjectsInOrganizations(ctx context.Context, organizationI
 			&i.Project.CreatedBy,
 			&i.Project.CreatedAt,
 			&i.Project.UpdatedAt,
+			&i.Project.Managed,
+			&i.Project.StackStatus,
+			&i.Project.StackError,
+			&i.Project.StackStatusAt,
+			&i.Project.StackTemplate,
+			&i.Project.StackApiPort,
+			&i.Project.StackDbPort,
+			&i.Project.StackPoolerPort,
 			&i.OrganizationSlug,
 			&i.OrganizationName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStackPorts = `-- name: ListStackPorts :many
+SELECT stack_api_port, stack_db_port, stack_pooler_port FROM projects WHERE managed
+`
+
+type ListStackPortsRow struct {
+	StackApiPort    *int32 `json:"stack_api_port"`
+	StackDbPort     *int32 `json:"stack_db_port"`
+	StackPoolerPort *int32 `json:"stack_pooler_port"`
+}
+
+func (q *Queries) ListStackPorts(ctx context.Context) ([]ListStackPortsRow, error) {
+	rows, err := q.db.Query(ctx, listStackPorts)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStackPortsRow
+	for rows.Next() {
+		var i ListStackPortsRow
+		if err := rows.Scan(&i.StackApiPort, &i.StackDbPort, &i.StackPoolerPort); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listStacksWithStatus = `-- name: ListStacksWithStatus :many
+SELECT id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port FROM projects
+WHERE managed AND stack_status::text = ANY($1::text[])
+  AND (stack_status_at IS NULL OR stack_status_at < $2::timestamptz)
+`
+
+type ListStacksWithStatusParams struct {
+	Statuses []string  `json:"statuses"`
+	Before   time.Time `json:"before"`
+}
+
+// Stacks in one of these statuses whose status hasn't changed (or been
+// touched by a running operation) since before. Compared as text: pgx can't
+// send an array of the stack_status enum.
+func (q *Queries) ListStacksWithStatus(ctx context.Context, arg ListStacksWithStatusParams) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listStacksWithStatus, arg.Statuses, arg.Before)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.Ref,
+			&i.OrganizationID,
+			&i.Name,
+			&i.ApiUrl,
+			&i.StudioUrl,
+			&i.DbHost,
+			&i.DbPort,
+			&i.DbName,
+			&i.DbUser,
+			&i.DbSslmode,
+			&i.Secrets,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Managed,
+			&i.StackStatus,
+			&i.StackError,
+			&i.StackStatusAt,
+			&i.StackTemplate,
+			&i.StackApiPort,
+			&i.StackDbPort,
+			&i.StackPoolerPort,
 		); err != nil {
 			return nil, err
 		}
@@ -233,12 +354,120 @@ func (q *Queries) ProjectRefExists(ctx context.Context, ref string) (bool, error
 	return exists, err
 }
 
+const setProjectStack = `-- name: SetProjectStack :one
+UPDATE projects
+SET managed = true, stack_status = $2, stack_error = '', stack_status_at = now(), stack_template = $3,
+    stack_api_port = $4, stack_db_port = $5, stack_pooler_port = $6, updated_at = now()
+WHERE id = $1
+RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port
+`
+
+type SetProjectStackParams struct {
+	ID              uuid.UUID       `json:"id"`
+	StackStatus     NullStackStatus `json:"stack_status"`
+	StackTemplate   string          `json:"stack_template"`
+	StackApiPort    *int32          `json:"stack_api_port"`
+	StackDbPort     *int32          `json:"stack_db_port"`
+	StackPoolerPort *int32          `json:"stack_pooler_port"`
+}
+
+func (q *Queries) SetProjectStack(ctx context.Context, arg SetProjectStackParams) (Project, error) {
+	row := q.db.QueryRow(ctx, setProjectStack,
+		arg.ID,
+		arg.StackStatus,
+		arg.StackTemplate,
+		arg.StackApiPort,
+		arg.StackDbPort,
+		arg.StackPoolerPort,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Ref,
+		&i.OrganizationID,
+		&i.Name,
+		&i.ApiUrl,
+		&i.StudioUrl,
+		&i.DbHost,
+		&i.DbPort,
+		&i.DbName,
+		&i.DbUser,
+		&i.DbSslmode,
+		&i.Secrets,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Managed,
+		&i.StackStatus,
+		&i.StackError,
+		&i.StackStatusAt,
+		&i.StackTemplate,
+		&i.StackApiPort,
+		&i.StackDbPort,
+		&i.StackPoolerPort,
+	)
+	return i, err
+}
+
+const setStackStatus = `-- name: SetStackStatus :one
+UPDATE projects SET stack_status = $2, stack_error = $3, stack_status_at = now(), updated_at = now()
+WHERE id = $1 AND managed
+RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port
+`
+
+type SetStackStatusParams struct {
+	ID          uuid.UUID       `json:"id"`
+	StackStatus NullStackStatus `json:"stack_status"`
+	StackError  string          `json:"stack_error"`
+}
+
+func (q *Queries) SetStackStatus(ctx context.Context, arg SetStackStatusParams) (Project, error) {
+	row := q.db.QueryRow(ctx, setStackStatus, arg.ID, arg.StackStatus, arg.StackError)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Ref,
+		&i.OrganizationID,
+		&i.Name,
+		&i.ApiUrl,
+		&i.StudioUrl,
+		&i.DbHost,
+		&i.DbPort,
+		&i.DbName,
+		&i.DbUser,
+		&i.DbSslmode,
+		&i.Secrets,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Managed,
+		&i.StackStatus,
+		&i.StackError,
+		&i.StackStatusAt,
+		&i.StackTemplate,
+		&i.StackApiPort,
+		&i.StackDbPort,
+		&i.StackPoolerPort,
+	)
+	return i, err
+}
+
+const touchStack = `-- name: TouchStack :exec
+UPDATE projects SET stack_status_at = now() WHERE id = $1 AND managed
+`
+
+// A running operation's heartbeat, so other servers don't think it's stuck.
+func (q *Queries) TouchStack(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.Exec(ctx, touchStack, id)
+	return err
+}
+
 const updateProject = `-- name: UpdateProject :one
 UPDATE projects
 SET name = $2, api_url = $3, studio_url = $4, db_host = $5, db_port = $6, db_name = $7,
     db_user = $8, db_sslmode = $9, secrets = $10, updated_at = now()
 WHERE id = $1
-RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at
+RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port
 `
 
 type UpdateProjectParams struct {
@@ -284,6 +513,14 @@ func (q *Queries) UpdateProject(ctx context.Context, arg UpdateProjectParams) (P
 		&i.CreatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.Managed,
+		&i.StackStatus,
+		&i.StackError,
+		&i.StackStatusAt,
+		&i.StackTemplate,
+		&i.StackApiPort,
+		&i.StackDbPort,
+		&i.StackPoolerPort,
 	)
 	return i, err
 }

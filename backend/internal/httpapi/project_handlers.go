@@ -171,6 +171,7 @@ func (h *handlers) toProject(p db.Project, orgSlug, orgName string, role rbac.Ro
 	k := conn.Keys
 	out.KeysPresent.Anon, out.KeysPresent.ServiceRole = k.Anon != "", k.ServiceRole != ""
 	out.KeysPresent.Publishable, out.KeysPresent.Secret, out.KeysPresent.JwtSecret = k.Publishable != "", k.Secret != "", k.JWTSecret != ""
+	out.Stack = h.stackOf(p)
 	return out, nil
 }
 
@@ -295,6 +296,9 @@ func (h *handlers) UpdateProject(ctx context.Context, req api.UpdateProjectReque
 		}
 		p.Name = name
 	}
+	if req.Body.Connection != nil && p.Managed {
+		return nil, conflict("Supermixer created this project's stack and keeps its connection details; they can't be edited")
+	}
 	if req.Body.Connection != nil {
 		conn, studio, err := buildConnection(*req.Body.Connection, &current)
 		if err != nil {
@@ -372,6 +376,13 @@ func (h *handlers) DeleteProject(ctx context.Context, req api.DeleteProjectReque
 		return nil, err
 	}
 	p := a.Project()
+	if p.Managed {
+		// Supermixer created the stack, so it removes it too (in the background).
+		if err := h.deleteManaged(ctx, p); err != nil {
+			return nil, err
+		}
+		return api.DeleteProject204Response{}, nil
+	}
 	err = h.deps.Store.InTx(ctx, func(q *db.Queries) error {
 		h.audit(ctx, q, auditEntry{OrgID: &p.OrganizationID, Action: "project.deleted", TargetType: "project", TargetID: p.Ref, TargetName: p.Name})
 		return q.DeleteProject(ctx, p.ID)

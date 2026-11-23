@@ -7,6 +7,7 @@ import { ExternalLinkIcon } from '@/components/icons'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { SettingsSection } from '@/components/layout/section'
 import { HealthChecks } from '@/components/project/connection-form'
+import { StackBadge, StackProgress, stackUp } from '@/components/project/stack'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { CopyField } from '@/components/ui/copy'
@@ -22,7 +23,8 @@ export const Route = createFileRoute('/_app/project/$ref/')({
 function ProjectOverview() {
   const { ref } = Route.useParams()
   const project = useSelectedProject()
-  const health = useQuery(projectHealthQuery(ref))
+  const up = !!project && stackUp(project.stack)
+  const health = useQuery({ ...projectHealthQuery(ref), enabled: up })
   const queryClient = useQueryClient()
   if (!project) return null
 
@@ -32,7 +34,11 @@ function ProjectOverview() {
         title={
           <span className="flex items-center gap-3">
             {project.name}
-            <HealthBadge status={health.data?.status} loading={health.isPending} />
+            {stackUp(project.stack) ? (
+              <HealthBadge status={health.data?.status} loading={health.isPending} />
+            ) : (
+              <StackBadge stack={project.stack!} />
+            )}
           </span>
         }
         description={project.api_url}
@@ -48,6 +54,11 @@ function ProjectOverview() {
         }
       />
       <PageContainer size="large" className="grid gap-10 pb-16 lg:grid-cols-5">
+        {project.stack && (
+          <div className="empty:hidden lg:col-span-5">
+            <StackProgress project={project} />
+          </div>
+        )}
         <div className="lg:col-span-3">
           <SettingsSection
             title="Service health"
@@ -55,21 +66,25 @@ function ProjectOverview() {
               health.data ? `Checked ${new Date(health.data.checked_at).toLocaleTimeString()}; refreshes every 30 seconds.` : undefined
             }
           >
-            {health.isPending ? (
+            {!up ? (
+              <p className="text-sm text-foreground-lighter">Health checks run while the stack is running.</p>
+            ) : health.isPending ? (
               <Skeleton className="h-56" />
             ) : health.data ? (
               <HealthChecks report={health.data} />
             ) : (
               <p className="text-sm text-destructive">{health.error?.message}</p>
             )}
-            <Button
-              variant="default"
-              className="self-start"
-              loading={health.isFetching}
-              onClick={() => queryClient.invalidateQueries({ queryKey: projectHealthQuery(ref).queryKey })}
-            >
-              Check again
-            </Button>
+            {up && (
+              <Button
+                variant="default"
+                className="self-start"
+                loading={health.isFetching}
+                onClick={() => queryClient.invalidateQueries({ queryKey: projectHealthQuery(ref).queryKey })}
+              >
+                Check again
+              </Button>
+            )}
           </SettingsSection>
         </div>
         <div className="flex flex-col gap-10 lg:col-span-2">

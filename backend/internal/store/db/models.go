@@ -142,6 +142,51 @@ func (ns NullSnippetVisibility) Value() (driver.Value, error) {
 	return string(ns.SnippetVisibility), nil
 }
 
+type StackStatus string
+
+const (
+	StackStatusProvisioning StackStatus = "provisioning"
+	StackStatusRunning      StackStatus = "running"
+	StackStatusPaused       StackStatus = "paused"
+	StackStatusFailed       StackStatus = "failed"
+	StackStatusDeleting     StackStatus = "deleting"
+)
+
+func (e *StackStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = StackStatus(s)
+	case string:
+		*e = StackStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for StackStatus: %T", src)
+	}
+	return nil
+}
+
+type NullStackStatus struct {
+	StackStatus StackStatus `json:"stack_status"`
+	Valid       bool        `json:"valid"` // Valid is true if StackStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullStackStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.StackStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.StackStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullStackStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.StackStatus), nil
+}
+
 type AuditLog struct {
 	ID             int64      `json:"id"`
 	OrganizationID *uuid.UUID `json:"organization_id"`
@@ -194,21 +239,29 @@ type Organization struct {
 }
 
 type Project struct {
-	ID             uuid.UUID  `json:"id"`
-	Ref            string     `json:"ref"`
-	OrganizationID uuid.UUID  `json:"organization_id"`
-	Name           string     `json:"name"`
-	ApiUrl         string     `json:"api_url"`
-	StudioUrl      string     `json:"studio_url"`
-	DbHost         string     `json:"db_host"`
-	DbPort         int32      `json:"db_port"`
-	DbName         string     `json:"db_name"`
-	DbUser         string     `json:"db_user"`
-	DbSslmode      string     `json:"db_sslmode"`
-	Secrets        []byte     `json:"secrets"`
-	CreatedBy      *uuid.UUID `json:"created_by"`
-	CreatedAt      time.Time  `json:"created_at"`
-	UpdatedAt      time.Time  `json:"updated_at"`
+	ID              uuid.UUID       `json:"id"`
+	Ref             string          `json:"ref"`
+	OrganizationID  uuid.UUID       `json:"organization_id"`
+	Name            string          `json:"name"`
+	ApiUrl          string          `json:"api_url"`
+	StudioUrl       string          `json:"studio_url"`
+	DbHost          string          `json:"db_host"`
+	DbPort          int32           `json:"db_port"`
+	DbName          string          `json:"db_name"`
+	DbUser          string          `json:"db_user"`
+	DbSslmode       string          `json:"db_sslmode"`
+	Secrets         []byte          `json:"secrets"`
+	CreatedBy       *uuid.UUID      `json:"created_by"`
+	CreatedAt       time.Time       `json:"created_at"`
+	UpdatedAt       time.Time       `json:"updated_at"`
+	Managed         bool            `json:"managed"`
+	StackStatus     NullStackStatus `json:"stack_status"`
+	StackError      string          `json:"stack_error"`
+	StackStatusAt   *time.Time      `json:"stack_status_at"`
+	StackTemplate   string          `json:"stack_template"`
+	StackApiPort    *int32          `json:"stack_api_port"`
+	StackDbPort     *int32          `json:"stack_db_port"`
+	StackPoolerPort *int32          `json:"stack_pooler_port"`
 }
 
 type ProjectMemberRole struct {

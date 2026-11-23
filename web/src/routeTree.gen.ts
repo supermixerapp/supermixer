@@ -69,6 +69,7 @@ import { Route as AppProjectRefRealtimeInspectorRouteImport } from './routes/_ap
 import { Route as AppProjectRefRealtimePoliciesRouteImport } from './routes/_app/project.$ref.realtime.policies'
 import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/project.$ref.settings.api-keys'
 import { Route as AppProjectRefSettingsGeneralRouteImport } from './routes/_app/project.$ref.settings.general'
+import { Route as AppProjectRefSettingsInfrastructureRouteImport } from './routes/_app/project.$ref.settings.infrastructure'
 import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/project.$ref.settings.jwt'
 import { Route as AppProjectRefSqlIndexRouteImport } from './routes/_app/project.$ref.sql.index'
 import { Route as AppProjectRefSqlIdRouteImport } from './routes/_app/project.$ref.sql.$id'
@@ -411,6 +412,12 @@ const AppProjectRefSettingsGeneralRoute =
     path: '/settings/general',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefSettingsInfrastructureRoute =
+  AppProjectRefSettingsInfrastructureRouteImport.update({
+    id: '/settings/infrastructure',
+    path: '/settings/infrastructure',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefSettingsJwtRoute =
   AppProjectRefSettingsJwtRouteImport.update({
     id: '/settings/jwt',
@@ -508,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
+  '/project/$ref/settings/infrastructure': typeof AppProjectRefSettingsInfrastructureRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
@@ -572,6 +580,7 @@ export interface FileRoutesByTo {
   '/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
+  '/project/$ref/settings/infrastructure': typeof AppProjectRefSettingsInfrastructureRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
@@ -642,6 +651,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/_app/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
+  '/_app/project/$ref/settings/infrastructure': typeof AppProjectRefSettingsInfrastructureRoute
   '/_app/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/_app/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
@@ -712,6 +722,7 @@ export interface FileRouteTypes {
     | '/project/$ref/realtime/policies'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
+    | '/project/$ref/settings/infrastructure'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
@@ -776,6 +787,7 @@ export interface FileRouteTypes {
     | '/project/$ref/realtime/policies'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
+    | '/project/$ref/settings/infrastructure'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
@@ -845,6 +857,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/realtime/policies'
     | '/_app/project/$ref/settings/api-keys'
     | '/_app/project/$ref/settings/general'
+    | '/_app/project/$ref/settings/infrastructure'
     | '/_app/project/$ref/settings/jwt'
     | '/_app/project/$ref/sql/$id'
     | '/_app/project/$ref/storage/policies'
@@ -1287,6 +1300,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSettingsGeneralRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/settings/infrastructure': {
+      id: '/_app/project/$ref/settings/infrastructure'
+      path: '/settings/infrastructure'
+      fullPath: '/project/$ref/settings/infrastructure'
+      preLoaderRoute: typeof AppProjectRefSettingsInfrastructureRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/settings/jwt': {
       id: '/_app/project/$ref/settings/jwt'
       path: '/settings/jwt'
@@ -1426,6 +1446,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefRealtimePoliciesRoute: typeof AppProjectRefRealtimePoliciesRoute
   AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
   AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
+  AppProjectRefSettingsInfrastructureRoute: typeof AppProjectRefSettingsInfrastructureRoute
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
   AppProjectRefStoragePoliciesRoute: typeof AppProjectRefStoragePoliciesRoute
   AppProjectRefFunctionsIndexRoute: typeof AppProjectRefFunctionsIndexRoute
@@ -1479,6 +1500,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefRealtimePoliciesRoute: AppProjectRefRealtimePoliciesRoute,
   AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,
   AppProjectRefSettingsGeneralRoute: AppProjectRefSettingsGeneralRoute,
+  AppProjectRefSettingsInfrastructureRoute:
+    AppProjectRefSettingsInfrastructureRoute,
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
   AppProjectRefStoragePoliciesRoute: AppProjectRefStoragePoliciesRoute,
   AppProjectRefFunctionsIndexRoute: AppProjectRefFunctionsIndexRoute,

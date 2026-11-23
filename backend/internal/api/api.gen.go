@@ -358,6 +358,81 @@ func (e SnippetVisibility) Valid() bool {
 	}
 }
 
+// Defines values for StackOperation.
+const (
+	StackOperationDeleting   StackOperation = "deleting"
+	StackOperationRestarting StackOperation = "restarting"
+	StackOperationStarting   StackOperation = "starting"
+	StackOperationStopping   StackOperation = "stopping"
+)
+
+// Valid indicates whether the value is a known member of the StackOperation enum.
+func (e StackOperation) Valid() bool {
+	switch e {
+	case StackOperationDeleting:
+		return true
+	case StackOperationRestarting:
+		return true
+	case StackOperationStarting:
+		return true
+	case StackOperationStopping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StackDetailOperation.
+const (
+	StackDetailOperationDeleting   StackDetailOperation = "deleting"
+	StackDetailOperationRestarting StackDetailOperation = "restarting"
+	StackDetailOperationStarting   StackDetailOperation = "starting"
+	StackDetailOperationStopping   StackDetailOperation = "stopping"
+)
+
+// Valid indicates whether the value is a known member of the StackDetailOperation enum.
+func (e StackDetailOperation) Valid() bool {
+	switch e {
+	case StackDetailOperationDeleting:
+		return true
+	case StackDetailOperationRestarting:
+		return true
+	case StackDetailOperationStarting:
+		return true
+	case StackDetailOperationStopping:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for StackStatus.
+const (
+	StackStatusDeleting     StackStatus = "deleting"
+	StackStatusFailed       StackStatus = "failed"
+	StackStatusPaused       StackStatus = "paused"
+	StackStatusProvisioning StackStatus = "provisioning"
+	StackStatusRunning      StackStatus = "running"
+)
+
+// Valid indicates whether the value is a known member of the StackStatus enum.
+func (e StackStatus) Valid() bool {
+	switch e {
+	case StackStatusDeleting:
+		return true
+	case StackStatusFailed:
+		return true
+	case StackStatusPaused:
+		return true
+	case StackStatusProvisioning:
+		return true
+	case StackStatusRunning:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ThemePreference.
 const (
 	ThemePreferenceDark   ThemePreference = "dark"
@@ -727,6 +802,7 @@ type Project struct {
 	Permissions      []string  `json:"permissions"`
 	Ref              string    `json:"ref"`
 	Role             OrgRole   `json:"role"`
+	Stack            *Stack    `json:"stack"`
 	StudioUrl        string    `json:"studio_url"`
 	UpdatedAt        time.Time `json:"updated_at"`
 }
@@ -920,6 +996,60 @@ type SnippetUpdate struct {
 // SnippetVisibility defines model for SnippetVisibility.
 type SnippetVisibility string
 
+// Stack Set on projects Supermixer created; null for connected ones.
+type Stack struct {
+	// Error What went wrong
+	Error string `json:"error"`
+
+	// Operation What Supermixer is doing to the stack right now.
+	Operation *StackOperation `json:"operation"`
+	Status    StackStatus     `json:"status"`
+	StatusAt  *time.Time      `json:"status_at"`
+
+	// Template The supabase/supabase commit the stack was made from.
+	Template string `json:"template"`
+}
+
+// StackOperation What Supermixer is doing to the stack right now.
+type StackOperation string
+
+// StackDetail defines model for StackDetail.
+type StackDetail struct {
+	// Error What went wrong
+	Error string `json:"error"`
+
+	// Log The end of Supermixer's log of docker compose output for this stack.
+	Log string `json:"log"`
+
+	// Operation What Supermixer is doing to the stack right now.
+	Operation *StackDetailOperation `json:"operation"`
+	Ports     struct {
+		Api    int `json:"api"`
+		Db     int `json:"db"`
+		Pooler int `json:"pooler"`
+	} `json:"ports"`
+
+	// Services The stack's containers; null when Docker couldn't be asked.
+	Services *[]struct {
+		Health  string `json:"health"`
+		Service string `json:"service"`
+		State   string `json:"state"`
+		Status  string `json:"status"`
+	} `json:"services"`
+	ServicesError *string     `json:"services_error"`
+	Status        StackStatus `json:"status"`
+	StatusAt      *time.Time  `json:"status_at"`
+
+	// Template The supabase/supabase commit the stack was made from.
+	Template string `json:"template"`
+}
+
+// StackDetailOperation What Supermixer is doing to the stack right now.
+type StackDetailOperation string
+
+// StackStatus defines model for StackStatus.
+type StackStatus string
+
 // ThemePreference defines model for ThemePreference.
 type ThemePreference string
 
@@ -930,7 +1060,13 @@ type UiConfig struct {
 	// BrandColor appearance.brand_color as #rrggbb
 	BrandColor   string               `json:"brand_color"`
 	DefaultTheme UiConfigDefaultTheme `json:"default_theme"`
-	Version      string               `json:"version"`
+
+	// Provisioning Whether this server can create stacks, and from which supabase/docker commit.
+	Provisioning struct {
+		Enabled  bool   `json:"enabled"`
+		Template string `json:"template"`
+	} `json:"provisioning"`
+	Version string `json:"version"`
 }
 
 // UiConfigDefaultTheme defines model for UiConfig.DefaultTheme.
@@ -984,6 +1120,11 @@ type ListAuditLogsParams struct {
 	// Before Cursor from next_before
 	Before *int64 `form:"before,omitempty" json:"before,omitempty"`
 	Limit  *int   `form:"limit,omitempty" json:"limit,omitempty"`
+}
+
+// CreateStackJSONBody defines body for CreateStack for application/json ContentType.
+type CreateStackJSONBody struct {
+	Name string `json:"name"`
 }
 
 // ListProjectsParams defines parameters for ListProjects.
@@ -1046,6 +1187,9 @@ type UpdateMemberJSONRequestBody = MemberUpdate
 
 // CreateProjectJSONRequestBody defines body for CreateProject for application/json ContentType.
 type CreateProjectJSONRequestBody = ProjectCreate
+
+// CreateStackJSONRequestBody defines body for CreateStack for application/json ContentType.
+type CreateStackJSONRequestBody CreateStackJSONBody
 
 // TestConnectionJSONRequestBody defines body for TestConnection for application/json ContentType.
 type TestConnectionJSONRequestBody = ProjectConnection
@@ -1142,6 +1286,9 @@ type ServerInterface interface {
 	// CreateProject Register an existing self-hosted Supabase stack as a project
 	// (POST /organizations/{slug}/projects)
 	CreateProject(w http.ResponseWriter, r *http.Request, slug Slug)
+	// CreateStack Create a new self-hosted Supabase stack and add it as a project
+	// (POST /organizations/{slug}/projects/new-stack)
+	CreateStack(w http.ResponseWriter, r *http.Request, slug Slug)
 	// TestConnection Check connection details before registering a project
 	// (POST /organizations/{slug}/projects/test-connection)
 	TestConnection(w http.ResponseWriter, r *http.Request, slug Slug)
@@ -1214,6 +1361,15 @@ type ServerInterface interface {
 
 	// (PATCH /projects/{ref}/snippets/{snippet_id})
 	UpdateSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID)
+	// GetStack A created stack's status, containers and recent output
+	// (GET /projects/{ref}/stack)
+	GetStack(w http.ResponseWriter, r *http.Request, ref Ref)
+	// StackAction Start (or retry), stop (pause) or restart a created stack
+	// (POST /projects/{ref}/stack/{action})
+	StackAction(w http.ResponseWriter, r *http.Request, ref Ref, action string)
+	// RevealStudioLogin The user name and password of a created stack's Studio
+	// (POST /projects/{ref}/studio-login)
+	RevealStudioLogin(w http.ResponseWriter, r *http.Request, ref Ref)
 	// TransferProject Move a project to another organization you own
 	// (POST /projects/{ref}/transfer)
 	TransferProject(w http.ResponseWriter, r *http.Request, ref Ref)
@@ -1353,6 +1509,12 @@ func (_ Unimplemented) CreateProject(w http.ResponseWriter, r *http.Request, slu
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// CreateStack Create a new self-hosted Supabase stack and add it as a project
+// (POST /organizations/{slug}/projects/new-stack)
+func (_ Unimplemented) CreateStack(w http.ResponseWriter, r *http.Request, slug Slug) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // TestConnection Check connection details before registering a project
 // (POST /organizations/{slug}/projects/test-connection)
 func (_ Unimplemented) TestConnection(w http.ResponseWriter, r *http.Request, slug Slug) {
@@ -1485,6 +1647,24 @@ func (_ Unimplemented) GetSnippet(w http.ResponseWriter, r *http.Request, ref Re
 
 // (PATCH /projects/{ref}/snippets/{snippet_id})
 func (_ Unimplemented) UpdateSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetStack A created stack's status, containers and recent output
+// (GET /projects/{ref}/stack)
+func (_ Unimplemented) GetStack(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// StackAction Start (or retry), stop (pause) or restart a created stack
+// (POST /projects/{ref}/stack/{action})
+func (_ Unimplemented) StackAction(w http.ResponseWriter, r *http.Request, ref Ref, action string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RevealStudioLogin The user name and password of a created stack's Studio
+// (POST /projects/{ref}/studio-login)
+func (_ Unimplemented) RevealStudioLogin(w http.ResponseWriter, r *http.Request, ref Ref) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2109,6 +2289,32 @@ func (siw *ServerInterfaceWrapper) CreateProject(w http.ResponseWriter, r *http.
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.CreateProject(w, r, slug)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateStack operation middleware
+func (siw *ServerInterfaceWrapper) CreateStack(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "slug" -------------
+	var slug Slug
+
+	err = runtime.BindStyledParameterWithOptions("simple", "slug", chi.URLParam(r, "slug"), &slug, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "slug", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateStack(w, r, slug)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -2829,6 +3035,93 @@ func (siw *ServerInterfaceWrapper) UpdateSnippet(w http.ResponseWriter, r *http.
 	handler.ServeHTTP(w, r)
 }
 
+// GetStack operation middleware
+func (siw *ServerInterfaceWrapper) GetStack(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetStack(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// StackAction operation middleware
+func (siw *ServerInterfaceWrapper) StackAction(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "action" -------------
+	var action string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "action", chi.URLParam(r, "action"), &action, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "action", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.StackAction(w, r, ref, action)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// RevealStudioLogin operation middleware
+func (siw *ServerInterfaceWrapper) RevealStudioLogin(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RevealStudioLogin(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // TransferProject operation middleware
 func (siw *ServerInterfaceWrapper) TransferProject(w http.ResponseWriter, r *http.Request) {
 
@@ -3074,6 +3367,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Post(options.BaseURL+"/organizations/{slug}/projects", wrapper.CreateProject)
 	})
 	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/organizations/{slug}/projects/new-stack", wrapper.CreateStack)
+	})
+	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/organizations/{slug}/projects/test-connection", wrapper.TestConnection)
 	})
 	r.Group(func(r chi.Router) {
@@ -3090,6 +3386,15 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/projects/{ref}/health", wrapper.GetProjectHealth)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/stack", wrapper.GetStack)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/stack/{action}", wrapper.StackAction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/studio-login", wrapper.RevealStudioLogin)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/projects/{ref}/advisors/lints", wrapper.ListLints)
@@ -4052,6 +4357,46 @@ func (response CreateProjectdefaultJSONResponse) VisitCreateProjectResponse(w ht
 	return err
 }
 
+type CreateStackRequestObject struct {
+	Slug Slug `json:"slug"`
+	Body *CreateStackJSONRequestBody
+}
+
+type CreateStackResponseObject interface {
+	VisitCreateStackResponse(w http.ResponseWriter) error
+}
+
+type CreateStack202JSONResponse Project
+
+func (response CreateStack202JSONResponse) VisitCreateStackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateStackdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateStackdefaultJSONResponse) VisitCreateStackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type TestConnectionRequestObject struct {
 	Slug Slug `json:"slug"`
 	Body *TestConnectionJSONRequestBody
@@ -5003,6 +5348,127 @@ func (response UpdateSnippetdefaultJSONResponse) VisitUpdateSnippetResponse(w ht
 	return err
 }
 
+type GetStackRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type GetStackResponseObject interface {
+	VisitGetStackResponse(w http.ResponseWriter) error
+}
+
+type GetStack200JSONResponse StackDetail
+
+func (response GetStack200JSONResponse) VisitGetStackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStackdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetStackdefaultJSONResponse) VisitGetStackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StackActionRequestObject struct {
+	Ref    Ref    `json:"ref"`
+	Action string `json:"action"`
+}
+
+type StackActionResponseObject interface {
+	VisitStackActionResponse(w http.ResponseWriter) error
+}
+
+type StackAction202JSONResponse StackDetail
+
+func (response StackAction202JSONResponse) VisitStackActionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type StackActiondefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response StackActiondefaultJSONResponse) VisitStackActionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevealStudioLoginRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type RevealStudioLoginResponseObject interface {
+	VisitRevealStudioLoginResponse(w http.ResponseWriter) error
+}
+
+type RevealStudioLogin200JSONResponse struct {
+	Password string `json:"password"`
+	Username string `json:"username"`
+}
+
+func (response RevealStudioLogin200JSONResponse) VisitRevealStudioLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RevealStudioLogindefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response RevealStudioLogindefaultJSONResponse) VisitRevealStudioLoginResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type TransferProjectRequestObject struct {
 	Ref  Ref `json:"ref"`
 	Body *TransferProjectJSONRequestBody
@@ -5152,6 +5618,9 @@ type StrictServerInterface interface {
 	// CreateProject Register an existing self-hosted Supabase stack as a project
 	// (POST /organizations/{slug}/projects)
 	CreateProject(ctx context.Context, request CreateProjectRequestObject) (CreateProjectResponseObject, error)
+	// CreateStack Create a new self-hosted Supabase stack and add it as a project
+	// (POST /organizations/{slug}/projects/new-stack)
+	CreateStack(ctx context.Context, request CreateStackRequestObject) (CreateStackResponseObject, error)
 	// TestConnection Check connection details before registering a project
 	// (POST /organizations/{slug}/projects/test-connection)
 	TestConnection(ctx context.Context, request TestConnectionRequestObject) (TestConnectionResponseObject, error)
@@ -5224,6 +5693,15 @@ type StrictServerInterface interface {
 
 	// (PATCH /projects/{ref}/snippets/{snippet_id})
 	UpdateSnippet(ctx context.Context, request UpdateSnippetRequestObject) (UpdateSnippetResponseObject, error)
+	// GetStack A created stack's status, containers and recent output
+	// (GET /projects/{ref}/stack)
+	GetStack(ctx context.Context, request GetStackRequestObject) (GetStackResponseObject, error)
+	// StackAction Start (or retry), stop (pause) or restart a created stack
+	// (POST /projects/{ref}/stack/{action})
+	StackAction(ctx context.Context, request StackActionRequestObject) (StackActionResponseObject, error)
+	// RevealStudioLogin The user name and password of a created stack's Studio
+	// (POST /projects/{ref}/studio-login)
+	RevealStudioLogin(ctx context.Context, request RevealStudioLoginRequestObject) (RevealStudioLoginResponseObject, error)
 	// TransferProject Move a project to another organization you own
 	// (POST /projects/{ref}/transfer)
 	TransferProject(ctx context.Context, request TransferProjectRequestObject) (TransferProjectResponseObject, error)
@@ -5932,6 +6410,39 @@ func (sh *strictHandler) CreateProject(w http.ResponseWriter, r *http.Request, s
 	}
 }
 
+// CreateStack operation middleware
+func (sh *strictHandler) CreateStack(w http.ResponseWriter, r *http.Request, slug Slug) {
+	var request CreateStackRequestObject
+
+	request.Slug = slug
+
+	var body CreateStackJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.CreateStack(ctx, request.(CreateStackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateStack")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateStackResponseObject); ok {
+		if err := validResponse.VisitCreateStackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // TestConnection operation middleware
 func (sh *strictHandler) TestConnection(w http.ResponseWriter, r *http.Request, slug Slug) {
 	var request TestConnectionRequestObject
@@ -6601,6 +7112,85 @@ func (sh *strictHandler) UpdateSnippet(w http.ResponseWriter, r *http.Request, r
 	}
 }
 
+// GetStack operation middleware
+func (sh *strictHandler) GetStack(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request GetStackRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.GetStack(ctx, request.(GetStackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetStack")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetStackResponseObject); ok {
+		if err := validResponse.VisitGetStackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// StackAction operation middleware
+func (sh *strictHandler) StackAction(w http.ResponseWriter, r *http.Request, ref Ref, action string) {
+	var request StackActionRequestObject
+
+	request.Ref = ref
+	request.Action = action
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.StackAction(ctx, request.(StackActionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "StackAction")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(StackActionResponseObject); ok {
+		if err := validResponse.VisitStackActionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// RevealStudioLogin operation middleware
+func (sh *strictHandler) RevealStudioLogin(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request RevealStudioLoginRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.RevealStudioLogin(ctx, request.(RevealStudioLoginRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RevealStudioLogin")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RevealStudioLoginResponseObject); ok {
+		if err := validResponse.VisitRevealStudioLoginResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // TransferProject operation middleware
 func (sh *strictHandler) TransferProject(w http.ResponseWriter, r *http.Request, ref Ref) {
 	var request TransferProjectRequestObject
@@ -6663,118 +7253,133 @@ func (sh *strictHandler) GetUiConfig(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"88ZrDfJSWb7/dP+/AQAA//8=",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

@@ -468,6 +468,33 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Project" }
         default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/projects/new-stack:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    post:
+      operationId: createStack
+      tags: [Projects]
+      summary: Create a new self-hosted Supabase stack and add it as a project
+      description: |
+        Needs provisioning.enabled. The project is created at once with stack
+        status provisioning; the stack starts in the background (image
+        downloads can take minutes). Follow it with GET /projects/{ref}/stack.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 64 }
+      responses:
+        "202":
+          description: Created; the stack is starting.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
   /organizations/{slug}/projects/test-connection:
     parameters:
       - { $ref: "#/components/parameters/Slug" }
@@ -554,6 +581,62 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/HealthReport" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/stack:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getStack
+      tags: [Projects]
+      summary: A created stack's status, containers and recent output
+      responses:
+        "200":
+          description: The stack.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/stack/{action}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - name: action
+        in: path
+        required: true
+        schema: { type: string, enum: [start, stop, restart] }
+    post:
+      operationId: stackAction
+      tags: [Projects]
+      summary: Start (or retry), stop (pause) or restart a created stack
+      description: Runs in the background; follow it with GET /projects/{ref}/stack.
+      responses:
+        "202":
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/studio-login:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    post:
+      operationId: revealStudioLogin
+      tags: [Projects]
+      summary: The user name and password of a created stack's Studio
+      description: |
+        Studio is served by the stack's API gateway behind basic auth, with
+        credentials Supermixer generated. Needs the same access as revealing
+        secret API keys, and is recorded in the audit log.
+      responses:
+        "200":
+          description: The login.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [username, password]
+                properties:
+                  username: { type: string }
+                  password: { type: string }
         default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/advisors/lints:
     parameters:
@@ -916,12 +999,64 @@ components:
             error: { type: string }
     UiConfig:
       type: object
-      required: [app_name, version, brand_color, default_theme]
+      required: [app_name, version, brand_color, default_theme, provisioning]
       properties:
         app_name: { type: string }
         version: { type: string }
         brand_color: { type: string, description: "appearance.brand_color as #rrggbb" }
         default_theme: { type: string, enum: [dark, light, system] }
+        provisioning:
+          type: object
+          required: [enabled, template]
+          description: Whether this server can create stacks, and from which supabase/docker commit.
+          properties:
+            enabled: { type: boolean }
+            template: { type: string }
+
+    StackStatus:
+      type: string
+      enum: [provisioning, running, paused, failed, deleting]
+    Stack:
+      type: object
+      required: [status, error, template]
+      description: Set on projects Supermixer created; null for connected ones.
+      properties:
+        status: { $ref: "#/components/schemas/StackStatus" }
+        error: { type: string, description: What went wrong, when status is failed. }
+        status_at: { type: string, format: date-time, nullable: true }
+        template: { type: string, description: The supabase/supabase commit the stack was made from. }
+        operation:
+          type: string
+          enum: [starting, stopping, restarting, deleting]
+          nullable: true
+          description: What Supermixer is doing to the stack right now.
+    StackDetail:
+      allOf:
+        - { $ref: "#/components/schemas/Stack" }
+        - type: object
+          required: [ports, services, log]
+          properties:
+            ports:
+              type: object
+              required: [api, db, pooler]
+              properties:
+                api: { type: integer }
+                db: { type: integer }
+                pooler: { type: integer }
+            services:
+              type: array
+              nullable: true
+              description: The stack's containers; null when Docker couldn't be asked.
+              items:
+                type: object
+                required: [service, state, health, status]
+                properties:
+                  service: { type: string }
+                  state: { type: string }
+                  health: { type: string }
+                  status: { type: string }
+            services_error: { type: string, nullable: true }
+            log: { type: string, description: The end of Supermixer's log of docker compose output for this stack. }
 
     SignInRequest:
       type: object
@@ -1177,8 +1312,11 @@ components:
         organization_slug: { type: string }
     Project:
       type: object
-      required: [id, ref, name, organization_slug, organization_name, api_url, studio_url, database, keys_present, role, permissions, created_at, updated_at]
+      required: [id, ref, name, organization_slug, organization_name, api_url, studio_url, database, keys_present, role, permissions, created_at, updated_at, stack]
       properties:
+        stack:
+          allOf: [{ $ref: "#/components/schemas/Stack" }]
+          nullable: true
         id: { type: string, format: uuid }
         ref: { type: string }
         name: { type: string }

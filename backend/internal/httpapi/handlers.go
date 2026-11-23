@@ -6,6 +6,7 @@ import (
 
 	"supermixer/internal/api"
 	"supermixer/internal/auth"
+	"supermixer/internal/provision"
 	"supermixer/internal/stack"
 	"supermixer/internal/version"
 )
@@ -18,6 +19,7 @@ type handlers struct {
 	checker *stack.Checker
 	health  *healthCache
 	pools   *stack.Pools
+	stacks  *stackJobs
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)
@@ -62,5 +64,9 @@ func (h *handlers) GetUiConfig(_ context.Context, _ api.GetUiConfigRequestObject
 		Version:      version.Version,
 		BrandColor:   h.deps.Palette.Brand.Hex(),
 		DefaultTheme: api.UiConfigDefaultTheme(h.deps.Config.Appearance.DefaultTheme),
+		Provisioning: struct {
+			Enabled  bool   `json:"enabled"`
+			Template string `json:"template"`
+		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion()},
 	}, nil
 }

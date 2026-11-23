@@ -410,6 +410,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{slug}/projects/new-stack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new self-hosted Supabase stack and add it as a project
+         * @description Needs provisioning.enabled. The project is created at once with stack
+         *     status provisioning; the stack starts in the background (image
+         *     downloads can take minutes). Follow it with GET /projects/{ref}/stack.
+         */
+        post: operations["createStack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{slug}/projects/test-connection": {
         parameters: {
             query?: never;
@@ -480,6 +504,72 @@ export interface paths {
         get: operations["getProjectHealth"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/stack": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** A created stack's status, containers and recent output */
+        get: operations["getStack"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/stack/{action}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                action: "start" | "stop" | "restart";
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start (or retry), stop (pause) or restart a created stack
+         * @description Runs in the background; follow it with GET /projects/{ref}/stack.
+         */
+        post: operations["stackAction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/studio-login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * The user name and password of a created stack's Studio
+         * @description Studio is served by the stack's API gateway behind basic auth, with
+         *     credentials Supermixer generated. Needs the same access as revealing
+         *     secret API keys, and is recorded in the audit log.
+         */
+        post: operations["revealStudioLogin"];
         delete?: never;
         options?: never;
         head?: never;
@@ -780,6 +870,45 @@ export interface components {
             brand_color: string;
             /** @enum {string} */
             default_theme: "dark" | "light" | "system";
+            /** @description Whether this server can create stacks, and from which supabase/docker commit. */
+            provisioning: {
+                enabled: boolean;
+                template: string;
+            };
+        };
+        /** @enum {string} */
+        StackStatus: "provisioning" | "running" | "paused" | "failed" | "deleting";
+        /** @description Set on projects Supermixer created; null for connected ones. */
+        Stack: {
+            status: components["schemas"]["StackStatus"];
+            /** @description What went wrong */
+            error: string;
+            /** Format: date-time */
+            status_at?: string | null;
+            /** @description The supabase/supabase commit the stack was made from. */
+            template: string;
+            /**
+             * @description What Supermixer is doing to the stack right now.
+             * @enum {string|null}
+             */
+            operation?: "starting" | "stopping" | "restarting" | "deleting" | null;
+        };
+        StackDetail: components["schemas"]["Stack"] & {
+            ports: {
+                api: number;
+                db: number;
+                pooler: number;
+            };
+            /** @description The stack's containers; null when Docker couldn't be asked. */
+            services: {
+                service: string;
+                state: string;
+                health: string;
+                status: string;
+            }[] | null;
+            services_error?: string | null;
+            /** @description The end of Supermixer's log of docker compose output for this stack. */
+            log: string;
         };
         SignInRequest: {
             username: string;
@@ -982,6 +1111,7 @@ export interface components {
             organization_slug: string;
         };
         Project: {
+            stack: components["schemas"]["Stack"] | null;
             /** Format: uuid */
             id: string;
             ref: string;
@@ -1871,6 +2001,35 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    createStack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Created; the stack is starting. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     testConnection: {
         parameters: {
             query?: never;
@@ -2014,6 +2173,79 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getStack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The stack. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    stackAction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                action: "start" | "stop" | "restart";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revealStudioLogin: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The login. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        username: string;
+                        password: string;
+                    };
                 };
             };
             default: components["responses"]["Error"];

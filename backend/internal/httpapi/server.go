@@ -43,6 +43,9 @@ type Deps struct {
 	Logger  *slog.Logger
 	WebUI   fs.FS // built React app; may be empty in development
 	Pools   *stack.Pools
+	// Background, if set, runs periodic work (recovering stuck stack
+	// operations) until it's cancelled.
+	Background context.Context
 }
 
 // New builds the root handler.
@@ -68,6 +71,14 @@ func New(deps Deps) http.Handler {
 		checker: stack.NewChecker(pc.HealthCheckTimeout),
 		health:  &healthCache{ttl: pc.HealthCacheTTL},
 		pools:   deps.Pools,
+		stacks:  &stackJobs{},
+	}
+	if deps.Store != nil {
+		if deps.Background != nil {
+			go h.watchStacks(deps.Background)
+		} else {
+			h.recoverStacks(context.Background(), time.Now().Add(-stackStale))
+		}
 	}
 	strict := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {

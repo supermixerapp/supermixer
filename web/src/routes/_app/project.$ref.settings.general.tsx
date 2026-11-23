@@ -91,7 +91,7 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
     mutationFn: () => unwrap(api.DELETE('/projects/{ref}', { params: { path: { ref } } })),
     onSuccess: async () => {
       const slug = project.organization_slug
-      toast.success(`Removed ${project.name} from Supermixer`)
+      toast.success(project.stack ? `Deleting ${project.name} and its stack` : `Removed ${project.name} from Supermixer`)
       await refresh()
       void navigate({ to: '/org/$slug', params: { slug } })
     },
@@ -141,7 +141,7 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
           </Card>
         </SettingsSection>
 
-        {canUpdate && (
+        {canUpdate && !project.stack && (
           <SettingsSection
             title="Connection"
             description="Where Supermixer reaches this stack. Leave secret fields blank to keep their current values."
@@ -212,18 +212,33 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
         </SettingsSection>
 
         <SettingsSection title="Danger zone">
-          <Alert
-            variant="destructive"
-            title="Remove this project from Supermixer"
-            actions={
-              <PermissionButton allowed={canDelete} action="remove this project" variant="danger" onClick={() => setDeleting(true)}>
-                Remove project
-              </PermissionButton>
-            }
-          >
-            Supermixer forgets this project and its stored credentials. The Supabase stack itself keeps running and is
-            not changed.
-          </Alert>
+          {project.stack ? (
+            <Alert
+              variant="destructive"
+              title="Delete this project and its stack"
+              actions={
+                <PermissionButton allowed={canDelete} action="delete this project" variant="danger" onClick={() => setDeleting(true)}>
+                  Delete project
+                </PermissionButton>
+              }
+            >
+              Supermixer created this stack, so deleting the project removes it: its containers, database, stored files
+              and keys. This can’t be undone.
+            </Alert>
+          ) : (
+            <Alert
+              variant="destructive"
+              title="Remove this project from Supermixer"
+              actions={
+                <PermissionButton allowed={canDelete} action="remove this project" variant="danger" onClick={() => setDeleting(true)}>
+                  Remove project
+                </PermissionButton>
+              }
+            >
+              Supermixer forgets this project and its stored credentials. The Supabase stack itself keeps running and is
+              not changed.
+            </Alert>
+          )}
         </SettingsSection>
       </PageContainer>
 
@@ -240,9 +255,13 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title={`Remove ${project.name}?`}
-        description="The Supabase stack is not affected. You can register it again later."
-        confirmLabel="Remove project"
+        title={project.stack ? `Delete ${project.name} and its stack?` : `Remove ${project.name}?`}
+        description={
+          project.stack
+            ? 'Its containers, database, stored files and keys are deleted. This can’t be undone.'
+            : 'The Supabase stack is not affected. You can register it again later.'
+        }
+        confirmLabel={project.stack ? 'Delete project' : 'Remove project'}
         confirmText={project.name}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}

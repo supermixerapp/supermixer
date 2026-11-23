@@ -96,14 +96,15 @@ func run(configFile string) error {
 	srv := &http.Server{
 		Addr: cfg.Server.Listen,
 		Handler: httpapi.New(httpapi.Deps{
-			Config:  cfg,
-			DB:      st,
-			Store:   st,
-			Box:     box,
-			Palette: palette,
-			Logger:  logger,
-			WebUI:   webui.FS(),
-			Pools:   pools,
+			Config:     cfg,
+			DB:         st,
+			Store:      st,
+			Box:        box,
+			Palette:    palette,
+			Logger:     logger,
+			WebUI:      webui.FS(),
+			Pools:      pools,
+			Background: ctx,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}

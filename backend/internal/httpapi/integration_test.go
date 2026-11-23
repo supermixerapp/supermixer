@@ -67,7 +67,35 @@ type testEnv struct {
 
 func newTestEnv(t *testing.T) *testEnv {
 	t.Helper()
-	dbURL := testDatabase(t)
+	return newTestEnvWith(t, nil)
+}
+
+// newTestEnvWith lets a test change the configuration first.
+func newTestEnvWith(t *testing.T, configure func(*config.Config)) *testEnv {
+	t.Helper()
+	return newTestEnvOn(t, testDatabase(t), configure)
+}
+
+// newTestEnvSharing starts another server on env's database, as if
+// Supermixer had restarted.
+func newTestEnvSharing(t *testing.T, env *testEnv, configure func(*config.Config)) *testEnv {
+	t.Helper()
+	return newTestEnvOn(t, env.dbURL, configure)
+}
+
+// openTestDB connects straight to a test database.
+func openTestDB(t *testing.T, dbURL string) *pgx.Conn {
+	t.Helper()
+	c, err := pgx.Connect(context.Background(), dbURL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { c.Close(context.Background()) })
+	return c
+}
+
+func newTestEnvOn(t *testing.T, dbURL string, configure func(*config.Config)) *testEnv {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := context.Background()
 	st, err := store.Open(ctx, dbURL, 0, logger)
@@ -83,6 +111,9 @@ func newTestEnv(t *testing.T) *testEnv {
 	cfg.Server.PublicURL = "http://supermixer.test"
 	cfg.Security.EncryptionKey = testKey
 	cfg.Security.SessionTTL = time.Hour
+	if configure != nil {
+		configure(cfg)
+	}
 	if err := bootstrap.EnsureAdmin(ctx, st, cfg, logger); err != nil {
 		t.Fatal(err)
 	}
