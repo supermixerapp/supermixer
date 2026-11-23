@@ -181,6 +181,7 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
               errorAt={errorAt}
               readOnly={!editable}
               handleRef={editor}
+              autoFocus
             />
             {!snippet && !content.trim() && <Templates onPick={setContent} />}
           </div>

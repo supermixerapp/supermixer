@@ -14,7 +14,7 @@ import { addColumn, createTable, insertRow, updateRow, type ColumnDef } from '@/
 
 import { ColumnEditor, ColumnList, defaultColumns, newColumn } from './column-fields'
 
-function SqlPreview({ sql }: { sql: string }) {
+export function SqlPreview({ sql }: { sql: string }) {
   return (
     <details className="rounded-md border bg-surface-100 text-xs">
       <summary className="cursor-pointer px-3 py-2 text-foreground-light select-none">SQL that will run</summary>
@@ -27,7 +27,7 @@ function errorText(e: Error) {
   return e instanceof SqlError && e.hint ? `${e.message} (${e.hint})` : e.message
 }
 
-function EditorSheet({
+export function EditorSheet({
   open,
   onOpenChange,
   title,
@@ -52,7 +52,14 @@ function EditorSheet({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent size="lg" className="flex flex-col">
+      <SheetContent
+        size="lg"
+        className="flex flex-col"
+        // Escape in a code editor closes its suggestions, not the sheet.
+        onEscapeKeyDown={(e) => {
+          if (document.activeElement?.closest('.monaco-editor')) e.preventDefault()
+        }}
+      >
         <SheetHeader>
           <SheetTitle>{title}</SheetTitle>
           {description && <SheetDescription>{description}</SheetDescription>}

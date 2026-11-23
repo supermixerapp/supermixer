@@ -41,6 +41,13 @@ export function ConfirmDialog({
   children?: ReactNode
 }) {
   const [typed, setTyped] = useState('')
+  // Clear the typed text whenever the dialog closes, including when the
+  // parent closes it after confirming (onOpenChange isn't called then).
+  const [wasOpen, setWasOpen] = useState(open)
+  if (open !== wasOpen) {
+    setWasOpen(open)
+    if (!open) setTyped('')
+  }
   const ready = !confirmText || typed === confirmText
   return (
     <Dialog

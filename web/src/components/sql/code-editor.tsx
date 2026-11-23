@@ -29,6 +29,7 @@ export function CodeEditor({
   errorAt,
   readOnly,
   handleRef,
+  autoFocus = false,
 }: {
   value: string
   onChange: (v: string) => void
@@ -37,6 +38,7 @@ export function CodeEditor({
   errorAt?: { offset: number; message: string; base: number } | null
   readOnly?: boolean
   handleRef?: React.Ref<CodeEditorHandle>
+  autoFocus?: boolean
 }) {
   const { resolved } = useTheme()
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
@@ -91,7 +93,7 @@ export function CodeEditor({
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => onRunRef.current?.(runnable()),
     })
-    ed.focus()
+    if (autoFocus) ed.focus()
   }
 
   return (
