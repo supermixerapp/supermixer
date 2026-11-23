@@ -46,7 +46,7 @@ export interface TableListRow {
 /** Tables and views in one schema ($1). */
 export const TABLES_SQL = `
 select c.oid::int as id, c.relname as name, c.relkind as kind, c.relrowsecurity as rls,
-       greatest(c.reltuples, 0)::bigint::text::int as estimate, obj_description(c.oid, 'pg_class') as comment
+       greatest(c.reltuples, 0)::float8 as estimate, obj_description(c.oid, 'pg_class') as comment
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = $1 and c.relkind in ('r', 'p', 'v', 'm', 'f')
 order by c.relname`
