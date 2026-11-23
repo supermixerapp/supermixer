@@ -29,12 +29,13 @@ func TestOrgMatrix(t *testing.T) {
 
 func TestProjectMatrix(t *testing.T) {
 	want := map[Permission][]Role{
-		ProjectRead:        {Owner, Administrator, Developer, ReadOnly},
-		ProjectUpdate:      {Owner, Administrator},
-		ProjectDelete:      {Owner, Administrator},
-		ProjectSecretsRead: {Owner, Administrator, Developer},
-		ProjectDataRead:    {Owner, Administrator, Developer, ReadOnly},
-		ProjectDataWrite:   {Owner, Administrator, Developer},
+		ProjectRead:            {Owner, Administrator, Developer, ReadOnly},
+		ProjectUpdate:          {Owner, Administrator},
+		ProjectDelete:          {Owner, Administrator},
+		ProjectSecretsRead:     {Owner, Administrator, Developer},
+		ProjectDataRead:        {Owner, Administrator, Developer, ReadOnly},
+		ProjectDataWrite:       {Owner, Administrator, Developer},
+		ProjectFunctionsDeploy: {Owner, Administrator, Developer},
 	}
 	for perm, allowed := range want {
 		for _, role := range OrgRoles {
@@ -42,6 +43,16 @@ func TestProjectMatrix(t *testing.T) {
 			if got := ProjectCan(role, perm); got != expect {
 				t.Errorf("ProjectCan(%s, %s) = %v, want %v", role, perm, got, expect)
 			}
+		}
+	}
+}
+
+// Deployed function code can read the stack's keys, so deploying must never
+// be granted without seeing secrets.
+func TestDeployingFunctionsNeedsSecrets(t *testing.T) {
+	for _, role := range OrgRoles {
+		if ProjectCan(role, ProjectFunctionsDeploy) && !ProjectCan(role, ProjectSecretsRead) {
+			t.Errorf("%s may deploy functions but not see secrets", role)
 		}
 	}
 }

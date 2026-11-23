@@ -154,6 +154,18 @@ export const productMenus: Record<string, ProductMenu> = {
       },
     ],
   },
+  functions: {
+    title: 'Edge Functions',
+    groups: [
+      {
+        title: 'Manage',
+        items: [
+          { label: 'Functions', path: 'functions', stage: 3 },
+          { label: 'Secrets', path: 'functions/secrets', stage: 4 },
+        ],
+      },
+    ],
+  },
   storage: {
     title: 'Storage',
     groups: [

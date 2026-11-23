@@ -54,6 +54,8 @@ import { Route as AppProjectRefDatabaseTypesRouteImport } from './routes/_app/pr
 import { Route as AppProjectRefEditorIndexRouteImport } from './routes/_app/project.$ref.editor.index'
 import { Route as AppProjectRefEditorIdRouteImport } from './routes/_app/project.$ref.editor.$id'
 import { Route as AppProjectRefFunctionsIndexRouteImport } from './routes/_app/project.$ref.functions.index'
+import { Route as AppProjectRefFunctionsNameRouteImport } from './routes/_app/project.$ref.functions.$name'
+import { Route as AppProjectRefFunctionsSecretsRouteImport } from './routes/_app/project.$ref.functions.secrets'
 import { Route as AppProjectRefIntegrationsIndexRouteImport } from './routes/_app/project.$ref.integrations.index'
 import { Route as AppProjectRefIntegrationsCronRouteImport } from './routes/_app/project.$ref.integrations.cron'
 import { Route as AppProjectRefIntegrationsGraphiqlRouteImport } from './routes/_app/project.$ref.integrations.graphiql'
@@ -322,6 +324,18 @@ const AppProjectRefFunctionsIndexRoute =
     path: '/functions/',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefFunctionsNameRoute =
+  AppProjectRefFunctionsNameRouteImport.update({
+    id: '/functions/$name',
+    path: '/functions/$name',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefFunctionsSecretsRoute =
+  AppProjectRefFunctionsSecretsRouteImport.update({
+    id: '/functions/secrets',
+    path: '/functions/secrets',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefIntegrationsIndexRoute =
   AppProjectRefIntegrationsIndexRouteImport.update({
     id: '/integrations/',
@@ -502,6 +516,8 @@ export interface FileRoutesByFullPath {
   '/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
   '/project/$ref/database/types': typeof AppProjectRefDatabaseTypesRoute
   '/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
+  '/project/$ref/functions/$name': typeof AppProjectRefFunctionsNameRoute
+  '/project/$ref/functions/secrets': typeof AppProjectRefFunctionsSecretsRoute
   '/project/$ref/integrations/cron': typeof AppProjectRefIntegrationsCronRoute
   '/project/$ref/integrations/graphiql': typeof AppProjectRefIntegrationsGraphiqlRoute
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
@@ -567,6 +583,8 @@ export interface FileRoutesByTo {
   '/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
   '/project/$ref/database/types': typeof AppProjectRefDatabaseTypesRoute
   '/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
+  '/project/$ref/functions/$name': typeof AppProjectRefFunctionsNameRoute
+  '/project/$ref/functions/secrets': typeof AppProjectRefFunctionsSecretsRoute
   '/project/$ref/integrations/cron': typeof AppProjectRefIntegrationsCronRoute
   '/project/$ref/integrations/graphiql': typeof AppProjectRefIntegrationsGraphiqlRoute
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
@@ -638,6 +656,8 @@ export interface FileRoutesById {
   '/_app/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
   '/_app/project/$ref/database/types': typeof AppProjectRefDatabaseTypesRoute
   '/_app/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
+  '/_app/project/$ref/functions/$name': typeof AppProjectRefFunctionsNameRoute
+  '/_app/project/$ref/functions/secrets': typeof AppProjectRefFunctionsSecretsRoute
   '/_app/project/$ref/integrations/cron': typeof AppProjectRefIntegrationsCronRoute
   '/_app/project/$ref/integrations/graphiql': typeof AppProjectRefIntegrationsGraphiqlRoute
   '/_app/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
@@ -709,6 +729,8 @@ export interface FileRouteTypes {
     | '/project/$ref/database/triggers'
     | '/project/$ref/database/types'
     | '/project/$ref/editor/$id'
+    | '/project/$ref/functions/$name'
+    | '/project/$ref/functions/secrets'
     | '/project/$ref/integrations/cron'
     | '/project/$ref/integrations/graphiql'
     | '/project/$ref/integrations/queues'
@@ -774,6 +796,8 @@ export interface FileRouteTypes {
     | '/project/$ref/database/triggers'
     | '/project/$ref/database/types'
     | '/project/$ref/editor/$id'
+    | '/project/$ref/functions/$name'
+    | '/project/$ref/functions/secrets'
     | '/project/$ref/integrations/cron'
     | '/project/$ref/integrations/graphiql'
     | '/project/$ref/integrations/queues'
@@ -844,6 +868,8 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/database/triggers'
     | '/_app/project/$ref/database/types'
     | '/_app/project/$ref/editor/$id'
+    | '/_app/project/$ref/functions/$name'
+    | '/_app/project/$ref/functions/secrets'
     | '/_app/project/$ref/integrations/cron'
     | '/_app/project/$ref/integrations/graphiql'
     | '/_app/project/$ref/integrations/queues'
@@ -1195,6 +1221,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefFunctionsIndexRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/functions/$name': {
+      id: '/_app/project/$ref/functions/$name'
+      path: '/functions/$name'
+      fullPath: '/project/$ref/functions/$name'
+      preLoaderRoute: typeof AppProjectRefFunctionsNameRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/functions/secrets': {
+      id: '/_app/project/$ref/functions/secrets'
+      path: '/functions/secrets'
+      fullPath: '/project/$ref/functions/secrets'
+      preLoaderRoute: typeof AppProjectRefFunctionsSecretsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/integrations/': {
       id: '/_app/project/$ref/integrations/'
       path: '/integrations'
@@ -1433,6 +1473,8 @@ interface AppProjectRefRouteChildren {
   AppProjectRefDatabaseTablesRoute: typeof AppProjectRefDatabaseTablesRoute
   AppProjectRefDatabaseTriggersRoute: typeof AppProjectRefDatabaseTriggersRoute
   AppProjectRefDatabaseTypesRoute: typeof AppProjectRefDatabaseTypesRoute
+  AppProjectRefFunctionsNameRoute: typeof AppProjectRefFunctionsNameRoute
+  AppProjectRefFunctionsSecretsRoute: typeof AppProjectRefFunctionsSecretsRoute
   AppProjectRefIntegrationsCronRoute: typeof AppProjectRefIntegrationsCronRoute
   AppProjectRefIntegrationsGraphiqlRoute: typeof AppProjectRefIntegrationsGraphiqlRoute
   AppProjectRefIntegrationsQueuesRoute: typeof AppProjectRefIntegrationsQueuesRoute
@@ -1484,6 +1526,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefDatabaseTablesRoute: AppProjectRefDatabaseTablesRoute,
   AppProjectRefDatabaseTriggersRoute: AppProjectRefDatabaseTriggersRoute,
   AppProjectRefDatabaseTypesRoute: AppProjectRefDatabaseTypesRoute,
+  AppProjectRefFunctionsNameRoute: AppProjectRefFunctionsNameRoute,
+  AppProjectRefFunctionsSecretsRoute: AppProjectRefFunctionsSecretsRoute,
   AppProjectRefIntegrationsCronRoute: AppProjectRefIntegrationsCronRoute,
   AppProjectRefIntegrationsGraphiqlRoute:
     AppProjectRefIntegrationsGraphiqlRoute,

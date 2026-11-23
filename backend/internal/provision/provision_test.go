@@ -8,7 +8,9 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"io/fs"
+	"maps"
 	"math/big"
 	"os"
 	"os/exec"
@@ -316,5 +318,226 @@ func TestEnableJWKS(t *testing.T) {
 	}
 	if _, err := enableJWKS("services: {}\n"); err == nil {
 		t.Error("accepted a compose file without the settings")
+	}
+}
+
+func TestFunctions(t *testing.T) {
+	stack := t.TempDir()
+	if fns, err := ListFunctions(stack); err != nil || len(fns) != 0 {
+		t.Fatalf("empty stack: %v %v", fns, err)
+	}
+	files := []FunctionFile{{"index.ts", "Deno.serve(() => new Response('v1'))\n"}, {"lib/util.ts", "export const x = 1\n"}}
+	if err := WriteFunction(stack, "hello-world", files, nil); err != nil {
+		t.Fatal(err)
+	}
+	// A binary file put there by hand is kept on the next deploy.
+	bin := filepath.Join(stack, "volumes/functions/hello-world/logo.png")
+	if err := os.WriteFile(bin, []byte{0x89, 'P', 'N', 'G', 0}, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	info, got, other, err := ReadFunction(stack, "hello-world")
+	if err != nil || len(got) != 2 || got[1].Path != "lib/util.ts" || len(other) != 1 || other[0] != "logo.png" || info.Entrypoint != "index.ts" {
+		t.Fatalf("read: %+v %+v %v %v", info, got, other, err)
+	}
+	if err := WriteFunction(stack, "hello-world", []FunctionFile{{"index.ts", "v2"}}, []string{"logo.png"}); err != nil {
+		t.Fatal(err)
+	}
+	_, got, other, _ = ReadFunction(stack, "hello-world")
+	if len(got) != 1 || got[0].Content != "v2" || len(other) != 1 {
+		t.Fatalf("after redeploy: %+v %v", got, other)
+	}
+	fns, _ := ListFunctions(stack)
+	if len(fns) != 1 || fns[0].Name != "hello-world" || fns[0].Files != 2 {
+		t.Fatalf("list: %+v", fns)
+	}
+	// Nothing left over from the swap.
+	entries, _ := os.ReadDir(filepath.Join(stack, "volumes/functions"))
+	if len(entries) != 1 {
+		t.Errorf("functions folder: %v", entries)
+	}
+
+	for _, bad := range []struct {
+		name  string
+		files []FunctionFile
+		keep  []string
+	}{
+		{"main", files, nil},
+		{"-x", files, nil},
+		{"ok", []FunctionFile{{"lib.ts", ""}}, nil},                     // no entrypoint
+		{"ok", []FunctionFile{{"index.ts", ""}, {"../x.ts", ""}}, nil},  // escapes
+		{"ok", []FunctionFile{{"index.ts", ""}, {"/etc/x", ""}}, nil},   // absolute
+		{"ok", []FunctionFile{{"index.ts", ""}, {".env", ""}}, nil},     // dot file
+		{"ok", []FunctionFile{{"index.ts", ""}, {"index.ts", ""}}, nil}, // twice
+		{"hello-world", []FunctionFile{{"index.ts", ""}}, []string{"nope.png"}},
+		{"ok", []FunctionFile{{"index.ts", strings.Repeat("x", MaxFunctionFileSize+1)}}, nil},
+	} {
+		if err := WriteFunction(stack, bad.name, bad.files, bad.keep); err == nil {
+			t.Errorf("accepted %s %v keep %v", bad.name, bad.files, bad.keep)
+		}
+	}
+
+	// Files the editor can't show are kept even when their paths break the
+	// editable-path rule; paths that leave the folder never are.
+	fnDir := filepath.Join(stack, "volumes/functions/hello-world")
+	for _, f := range []string{".npmrc", "odd (1)~.txt"} {
+		if err := os.WriteFile(filepath.Join(fnDir, f), []byte("x"), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	outside := t.TempDir()
+	if err := os.WriteFile(filepath.Join(outside, "passwd"), []byte("root:x:0:0"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(outside, filepath.Join(fnDir, "cfg")); err != nil {
+		t.Fatal(err)
+	}
+	_, _, other, _ = ReadFunction(stack, "hello-world")
+	if strings.Join(other, ",") != ".npmrc,cfg,logo.png,odd (1)~.txt" {
+		t.Fatalf("other files = %q", other)
+	}
+	if err := WriteFunction(stack, "hello-world", []FunctionFile{{"index.ts", "v3"}}, other); err != nil {
+		t.Fatalf("keeping the other files: %v", err)
+	}
+	if target, err := os.Readlink(filepath.Join(fnDir, "cfg")); err != nil || target != outside {
+		t.Errorf("the kept link = %q, %v", target, err)
+	}
+	for _, escape := range []string{"cfg/passwd", "../hello-world/index.ts", "/etc/passwd"} {
+		if err := WriteFunction(stack, "hello-world", []FunctionFile{{"index.ts", "v4"}}, []string{escape}); err == nil {
+			t.Errorf("kept %s, from outside the function", escape)
+		}
+	}
+	if err := WriteFunction(stack, "secrets", files, nil); err == nil {
+		t.Error("accepted a function named secrets")
+	}
+
+	if err := DeleteFunction(stack, "hello-world"); err != nil {
+		t.Fatal(err)
+	}
+	if err := DeleteFunction(stack, "hello-world"); !errors.Is(err, ErrNoFunction) {
+		t.Errorf("deleting twice: %v", err)
+	}
+}
+
+var trickySecrets = map[string]string{
+	"PLAIN":  "abc123",
+	"DOLLAR": "pa$$word ${HOME} $HOME",
+	"QUOTES": `say "hi" and 'bye'`,
+	"SLASH":  `C:\path\n not a newline`,
+	"MULTI":  "-----BEGIN KEY-----\nline2\r\n\tindented\n-----END KEY-----",
+	"HASH":   "#not a comment = still value",
+	"EMPTY":  "",
+	"UNI":    "héllo ✓",
+}
+
+func TestFunctionSecretsRoundTrip(t *testing.T) {
+	stack := t.TempDir()
+	if err := WriteFunctionSecrets(stack, trickySecrets); err != nil {
+		t.Fatal(err)
+	}
+	got, err := ReadFunctionSecrets(stack)
+	if err != nil || !maps.Equal(got, trickySecrets) {
+		t.Fatalf("round trip: %q %v", got, err)
+	}
+	if fi, _ := os.Stat(filepath.Join(stack, functionSecretsFile)); fi.Mode().Perm() != 0o600 {
+		t.Errorf("mode %v", fi.Mode())
+	}
+	for v, ok := range map[string]bool{"plain": true, "tab\tand\nlines\r\n": true, "nul\x00": false, "bell\a": false, "del\x7f": false, "\xff\xfe": false} {
+		if (ValidSecretValue("K", v) == nil) != ok {
+			t.Errorf("%q: want valid=%v", v, ok)
+		}
+	}
+	// Edited by hand: read, not refused.
+	hand := "# by hand\r\nA=plain value # comment\r\nexport B='single $x'\nC=pa$$word\nnot a setting\nD=\"quoted\\nline\"\n"
+	if err := os.WriteFile(filepath.Join(stack, functionSecretsFile), []byte(hand), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	got, err = ReadFunctionSecrets(stack)
+	want := map[string]string{"A": "plain value", "B": "single $x", "C": "pa$word", "D": "quoted\nline"}
+	if err != nil || !maps.Equal(got, want) {
+		t.Errorf("hand-edited file = %q, %v", got, err)
+	}
+	for name, ok := range map[string]bool{"API_KEY": true, "_x": true, "SUPABASE_URL": false, "sb_x": false, "JWT_SECRET": false, "1X": false, "A-B": false} {
+		if (ValidSecretName(name) == nil) != ok {
+			t.Errorf("%s: want valid=%v", name, ok)
+		}
+	}
+}
+
+// Compose itself reads the values back unchanged (needs the docker CLI).
+func TestFunctionSecretsAsComposeReadsThem(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("no docker CLI")
+	}
+	dir := t.TempDir()
+	if err := WriteFunctionSecrets(dir, trickySecrets); err != nil {
+		t.Fatal(err)
+	}
+	compose := "services:\n  t:\n    image: alpine\n    env_file:\n      - ./functions.env\n"
+	if err := os.WriteFile(filepath.Join(dir, "compose.yml"), []byte(compose), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("docker", "compose", "config", "--format", "json")
+	cmd.Dir = dir
+	out, err := cmd.Output()
+	if err != nil {
+		t.Skipf("docker compose config: %v", err)
+	}
+	var cfg struct {
+		Services map[string]struct {
+			Environment map[string]*string `json:"environment"`
+		} `json:"services"`
+	}
+	if err := json.Unmarshal(out, &cfg); err != nil {
+		t.Fatal(err)
+	}
+	for k, want := range trickySecrets {
+		got := cfg.Services["t"].Environment[k]
+		// config's output escapes $ as $$ again; the container gets single ones.
+		if got == nil || strings.ReplaceAll(*got, "$$", "$") != want {
+			t.Errorf("%s: compose read %q, want %q", k, deref(got), want)
+		}
+	}
+}
+
+func deref(s *string) string {
+	if s == nil {
+		return "<nil>"
+	}
+	return *s
+}
+
+func TestFunctionsDontGetTheJWTSecret(t *testing.T) {
+	router, _ := fs.ReadFile(templateFS, "template/volumes/functions/main/index.ts")
+	out, err := hideJWTSecret(string(router))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(out, workerEnvLine) || !strings.Contains(out, "const { JWT_SECRET: _routerOnly, ...workerEnv } = Deno.env.toObject()") {
+		t.Errorf("router not patched")
+	}
+	// The router itself still reads it.
+	if !strings.Contains(out, "const JWT_SECRET = Deno.env.get('JWT_SECRET')") {
+		t.Error("the router no longer reads JWT_SECRET")
+	}
+	if _, err := hideJWTSecret("Deno.serve(() => {})"); err == nil {
+		t.Error("patched a router it doesn't recognise")
+	}
+}
+
+func TestWrittenStacksHaveFunctionSecretsFile(t *testing.T) {
+	dir := filepath.Join(t.TempDir(), "s")
+	if err := WriteStack(Layout{Dir: dir, Project: "supermixer-x"}, map[string]string{}); err != nil {
+		t.Fatal(err)
+	}
+	if fi, err := os.Stat(filepath.Join(dir, functionSecretsFile)); err != nil || fi.Mode().Perm() != 0o600 {
+		t.Errorf("functions.env: %v %v", fi, err)
+	}
+	router, _ := os.ReadFile(filepath.Join(dir, "volumes/functions/main/index.ts"))
+	if !strings.Contains(string(router), "...workerEnv") {
+		t.Error("the written router still gives functions JWT_SECRET")
+	}
+	// The plain env_file form works on every Compose v2.
+	if strings.Contains(overlay, "required:") || !strings.Contains(overlay, "      - ./functions.env\n") {
+		t.Errorf("overlay env_file:\n%s", overlay)
 	}
 }

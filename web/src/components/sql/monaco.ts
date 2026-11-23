@@ -1,6 +1,7 @@
 /*
  * Monaco, bundled locally (no CDN): the core editor, its standard features,
- * the PostgreSQL and GraphQL grammars, and one web worker. Themes are built from the
+ * the PostgreSQL, GraphQL, TypeScript, JavaScript and Markdown grammars
+ * (highlighting only; no language services), and one web worker. Themes are built from the
  * page's design tokens so the editor follows light/dark and the brand colour.
  */
 import { loader } from '@monaco-editor/react'
@@ -8,6 +9,9 @@ import * as monaco from 'monaco-editor/editor/editor.api'
 import 'monaco-editor/features/register.all'
 import 'monaco-editor/languages/definitions/pgsql/register'
 import 'monaco-editor/languages/definitions/graphql/register'
+import 'monaco-editor/languages/definitions/typescript/register'
+import 'monaco-editor/languages/definitions/javascript/register'
+import 'monaco-editor/languages/definitions/markdown/register'
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
 
 self.MonacoEnvironment = { getWorker: () => new EditorWorker() }

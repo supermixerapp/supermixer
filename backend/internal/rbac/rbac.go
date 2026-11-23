@@ -60,6 +60,10 @@ const (
 	ProjectSecretsRead Permission = "project:secrets:read"
 	ProjectDataRead    Permission = "project:data:read"
 	ProjectDataWrite   Permission = "project:data:write"
+	// ProjectFunctionsDeploy deploys Edge Functions and changes their
+	// secrets. Function code can read the stack's keys and database password,
+	// so only roles that may see secrets get it.
+	ProjectFunctionsDeploy Permission = "project:functions:deploy"
 )
 
 var orgMatrix = map[Role][]Permission{
@@ -75,9 +79,9 @@ var orgMatrix = map[Role][]Permission{
 }
 
 var projectMatrix = map[Role][]Permission{
-	Owner:         {ProjectRead, ProjectUpdate, ProjectDelete, ProjectSecretsRead, ProjectDataRead, ProjectDataWrite},
-	Administrator: {ProjectRead, ProjectUpdate, ProjectDelete, ProjectSecretsRead, ProjectDataRead, ProjectDataWrite},
-	Developer:     {ProjectRead, ProjectSecretsRead, ProjectDataRead, ProjectDataWrite},
+	Owner:         {ProjectRead, ProjectUpdate, ProjectDelete, ProjectSecretsRead, ProjectDataRead, ProjectDataWrite, ProjectFunctionsDeploy},
+	Administrator: {ProjectRead, ProjectUpdate, ProjectDelete, ProjectSecretsRead, ProjectDataRead, ProjectDataWrite, ProjectFunctionsDeploy},
+	Developer:     {ProjectRead, ProjectSecretsRead, ProjectDataRead, ProjectDataWrite, ProjectFunctionsDeploy},
 	ReadOnly:      {ProjectRead, ProjectDataRead},
 	NoAccess:      {},
 }

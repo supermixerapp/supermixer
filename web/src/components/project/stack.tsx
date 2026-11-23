@@ -34,6 +34,7 @@ const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
   stopping: 'Stopping…',
   restarting: 'Restarting…',
   deleting: 'Deleting…',
+  updating: 'Updating functions…',
 }
 
 const STATUS: Record<
@@ -53,9 +54,10 @@ export function StackBadge({ stack }: { stack: Pick<Stack, 'status' | 'operation
   return <Badge variant={s.variant}>{s.label}</Badge>
 }
 
-/** Whether a project's health checks mean anything right now. */
-export const stackUp = (stack: Stack | null | undefined) =>
-  !stack || (stack.status === 'running' && !stack.operation)
+/** Whether a project's health checks mean anything right now. Updating
+ * functions only restarts the functions service. */
+export const stackUp = (stack: Pick<Stack, 'status' | 'operation'> | null | undefined) =>
+  !stack || (stack.status === 'running' && (!stack.operation || stack.operation === 'updating'))
 
 /** A stack's project was deleted: refresh the lists that still show it. */
 export function useStackGone(error: Error | null) {
@@ -130,7 +132,7 @@ export function StackProgress({ project }: { project: Schemas['Project'] }) {
   useStackSync(project.ref, stack.data)
   const act = useStackAction(project.ref)
   const s = stack.data
-  if (!project.stack || !s || (s.status === 'running' && !s.operation)) return null
+  if (!project.stack || !s || stackUp(s)) return null
   const allowed = can(project, 'project:update')
   const title =
     s.status === 'provisioning'

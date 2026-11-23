@@ -615,6 +615,143 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/StackDetail" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/functions:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listEdgeFunctions
+      tags: [Edge Functions]
+      summary: The Edge Functions of a stack Supermixer created
+      responses:
+        "200":
+          description: Functions, by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/EdgeFunction" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/functions/{name}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getEdgeFunction
+      tags: [Edge Functions]
+      summary: A function and its files
+      responses:
+        "200":
+          description: The function.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EdgeFunctionDetail" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: deployEdgeFunction
+      tags: [Edge Functions]
+      summary: Create or replace a function, then restart the functions service
+      description: |
+        The function's folder is replaced by these files, plus the existing
+        files listed in keep (ones that can't be edited as text). If the
+        stack is running, its functions service is recreated so the change
+        takes effect; otherwise it does when the stack next starts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [files]
+              properties:
+                files:
+                  type: array
+                  items: { $ref: "#/components/schemas/EdgeFunctionFile" }
+                keep:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Deployed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteEdgeFunction
+      tags: [Edge Functions]
+      summary: Delete a function
+      responses:
+        "200":
+          description: Deleted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/function-secrets:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listFunctionSecrets
+      tags: [Edge Functions]
+      summary: The names of a stack's Edge Function secrets, with digests of their values
+      responses:
+        "200":
+          description: Secrets, by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FunctionSecret" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setFunctionSecrets
+      tags: [Edge Functions]
+      summary: Add or change secrets, then restart the functions service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [secrets]
+              properties:
+                secrets:
+                  type: array
+                  items:
+                    type: object
+                    required: [name, value]
+                    properties:
+                      name: { type: string }
+                      value: { type: string }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FunctionSecretsChange" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteFunctionSecrets
+      tags: [Edge Functions]
+      summary: Remove secrets, then restart the functions service
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [names]
+              properties:
+                names:
+                  type: array
+                  items: { type: string }
+      responses:
+        "200":
+          description: Removed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FunctionSecretsChange" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/studio-login:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1027,9 +1164,57 @@ components:
         template: { type: string, description: The supabase/supabase commit the stack was made from. }
         operation:
           type: string
-          enum: [starting, stopping, restarting, deleting]
+          enum: [starting, stopping, restarting, deleting, updating]
           nullable: true
           description: What Supermixer is doing to the stack right now.
+    EdgeFunction:
+      type: object
+      required: [name, url, updated_at, files, size, entrypoint]
+      properties:
+        name: { type: string }
+        url: { type: string, description: Where it's invoked, through the stack's API gateway. }
+        updated_at: { type: string, format: date-time }
+        files: { type: integer }
+        size: { type: integer, description: Bytes, all files together. }
+        entrypoint: { type: string, nullable: true, description: The file it starts from; null if it has none. }
+    EdgeFunctionFile:
+      type: object
+      required: [path, content]
+      properties:
+        path: { type: string, description: "Relative, with /: index.ts, lib/db.ts" }
+        content: { type: string }
+    EdgeFunctionDetail:
+      type: object
+      required: [function, files, other_files]
+      properties:
+        function: { $ref: "#/components/schemas/EdgeFunction" }
+        files:
+          type: array
+          items: { $ref: "#/components/schemas/EdgeFunctionFile" }
+        other_files:
+          type: array
+          items: { type: string }
+          description: Files that can't be edited as text (binary, over 1 MiB, links). Pass them as keep to deploy without removing them.
+    EdgeFunctionChange:
+      type: object
+      required: [restarted]
+      properties:
+        function: { $ref: "#/components/schemas/EdgeFunction" }
+        restarted: { type: boolean, description: Whether the functions service was recreated; false while the stack isn't running. }
+    FunctionSecret:
+      type: object
+      required: [name, digest]
+      properties:
+        name: { type: string }
+        digest: { type: string, description: The value's SHA-256, in hex. }
+    FunctionSecretsChange:
+      type: object
+      required: [secrets, restarted]
+      properties:
+        secrets:
+          type: array
+          items: { $ref: "#/components/schemas/FunctionSecret" }
+        restarted: { type: boolean }
     StackDetail:
       allOf:
         - { $ref: "#/components/schemas/Stack" }

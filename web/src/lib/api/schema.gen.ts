@@ -552,6 +552,74 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/functions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** The Edge Functions of a stack Supermixer created */
+        get: operations["listEdgeFunctions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/functions/{name}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+            };
+            cookie?: never;
+        };
+        /** A function and its files */
+        get: operations["getEdgeFunction"];
+        /**
+         * Create or replace a function, then restart the functions service
+         * @description The function's folder is replaced by these files, plus the existing
+         *     files listed in keep (ones that can't be edited as text). If the
+         *     stack is running, its functions service is recreated so the change
+         *     takes effect; otherwise it does when the stack next starts.
+         */
+        put: operations["deployEdgeFunction"];
+        post?: never;
+        /** Delete a function */
+        delete: operations["deleteEdgeFunction"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/function-secrets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** The names of a stack's Edge Function secrets, with digests of their values */
+        get: operations["listFunctionSecrets"];
+        /** Add or change secrets, then restart the functions service */
+        put: operations["setFunctionSecrets"];
+        post?: never;
+        /** Remove secrets, then restart the functions service */
+        delete: operations["deleteFunctionSecrets"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/studio-login": {
         parameters: {
             query?: never;
@@ -891,7 +959,44 @@ export interface components {
              * @description What Supermixer is doing to the stack right now.
              * @enum {string|null}
              */
-            operation?: "starting" | "stopping" | "restarting" | "deleting" | null;
+            operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | null;
+        };
+        EdgeFunction: {
+            name: string;
+            /** @description Where it's invoked */
+            url: string;
+            /** Format: date-time */
+            updated_at: string;
+            files: number;
+            /** @description Bytes */
+            size: number;
+            /** @description The file it starts from; null if it has none. */
+            entrypoint: string | null;
+        };
+        EdgeFunctionFile: {
+            /** @description Relative, with /: index.ts, lib/db.ts */
+            path: string;
+            content: string;
+        };
+        EdgeFunctionDetail: {
+            function: components["schemas"]["EdgeFunction"];
+            files: components["schemas"]["EdgeFunctionFile"][];
+            /** @description Files that can't be edited as text (binary, over 1 MiB, links). Pass them as keep to deploy without removing them. */
+            other_files: string[];
+        };
+        EdgeFunctionChange: {
+            function?: components["schemas"]["EdgeFunction"];
+            /** @description Whether the functions service was recreated; false while the stack isn't running. */
+            restarted: boolean;
+        };
+        FunctionSecret: {
+            name: string;
+            /** @description The value's SHA-256 */
+            digest: string;
+        };
+        FunctionSecretsChange: {
+            secrets: components["schemas"]["FunctionSecret"][];
+            restarted: boolean;
         };
         StackDetail: components["schemas"]["Stack"] & {
             ports: {
@@ -2220,6 +2325,192 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listEdgeFunctions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Functions, by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeFunction"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getEdgeFunction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The function. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeFunctionDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deployEdgeFunction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    files: components["schemas"]["EdgeFunctionFile"][];
+                    keep?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Deployed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteEdgeFunction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listFunctionSecrets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Secrets, by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionSecret"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setFunctionSecrets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    secrets: {
+                        name: string;
+                        value: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionSecretsChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteFunctionSecrets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    names: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Removed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionSecretsChange"];
                 };
             };
             default: components["responses"]["Error"];

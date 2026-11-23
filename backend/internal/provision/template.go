@@ -41,6 +41,8 @@ const overlayName = "supermixer.yml"
 //   - Storage's file backend needs extended attributes, which some bind mounts
 //     (Docker Desktop's) don't support.
 //
+// It also gives the functions service the stack's Edge Function secrets.
+//
 // Compose merges a service's volumes by their path in the container, so these
 // replace the bind mounts of the same paths.
 const overlay = `# Written by Supermixer: data the containers write lives on named volumes.
@@ -51,6 +53,9 @@ services:
   studio:
     volumes:
       - studio-snippets:/app/snippets
+  functions:
+    env_file:
+      - ./functions.env
   storage:
     volumes:
       - storage-files:/var/lib/storage
@@ -118,6 +123,12 @@ func WriteStack(l Layout, env map[string]string) error {
 			b = []byte(scopedCompose)
 		case "docker-compose.logs.yml":
 			b = []byte(scopedLogs)
+		case "volumes/functions/main/index.ts":
+			m, err := hideJWTSecret(string(b))
+			if err != nil {
+				return err
+			}
+			b = []byte(m)
 		case "volumes/logs/vector.yml":
 			v, err := scopeVector(string(b), l.Project, names)
 			if err != nil {
@@ -137,7 +148,7 @@ func WriteStack(l Layout, env map[string]string) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(filepath.Join(l.Dir, overlayName), []byte(overlay), 0o644); err != nil {
+	if err := RefreshOverlay(l.Dir); err != nil {
 		return err
 	}
 	example, err := fs.ReadFile(templateFS, "template/.env.example")
@@ -223,4 +234,21 @@ func StackImage(dir string) (string, error) {
 		return "", fmt.Errorf("no db image in %s", filepath.Join(dir, "docker-compose.yml"))
 	}
 	return string(m[1]), nil
+}
+
+// The edge runtime's router hands every function its own environment. Only
+// the router needs JWT_SECRET (to check tokens); a function with it could
+// sign a token for anyone, so it's left out.
+const (
+	workerEnvLine   = "const envVarsObj = { ...Deno.env.toObject(), SUPABASE_FUNCTION_SLUG: service_name }"
+	workerEnvHidden = "// Supermixer: functions don't get JWT_SECRET; only this router uses it.\n" +
+		"  const { JWT_SECRET: _routerOnly, ...workerEnv } = Deno.env.toObject()\n" +
+		"  const envVarsObj = { ...workerEnv, SUPABASE_FUNCTION_SLUG: service_name }"
+)
+
+func hideJWTSecret(router string) (string, error) {
+	if strings.Count(router, workerEnvLine) != 1 {
+		return "", fmt.Errorf("volumes/functions/main/index.ts: can't find where functions get their environment; update hideJWTSecret for this template")
+	}
+	return strings.Replace(router, workerEnvLine, workerEnvHidden, 1), nil
 }

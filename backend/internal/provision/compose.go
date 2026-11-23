@@ -246,6 +246,12 @@ func nopWriter(w io.Writer) io.Writer {
 	return w
 }
 
+// Recreate recreates one service (picking up new files or settings) and
+// waits for it to be healthy. Other services keep running.
+func (c Compose) Recreate(ctx context.Context, log io.Writer, service string) error {
+	return c.Run(ctx, log, "up", "--detach", "--wait", "--no-deps", "--force-recreate", service)
+}
+
 // RemoveStackDir deletes a stack's folder. Anything in it a container's user
 // owns (Linux bind mounts) is removed from inside a container first, using
 // the stack's own Postgres image so nothing is downloaded.

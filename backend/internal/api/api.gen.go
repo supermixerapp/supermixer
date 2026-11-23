@@ -364,6 +364,7 @@ const (
 	StackOperationRestarting StackOperation = "restarting"
 	StackOperationStarting   StackOperation = "starting"
 	StackOperationStopping   StackOperation = "stopping"
+	StackOperationUpdating   StackOperation = "updating"
 )
 
 // Valid indicates whether the value is a known member of the StackOperation enum.
@@ -377,6 +378,8 @@ func (e StackOperation) Valid() bool {
 		return true
 	case StackOperationStopping:
 		return true
+	case StackOperationUpdating:
+		return true
 	default:
 		return false
 	}
@@ -388,6 +391,7 @@ const (
 	StackDetailOperationRestarting StackDetailOperation = "restarting"
 	StackDetailOperationStarting   StackDetailOperation = "starting"
 	StackDetailOperationStopping   StackDetailOperation = "stopping"
+	StackDetailOperationUpdating   StackDetailOperation = "updating"
 )
 
 // Valid indicates whether the value is a known member of the StackDetailOperation enum.
@@ -400,6 +404,8 @@ func (e StackDetailOperation) Valid() bool {
 	case StackDetailOperationStarting:
 		return true
 	case StackDetailOperationStopping:
+		return true
+	case StackDetailOperationUpdating:
 		return true
 	default:
 		return false
@@ -541,9 +547,62 @@ type DatabaseConnection struct {
 // DatabaseConnectionSslmode defines model for DatabaseConnection.Sslmode.
 type DatabaseConnectionSslmode string
 
+// EdgeFunction defines model for EdgeFunction.
+type EdgeFunction struct {
+	// Entrypoint The file it starts from; null if it has none.
+	Entrypoint *string `json:"entrypoint"`
+	Files      int     `json:"files"`
+	Name       string  `json:"name"`
+
+	// Size Bytes
+	Size      int       `json:"size"`
+	UpdatedAt time.Time `json:"updated_at"`
+
+	// Url Where it's invoked
+	Url string `json:"url"`
+}
+
+// EdgeFunctionChange defines model for EdgeFunctionChange.
+type EdgeFunctionChange struct {
+	Function *EdgeFunction `json:"function,omitempty"`
+
+	// Restarted Whether the functions service was recreated; false while the stack isn't running.
+	Restarted bool `json:"restarted"`
+}
+
+// EdgeFunctionDetail defines model for EdgeFunctionDetail.
+type EdgeFunctionDetail struct {
+	Files    []EdgeFunctionFile `json:"files"`
+	Function EdgeFunction       `json:"function"`
+
+	// OtherFiles Files that can't be edited as text (binary, over 1 MiB, links). Pass them as keep to deploy without removing them.
+	OtherFiles []string `json:"other_files"`
+}
+
+// EdgeFunctionFile defines model for EdgeFunctionFile.
+type EdgeFunctionFile struct {
+	Content string `json:"content"`
+
+	// Path Relative, with /: index.ts, lib/db.ts
+	Path string `json:"path"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Message string `json:"message"`
+}
+
+// FunctionSecret defines model for FunctionSecret.
+type FunctionSecret struct {
+	// Digest The value's SHA-256
+	Digest string `json:"digest"`
+	Name   string `json:"name"`
+}
+
+// FunctionSecretsChange defines model for FunctionSecretsChange.
+type FunctionSecretsChange struct {
+	Restarted bool             `json:"restarted"`
+	Secrets   []FunctionSecret `json:"secrets"`
 }
 
 // Health defines model for Health.
@@ -1137,6 +1196,25 @@ type ListApiKeysParams struct {
 	Reveal *bool `form:"reveal,omitempty" json:"reveal,omitempty"`
 }
 
+// DeleteFunctionSecretsJSONBody defines body for DeleteFunctionSecrets for application/json ContentType.
+type DeleteFunctionSecretsJSONBody struct {
+	Names []string `json:"names"`
+}
+
+// SetFunctionSecretsJSONBody defines body for SetFunctionSecrets for application/json ContentType.
+type SetFunctionSecretsJSONBody struct {
+	Secrets []struct {
+		Name  string `json:"name"`
+		Value string `json:"value"`
+	} `json:"secrets"`
+}
+
+// DeployEdgeFunctionJSONBody defines body for DeployEdgeFunction for application/json ContentType.
+type DeployEdgeFunctionJSONBody struct {
+	Files []EdgeFunctionFile `json:"files"`
+	Keep  *[]string          `json:"keep,omitempty"`
+}
+
 // ListLogsParams defines parameters for ListLogs.
 type ListLogsParams struct {
 	Source LogSource `form:"source" json:"source"`
@@ -1202,6 +1280,15 @@ type ChangePasswordJSONRequestBody = PasswordChange
 
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = ProjectUpdate
+
+// DeleteFunctionSecretsJSONRequestBody defines body for DeleteFunctionSecrets for application/json ContentType.
+type DeleteFunctionSecretsJSONRequestBody DeleteFunctionSecretsJSONBody
+
+// SetFunctionSecretsJSONRequestBody defines body for SetFunctionSecrets for application/json ContentType.
+type SetFunctionSecretsJSONRequestBody SetFunctionSecretsJSONBody
+
+// DeployEdgeFunctionJSONRequestBody defines body for DeployEdgeFunction for application/json ContentType.
+type DeployEdgeFunctionJSONRequestBody DeployEdgeFunctionJSONBody
 
 // RunQueryJSONRequestBody defines body for RunQuery for application/json ContentType.
 type RunQueryJSONRequestBody = QueryRequest
@@ -1328,6 +1415,27 @@ type ServerInterface interface {
 	// ListApiKeys The project's API keys. Secret values only with reveal=true.
 	// (GET /projects/{ref}/api-keys)
 	ListApiKeys(w http.ResponseWriter, r *http.Request, ref Ref, params ListApiKeysParams)
+	// DeleteFunctionSecrets Remove secrets, then restart the functions service
+	// (DELETE /projects/{ref}/function-secrets)
+	DeleteFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref)
+	// ListFunctionSecrets The names of a stack's Edge Function secrets, with digests of their values
+	// (GET /projects/{ref}/function-secrets)
+	ListFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref)
+	// SetFunctionSecrets Add or change secrets, then restart the functions service
+	// (PUT /projects/{ref}/function-secrets)
+	SetFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref)
+	// ListEdgeFunctions The Edge Functions of a stack Supermixer created
+	// (GET /projects/{ref}/functions)
+	ListEdgeFunctions(w http.ResponseWriter, r *http.Request, ref Ref)
+	// DeleteEdgeFunction Delete a function
+	// (DELETE /projects/{ref}/functions/{name})
+	DeleteEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string)
+	// GetEdgeFunction A function and its files
+	// (GET /projects/{ref}/functions/{name})
+	GetEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string)
+	// DeployEdgeFunction Create or replace a function, then restart the functions service
+	// (PUT /projects/{ref}/functions/{name})
+	DeployEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string)
 
 	// (GET /projects/{ref}/health)
 	GetProjectHealth(w http.ResponseWriter, r *http.Request, ref Ref)
@@ -1586,6 +1694,48 @@ func (_ Unimplemented) ListLints(w http.ResponseWriter, r *http.Request, ref Ref
 // ListApiKeys The project's API keys. Secret values only with reveal=true.
 // (GET /projects/{ref}/api-keys)
 func (_ Unimplemented) ListApiKeys(w http.ResponseWriter, r *http.Request, ref Ref, params ListApiKeysParams) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteFunctionSecrets Remove secrets, then restart the functions service
+// (DELETE /projects/{ref}/function-secrets)
+func (_ Unimplemented) DeleteFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListFunctionSecrets The names of a stack's Edge Function secrets, with digests of their values
+// (GET /projects/{ref}/function-secrets)
+func (_ Unimplemented) ListFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// SetFunctionSecrets Add or change secrets, then restart the functions service
+// (PUT /projects/{ref}/function-secrets)
+func (_ Unimplemented) SetFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListEdgeFunctions The Edge Functions of a stack Supermixer created
+// (GET /projects/{ref}/functions)
+func (_ Unimplemented) ListEdgeFunctions(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteEdgeFunction Delete a function
+// (DELETE /projects/{ref}/functions/{name})
+func (_ Unimplemented) DeleteEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetEdgeFunction A function and its files
+// (GET /projects/{ref}/functions/{name})
+func (_ Unimplemented) GetEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeployEdgeFunction Create or replace a function, then restart the functions service
+// (PUT /projects/{ref}/functions/{name})
+func (_ Unimplemented) DeployEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -2625,6 +2775,215 @@ func (siw *ServerInterfaceWrapper) ListApiKeys(w http.ResponseWriter, r *http.Re
 	handler.ServeHTTP(w, r)
 }
 
+// DeleteFunctionSecrets operation middleware
+func (siw *ServerInterfaceWrapper) DeleteFunctionSecrets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteFunctionSecrets(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListFunctionSecrets operation middleware
+func (siw *ServerInterfaceWrapper) ListFunctionSecrets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListFunctionSecrets(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// SetFunctionSecrets operation middleware
+func (siw *ServerInterfaceWrapper) SetFunctionSecrets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.SetFunctionSecrets(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListEdgeFunctions operation middleware
+func (siw *ServerInterfaceWrapper) ListEdgeFunctions(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListEdgeFunctions(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteEdgeFunction operation middleware
+func (siw *ServerInterfaceWrapper) DeleteEdgeFunction(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteEdgeFunction(w, r, ref, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetEdgeFunction operation middleware
+func (siw *ServerInterfaceWrapper) GetEdgeFunction(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetEdgeFunction(w, r, ref, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeployEdgeFunction operation middleware
+func (siw *ServerInterfaceWrapper) DeployEdgeFunction(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", chi.URLParam(r, "name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "name", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeployEdgeFunction(w, r, ref, name)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // GetProjectHealth operation middleware
 func (siw *ServerInterfaceWrapper) GetProjectHealth(w http.ResponseWriter, r *http.Request) {
 
@@ -3392,6 +3751,27 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/projects/{ref}/stack/{action}", wrapper.StackAction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/functions", wrapper.ListEdgeFunctions)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/projects/{ref}/functions/{name}", wrapper.DeleteEdgeFunction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/functions/{name}", wrapper.GetEdgeFunction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/projects/{ref}/functions/{name}", wrapper.DeployEdgeFunction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/projects/{ref}/function-secrets", wrapper.DeleteFunctionSecrets)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/function-secrets", wrapper.ListFunctionSecrets)
+	})
+	r.Group(func(r chi.Router) {
+		r.Put(options.BaseURL+"/projects/{ref}/function-secrets", wrapper.SetFunctionSecrets)
 	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/projects/{ref}/studio-login", wrapper.RevealStudioLogin)
@@ -4903,6 +5283,285 @@ func (response ListApiKeysdefaultJSONResponse) VisitListApiKeysResponse(w http.R
 	return err
 }
 
+type DeleteFunctionSecretsRequestObject struct {
+	Ref  Ref `json:"ref"`
+	Body *DeleteFunctionSecretsJSONRequestBody
+}
+
+type DeleteFunctionSecretsResponseObject interface {
+	VisitDeleteFunctionSecretsResponse(w http.ResponseWriter) error
+}
+
+type DeleteFunctionSecrets200JSONResponse FunctionSecretsChange
+
+func (response DeleteFunctionSecrets200JSONResponse) VisitDeleteFunctionSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteFunctionSecretsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteFunctionSecretsdefaultJSONResponse) VisitDeleteFunctionSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFunctionSecretsRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type ListFunctionSecretsResponseObject interface {
+	VisitListFunctionSecretsResponse(w http.ResponseWriter) error
+}
+
+type ListFunctionSecrets200JSONResponse []FunctionSecret
+
+func (response ListFunctionSecrets200JSONResponse) VisitListFunctionSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListFunctionSecretsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListFunctionSecretsdefaultJSONResponse) VisitListFunctionSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetFunctionSecretsRequestObject struct {
+	Ref  Ref `json:"ref"`
+	Body *SetFunctionSecretsJSONRequestBody
+}
+
+type SetFunctionSecretsResponseObject interface {
+	VisitSetFunctionSecretsResponse(w http.ResponseWriter) error
+}
+
+type SetFunctionSecrets200JSONResponse FunctionSecretsChange
+
+func (response SetFunctionSecrets200JSONResponse) VisitSetFunctionSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type SetFunctionSecretsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response SetFunctionSecretsdefaultJSONResponse) VisitSetFunctionSecretsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEdgeFunctionsRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type ListEdgeFunctionsResponseObject interface {
+	VisitListEdgeFunctionsResponse(w http.ResponseWriter) error
+}
+
+type ListEdgeFunctions200JSONResponse []EdgeFunction
+
+func (response ListEdgeFunctions200JSONResponse) VisitListEdgeFunctionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListEdgeFunctionsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListEdgeFunctionsdefaultJSONResponse) VisitListEdgeFunctionsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEdgeFunctionRequestObject struct {
+	Ref  Ref    `json:"ref"`
+	Name string `json:"name"`
+}
+
+type DeleteEdgeFunctionResponseObject interface {
+	VisitDeleteEdgeFunctionResponse(w http.ResponseWriter) error
+}
+
+type DeleteEdgeFunction200JSONResponse EdgeFunctionChange
+
+func (response DeleteEdgeFunction200JSONResponse) VisitDeleteEdgeFunctionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteEdgeFunctiondefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteEdgeFunctiondefaultJSONResponse) VisitDeleteEdgeFunctionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEdgeFunctionRequestObject struct {
+	Ref  Ref    `json:"ref"`
+	Name string `json:"name"`
+}
+
+type GetEdgeFunctionResponseObject interface {
+	VisitGetEdgeFunctionResponse(w http.ResponseWriter) error
+}
+
+type GetEdgeFunction200JSONResponse EdgeFunctionDetail
+
+func (response GetEdgeFunction200JSONResponse) VisitGetEdgeFunctionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetEdgeFunctiondefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetEdgeFunctiondefaultJSONResponse) VisitGetEdgeFunctionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeployEdgeFunctionRequestObject struct {
+	Ref  Ref    `json:"ref"`
+	Name string `json:"name"`
+	Body *DeployEdgeFunctionJSONRequestBody
+}
+
+type DeployEdgeFunctionResponseObject interface {
+	VisitDeployEdgeFunctionResponse(w http.ResponseWriter) error
+}
+
+type DeployEdgeFunction200JSONResponse EdgeFunctionChange
+
+func (response DeployEdgeFunction200JSONResponse) VisitDeployEdgeFunctionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeployEdgeFunctiondefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeployEdgeFunctiondefaultJSONResponse) VisitDeployEdgeFunctionResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type GetProjectHealthRequestObject struct {
 	Ref Ref `json:"ref"`
 }
@@ -5660,6 +6319,27 @@ type StrictServerInterface interface {
 	// ListApiKeys The project's API keys. Secret values only with reveal=true.
 	// (GET /projects/{ref}/api-keys)
 	ListApiKeys(ctx context.Context, request ListApiKeysRequestObject) (ListApiKeysResponseObject, error)
+	// DeleteFunctionSecrets Remove secrets, then restart the functions service
+	// (DELETE /projects/{ref}/function-secrets)
+	DeleteFunctionSecrets(ctx context.Context, request DeleteFunctionSecretsRequestObject) (DeleteFunctionSecretsResponseObject, error)
+	// ListFunctionSecrets The names of a stack's Edge Function secrets, with digests of their values
+	// (GET /projects/{ref}/function-secrets)
+	ListFunctionSecrets(ctx context.Context, request ListFunctionSecretsRequestObject) (ListFunctionSecretsResponseObject, error)
+	// SetFunctionSecrets Add or change secrets, then restart the functions service
+	// (PUT /projects/{ref}/function-secrets)
+	SetFunctionSecrets(ctx context.Context, request SetFunctionSecretsRequestObject) (SetFunctionSecretsResponseObject, error)
+	// ListEdgeFunctions The Edge Functions of a stack Supermixer created
+	// (GET /projects/{ref}/functions)
+	ListEdgeFunctions(ctx context.Context, request ListEdgeFunctionsRequestObject) (ListEdgeFunctionsResponseObject, error)
+	// DeleteEdgeFunction Delete a function
+	// (DELETE /projects/{ref}/functions/{name})
+	DeleteEdgeFunction(ctx context.Context, request DeleteEdgeFunctionRequestObject) (DeleteEdgeFunctionResponseObject, error)
+	// GetEdgeFunction A function and its files
+	// (GET /projects/{ref}/functions/{name})
+	GetEdgeFunction(ctx context.Context, request GetEdgeFunctionRequestObject) (GetEdgeFunctionResponseObject, error)
+	// DeployEdgeFunction Create or replace a function, then restart the functions service
+	// (PUT /projects/{ref}/functions/{name})
+	DeployEdgeFunction(ctx context.Context, request DeployEdgeFunctionRequestObject) (DeployEdgeFunctionResponseObject, error)
 
 	// (GET /projects/{ref}/health)
 	GetProjectHealth(ctx context.Context, request GetProjectHealthRequestObject) (GetProjectHealthResponseObject, error)
@@ -6800,6 +7480,212 @@ func (sh *strictHandler) ListApiKeys(w http.ResponseWriter, r *http.Request, ref
 	}
 }
 
+// DeleteFunctionSecrets operation middleware
+func (sh *strictHandler) DeleteFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request DeleteFunctionSecretsRequestObject
+
+	request.Ref = ref
+
+	var body DeleteFunctionSecretsJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.DeleteFunctionSecrets(ctx, request.(DeleteFunctionSecretsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteFunctionSecrets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteFunctionSecretsResponseObject); ok {
+		if err := validResponse.VisitDeleteFunctionSecretsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListFunctionSecrets operation middleware
+func (sh *strictHandler) ListFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request ListFunctionSecretsRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.ListFunctionSecrets(ctx, request.(ListFunctionSecretsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListFunctionSecrets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListFunctionSecretsResponseObject); ok {
+		if err := validResponse.VisitListFunctionSecretsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// SetFunctionSecrets operation middleware
+func (sh *strictHandler) SetFunctionSecrets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request SetFunctionSecretsRequestObject
+
+	request.Ref = ref
+
+	var body SetFunctionSecretsJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.SetFunctionSecrets(ctx, request.(SetFunctionSecretsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "SetFunctionSecrets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(SetFunctionSecretsResponseObject); ok {
+		if err := validResponse.VisitSetFunctionSecretsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListEdgeFunctions operation middleware
+func (sh *strictHandler) ListEdgeFunctions(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request ListEdgeFunctionsRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.ListEdgeFunctions(ctx, request.(ListEdgeFunctionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListEdgeFunctions")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListEdgeFunctionsResponseObject); ok {
+		if err := validResponse.VisitListEdgeFunctionsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteEdgeFunction operation middleware
+func (sh *strictHandler) DeleteEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string) {
+	var request DeleteEdgeFunctionRequestObject
+
+	request.Ref = ref
+	request.Name = name
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.DeleteEdgeFunction(ctx, request.(DeleteEdgeFunctionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteEdgeFunction")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteEdgeFunctionResponseObject); ok {
+		if err := validResponse.VisitDeleteEdgeFunctionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetEdgeFunction operation middleware
+func (sh *strictHandler) GetEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string) {
+	var request GetEdgeFunctionRequestObject
+
+	request.Ref = ref
+	request.Name = name
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.GetEdgeFunction(ctx, request.(GetEdgeFunctionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetEdgeFunction")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetEdgeFunctionResponseObject); ok {
+		if err := validResponse.VisitGetEdgeFunctionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeployEdgeFunction operation middleware
+func (sh *strictHandler) DeployEdgeFunction(w http.ResponseWriter, r *http.Request, ref Ref, name string) {
+	var request DeployEdgeFunctionRequestObject
+
+	request.Ref = ref
+	request.Name = name
+
+	var body DeployEdgeFunctionJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.DeployEdgeFunction(ctx, request.(DeployEdgeFunctionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeployEdgeFunction")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeployEdgeFunctionResponseObject); ok {
+		if err := validResponse.VisitDeployEdgeFunctionResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // GetProjectHealth operation middleware
 func (sh *strictHandler) GetProjectHealth(w http.ResponseWriter, r *http.Request, ref Ref) {
 	var request GetProjectHealthRequestObject
@@ -7253,133 +8139,147 @@ func (sh *strictHandler) GetUiConfig(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"88ZrDfJSWb7/dP+/AQAA//8=",
+	"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",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,
