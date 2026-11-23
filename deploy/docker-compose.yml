@@ -1,0 +1,43 @@
+# Supermixer and its own PostgreSQL database.
+#
+#   Development (database only):  docker compose -f deploy/docker-compose.yml up -d db
+#   Everything:                    docker compose -f deploy/docker-compose.yml --profile app up -d --build
+#
+# Supermixer's database is separate from the Supabase stacks it manages.
+name: supermixer
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: supermixer
+      POSTGRES_PASSWORD: ${SUPERMIXER_DB_PASSWORD:-supermixer}
+      POSTGRES_DB: supermixer
+    ports:
+      - "${SUPERMIXER_DB_PORT:-5433}:5432"
+    volumes:
+      - supermixer-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supermixer -d supermixer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  supermixer:
+    profiles: [app]
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file: ../.env
+    environment:
+      SUPERMIXER_DATABASE_URL: postgres://supermixer:${SUPERMIXER_DB_PASSWORD:-supermixer}@db:5432/supermixer?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  supermixer-db:
