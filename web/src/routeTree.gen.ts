@@ -31,6 +31,17 @@ import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$r
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppProjectRefDatabaseExtensionsRouteImport } from './routes/_app/project.$ref.database.extensions'
+import { Route as AppProjectRefDatabaseFunctionsRouteImport } from './routes/_app/project.$ref.database.functions'
+import { Route as AppProjectRefDatabaseIndexesRouteImport } from './routes/_app/project.$ref.database.indexes'
+import { Route as AppProjectRefDatabaseMigrationsRouteImport } from './routes/_app/project.$ref.database.migrations'
+import { Route as AppProjectRefDatabasePoliciesRouteImport } from './routes/_app/project.$ref.database.policies'
+import { Route as AppProjectRefDatabasePublicationsRouteImport } from './routes/_app/project.$ref.database.publications'
+import { Route as AppProjectRefDatabaseRolesRouteImport } from './routes/_app/project.$ref.database.roles'
+import { Route as AppProjectRefDatabaseSettingsRouteImport } from './routes/_app/project.$ref.database.settings'
+import { Route as AppProjectRefDatabaseTablesRouteImport } from './routes/_app/project.$ref.database.tables'
+import { Route as AppProjectRefDatabaseTriggersRouteImport } from './routes/_app/project.$ref.database.triggers'
+import { Route as AppProjectRefDatabaseTypesRouteImport } from './routes/_app/project.$ref.database.types'
 import { Route as AppProjectRefEditorIndexRouteImport } from './routes/_app/project.$ref.editor.index'
 import { Route as AppProjectRefEditorIdRouteImport } from './routes/_app/project.$ref.editor.$id'
 import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/project.$ref.settings.api-keys'
@@ -148,6 +159,72 @@ const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   path: '/sql',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefDatabaseExtensionsRoute =
+  AppProjectRefDatabaseExtensionsRouteImport.update({
+    id: '/database/extensions',
+    path: '/database/extensions',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseFunctionsRoute =
+  AppProjectRefDatabaseFunctionsRouteImport.update({
+    id: '/database/functions',
+    path: '/database/functions',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseIndexesRoute =
+  AppProjectRefDatabaseIndexesRouteImport.update({
+    id: '/database/indexes',
+    path: '/database/indexes',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseMigrationsRoute =
+  AppProjectRefDatabaseMigrationsRouteImport.update({
+    id: '/database/migrations',
+    path: '/database/migrations',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabasePoliciesRoute =
+  AppProjectRefDatabasePoliciesRouteImport.update({
+    id: '/database/policies',
+    path: '/database/policies',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabasePublicationsRoute =
+  AppProjectRefDatabasePublicationsRouteImport.update({
+    id: '/database/publications',
+    path: '/database/publications',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseRolesRoute =
+  AppProjectRefDatabaseRolesRouteImport.update({
+    id: '/database/roles',
+    path: '/database/roles',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseSettingsRoute =
+  AppProjectRefDatabaseSettingsRouteImport.update({
+    id: '/database/settings',
+    path: '/database/settings',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseTablesRoute =
+  AppProjectRefDatabaseTablesRouteImport.update({
+    id: '/database/tables',
+    path: '/database/tables',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseTriggersRoute =
+  AppProjectRefDatabaseTriggersRouteImport.update({
+    id: '/database/triggers',
+    path: '/database/triggers',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefDatabaseTypesRoute =
+  AppProjectRefDatabaseTypesRouteImport.update({
+    id: '/database/types',
+    path: '/database/types',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefEditorIndexRoute =
   AppProjectRefEditorIndexRouteImport.update({
     id: '/',
@@ -210,6 +287,17 @@ export interface FileRoutesByFullPath {
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
+  '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
+  '/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
+  '/project/$ref/database/migrations': typeof AppProjectRefDatabaseMigrationsRoute
+  '/project/$ref/database/policies': typeof AppProjectRefDatabasePoliciesRoute
+  '/project/$ref/database/publications': typeof AppProjectRefDatabasePublicationsRoute
+  '/project/$ref/database/roles': typeof AppProjectRefDatabaseRolesRoute
+  '/project/$ref/database/settings': typeof AppProjectRefDatabaseSettingsRoute
+  '/project/$ref/database/tables': typeof AppProjectRefDatabaseTablesRoute
+  '/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
+  '/project/$ref/database/types': typeof AppProjectRefDatabaseTypesRoute
   '/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
@@ -236,6 +324,17 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
+  '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
+  '/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
+  '/project/$ref/database/migrations': typeof AppProjectRefDatabaseMigrationsRoute
+  '/project/$ref/database/policies': typeof AppProjectRefDatabasePoliciesRoute
+  '/project/$ref/database/publications': typeof AppProjectRefDatabasePublicationsRoute
+  '/project/$ref/database/roles': typeof AppProjectRefDatabaseRolesRoute
+  '/project/$ref/database/settings': typeof AppProjectRefDatabaseSettingsRoute
+  '/project/$ref/database/tables': typeof AppProjectRefDatabaseTablesRoute
+  '/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
+  '/project/$ref/database/types': typeof AppProjectRefDatabaseTypesRoute
   '/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
@@ -268,6 +367,17 @@ export interface FileRoutesById {
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
+  '/_app/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
+  '/_app/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
+  '/_app/project/$ref/database/migrations': typeof AppProjectRefDatabaseMigrationsRoute
+  '/_app/project/$ref/database/policies': typeof AppProjectRefDatabasePoliciesRoute
+  '/_app/project/$ref/database/publications': typeof AppProjectRefDatabasePublicationsRoute
+  '/_app/project/$ref/database/roles': typeof AppProjectRefDatabaseRolesRoute
+  '/_app/project/$ref/database/settings': typeof AppProjectRefDatabaseSettingsRoute
+  '/_app/project/$ref/database/tables': typeof AppProjectRefDatabaseTablesRoute
+  '/_app/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
+  '/_app/project/$ref/database/types': typeof AppProjectRefDatabaseTypesRoute
   '/_app/project/$ref/editor/$id': typeof AppProjectRefEditorIdRoute
   '/_app/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
@@ -300,6 +410,17 @@ export interface FileRouteTypes {
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/database/extensions'
+    | '/project/$ref/database/functions'
+    | '/project/$ref/database/indexes'
+    | '/project/$ref/database/migrations'
+    | '/project/$ref/database/policies'
+    | '/project/$ref/database/publications'
+    | '/project/$ref/database/roles'
+    | '/project/$ref/database/settings'
+    | '/project/$ref/database/tables'
+    | '/project/$ref/database/triggers'
+    | '/project/$ref/database/types'
     | '/project/$ref/editor/$id'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
@@ -326,6 +447,17 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/database/extensions'
+    | '/project/$ref/database/functions'
+    | '/project/$ref/database/indexes'
+    | '/project/$ref/database/migrations'
+    | '/project/$ref/database/policies'
+    | '/project/$ref/database/publications'
+    | '/project/$ref/database/roles'
+    | '/project/$ref/database/settings'
+    | '/project/$ref/database/tables'
+    | '/project/$ref/database/triggers'
+    | '/project/$ref/database/types'
     | '/project/$ref/editor/$id'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
@@ -357,6 +489,17 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/project/$ref/database/extensions'
+    | '/_app/project/$ref/database/functions'
+    | '/_app/project/$ref/database/indexes'
+    | '/_app/project/$ref/database/migrations'
+    | '/_app/project/$ref/database/policies'
+    | '/_app/project/$ref/database/publications'
+    | '/_app/project/$ref/database/roles'
+    | '/_app/project/$ref/database/settings'
+    | '/_app/project/$ref/database/tables'
+    | '/_app/project/$ref/database/triggers'
+    | '/_app/project/$ref/database/types'
     | '/_app/project/$ref/editor/$id'
     | '/_app/project/$ref/settings/api-keys'
     | '/_app/project/$ref/settings/general'
@@ -529,6 +672,83 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/database/extensions': {
+      id: '/_app/project/$ref/database/extensions'
+      path: '/database/extensions'
+      fullPath: '/project/$ref/database/extensions'
+      preLoaderRoute: typeof AppProjectRefDatabaseExtensionsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/functions': {
+      id: '/_app/project/$ref/database/functions'
+      path: '/database/functions'
+      fullPath: '/project/$ref/database/functions'
+      preLoaderRoute: typeof AppProjectRefDatabaseFunctionsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/indexes': {
+      id: '/_app/project/$ref/database/indexes'
+      path: '/database/indexes'
+      fullPath: '/project/$ref/database/indexes'
+      preLoaderRoute: typeof AppProjectRefDatabaseIndexesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/migrations': {
+      id: '/_app/project/$ref/database/migrations'
+      path: '/database/migrations'
+      fullPath: '/project/$ref/database/migrations'
+      preLoaderRoute: typeof AppProjectRefDatabaseMigrationsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/policies': {
+      id: '/_app/project/$ref/database/policies'
+      path: '/database/policies'
+      fullPath: '/project/$ref/database/policies'
+      preLoaderRoute: typeof AppProjectRefDatabasePoliciesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/publications': {
+      id: '/_app/project/$ref/database/publications'
+      path: '/database/publications'
+      fullPath: '/project/$ref/database/publications'
+      preLoaderRoute: typeof AppProjectRefDatabasePublicationsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/roles': {
+      id: '/_app/project/$ref/database/roles'
+      path: '/database/roles'
+      fullPath: '/project/$ref/database/roles'
+      preLoaderRoute: typeof AppProjectRefDatabaseRolesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/settings': {
+      id: '/_app/project/$ref/database/settings'
+      path: '/database/settings'
+      fullPath: '/project/$ref/database/settings'
+      preLoaderRoute: typeof AppProjectRefDatabaseSettingsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/tables': {
+      id: '/_app/project/$ref/database/tables'
+      path: '/database/tables'
+      fullPath: '/project/$ref/database/tables'
+      preLoaderRoute: typeof AppProjectRefDatabaseTablesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/triggers': {
+      id: '/_app/project/$ref/database/triggers'
+      path: '/database/triggers'
+      fullPath: '/project/$ref/database/triggers'
+      preLoaderRoute: typeof AppProjectRefDatabaseTriggersRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/types': {
+      id: '/_app/project/$ref/database/types'
+      path: '/database/types'
+      fullPath: '/project/$ref/database/types'
+      preLoaderRoute: typeof AppProjectRefDatabaseTypesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/editor/': {
       id: '/_app/project/$ref/editor/'
       path: '/'
@@ -636,6 +856,17 @@ interface AppProjectRefRouteChildren {
   AppProjectRefEditorRoute: typeof AppProjectRefEditorRouteWithChildren
   AppProjectRefSqlRoute: typeof AppProjectRefSqlRouteWithChildren
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
+  AppProjectRefDatabaseExtensionsRoute: typeof AppProjectRefDatabaseExtensionsRoute
+  AppProjectRefDatabaseFunctionsRoute: typeof AppProjectRefDatabaseFunctionsRoute
+  AppProjectRefDatabaseIndexesRoute: typeof AppProjectRefDatabaseIndexesRoute
+  AppProjectRefDatabaseMigrationsRoute: typeof AppProjectRefDatabaseMigrationsRoute
+  AppProjectRefDatabasePoliciesRoute: typeof AppProjectRefDatabasePoliciesRoute
+  AppProjectRefDatabasePublicationsRoute: typeof AppProjectRefDatabasePublicationsRoute
+  AppProjectRefDatabaseRolesRoute: typeof AppProjectRefDatabaseRolesRoute
+  AppProjectRefDatabaseSettingsRoute: typeof AppProjectRefDatabaseSettingsRoute
+  AppProjectRefDatabaseTablesRoute: typeof AppProjectRefDatabaseTablesRoute
+  AppProjectRefDatabaseTriggersRoute: typeof AppProjectRefDatabaseTriggersRoute
+  AppProjectRefDatabaseTypesRoute: typeof AppProjectRefDatabaseTypesRoute
   AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
   AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
@@ -646,6 +877,18 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefEditorRoute: AppProjectRefEditorRouteWithChildren,
   AppProjectRefSqlRoute: AppProjectRefSqlRouteWithChildren,
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
+  AppProjectRefDatabaseExtensionsRoute: AppProjectRefDatabaseExtensionsRoute,
+  AppProjectRefDatabaseFunctionsRoute: AppProjectRefDatabaseFunctionsRoute,
+  AppProjectRefDatabaseIndexesRoute: AppProjectRefDatabaseIndexesRoute,
+  AppProjectRefDatabaseMigrationsRoute: AppProjectRefDatabaseMigrationsRoute,
+  AppProjectRefDatabasePoliciesRoute: AppProjectRefDatabasePoliciesRoute,
+  AppProjectRefDatabasePublicationsRoute:
+    AppProjectRefDatabasePublicationsRoute,
+  AppProjectRefDatabaseRolesRoute: AppProjectRefDatabaseRolesRoute,
+  AppProjectRefDatabaseSettingsRoute: AppProjectRefDatabaseSettingsRoute,
+  AppProjectRefDatabaseTablesRoute: AppProjectRefDatabaseTablesRoute,
+  AppProjectRefDatabaseTriggersRoute: AppProjectRefDatabaseTriggersRoute,
+  AppProjectRefDatabaseTypesRoute: AppProjectRefDatabaseTypesRoute,
   AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,
   AppProjectRefSettingsGeneralRoute: AppProjectRefSettingsGeneralRoute,
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
