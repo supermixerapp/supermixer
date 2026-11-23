@@ -509,6 +509,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Log entries from the stack's log analytics (Logflare), newest first.
+         * @description Read from the log tables Logflare keeps in the stack's _supabase
+         *     database, in a read-only transaction. Only log tables are reachable.
+         */
+        get: operations["listLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/logs/requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** API gateway requests since a time, by hour, status and path. */
+        get: operations["getRequestStats"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/api-keys": {
         parameters: {
             query?: never;
@@ -986,6 +1028,52 @@ export interface components {
             auth_version?: string;
             /** Format: date-time */
             checked_at: string;
+        };
+        /** @enum {string} */
+        LogSource: "api_gateway" | "auth" | "postgres" | "postgrest" | "pooler" | "storage" | "realtime" | "functions";
+        LogEntry: {
+            id: string;
+            /** Format: date-time */
+            timestamp: string;
+            message: string;
+            metadata: {
+                [key: string]: unknown;
+            };
+        };
+        LogPage: {
+            /** @description Whether the stack runs log analytics. */
+            available: boolean;
+            entries: components["schemas"]["LogEntry"][];
+        };
+        RequestStats: {
+            available: boolean;
+            /** Format: int64 */
+            total: number;
+            hours: {
+                /** Format: date-time */
+                hour: string;
+                /** Format: int64 */
+                count: number;
+                /**
+                 * Format: int64
+                 * @description Responses with status 400 or above.
+                 */
+                errors: number;
+            }[];
+            statuses: {
+                status: number;
+                /** Format: int64 */
+                count: number;
+            }[];
+            /** @description The busiest paths, at most 20. */
+            paths: {
+                method: string;
+                path: string;
+                /** Format: int64 */
+                count: number;
+                /** Format: int64 */
+                errors: number;
+            }[];
         };
         Lint: {
             /** @description The check */
@@ -1957,6 +2045,64 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["QueryError"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listLogs: {
+        parameters: {
+            query: {
+                source: components["schemas"]["LogSource"];
+                /** @description Words the message must all contain */
+                search?: string;
+                since?: string;
+                /** @description Only entries older than this (paging) */
+                before?: string;
+                /** @description With before: the last entry already shown, so entries sharing its timestamp aren't skipped */
+                before_id?: string;
+                limit?: number;
+            };
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entries, or available false when the stack doesn't run log analytics. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogPage"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getRequestStats: {
+        parameters: {
+            query: {
+                since: string;
+            };
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Request counts. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RequestStats"];
                 };
             };
             default: components["responses"]["Error"];

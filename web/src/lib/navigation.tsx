@@ -199,6 +199,18 @@ export const productMenus: Record<string, ProductMenu> = {
       },
     ],
   },
+  observability: {
+    title: 'Observability',
+    groups: [
+      {
+        title: 'Reports',
+        items: [
+          { label: 'Database', path: 'observability', stage: 3 },
+          { label: 'API Gateway', path: 'observability/api', stage: 3 },
+        ],
+      },
+    ],
+  },
   logs: {
     title: 'Logs',
     groups: [

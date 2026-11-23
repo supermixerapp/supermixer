@@ -21,3 +21,6 @@ coverage/
 # Dev Supabase stack (deploy/dev-stacks/up.sh)
 /deploy/dev-stacks/.stack/
 /deploy/dev-stacks/.src/
+
+# Python bytecode (deploy/dev-stacks tests)
+__pycache__/

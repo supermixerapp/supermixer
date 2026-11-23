@@ -103,7 +103,7 @@ func (p *Pools) Close() {
 func (p *Pools) Forget(ref string) {
 	p.mu.Lock()
 	var closing []*poolEntry
-	for _, key := range []string{ref, ref + ReadOnlyPoolSuffix} {
+	for _, key := range []string{ref, ref + ReadOnlyPoolSuffix, ref + AnalyticsPoolSuffix} {
 		if e := p.pools[key]; e != nil {
 			closing = append(closing, e)
 			delete(p.pools, key)
@@ -117,6 +117,10 @@ func (p *Pools) Forget(ref string) {
 
 // ReadOnlyPoolSuffix keys the pool of a project's read-only login.
 const ReadOnlyPoolSuffix = "#read-only"
+
+// AnalyticsPoolSuffix keys the pool on the stack's _supabase database, where
+// Logflare keeps logs.
+const AnalyticsPoolSuffix = "#analytics"
 
 func (p *Pools) get(ref string, d Database) (*pgxpool.Pool, error) {
 	sum := sha256.Sum256([]byte(d.URI(true)))

@@ -9,6 +9,8 @@
 #   deploy/dev-stacks/down.sh          stop, keeping data
 #
 # Override with env vars: SUPABASE_REF, STACK_API_PORT, STACK_DB_PORT.
+# Log analytics (Logflare and Vector, for Logs and Observability) start too;
+# STACK_LOGS=0 leaves them out.
 set -euo pipefail
 
 SUPABASE_REF="${SUPABASE_REF:-8728c41ad3878df66b3f5eec2232ffcebfb25d13}"
@@ -36,6 +38,7 @@ fi
 
 cd "$stack"
 python3 "$here/scope-containers.py" docker-compose*.yml
+python3 "$here/scope-vector.py" --project "$PROJECT" volumes/logs/vector.yml docker-compose.yml docker-compose.logs.yml
 
 if [ ! -f .env ]; then
   echo "Generating secrets..."
@@ -58,7 +61,11 @@ if [ ! -f .env ]; then
 fi
 
 # storage-volume.yml: uploads need a file system with extended attributes.
-docker compose -p "$PROJECT" -f docker-compose.yml -f "$here/storage-volume.yml" up -d --wait
+files=(-f docker-compose.yml -f "$here/storage-volume.yml")
+if [ "${STACK_LOGS:-1}" != "0" ]; then
+  files+=(-f docker-compose.logs.yml)
+fi
+docker compose -p "$PROJECT" "${files[@]}" up -d --wait
 
 get() { grep "^$1=" .env | head -1 | cut -d= -f2-; }
 # Ports are fixed when .env is first generated; report what the stack really uses.

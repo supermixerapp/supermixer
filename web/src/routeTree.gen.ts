@@ -59,7 +59,10 @@ import { Route as AppProjectRefIntegrationsGraphiqlRouteImport } from './routes/
 import { Route as AppProjectRefIntegrationsQueuesRouteImport } from './routes/_app/project.$ref.integrations.queues'
 import { Route as AppProjectRefIntegrationsVaultRouteImport } from './routes/_app/project.$ref.integrations.vault'
 import { Route as AppProjectRefIntegrationsWebhooksRouteImport } from './routes/_app/project.$ref.integrations.webhooks'
+import { Route as AppProjectRefLogsCollectionRouteImport } from './routes/_app/project.$ref.logs.$collection'
+import { Route as AppProjectRefLogsExplorerRouteImport } from './routes/_app/project.$ref.logs.explorer'
 import { Route as AppProjectRefObservabilityIndexRouteImport } from './routes/_app/project.$ref.observability.index'
+import { Route as AppProjectRefObservabilityApiRouteImport } from './routes/_app/project.$ref.observability.api'
 import { Route as AppProjectRefRealtimeInspectorRouteImport } from './routes/_app/project.$ref.realtime.inspector'
 import { Route as AppProjectRefRealtimePoliciesRouteImport } from './routes/_app/project.$ref.realtime.policies'
 import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/project.$ref.settings.api-keys'
@@ -347,10 +350,28 @@ const AppProjectRefIntegrationsWebhooksRoute =
     path: '/integrations/webhooks',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefLogsCollectionRoute =
+  AppProjectRefLogsCollectionRouteImport.update({
+    id: '/logs/$collection',
+    path: '/logs/$collection',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefLogsExplorerRoute =
+  AppProjectRefLogsExplorerRouteImport.update({
+    id: '/logs/explorer',
+    path: '/logs/explorer',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefObservabilityIndexRoute =
   AppProjectRefObservabilityIndexRouteImport.update({
     id: '/observability/',
     path: '/observability/',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefObservabilityApiRoute =
+  AppProjectRefObservabilityApiRouteImport.update({
+    id: '/observability/api',
+    path: '/observability/api',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
 const AppProjectRefRealtimeInspectorRoute =
@@ -465,6 +486,9 @@ export interface FileRoutesByFullPath {
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/project/$ref/logs/$collection': typeof AppProjectRefLogsCollectionRoute
+  '/project/$ref/logs/explorer': typeof AppProjectRefLogsExplorerRoute
+  '/project/$ref/observability/api': typeof AppProjectRefObservabilityApiRoute
   '/project/$ref/realtime/inspector': typeof AppProjectRefRealtimeInspectorRoute
   '/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
@@ -524,6 +548,9 @@ export interface FileRoutesByTo {
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/project/$ref/logs/$collection': typeof AppProjectRefLogsCollectionRoute
+  '/project/$ref/logs/explorer': typeof AppProjectRefLogsExplorerRoute
+  '/project/$ref/observability/api': typeof AppProjectRefObservabilityApiRoute
   '/project/$ref/realtime/inspector': typeof AppProjectRefRealtimeInspectorRoute
   '/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
@@ -589,6 +616,9 @@ export interface FileRoutesById {
   '/_app/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/_app/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/_app/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/_app/project/$ref/logs/$collection': typeof AppProjectRefLogsCollectionRoute
+  '/_app/project/$ref/logs/explorer': typeof AppProjectRefLogsExplorerRoute
+  '/_app/project/$ref/observability/api': typeof AppProjectRefObservabilityApiRoute
   '/_app/project/$ref/realtime/inspector': typeof AppProjectRefRealtimeInspectorRoute
   '/_app/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/_app/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
@@ -654,6 +684,9 @@ export interface FileRouteTypes {
     | '/project/$ref/integrations/queues'
     | '/project/$ref/integrations/vault'
     | '/project/$ref/integrations/webhooks'
+    | '/project/$ref/logs/$collection'
+    | '/project/$ref/logs/explorer'
+    | '/project/$ref/observability/api'
     | '/project/$ref/realtime/inspector'
     | '/project/$ref/realtime/policies'
     | '/project/$ref/settings/api-keys'
@@ -713,6 +746,9 @@ export interface FileRouteTypes {
     | '/project/$ref/integrations/queues'
     | '/project/$ref/integrations/vault'
     | '/project/$ref/integrations/webhooks'
+    | '/project/$ref/logs/$collection'
+    | '/project/$ref/logs/explorer'
+    | '/project/$ref/observability/api'
     | '/project/$ref/realtime/inspector'
     | '/project/$ref/realtime/policies'
     | '/project/$ref/settings/api-keys'
@@ -777,6 +813,9 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/integrations/queues'
     | '/_app/project/$ref/integrations/vault'
     | '/_app/project/$ref/integrations/webhooks'
+    | '/_app/project/$ref/logs/$collection'
+    | '/_app/project/$ref/logs/explorer'
+    | '/_app/project/$ref/observability/api'
     | '/_app/project/$ref/realtime/inspector'
     | '/_app/project/$ref/realtime/policies'
     | '/_app/project/$ref/settings/api-keys'
@@ -1153,11 +1192,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefIntegrationsWebhooksRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/logs/$collection': {
+      id: '/_app/project/$ref/logs/$collection'
+      path: '/logs/$collection'
+      fullPath: '/project/$ref/logs/$collection'
+      preLoaderRoute: typeof AppProjectRefLogsCollectionRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/logs/explorer': {
+      id: '/_app/project/$ref/logs/explorer'
+      path: '/logs/explorer'
+      fullPath: '/project/$ref/logs/explorer'
+      preLoaderRoute: typeof AppProjectRefLogsExplorerRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/observability/': {
       id: '/_app/project/$ref/observability/'
       path: '/observability'
       fullPath: '/project/$ref/observability/'
       preLoaderRoute: typeof AppProjectRefObservabilityIndexRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/observability/api': {
+      id: '/_app/project/$ref/observability/api'
+      path: '/observability/api'
+      fullPath: '/project/$ref/observability/api'
+      preLoaderRoute: typeof AppProjectRefObservabilityApiRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/realtime/inspector': {
@@ -1319,6 +1379,9 @@ interface AppProjectRefRouteChildren {
   AppProjectRefIntegrationsQueuesRoute: typeof AppProjectRefIntegrationsQueuesRoute
   AppProjectRefIntegrationsVaultRoute: typeof AppProjectRefIntegrationsVaultRoute
   AppProjectRefIntegrationsWebhooksRoute: typeof AppProjectRefIntegrationsWebhooksRoute
+  AppProjectRefLogsCollectionRoute: typeof AppProjectRefLogsCollectionRoute
+  AppProjectRefLogsExplorerRoute: typeof AppProjectRefLogsExplorerRoute
+  AppProjectRefObservabilityApiRoute: typeof AppProjectRefObservabilityApiRoute
   AppProjectRefRealtimeInspectorRoute: typeof AppProjectRefRealtimeInspectorRoute
   AppProjectRefRealtimePoliciesRoute: typeof AppProjectRefRealtimePoliciesRoute
   AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
@@ -1367,6 +1430,9 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefIntegrationsVaultRoute: AppProjectRefIntegrationsVaultRoute,
   AppProjectRefIntegrationsWebhooksRoute:
     AppProjectRefIntegrationsWebhooksRoute,
+  AppProjectRefLogsCollectionRoute: AppProjectRefLogsCollectionRoute,
+  AppProjectRefLogsExplorerRoute: AppProjectRefLogsExplorerRoute,
+  AppProjectRefObservabilityApiRoute: AppProjectRefObservabilityApiRoute,
   AppProjectRefRealtimeInspectorRoute: AppProjectRefRealtimeInspectorRoute,
   AppProjectRefRealtimePoliciesRoute: AppProjectRefRealtimePoliciesRoute,
   AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,

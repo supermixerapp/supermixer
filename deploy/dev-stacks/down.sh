@@ -7,4 +7,5 @@ if [ ! -f "$here/.stack/docker-compose.yml" ]; then
   exit 0
 fi
 cd "$here/.stack"
-docker compose -p supermixer-dev-stack -f docker-compose.yml -f "$here/storage-volume.yml" down
+# Name every file up.sh may have used, so the log containers stop too.
+docker compose -p supermixer-dev-stack -f docker-compose.yml -f "$here/storage-volume.yml" -f docker-compose.logs.yml down

@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down
+.PHONY: help setup env app db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -49,6 +49,9 @@ stack: ## Start a dev self-hosted Supabase stack to register as a project (API :
 stack-down: ## Stop the dev Supabase stack (data is kept)
 	deploy/dev-stacks/down.sh
 
+stack-check-logs: ## Check the dev stack's Logs get its own logs and no other container's
+	deploy/dev-stacks/check-logs.sh
+
 generate: ## Regenerate code from api/openapi.yaml and SQL queries
 	cd backend && go generate ./...
 	cd backend && docker run --rm -v "$$PWD":/src -w /src $(SQLC_IMAGE) generate
@@ -65,6 +68,7 @@ build: ## Build a single binary with the web UI embedded (bin/supermixer)
 test: ## Run Go and web tests (integration tests skip if Postgres isn't running)
 	cd backend && go test ./...
 	cd web && pnpm test
+	python3 -m unittest discover -s deploy/dev-stacks -p 'test_*.py'
 
 test-integration: db ## Start Postgres, then run all Go tests including integration
 	cd backend && go test -count=1 ./...

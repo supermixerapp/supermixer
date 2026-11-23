@@ -406,3 +406,37 @@ func TestReadOnlyLogin(t *testing.T) {
 		t.Fatalf("after removal: %+v, reader runs as %s", p, who(reader))
 	}
 }
+
+func TestLogsWithoutAnalytics(t *testing.T) {
+	env := newTestEnv(t)
+	admin := env.client(t)
+	admin.signIn("admin", "admin")
+	admin.must(201, "POST", "/organizations", map[string]string{"name": "Logs"}, nil)
+	_, gwURL := newRecordingGateway(t)
+	var p struct{ Ref string }
+	admin.must(201, "POST", "/organizations/logs/projects", map[string]any{"name": "P", "connection": connectionFor(t, gwURL, env.dbURL)}, &p)
+	reader := joinAs(t, env, admin, "logs", "logreader", "read_only")
+	base := "/projects/" + p.Ref
+
+	// The test database is plain Postgres: no _supabase database, so no logs.
+	var page struct {
+		Available bool
+		Entries   []any
+	}
+	reader.must(200, "GET", base+"/logs?source=api_gateway&search=x&since=2026-01-01T00:00:00Z", nil, &page)
+	if page.Available || page.Entries == nil || len(page.Entries) != 0 {
+		t.Fatalf("page = %+v", page)
+	}
+	var stats struct {
+		Available bool
+		Total     int
+		Hours     []any
+	}
+	reader.must(200, "GET", base+"/logs/requests?since=2026-01-01T00:00:00Z", nil, &stats)
+	if stats.Available || stats.Hours == nil {
+		t.Fatalf("stats = %+v", stats)
+	}
+	admin.must(400, "GET", base+"/logs?source=nope", nil, nil)
+	admin.must(400, "GET", base+"/logs?source=auth&limit=501", nil, nil)
+	admin.must(400, "GET", base+"/logs?source=auth&search="+strings.Repeat("a", 201), nil, nil)
+}

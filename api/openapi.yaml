@@ -584,6 +584,46 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/QueryError" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/logs:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listLogs
+      tags: [Projects]
+      summary: Log entries from the stack's log analytics (Logflare), newest first.
+      description: |
+        Read from the log tables Logflare keeps in the stack's _supabase
+        database, in a read-only transaction. Only log tables are reachable.
+      parameters:
+        - { name: source, in: query, required: true, schema: { $ref: "#/components/schemas/LogSource" } }
+        - { name: search, in: query, required: false, description: Words the message must all contain, in any order, schema: { type: string, maxLength: 200 } }
+        - { name: since, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: before, in: query, required: false, description: Only entries older than this (paging), schema: { type: string, format: date-time } }
+        - { name: before_id, in: query, required: false, description: "With before: the last entry already shown, so entries sharing its timestamp aren't skipped", schema: { type: string, maxLength: 64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 500, default: 100 } }
+      responses:
+        "200":
+          description: Entries, or available false when the stack doesn't run log analytics.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LogPage" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/logs/requests:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getRequestStats
+      tags: [Projects]
+      summary: API gateway requests since a time, by hour, status and path.
+      parameters:
+        - { name: since, in: query, required: true, schema: { type: string, format: date-time } }
+      responses:
+        "200":
+          description: Request counts.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RequestStats" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/api-keys:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1185,6 +1225,60 @@ components:
         postgres_version: { type: string }
         auth_version: { type: string }
         checked_at: { type: string, format: date-time }
+    LogSource:
+      type: string
+      enum: [api_gateway, auth, postgres, postgrest, pooler, storage, realtime, functions]
+    LogEntry:
+      type: object
+      required: [id, timestamp, message, metadata]
+      properties:
+        id: { type: string }
+        timestamp: { type: string, format: date-time }
+        message: { type: string }
+        metadata: { type: object, additionalProperties: true }
+    LogPage:
+      type: object
+      required: [available, entries]
+      properties:
+        available: { type: boolean, description: Whether the stack runs log analytics. }
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/LogEntry" }
+    RequestStats:
+      type: object
+      required: [available, total, hours, statuses, paths]
+      properties:
+        available: { type: boolean }
+        total: { type: integer, format: int64 }
+        hours:
+          type: array
+          items:
+            type: object
+            required: [hour, count, errors]
+            properties:
+              hour: { type: string, format: date-time }
+              count: { type: integer, format: int64 }
+              errors: { type: integer, format: int64, description: Responses with status 400 or above. }
+        statuses:
+          type: array
+          items:
+            type: object
+            required: [status, count]
+            properties:
+              status: { type: integer }
+              count: { type: integer, format: int64 }
+        paths:
+          type: array
+          description: The busiest paths, at most 20.
+          items:
+            type: object
+            required: [method, path, count, errors]
+            properties:
+              method: { type: string }
+              path: { type: string }
+              count: { type: integer, format: int64 }
+              errors: { type: integer, format: int64 }
+
     Lint:
       type: object
       required: [name, title, level, facing, categories, description, detail, remediation, metadata, cache_key]

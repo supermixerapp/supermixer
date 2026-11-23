@@ -45,6 +45,12 @@ function ProjectLayout() {
   )
 
   const menu = productMenus[section]
+  // Only the most specific match is active: observability/api, not also observability.
+  const matches = (path: string) => subPath === path || subPath.startsWith(`${path}/`)
+  const activePath = menu?.groups
+    .flatMap((g) => g.items.map((i) => i.path))
+    .filter(matches)
+    .sort((a, b) => b.length - a.length)[0]
   const productMenu = menu && (
     <ProductMenu
       title={menu.title}
@@ -53,7 +59,7 @@ function ProjectLayout() {
         links: g.items.map((item) => ({
           label: item.label,
           to: `${base}/${item.path}`,
-          active: subPath === item.path || subPath.startsWith(`${item.path}/`),
+          active: item.path === activePath,
         })),
       }))}
     />
