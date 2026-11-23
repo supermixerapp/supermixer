@@ -1,0 +1,69 @@
+/*
+ * Studio's legacy token names mapped onto the semantic system, ported from
+ * packages/ui/build/css/source/compat.css (Apache-2.0; see NOTICE). Studio
+ * components still use these names heavily (bg-surface-100,
+ * text-foreground-light, border-strong…), so Supermixer keeps them too.
+ */
+
+:root {
+  --colors-black: 0deg 0% 0%;
+  --colors-white: 0deg 0% 100%;
+
+  /* Foreground */
+  --foreground-default: var(--foreground);
+  --foreground-light: var(--muted-foreground);
+  --foreground-lighter: var(--tertiary-foreground);
+  --foreground-muted: var(--tertiary-foreground);
+
+  /* Backgrounds */
+  --background-default: var(--background);
+  --background-200: var(--card);
+  --background-alternative-default: var(--background);
+  --background-alternative-200: var(--card);
+  --background-selection: var(--accent);
+  --background-control: var(--accent);
+  --background-surface-75: var(--card);
+  --background-surface-100: var(--card);
+  --background-surface-200: var(--muted);
+  --background-surface-300: var(--secondary);
+  --background-surface-400: var(--tertiary);
+  --background-overlay-default: var(--secondary);
+  --background-overlay-hover: var(--accent);
+  --background-muted: var(--muted);
+  --background-button-default: var(--secondary);
+  --background-dialog-default: var(--popover);
+  --background-dash-sidebar: var(--background);
+  --background-dash-canvas: var(--background);
+
+  /* Borders */
+  --border-default: var(--border);
+  --border-muted: var(--border);
+  --border-secondary: var(--border-muted);
+  --border-overlay: oklch(
+    from var(--foreground) l calc(c * 0.5) h / calc(4% + 34% * var(--contrast-border))
+  );
+  --border-control: var(--input);
+  --border-alternative: var(--border);
+  --border-strong: var(--input);
+  --border-stronger: oklch(
+    from var(--foreground) l calc(c * 0.5) h / calc(5% + 45% * var(--contrast-border))
+  );
+  --border-button-default: var(--border);
+  --border-button-hover: var(--border-stronger);
+
+  /* Sidebar */
+  --sidebar-background: var(--background-dash-sidebar);
+  --sidebar-foreground: var(--foreground-default);
+  --sidebar-primary: var(--foreground-default);
+  --sidebar-primary-foreground: var(--warning);
+  --sidebar-accent: var(--background-selection);
+  --sidebar-accent-foreground: var(--foreground-default);
+  --sidebar-border: var(--border-default);
+  --sidebar-ring: var(--ring);
+
+  /* Layout */
+  --header-height: 3rem;
+  --sidebar-width: 13rem;
+  --sidebar-width-icon: 3rem;
+  --product-menu-width: 16rem;
+}
