@@ -176,7 +176,7 @@ func (h *handlers) CreateStack(ctx context.Context, req api.CreateStackRequestOb
 		return nil, err
 	}
 
-	h.runStack(ctx, project, api.StackOperationStarting, db.StackStatusRunning, h.compose(project.Ref).Up)
+	h.runStack(ctx, project, api.StackOperationStarting, db.StackStatusRunning, h.upStack(project.Ref))
 
 	out, err := h.toProject(project, a.Org.Slug, a.Org.Name, rbac.EffectiveProjectRole(a.Role, nil))
 	if err != nil {
@@ -289,6 +289,31 @@ const (
 	stackHeartbeat = 30 * time.Second
 	stackStale     = 3 * time.Minute
 )
+
+// upStack starts a stack: its files brought up to this version, compose up,
+// then the functions' database login made sure of.
+func (h *handlers) upStack(ref string) func(ctx context.Context, log io.Writer) error {
+	return func(ctx context.Context, log io.Writer) error {
+		if err := provision.PrepareStack(h.stackLayout(ref).Dir); err != nil {
+			return fmt.Errorf("updating the stack's files: %w", err)
+		}
+		if err := h.compose(ref).Up(ctx, log); err != nil {
+			return err
+		}
+		return h.ensureFunctionsRole(ctx, ref, log)
+	}
+}
+
+func (h *handlers) ensureFunctionsRole(ctx context.Context, ref string, log io.Writer) error {
+	env, err := provision.ReadEnv(h.stackLayout(ref).Dir)
+	if err != nil {
+		return err
+	}
+	if err := h.compose(ref).EnsureFunctionsRole(ctx, log, env["FUNCTIONS_DB_PASSWORD"]); err != nil {
+		return fmt.Errorf("setting up the Edge Functions' database login: %w", err)
+	}
+	return nil
+}
 
 // runStack runs fn in the background as op, then saves the stack's status:
 // ok on success, failed (with the error) otherwise. The job keeps reqCtx's
@@ -517,13 +542,18 @@ func (h *handlers) StackAction(ctx context.Context, req api.StackActionRequestOb
 	switch req.Action {
 	case "start":
 		action = "project.stack_started"
-		started = h.runStack(ctx, p, api.StackOperationStarting, db.StackStatusRunning, c.Up)
+		started = h.runStack(ctx, p, api.StackOperationStarting, db.StackStatusRunning, h.upStack(p.Ref))
 	case "stop":
 		action = "project.stack_stopped"
 		started = h.runStack(ctx, p, api.StackOperationStopping, db.StackStatusPaused, c.Stop)
 	case "restart":
 		action = "project.stack_restarted"
-		started = h.runStack(ctx, p, api.StackOperationRestarting, db.StackStatusRunning, c.Restart)
+		started = h.runStack(ctx, p, api.StackOperationRestarting, db.StackStatusRunning, func(ctx context.Context, log io.Writer) error {
+			if err := c.Restart(ctx, log); err != nil {
+				return err
+			}
+			return h.ensureFunctionsRole(ctx, p.Ref, log)
+		})
 	default:
 		return nil, badRequest("unknown action")
 	}

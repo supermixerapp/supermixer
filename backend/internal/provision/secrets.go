@@ -27,6 +27,7 @@ type Secrets struct {
 	S3ProtocolAccessKeySecret  string
 	MinioRootPassword          string
 	PostgresPassword           string
+	FunctionsDBPassword        string // Edge Functions' database login (functions_user)
 	DashboardPassword          string
 }
 
@@ -46,6 +47,7 @@ func (s Secrets) Env() map[string]string {
 		"S3_PROTOCOL_ACCESS_KEY_SECRET": s.S3ProtocolAccessKeySecret,
 		"MINIO_ROOT_PASSWORD":           s.MinioRootPassword,
 		"POSTGRES_PASSWORD":             s.PostgresPassword,
+		"FUNCTIONS_DB_PASSWORD":         s.FunctionsDBPassword,
 		"DASHBOARD_PASSWORD":            s.DashboardPassword,
 	}
 }
@@ -89,6 +91,7 @@ func GenerateSecrets(now time.Time) (Secrets, error) {
 	s.MinioRootPassword = hx(16)
 	s.PostgresPassword = hx(16)
 	s.DashboardPassword = hx(16)
+	s.FunctionsDBPassword = hx(16)
 	if err != nil {
 		return Secrets{}, err
 	}

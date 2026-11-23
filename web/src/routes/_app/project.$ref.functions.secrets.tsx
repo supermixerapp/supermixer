@@ -4,7 +4,7 @@ import { useState } from 'react'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { DatabasePage } from '@/components/database/catalog-page'
-import { functionSecretsQuery } from '@/components/functions/api'
+import { functionSecretsQuery, functionSettingsQuery } from '@/components/functions/api'
 import { parseEnv } from '@/components/functions/env'
 import { AddIcon, DeleteIcon } from '@/components/icons'
 import { PermissionButton } from '@/components/permission-button'
@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { cn } from '@/lib/utils'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
@@ -70,6 +71,7 @@ function SecretsPage() {
   }
   return (
     <DatabasePage title="Edge Function Secrets" description={description}>
+      <DatabaseAccess projectRef={ref} canChange={can(project, 'project:update')} />
       <Secrets
         projectRef={ref}
         running={project.stack.status === 'running'}
@@ -262,5 +264,95 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
         {remove.error && <Alert variant="destructive" title={remove.error.message} />}
       </ConfirmDialog>
     </>
+  )
+}
+
+type Access = 'service_role' | 'postgres'
+
+const ACCESS: { value: Access; title: string; text: string }[] = [
+  {
+    value: 'service_role',
+    title: 'Service role (recommended)',
+    text: 'Bypasses Row Level Security, like the service-role key functions already have. Can’t create roles or change Auth’s and Realtime’s tables.',
+  },
+  {
+    value: 'postgres',
+    title: 'postgres',
+    text: 'Administrative access: can also create roles and change auth.users and Realtime’s tables. Every deployed function gets it.',
+  },
+]
+
+/** Which login SUPABASE_DB_URL gives functions. */
+function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; canChange: boolean }) {
+  const queryClient = useQueryClient()
+  const settings = useQuery(functionSettingsQuery(ref))
+  const [confirm, setConfirm] = useState(false)
+  const set = useMutation({
+    mutationFn: (access: Access) =>
+      unwrap(api.PUT('/projects/{ref}/function-settings', { params: { path: { ref } }, body: { database_access: access } })),
+    onSuccess: (res) => {
+      toast.success(
+        `Functions now reach the database as ${res.database_access === 'postgres' ? 'postgres' : 'the service role'}` +
+          (res.restarted ? '' : '; this takes effect when the stack starts')
+      )
+      setConfirm(false)
+      void queryClient.invalidateQueries({ queryKey: functionSettingsQuery(ref).queryKey })
+    },
+  })
+  const current = settings.data?.database_access
+  const choose = (access: Access) => {
+    if (access === current || set.isPending) return
+    if (access === 'postgres') setConfirm(true)
+    else set.mutate(access)
+  }
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-foreground">Database access</span>
+        <span className="text-xs text-foreground-lighter">
+          The login in SUPABASE_DB_URL, which every function can read.
+          {!canChange && ' Owners and Administrators can change it.'}
+        </span>
+      </div>
+      {settings.error ? (
+        <Alert variant="destructive" title={settings.error.message} />
+      ) : !current ? (
+        <Skeleton className="h-20" />
+      ) : (
+        <div role="radiogroup" aria-label="Database access" className="grid gap-3 sm:grid-cols-2">
+          {ACCESS.map((a) => (
+            <button
+              key={a.value}
+              type="button"
+              role="radio"
+              aria-checked={current === a.value}
+              disabled={!canChange || set.isPending}
+              onClick={() => choose(a.value)}
+              className={cn(
+                'flex flex-col gap-1 rounded-panel border px-4 py-3 text-left focus-ring disabled:cursor-not-allowed',
+                current === a.value ? 'border-primary-bright bg-surface-100' : 'enabled:hover:border-strong',
+                !canChange && current !== a.value && 'opacity-60'
+              )}
+            >
+              <span className="text-sm text-foreground">{a.title}</span>
+              <span className="text-xs text-foreground-lighter">{a.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {set.error && !confirm && <Alert variant="destructive" title={set.error.message} />}
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        variant="warning"
+        title="Give functions the postgres login?"
+        description="Any function deployed to this project, by anyone allowed to deploy, could then create roles, change users’ passwords in auth.users and read Realtime’s settings. Choose it only if your functions need administrative access."
+        confirmLabel="Use postgres"
+        loading={set.isPending}
+        onConfirm={() => set.mutate('postgres')}
+      >
+        {set.error && <Alert variant="destructive" title={set.error.message} />}
+      </ConfirmDialog>
+    </Card>
   )
 }

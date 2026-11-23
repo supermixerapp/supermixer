@@ -3,10 +3,12 @@ package httpapi
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
 	"supermixer/internal/config"
+	"supermixer/internal/provision"
 )
 
 func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
@@ -28,6 +30,29 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 	ref := p.Ref
 	waitStack(t, admin, ref)
 	base := "/projects/" + ref
+
+	// Starting set up the functions' database login, inside the db container.
+	if log, _ := os.ReadFile(calls); !strings.Contains(string(log), "exec -T db psql -U supabase_admin") {
+		t.Errorf("no functions_user setup in docker calls:\n%s", log)
+	}
+	created, _ := provision.ReadEnv(filepath.Join(stacks, ref))
+	if !strings.HasPrefix(created["FUNCTIONS_DB_LOGIN"], "functions_user:") {
+		t.Errorf("FUNCTIONS_DB_LOGIN = %q", created["FUNCTIONS_DB_LOGIN"])
+	}
+
+	// No example placeholder that is a stack secret survives into a created stack.
+	notStackSecrets := map[string]bool{"OPENAI_API_KEY": true, "CERTBOT_EMAIL": true, "PROXY_DOMAIN": true}
+	placeholder := regexp.MustCompile(`(?i)your-|insecure|secret1234|supabaserealtime|^eyJ|fake_`)
+	for k, example := range provision.ExampleEnv() {
+		// SMTP_* configure an outside mail server (Auth settings, Stage 4.3).
+		if notStackSecrets[k] || strings.HasPrefix(k, "SMTP_") || example == "" {
+			continue
+		}
+		looksSecret := placeholder.MatchString(example) || regexp.MustCompile(`(?i)PASSWORD|SECRET|_KEY$|TOKEN`).MatchString(k)
+		if looksSecret && created[k] == example {
+			t.Errorf("%s still has the example's value", k)
+		}
+	}
 
 	// The template's example function is there.
 	var list []struct {
@@ -130,6 +155,28 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 	reader.must(403, "GET", base+"/function-secrets", nil, nil)
 	reader.must(403, "DELETE", base+"/functions/greet", nil, nil)
 
+	// How functions reach the database: Owners and Administrators choose.
+	var settings struct {
+		DatabaseAccess string `json:"database_access"`
+		Restarted      bool
+	}
+	admin.must(200, "GET", base+"/function-settings", nil, &settings)
+	if settings.DatabaseAccess != "service_role" {
+		t.Fatalf("settings = %+v", settings)
+	}
+	dev.must(403, "PUT", base+"/function-settings", map[string]string{"database_access": "postgres"}, nil)
+	reader.must(200, "GET", base+"/function-settings", nil, nil)
+	admin.must(400, "PUT", base+"/function-settings", map[string]string{"database_access": "root"}, nil)
+	admin.must(200, "PUT", base+"/function-settings", map[string]string{"database_access": "postgres"}, &settings)
+	if settings.DatabaseAccess != "postgres" || !settings.Restarted {
+		t.Fatalf("set = %+v", settings)
+	}
+	created, _ = provision.ReadEnv(filepath.Join(stacks, ref))
+	if created["FUNCTIONS_DB_LOGIN"] != "postgres:"+created["POSTGRES_PASSWORD"] {
+		t.Error("FUNCTIONS_DB_LOGIN isn't postgres's")
+	}
+	admin.must(200, "PUT", base+"/function-settings", map[string]string{"database_access": "service_role"}, nil)
+
 	// Paused: saved, applied at the next start.
 	admin.must(202, "POST", base+"/stack/stop", nil, nil)
 	waitStack(t, admin, ref)
@@ -157,6 +204,9 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 	got := map[string]int{}
 	for _, e := range audit.Entries {
 		got[e.Action]++
+	}
+	if got["project.function_settings_updated"] != 2 {
+		t.Errorf("settings changes audited %d times", got["project.function_settings_updated"])
 	}
 	if got["project.function_deployed"] != 4 || got["project.function_deleted"] != 1 || got["project.function_secrets_set"] != 1 || got["project.function_secrets_deleted"] != 1 {
 		t.Errorf("audit = %v", got)

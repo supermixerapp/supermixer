@@ -56,6 +56,10 @@ services:
   functions:
     env_file:
       - ./functions.env
+    environment:
+      # Not the postgres login: functions_user, which acts as service_role
+      # (see functions_db.go), unless the project chose otherwise.
+      SUPABASE_DB_URL: postgresql://${FUNCTIONS_DB_LOGIN}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
   storage:
     volumes:
       - storage-files:/var/lib/storage
@@ -209,6 +213,16 @@ func ReadEnv(dir string) (map[string]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	return parseEnvText(b), nil
+}
+
+// ExampleEnv is the template's .env.example, as ReadEnv reads it.
+func ExampleEnv() map[string]string {
+	b, _ := fs.ReadFile(templateFS, "template/.env.example")
+	return parseEnvText(b)
+}
+
+func parseEnvText(b []byte) map[string]string {
 	out := map[string]string{}
 	for _, line := range splitLines(string(b)) {
 		line = strings.TrimRight(line, "\r\n")
@@ -218,7 +232,7 @@ func ReadEnv(dir string) (map[string]string, error) {
 			}
 		}
 	}
-	return out, nil
+	return out
 }
 
 var dbImage = regexp.MustCompile(`(?m)^  db:\s*\n(?:    .*\n|\s*\n)*?    image:\s*(\S+)`)

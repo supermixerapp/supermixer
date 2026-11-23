@@ -35,7 +35,13 @@ func (c Compose) args(sub ...string) []string {
 // Run runs a compose command, writing its output to log (and keeping the
 // last lines for the error).
 func (c Compose) Run(ctx context.Context, log io.Writer, sub ...string) error {
+	return c.RunInput(ctx, log, nil, sub...)
+}
+
+// RunInput is Run with stdin (for SQL that mustn't appear in a process list).
+func (c Compose) RunInput(ctx context.Context, log io.Writer, stdin io.Reader, sub ...string) error {
 	cmd := exec.CommandContext(ctx, c.Docker, c.args(sub...)...)
+	cmd.Stdin = stdin
 	cmd.Dir = c.Layout.Dir
 	if len(c.Env) > 0 {
 		cmd.Env = append(cmd.Environ(), c.Env...)

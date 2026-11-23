@@ -26,6 +26,11 @@ export const functionSecretsQuery = (ref: string) => ({
   queryFn: () => unwrap(api.GET('/projects/{ref}/function-secrets', { params: { path: { ref } } })),
 })
 
+export const functionSettingsQuery = (ref: string) => ({
+  queryKey: ['projects', ref, 'function-settings'],
+  queryFn: () => unwrap(api.GET('/projects/{ref}/function-settings', { params: { path: { ref } } })),
+})
+
 /** Why name can't be a new function's name, or null (as the server checks, plus
  * names Supermixer's own pages use). */
 export function functionNameProblem(name: string): string | null {

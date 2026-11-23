@@ -1,6 +1,7 @@
 package provision
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/hmac"
@@ -539,5 +540,100 @@ func TestWrittenStacksHaveFunctionSecretsFile(t *testing.T) {
 	// The plain env_file form works on every Compose v2.
 	if strings.Contains(overlay, "required:") || !strings.Contains(overlay, "      - ./functions.env\n") {
 		t.Errorf("overlay env_file:\n%s", overlay)
+	}
+}
+
+// Older templates stored the JWT secret as a database setting, readable by
+// every role; an update must not bring that back.
+func TestTemplateDoesntStoreTheJWTSecretInTheDatabase(t *testing.T) {
+	err := fs.WalkDir(templateFS, "template", func(p string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		b, _ := fs.ReadFile(templateFS, p)
+		if regexp.MustCompile(`(?i)app\.settings\.jwt_secret`).Match(b) {
+			t.Errorf("%s mentions app.settings.jwt_secret", p)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestOldStacksArePrepared(t *testing.T) {
+	dir := t.TempDir()
+	// A .env from before the functions' database login existed.
+	if err := os.WriteFile(filepath.Join(dir, ".env"), []byte("POSTGRES_PASSWORD=abc123\nPOSTGRES_HOST=db\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareStack(dir); err != nil {
+		t.Fatal(err)
+	}
+	env, _ := ReadEnv(dir)
+	if !hexPassword.MatchString(env["FUNCTIONS_DB_PASSWORD"]) || env["FUNCTIONS_DB_LOGIN"] != "functions_user:"+env["FUNCTIONS_DB_PASSWORD"] {
+		t.Fatalf("env = %v", env)
+	}
+	if env["POSTGRES_PASSWORD"] != "abc123" || FunctionsDBAccessOf(env) != DBAccessServiceRole {
+		t.Errorf("env = %v", env)
+	}
+	if _, err := os.Stat(filepath.Join(dir, functionSecretsFile)); err != nil {
+		t.Error("no functions.env")
+	}
+	// Preparing again changes nothing.
+	before, _ := os.ReadFile(filepath.Join(dir, ".env"))
+	_ = PrepareStack(dir)
+	after, _ := os.ReadFile(filepath.Join(dir, ".env"))
+	if string(before) != string(after) {
+		t.Error("preparing twice changed .env")
+	}
+	if FunctionsDBLogin(DBAccessPostgres, env) != "postgres:abc123" {
+		t.Error("postgres login")
+	}
+	if err := (Compose{}).EnsureFunctionsRole(context.Background(), nil, "x'; drop role postgres; --"); err == nil {
+		t.Error("used a password that isn't hex")
+	}
+}
+
+// What Compose gives the functions service, from a written stack (needs the docker CLI).
+func TestFunctionsDatabaseURLAsComposeResolvesIt(t *testing.T) {
+	if _, err := exec.LookPath("docker"); err != nil {
+		t.Skip("no docker CLI")
+	}
+	dir := filepath.Join(t.TempDir(), "s")
+	secrets, _ := GenerateSecrets(time.Now())
+	if err := WriteStack(Layout{Dir: dir, Project: "supermixer-x"}, secrets.Env()); err != nil {
+		t.Fatal(err)
+	}
+	if err := PrepareStack(dir); err != nil {
+		t.Fatal(err)
+	}
+	url := func() string {
+		cmd := exec.Command("docker", "compose", "config", "--format", "json")
+		cmd.Dir = dir
+		out, err := cmd.Output()
+		if err != nil {
+			t.Skipf("docker compose config: %v", err)
+		}
+		var cfg struct {
+			Services map[string]struct {
+				Environment map[string]*string `json:"environment"`
+			} `json:"services"`
+		}
+		if err := json.Unmarshal(out, &cfg); err != nil {
+			t.Fatal(err)
+		}
+		return deref(cfg.Services["functions"].Environment["SUPABASE_DB_URL"])
+	}
+	want := "postgresql://functions_user:" + secrets.FunctionsDBPassword + "@db:5432/postgres"
+	if got := url(); got != want {
+		t.Fatalf("SUPABASE_DB_URL = %q, want functions_user's", got)
+	}
+	env, _ := ReadEnv(dir)
+	if err := UpdateEnv(dir, map[string]string{"FUNCTIONS_DB_LOGIN": FunctionsDBLogin(DBAccessPostgres, env)}); err != nil {
+		t.Fatal(err)
+	}
+	if got := url(); got != "postgresql://postgres:"+secrets.PostgresPassword+"@db:5432/postgres" {
+		t.Fatalf("after choosing postgres: %q", got)
 	}
 }

@@ -687,6 +687,43 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/function-settings:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getFunctionSettings
+      tags: [Edge Functions]
+      summary: How a created stack's Edge Functions reach its database
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FunctionSettings" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setFunctionSettings
+      tags: [Edge Functions]
+      summary: Change how Edge Functions reach the database, then restart the functions service
+      description: Needs project settings access (Owners and Administrators). Recorded in the audit log.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/FunctionSettings" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - { $ref: "#/components/schemas/FunctionSettings" }
+                  - type: object
+                    required: [restarted]
+                    properties:
+                      restarted: { type: boolean }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/function-secrets:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1201,6 +1238,17 @@ components:
       properties:
         function: { $ref: "#/components/schemas/EdgeFunction" }
         restarted: { type: boolean, description: Whether the functions service was recreated; false while the stack isn't running. }
+    FunctionSettings:
+      type: object
+      required: [database_access]
+      properties:
+        database_access:
+          type: string
+          enum: [service_role, postgres]
+          description: |
+            The login in SUPABASE_DB_URL. service_role: functions_user, whose sessions act as
+            service_role (the same access as the service-role key). postgres: the stack's postgres
+            login, which can also create roles and change Auth's and Realtime's tables.
     FunctionSecret:
       type: object
       required: [name, digest]

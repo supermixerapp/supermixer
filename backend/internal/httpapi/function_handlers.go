@@ -308,3 +308,56 @@ func isStatus(err error, status int) bool {
 	var e *apiError
 	return errors.As(err, &e) && e.status == status
 }
+
+// ---------------------------------------------------------------- settings
+
+func (h *handlers) GetFunctionSettings(ctx context.Context, req api.GetFunctionSettingsRequestObject) (api.GetFunctionSettingsResponseObject, error) {
+	_, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectRead, "view this project's functions")
+	if err != nil {
+		return nil, err
+	}
+	env, err := provision.ReadEnv(dir)
+	if err != nil {
+		return nil, err
+	}
+	return api.GetFunctionSettings200JSONResponse{
+		DatabaseAccess: api.FunctionSettingsDatabaseAccess(provision.FunctionsDBAccessOf(env)),
+	}, nil
+}
+
+func (h *handlers) SetFunctionSettings(ctx context.Context, req api.SetFunctionSettingsRequestObject) (api.SetFunctionSettingsResponseObject, error) {
+	// Giving functions the postgres login widens what every deployer's code
+	// can do, so it takes project settings access, not deploy access.
+	p, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectUpdate, "change how functions reach the database")
+	if err != nil {
+		return nil, err
+	}
+	access := provision.DBAccess(req.Body.DatabaseAccess)
+	if access != provision.DBAccessServiceRole && access != provision.DBAccessPostgres {
+		return nil, badRequest("database_access is service_role or postgres")
+	}
+	var before provision.DBAccess
+	restarted, err := h.changeFunctions(ctx, p, "changing the functions' database access to "+string(access), func() error {
+		if err := provision.PrepareStack(dir); err != nil {
+			return err
+		}
+		env, err := provision.ReadEnv(dir)
+		if err != nil {
+			return err
+		}
+		before = provision.FunctionsDBAccessOf(env)
+		return provision.UpdateEnv(dir, map[string]string{"FUNCTIONS_DB_LOGIN": provision.FunctionsDBLogin(access, env)})
+	})
+	if err != nil && !isStatus(err, http.StatusBadGateway) {
+		return nil, err
+	}
+	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.function_settings_updated",
+		TargetType: "project", TargetID: p.Ref, TargetName: p.Name,
+		Metadata: map[string]any{"database_access": string(access), "was": string(before)}})
+	if err != nil {
+		return nil, err
+	}
+	return api.SetFunctionSettings200JSONResponse{
+		DatabaseAccess: api.SetFunctionSettings200JSONResponseBodyDatabaseAccess(access), Restarted: restarted,
+	}, nil
+}

@@ -599,6 +599,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/function-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** How a created stack's Edge Functions reach its database */
+        get: operations["getFunctionSettings"];
+        /**
+         * Change how Edge Functions reach the database, then restart the functions service
+         * @description Needs project settings access (Owners and Administrators). Recorded in the audit log.
+         */
+        put: operations["setFunctionSettings"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/function-secrets": {
         parameters: {
             query?: never;
@@ -988,6 +1011,15 @@ export interface components {
             function?: components["schemas"]["EdgeFunction"];
             /** @description Whether the functions service was recreated; false while the stack isn't running. */
             restarted: boolean;
+        };
+        FunctionSettings: {
+            /**
+             * @description The login in SUPABASE_DB_URL. service_role: functions_user, whose sessions act as
+             *     service_role (the same access as the service-role key). postgres: the stack's postgres
+             *     login, which can also create roles and change Auth's and Realtime's tables.
+             * @enum {string}
+             */
+            database_access: "service_role" | "postgres";
         };
         FunctionSecret: {
             name: string;
@@ -2427,6 +2459,58 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getFunctionSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionSettings"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setFunctionSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["FunctionSettings"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionSettings"] & {
+                        restarted: boolean;
+                    };
                 };
             };
             default: components["responses"]["Error"];
