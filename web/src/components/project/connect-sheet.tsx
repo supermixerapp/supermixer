@@ -24,10 +24,10 @@ function CodeBlock({ code }: { code: string }) {
 export function ConnectSheet({ project }: { project: Schemas['Project'] }) {
   const [open, setOpen] = useState(false)
   const keys = useQuery({ ...apiKeysQuery(project.ref), enabled: open })
-  const publicKey =
-    keys.data?.find((k) => k.id === 'publishable' && k.value)?.value ??
-    keys.data?.find((k) => k.id === 'anon' && k.value)?.value ??
-    '<your-anon-key>'
+  const publishable = keys.data?.find((k) => k.id === 'publishable' && k.value)?.value
+  const publicKey = publishable ?? keys.data?.find((k) => k.id === 'anon' && k.value)?.value ?? '<your-anon-key>'
+  // Name the variable after the kind of key it holds.
+  const keyVar = publishable ? 'SUPABASE_PUBLISHABLE_KEY' : 'SUPABASE_ANON_KEY'
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -78,8 +78,11 @@ const supabase = createClient(
               />
             </TabsContent>
             <TabsContent value="env" className="flex flex-col gap-3">
-              <p className="text-sm text-foreground-light">For .env.local in your app. The key is safe in a browser when Row Level Security is on.</p>
-              <CodeBlock code={`SUPABASE_URL=${project.api_url}\nSUPABASE_ANON_KEY=${publicKey}`} />
+              <p className="text-sm text-foreground-light">
+                For your app&apos;s environment file, such as <code className="font-mono text-xs">.env.local</code> in Next.js. The
+                key is safe in a browser when Row Level Security is on.
+              </p>
+              <CodeBlock code={`SUPABASE_URL=${project.api_url}\n${keyVar}=${publicKey}`} />
             </TabsContent>
           </Tabs>
         </SheetSection>

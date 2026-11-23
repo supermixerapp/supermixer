@@ -97,7 +97,7 @@ function NewProjectPage() {
                     </p>
                   </div>
                   <Button variant="default" icon={<ArticleIcon />} onClick={() => setImporting(true)}>
-                    Fill from .env
+                    Fill from Supabase .env
                   </Button>
                 </div>
                 <div className="grid gap-4 border-b px-card py-6 md:grid-cols-12 md:gap-x-6">

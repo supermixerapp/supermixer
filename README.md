@@ -25,7 +25,7 @@ To try project registration against a real stack:
 make stack   # starts a self-hosted Supabase on :8100 (first run downloads ~3 GB) and prints its details
 ```
 
-Then use **New project** in Supermixer. **Fill from .env** fills the form from a pasted stack `.env`; for this stack that's `deploy/dev-stacks/.stack/.env`.
+Then use **New project** in Supermixer. **Fill from Supabase .env** fills the form from the stack's pasted `.env` (Supabase's own file, not Supermixer's `.env.toml`); for this stack that's `deploy/dev-stacks/.stack/.env`.
 
 ## Common tasks
 

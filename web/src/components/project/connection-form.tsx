@@ -164,7 +164,7 @@ export function ConnectionFields({
     <>
       <Section
         title="API"
-        description="The stack's API gateway: SUPABASE_PUBLIC_URL in its .env (port 8000 by default)."
+        description="The stack's API gateway: SUPABASE_PUBLIC_URL in the Supabase stack's .env (port 8000 by default)."
       >
         <FormField label="API URL" htmlFor="api_url">
           <Input id="api_url" placeholder="http://localhost:8000" required value={value.api_url} onChange={set('api_url')} />
@@ -234,8 +234,8 @@ export function ConnectionFields({
         title="Database"
         description={
           <>
-            Self-hosted stacks publish Postgres through Supavisor; the user is{' '}
-            <code className="font-mono">postgres.&lt;POOLER_TENANT_ID&gt;</code>.
+            Self-hosted stacks publish Postgres through Supavisor on POSTGRES_PORT; the user is{' '}
+            <code className="font-mono">postgres.&lt;POOLER_TENANT_ID&gt;</code>, both from the Supabase stack&apos;s .env.
           </>
         }
       >
@@ -243,12 +243,12 @@ export function ConnectionFields({
           <FormField label="Host" htmlFor="db-host" className="sm:col-span-2">
             <Input id="db-host" required value={value.host} onChange={set('host')} />
           </FormField>
-          <FormField label="Port" htmlFor="db-port">
+          <FormField label="Port" htmlFor="db-port" description="POSTGRES_PORT">
             <Input id="db-port" type="number" min={1} max={65535} required value={value.port} onChange={set('port')} />
           </FormField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Database" htmlFor="db-name">
+          <FormField label="Database" htmlFor="db-name" description="POSTGRES_DB">
             <Input id="db-name" required value={value.name} onChange={set('name')} />
           </FormField>
           <FormField label="User" htmlFor="db-user">
@@ -256,7 +256,7 @@ export function ConnectionFields({
           </FormField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Password" htmlFor="db-password">
+          <FormField label="Password" htmlFor="db-password" description="POSTGRES_PASSWORD">
             <Input
               id="db-password"
               type="password"
@@ -303,16 +303,17 @@ export function EnvImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="large">
         <DialogHeader>
-          <DialogTitle>Fill from a .env file</DialogTitle>
+          <DialogTitle>Fill from a Supabase .env file</DialogTitle>
           <DialogDescription>
-            Paste the stack&apos;s <code className="font-mono">.env</code>: the one next to its{' '}
-            <code className="font-mono">docker-compose.yml</code> (<code className="font-mono">docker/.env</code> in a
-            Supabase checkout). It is read in your browser; nothing is saved until you create the project.
+            Paste the self-hosted Supabase stack&apos;s <code className="font-mono">.env</code>: the file next to its{' '}
+            <code className="font-mono">docker-compose.yml</code> (<code className="font-mono">supabase/docker/.env</code> in a
+            Supabase checkout). This is not Supermixer&apos;s own <code className="font-mono">.env.toml</code>. It is read in
+            your browser; nothing is saved until you create the project.
           </DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-2 border-t">
           <Textarea
-            aria-label=".env contents"
+            aria-label="Supabase .env contents"
             className="min-h-60 font-mono text-xs"
             spellCheck={false}
             value={text}
