@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"sync"
 	"testing"
@@ -124,6 +125,84 @@ func TestGatewayProxy(t *testing.T) {
 		// Uploads still need write access, and a bucket named "list" still downloads.
 		reader.must(403, "POST", base+"storage/v1/object/avatars/x.png", map[string]any{}, nil)
 		reader.must(200, "GET", base+"storage/v1/object/list/photo.png", nil, nil)
+	})
+
+	t.Run("Edge Functions need write access for every method and are audited", func(t *testing.T) {
+		reader := joinAs(t, env, admin, "gw", "fnreader", "read_only")
+		before := len(gw.reqs)
+		reader.must(403, "GET", base+"functions/v1/hello", nil, nil)
+		if len(gw.reqs) != before {
+			t.Fatal("a read-only member reached a function")
+		}
+		admin.must(200, "GET", base+"functions/v1/hello?name=x", nil, nil)
+		if r, _ := gw.last(); r.URL.Path != "/functions/v1/hello" || r.URL.RawQuery != "name=x" {
+			t.Fatalf("upstream got %s", r.URL)
+		}
+		// Without the CSRF header, as a link on another site would send it.
+		before = len(gw.reqs)
+		req, _ := http.NewRequest("GET", env.server.URL+"/api/v1"+base+"functions/v1/hello", nil)
+		resp, err := admin.http.Do(req)
+		if err != nil {
+			t.Fatal(err)
+		}
+		resp.Body.Close()
+		if resp.StatusCode != 403 || len(gw.reqs) != before {
+			t.Fatalf("GET without the CSRF token = %d, reached the stack: %v", resp.StatusCode, len(gw.reqs) != before)
+		}
+		var page struct{ Entries []struct{ Action string } }
+		admin.must(200, "GET", "/organizations/gw/audit-logs?action=project.function_invoked", nil, &page)
+		if len(page.Entries) != 1 {
+			t.Fatalf("audit = %+v", page.Entries)
+		}
+	})
+
+	t.Run("the Realtime socket needs an upgrade and the CSRF token", func(t *testing.T) {
+		upgrade := func(c *client, path string, withCSRF bool) int {
+			t.Helper()
+			u, _ := url.Parse(env.server.URL)
+			q := ""
+			for _, ck := range c.http.Jar.Cookies(u) {
+				if ck.Name == csrfCookie && withCSRF {
+					q = "&csrf=" + url.QueryEscape(ck.Value)
+				}
+			}
+			req, _ := http.NewRequest("GET", env.server.URL+"/api/v1"+base+path+"?vsn=1.0.0"+q, nil)
+			req.Header.Set("Connection", "Upgrade")
+			req.Header.Set("Upgrade", "websocket")
+			req.Header.Set("Sec-WebSocket-Version", "13")
+			req.Header.Set("Sec-WebSocket-Key", "dGhlIHNhbXBsZSBub25jZQ==")
+			resp, err := c.http.Do(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			resp.Body.Close()
+			return resp.StatusCode
+		}
+		before := len(gw.reqs)
+		if got := upgrade(admin, "realtime/v1/websocket", false); got != 403 {
+			t.Fatalf("without the token = %d", got)
+		}
+		if got := admin.do("GET", base+"realtime/v1/websocket", nil, nil); got != 400 {
+			t.Fatalf("without an upgrade = %d", got)
+		}
+		if got := upgrade(admin, "storage/v1/bucket", true); got != 400 {
+			t.Fatalf("upgrading another path = %d", got)
+		}
+		if len(gw.reqs) != before {
+			t.Fatal("a refused socket reached the stack")
+		}
+		reader := joinAs(t, env, admin, "gw", "rtreader", "read_only")
+		if got := upgrade(reader, "realtime/v1/websocket", true); got != 403 {
+			t.Fatalf("read-only member = %d", got)
+		}
+		upgrade(admin, "realtime/v1/websocket", true)
+		r, _ := gw.last()
+		if r.URL.Path != "/realtime/v1/websocket" || r.URL.RawQuery != "vsn=1.0.0" || !strings.EqualFold(r.Header.Get("Upgrade"), "websocket") {
+			t.Fatalf("upstream got %s, Upgrade %q", r.URL, r.Header.Get("Upgrade"))
+		}
+		if r.Header.Get("apikey") != "service.jwt.key" {
+			t.Fatal("no admin key on the socket")
+		}
 	})
 
 	t.Run("refuses anything off the allowlist, however it is encoded", func(t *testing.T) {

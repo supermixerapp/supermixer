@@ -1,8 +1,10 @@
 package httpapi
 
 import (
+	"bufio"
 	"context"
 	"errors"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -25,6 +27,12 @@ type gatewayRoute struct {
 	// read marks a POST that only reads (Storage's file listing): it needs
 	// data read, not write, and isn't audited.
 	read bool
+	// write requires data write for every method, GET included: an Edge
+	// Function can do anything, whatever the method.
+	write bool
+	// websocket allows (and requires) a WebSocket upgrade. Browsers can't
+	// send the CSRF header on one, so the token comes as ?csrf= instead.
+	websocket bool
 }
 
 var gatewayRoutes = []gatewayRoute{
@@ -42,6 +50,11 @@ var gatewayRoutes = []gatewayRoute{
 	{prefix: "storage/v1/object", methods: []string{"GET", "HEAD", "POST", "PUT", "DELETE"}, auditAs: "project.storage_changed"},
 	// PostgREST's OpenAPI description, for the API docs.
 	{prefix: "rest/v1", exact: true, methods: []string{"GET"}},
+	// Invoking Edge Functions, as the service role.
+	{prefix: "functions/v1", methods: []string{"GET", "POST", "PUT", "PATCH", "DELETE"}, write: true, auditAs: "project.function_invoked"},
+	// The Realtime Inspector's socket. It can send as well as listen, with
+	// the service role, so it needs write access.
+	{prefix: "realtime/v1/websocket", exact: true, methods: []string{"GET"}, write: true, websocket: true},
 }
 
 // matchGateway finds the route for a cleaned path and method. If a route
@@ -157,9 +170,35 @@ func (h *handlers) gateway() http.Handler {
 			writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 			return
 		}
+		upgrade := strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+		if upgrade != rt.websocket {
+			writeError(w, http.StatusBadRequest, "this path needs a WebSocket upgrade, and only it")
+			return
+		}
 		perm, action := rbac.ProjectDataRead, "view this project's data"
-		if r.Method != http.MethodGet && r.Method != http.MethodHead && !rt.read {
+		if rt.write || (r.Method != http.MethodGet && r.Method != http.MethodHead && !rt.read) {
 			perm, action = rbac.ProjectDataWrite, "change this project's data"
+		}
+		query := r.URL.Query()
+		// The session middleware checks CSRF on unsafe methods only. A write
+		// route acts even on GET (an Edge Function call), and SameSite=Lax
+		// cookies ride along on another site's top-level GET, so check here.
+		if rt.write && !rt.websocket && safeMethod(r.Method) {
+			info := reqInfo(r.Context())
+			if info.Principal == nil || !h.csrf.Valid(info.Principal.Token, r.Header.Get(csrfHeader)) {
+				writeError(w, http.StatusForbidden, "missing or invalid CSRF token; reload the page and try again")
+				return
+			}
+		}
+		if rt.websocket {
+			// Double-submit, like the X-CSRF-Token header: another site can
+			// open a socket with our cookies but can't read sm_csrf.
+			info := reqInfo(r.Context())
+			if info.Principal == nil || !h.csrf.Valid(info.Principal.Token, query.Get("csrf")) {
+				writeError(w, http.StatusForbidden, "missing or invalid CSRF token; reload the page and try again")
+				return
+			}
+			query.Del("csrf")
 		}
 		ctx := r.Context()
 		a, err := h.loadProject(ctx, ref, perm, action)
@@ -186,6 +225,9 @@ func (h *handlers) gateway() http.Handler {
 						u = u.JoinPath("/") // PostgREST's root needs it
 					}
 					u.RawQuery = r.URL.RawQuery
+					if rt.websocket {
+						u.RawQuery = query.Encode()
+					}
 					ctx = context.WithValue(ctx, gatewayKey{}, gatewayTarget{url: u, key: c.Keys.Admin()})
 				}
 			}
@@ -220,6 +262,16 @@ type statusRecorder struct {
 func (s *statusRecorder) WriteHeader(code int) {
 	s.status = code
 	s.ResponseWriter.WriteHeader(code)
+}
+
+// Hijack lets WebSocket upgrades through.
+func (s *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj, ok := s.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, errors.New("the connection can't be taken over")
+	}
+	s.status = http.StatusSwitchingProtocols
+	return hj.Hijack()
 }
 
 // Flush keeps streaming responses streaming.

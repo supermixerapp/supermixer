@@ -22,6 +22,7 @@ import {
   POLICIES_SQL,
   POLICY_TABLES_SQL,
   POLICY_TEMPLATES,
+  REALTIME_POLICY_TEMPLATES,
   storagePolicyTemplates,
   type PolicyDef,
   type PolicyRow,
@@ -33,34 +34,38 @@ import { listBuckets } from '@/lib/storage-api'
 
 /**
  * Row Level Security per table, shared by Database › Policies, Auth › Policies
- * and Storage › Policies. With `storage`, it shows Storage's own tables: their
- * policies can be changed, but RLS stays as Storage set it.
+ * Storage › Policies and Realtime › Policies. With `storage` or `realtime`, it
+ * shows that service's own tables: their policies can be changed, but RLS
+ * stays as the service set it.
  */
 export function PoliciesView({
   projectRef: ref,
   schema,
   onSchemaChange,
   storage = false,
+  realtime = false,
   description = 'Row Level Security policies decide which rows each role can read and write through the API.',
 }: {
   projectRef: string
   schema: string
   onSchemaChange?: (s: string) => void
   storage?: boolean
+  realtime?: boolean
   description?: ReactNode
 }) {
+  const managed = storage ? STORAGE_TABLE_HINTS : realtime ? REALTIME_TABLE_HINTS : null
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<PolicyRow | null>(null)
   const tables = usePg<PolicyTableRow>(ref, ['policy-tables', schema], POLICY_TABLES_SQL, [schema])
   const policies = usePg<PolicyRow>(ref, ['policies', schema], POLICIES_SQL, [schema])
   const canChangeSchema = useCanChange(schema)
-  // Storage's schema is Supabase's, but its policies are yours to write.
+  // Storage's and Realtime's schemas are Supabase's, but their policies are yours to write.
   const canWrite = useCanChange()
-  const canChange = storage ? canWrite : canChangeSchema
+  const canChange = managed ? canWrite : canChangeSchema
   const ddl = useDdl(ref)
   const rows = (tables.data ?? [])
-    .filter((t) => !storage || STORAGE_TABLES.includes(t.name))
+    .filter((t) => !managed || t.name in managed)
     .filter((t) => t.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
@@ -89,8 +94,8 @@ export function PoliciesView({
               <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
                 <span className="text-sm text-foreground">{t.name}</span>
                 {!t.rls && <Badge variant="warning">RLS disabled</Badge>}
-                {storage && <span className="text-xs text-foreground-lighter">{STORAGE_TABLE_HINTS[t.name]}</span>}
-                {storage ? (
+                {managed && <span className="text-xs text-foreground-lighter">{managed[t.name]}</span>}
+                {managed ? (
                   <span className="ml-auto" />
                 ) : (
                 <label className="ml-auto flex items-center gap-2 text-xs text-foreground-light">
@@ -109,7 +114,11 @@ export function PoliciesView({
               </div>
               {own.length === 0 ? (
                 <p className="px-4 py-4 text-xs text-foreground-lighter">
-                  {t.rls ? 'No policies: the API can read or write nothing in this table.' : 'RLS is off: anyone with the anon key can read and write every row.'}
+                  {realtime
+                    ? 'No policies: only the service role can use private channels.'
+                    : t.rls
+                      ? 'No policies: the API can read or write nothing in this table.'
+                      : 'RLS is off: anyone with the anon key can read and write every row.'}
                 </p>
               ) : (
                 <ul className="divide-y">
@@ -137,7 +146,9 @@ export function PoliciesView({
           )
         })
       )}
-      {creating && <PolicySheet projectRef={ref} schema={schema} table={creating} storage={storage} onClose={() => setCreating(null)} />}
+      {creating && (
+        <PolicySheet projectRef={ref} schema={schema} table={creating} storage={storage} realtime={realtime} onClose={() => setCreating(null)} />
+      )}
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
@@ -155,10 +166,13 @@ export function PoliciesView({
 
 const COMMON_ROLES = ['anon', 'authenticated', 'service_role']
 
-const STORAGE_TABLES = ['objects', 'buckets']
 const STORAGE_TABLE_HINTS: Record<string, string> = {
   objects: 'Who can read, upload, change and delete files',
   buckets: 'Who can list and manage buckets through the API',
+}
+
+const REALTIME_TABLE_HINTS: Record<string, string> = {
+  messages: 'Who can receive and send Broadcast and Presence on private channels',
 }
 
 function PolicySheet({
@@ -166,12 +180,14 @@ function PolicySheet({
   schema,
   table,
   storage,
+  realtime,
   onClose,
 }: {
   projectRef: string
   schema: string
   table: string
   storage: boolean
+  realtime: boolean
   onClose: () => void
 }) {
   const [p, setP] = useState<PolicyDef>({ schema, table, name: '', command: 'SELECT', permissive: true, roles: [], using: '', check: '' })
@@ -183,7 +199,13 @@ function PolicySheet({
   })
   const [bucket, setBucket] = useState<string | null>(null)
   const chosenBucket = bucket ?? buckets.data?.[0]?.name ?? null
-  const templates = bucketTemplates ? (chosenBucket ? storagePolicyTemplates(chosenBucket) : []) : POLICY_TEMPLATES
+  const templates = bucketTemplates
+    ? chosenBucket
+      ? storagePolicyTemplates(chosenBucket)
+      : []
+    : realtime
+      ? REALTIME_POLICY_TEMPLATES
+      : POLICY_TEMPLATES
   const ddl = useDdl(projectRef)
   const set = (patch: Partial<PolicyDef>) => setP((x) => ({ ...x, ...patch }))
   const sql = p.name.trim() ? createPolicy({ ...p, name: p.name.trim() }) : ''

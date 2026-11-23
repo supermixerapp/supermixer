@@ -140,3 +140,42 @@ export function relativeTime(iso: string | null | undefined, now = Date.now(), l
   }
   return rtf.format(0, 'second')
 }
+
+// ------------------------------------------------------------- audit logs
+
+export interface AuditEntry {
+  id: string
+  created_at: string
+  ip_address: string
+  action: string | null
+  actor: string | null
+  actor_id: string | null
+  log_type: string | null
+  traits: Record<string, unknown> | null
+  total: number
+}
+
+/**
+ * Auth's audit trail, newest first. Params: $1 action ('' for all), $2 a LIKE
+ * pattern over the whole entry ('' for none), $3 limit, $4 offset.
+ */
+export const AUDIT_LOG_SQL = `
+select e.id::text, e.created_at, e.ip_address,
+  e.payload->>'action' as action, e.payload->>'actor_username' as actor,
+  e.payload->>'actor_id' as actor_id, e.payload->>'log_type' as log_type,
+  e.payload->'traits' as traits, (count(*) over ())::int as total
+from auth.audit_log_entries e
+where ($1 = '' or e.payload->>'action' = $1)
+  and ($2 = '' or e.payload::text ilike $2 or e.ip_address ilike $2)
+order by e.created_at desc nulls last, e.id
+limit $3::int offset $4::int`
+
+export const AUDIT_ACTIONS_SQL = `
+select distinct payload->>'action' as action from auth.audit_log_entries where payload->>'action' is not null order by 1`
+
+/** user_signedup → User signed up */
+export function auditActionLabel(action: string | null): string {
+  if (!action) return 'Unknown'
+  const words = action.replace(/_/g, ' ').replace(/signedup/, 'signed up').replace(/loggedin/, 'logged in').replace(/loggedout/, 'logged out')
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}

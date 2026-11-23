@@ -31,6 +31,8 @@ import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$r
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppProjectRefAdvisorsQueryPerformanceRouteImport } from './routes/_app/project.$ref.advisors.query-performance'
+import { Route as AppProjectRefAuthAuditLogsRouteImport } from './routes/_app/project.$ref.auth.audit-logs'
 import { Route as AppProjectRefAuthPoliciesRouteImport } from './routes/_app/project.$ref.auth.policies'
 import { Route as AppProjectRefAuthUsersRouteImport } from './routes/_app/project.$ref.auth.users'
 import { Route as AppProjectRefDatabaseColumnPrivilegesRouteImport } from './routes/_app/project.$ref.database.column-privileges'
@@ -48,12 +50,16 @@ import { Route as AppProjectRefDatabaseTriggersRouteImport } from './routes/_app
 import { Route as AppProjectRefDatabaseTypesRouteImport } from './routes/_app/project.$ref.database.types'
 import { Route as AppProjectRefEditorIndexRouteImport } from './routes/_app/project.$ref.editor.index'
 import { Route as AppProjectRefEditorIdRouteImport } from './routes/_app/project.$ref.editor.$id'
+import { Route as AppProjectRefFunctionsIndexRouteImport } from './routes/_app/project.$ref.functions.index'
 import { Route as AppProjectRefIntegrationsIndexRouteImport } from './routes/_app/project.$ref.integrations.index'
 import { Route as AppProjectRefIntegrationsCronRouteImport } from './routes/_app/project.$ref.integrations.cron'
 import { Route as AppProjectRefIntegrationsGraphiqlRouteImport } from './routes/_app/project.$ref.integrations.graphiql'
 import { Route as AppProjectRefIntegrationsQueuesRouteImport } from './routes/_app/project.$ref.integrations.queues'
 import { Route as AppProjectRefIntegrationsVaultRouteImport } from './routes/_app/project.$ref.integrations.vault'
 import { Route as AppProjectRefIntegrationsWebhooksRouteImport } from './routes/_app/project.$ref.integrations.webhooks'
+import { Route as AppProjectRefObservabilityIndexRouteImport } from './routes/_app/project.$ref.observability.index'
+import { Route as AppProjectRefRealtimeInspectorRouteImport } from './routes/_app/project.$ref.realtime.inspector'
+import { Route as AppProjectRefRealtimePoliciesRouteImport } from './routes/_app/project.$ref.realtime.policies'
 import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/project.$ref.settings.api-keys'
 import { Route as AppProjectRefSettingsGeneralRouteImport } from './routes/_app/project.$ref.settings.general'
 import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/project.$ref.settings.jwt'
@@ -173,6 +179,18 @@ const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   path: '/sql',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefAdvisorsQueryPerformanceRoute =
+  AppProjectRefAdvisorsQueryPerformanceRouteImport.update({
+    id: '/advisors/query-performance',
+    path: '/advisors/query-performance',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthAuditLogsRoute =
+  AppProjectRefAuthAuditLogsRouteImport.update({
+    id: '/auth/audit-logs',
+    path: '/auth/audit-logs',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefAuthPoliciesRoute =
   AppProjectRefAuthPoliciesRouteImport.update({
     id: '/auth/policies',
@@ -273,6 +291,12 @@ const AppProjectRefEditorIdRoute = AppProjectRefEditorIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => AppProjectRefEditorRoute,
 } as any)
+const AppProjectRefFunctionsIndexRoute =
+  AppProjectRefFunctionsIndexRouteImport.update({
+    id: '/functions/',
+    path: '/functions/',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefIntegrationsIndexRoute =
   AppProjectRefIntegrationsIndexRouteImport.update({
     id: '/integrations/',
@@ -307,6 +331,24 @@ const AppProjectRefIntegrationsWebhooksRoute =
   AppProjectRefIntegrationsWebhooksRouteImport.update({
     id: '/integrations/webhooks',
     path: '/integrations/webhooks',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefObservabilityIndexRoute =
+  AppProjectRefObservabilityIndexRouteImport.update({
+    id: '/observability/',
+    path: '/observability/',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefRealtimeInspectorRoute =
+  AppProjectRefRealtimeInspectorRouteImport.update({
+    id: '/realtime/inspector',
+    path: '/realtime/inspector',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefRealtimePoliciesRoute =
+  AppProjectRefRealtimePoliciesRouteImport.update({
+    id: '/realtime/policies',
+    path: '/realtime/policies',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
 const AppProjectRefSettingsApiKeysRoute =
@@ -384,6 +426,8 @@ export interface FileRoutesByFullPath {
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  '/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
@@ -405,13 +449,17 @@ export interface FileRoutesByFullPath {
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/project/$ref/realtime/inspector': typeof AppProjectRefRealtimeInspectorRoute
+  '/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
+  '/project/$ref/functions/': typeof AppProjectRefFunctionsIndexRoute
   '/project/$ref/integrations/': typeof AppProjectRefIntegrationsIndexRoute
+  '/project/$ref/observability/': typeof AppProjectRefObservabilityIndexRoute
   '/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
   '/project/$ref/integrations/data_api/docs': typeof AppProjectRefIntegrationsData_apiDocsRoute
   '/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
@@ -435,6 +483,8 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  '/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
@@ -456,13 +506,17 @@ export interface FileRoutesByTo {
   '/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/project/$ref/realtime/inspector': typeof AppProjectRefRealtimeInspectorRoute
+  '/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
+  '/project/$ref/functions': typeof AppProjectRefFunctionsIndexRoute
   '/project/$ref/integrations': typeof AppProjectRefIntegrationsIndexRoute
+  '/project/$ref/observability': typeof AppProjectRefObservabilityIndexRoute
   '/project/$ref/sql': typeof AppProjectRefSqlIndexRoute
   '/project/$ref/integrations/data_api/docs': typeof AppProjectRefIntegrationsData_apiDocsRoute
   '/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
@@ -492,6 +546,8 @@ export interface FileRoutesById {
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  '/_app/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
   '/_app/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/_app/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/_app/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
@@ -513,13 +569,17 @@ export interface FileRoutesById {
   '/_app/project/$ref/integrations/queues': typeof AppProjectRefIntegrationsQueuesRoute
   '/_app/project/$ref/integrations/vault': typeof AppProjectRefIntegrationsVaultRoute
   '/_app/project/$ref/integrations/webhooks': typeof AppProjectRefIntegrationsWebhooksRoute
+  '/_app/project/$ref/realtime/inspector': typeof AppProjectRefRealtimeInspectorRoute
+  '/_app/project/$ref/realtime/policies': typeof AppProjectRefRealtimePoliciesRoute
   '/_app/project/$ref/settings/api-keys': typeof AppProjectRefSettingsApiKeysRoute
   '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/_app/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
   '/_app/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
+  '/_app/project/$ref/functions/': typeof AppProjectRefFunctionsIndexRoute
   '/_app/project/$ref/integrations/': typeof AppProjectRefIntegrationsIndexRoute
+  '/_app/project/$ref/observability/': typeof AppProjectRefObservabilityIndexRoute
   '/_app/project/$ref/sql/': typeof AppProjectRefSqlIndexRoute
   '/_app/project/$ref/integrations/data_api/docs': typeof AppProjectRefIntegrationsData_apiDocsRoute
   '/_app/project/$ref/storage/buckets/$bucket': typeof AppProjectRefStorageBucketsBucketRoute
@@ -549,6 +609,8 @@ export interface FileRouteTypes {
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/advisors/query-performance'
+    | '/project/$ref/auth/audit-logs'
     | '/project/$ref/auth/policies'
     | '/project/$ref/auth/users'
     | '/project/$ref/database/column-privileges'
@@ -570,13 +632,17 @@ export interface FileRouteTypes {
     | '/project/$ref/integrations/queues'
     | '/project/$ref/integrations/vault'
     | '/project/$ref/integrations/webhooks'
+    | '/project/$ref/realtime/inspector'
+    | '/project/$ref/realtime/policies'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
     | '/project/$ref/editor/'
+    | '/project/$ref/functions/'
     | '/project/$ref/integrations/'
+    | '/project/$ref/observability/'
     | '/project/$ref/sql/'
     | '/project/$ref/integrations/data_api/docs'
     | '/project/$ref/storage/buckets/$bucket'
@@ -600,6 +666,8 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/advisors/query-performance'
+    | '/project/$ref/auth/audit-logs'
     | '/project/$ref/auth/policies'
     | '/project/$ref/auth/users'
     | '/project/$ref/database/column-privileges'
@@ -621,13 +689,17 @@ export interface FileRouteTypes {
     | '/project/$ref/integrations/queues'
     | '/project/$ref/integrations/vault'
     | '/project/$ref/integrations/webhooks'
+    | '/project/$ref/realtime/inspector'
+    | '/project/$ref/realtime/policies'
     | '/project/$ref/settings/api-keys'
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/jwt'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
     | '/project/$ref/editor'
+    | '/project/$ref/functions'
     | '/project/$ref/integrations'
+    | '/project/$ref/observability'
     | '/project/$ref/sql'
     | '/project/$ref/integrations/data_api/docs'
     | '/project/$ref/storage/buckets/$bucket'
@@ -656,6 +728,8 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/project/$ref/advisors/query-performance'
+    | '/_app/project/$ref/auth/audit-logs'
     | '/_app/project/$ref/auth/policies'
     | '/_app/project/$ref/auth/users'
     | '/_app/project/$ref/database/column-privileges'
@@ -677,13 +751,17 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/integrations/queues'
     | '/_app/project/$ref/integrations/vault'
     | '/_app/project/$ref/integrations/webhooks'
+    | '/_app/project/$ref/realtime/inspector'
+    | '/_app/project/$ref/realtime/policies'
     | '/_app/project/$ref/settings/api-keys'
     | '/_app/project/$ref/settings/general'
     | '/_app/project/$ref/settings/jwt'
     | '/_app/project/$ref/sql/$id'
     | '/_app/project/$ref/storage/policies'
     | '/_app/project/$ref/editor/'
+    | '/_app/project/$ref/functions/'
     | '/_app/project/$ref/integrations/'
+    | '/_app/project/$ref/observability/'
     | '/_app/project/$ref/sql/'
     | '/_app/project/$ref/integrations/data_api/docs'
     | '/_app/project/$ref/storage/buckets/$bucket'
@@ -853,6 +931,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/advisors/query-performance': {
+      id: '/_app/project/$ref/advisors/query-performance'
+      path: '/advisors/query-performance'
+      fullPath: '/project/$ref/advisors/query-performance'
+      preLoaderRoute: typeof AppProjectRefAdvisorsQueryPerformanceRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/audit-logs': {
+      id: '/_app/project/$ref/auth/audit-logs'
+      path: '/auth/audit-logs'
+      fullPath: '/project/$ref/auth/audit-logs'
+      preLoaderRoute: typeof AppProjectRefAuthAuditLogsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/auth/policies': {
       id: '/_app/project/$ref/auth/policies'
       path: '/auth/policies'
@@ -972,6 +1064,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefEditorIdRouteImport
       parentRoute: typeof AppProjectRefEditorRoute
     }
+    '/_app/project/$ref/functions/': {
+      id: '/_app/project/$ref/functions/'
+      path: '/functions'
+      fullPath: '/project/$ref/functions/'
+      preLoaderRoute: typeof AppProjectRefFunctionsIndexRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/integrations/': {
       id: '/_app/project/$ref/integrations/'
       path: '/integrations'
@@ -1012,6 +1111,27 @@ declare module '@tanstack/react-router' {
       path: '/integrations/webhooks'
       fullPath: '/project/$ref/integrations/webhooks'
       preLoaderRoute: typeof AppProjectRefIntegrationsWebhooksRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/observability/': {
+      id: '/_app/project/$ref/observability/'
+      path: '/observability'
+      fullPath: '/project/$ref/observability/'
+      preLoaderRoute: typeof AppProjectRefObservabilityIndexRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/realtime/inspector': {
+      id: '/_app/project/$ref/realtime/inspector'
+      path: '/realtime/inspector'
+      fullPath: '/project/$ref/realtime/inspector'
+      preLoaderRoute: typeof AppProjectRefRealtimeInspectorRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/realtime/policies': {
+      id: '/_app/project/$ref/realtime/policies'
+      path: '/realtime/policies'
+      fullPath: '/project/$ref/realtime/policies'
+      preLoaderRoute: typeof AppProjectRefRealtimePoliciesRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/settings/api-keys': {
@@ -1135,6 +1255,8 @@ interface AppProjectRefRouteChildren {
   AppProjectRefEditorRoute: typeof AppProjectRefEditorRouteWithChildren
   AppProjectRefSqlRoute: typeof AppProjectRefSqlRouteWithChildren
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
+  AppProjectRefAdvisorsQueryPerformanceRoute: typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  AppProjectRefAuthAuditLogsRoute: typeof AppProjectRefAuthAuditLogsRoute
   AppProjectRefAuthPoliciesRoute: typeof AppProjectRefAuthPoliciesRoute
   AppProjectRefAuthUsersRoute: typeof AppProjectRefAuthUsersRoute
   AppProjectRefDatabaseColumnPrivilegesRoute: typeof AppProjectRefDatabaseColumnPrivilegesRoute
@@ -1155,11 +1277,15 @@ interface AppProjectRefRouteChildren {
   AppProjectRefIntegrationsQueuesRoute: typeof AppProjectRefIntegrationsQueuesRoute
   AppProjectRefIntegrationsVaultRoute: typeof AppProjectRefIntegrationsVaultRoute
   AppProjectRefIntegrationsWebhooksRoute: typeof AppProjectRefIntegrationsWebhooksRoute
+  AppProjectRefRealtimeInspectorRoute: typeof AppProjectRefRealtimeInspectorRoute
+  AppProjectRefRealtimePoliciesRoute: typeof AppProjectRefRealtimePoliciesRoute
   AppProjectRefSettingsApiKeysRoute: typeof AppProjectRefSettingsApiKeysRoute
   AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
   AppProjectRefStoragePoliciesRoute: typeof AppProjectRefStoragePoliciesRoute
+  AppProjectRefFunctionsIndexRoute: typeof AppProjectRefFunctionsIndexRoute
   AppProjectRefIntegrationsIndexRoute: typeof AppProjectRefIntegrationsIndexRoute
+  AppProjectRefObservabilityIndexRoute: typeof AppProjectRefObservabilityIndexRoute
   AppProjectRefIntegrationsData_apiDocsRoute: typeof AppProjectRefIntegrationsData_apiDocsRoute
   AppProjectRefStorageBucketsBucketRoute: typeof AppProjectRefStorageBucketsBucketRoute
   AppProjectRefStorageBucketsIndexRoute: typeof AppProjectRefStorageBucketsIndexRoute
@@ -1170,6 +1296,9 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefEditorRoute: AppProjectRefEditorRouteWithChildren,
   AppProjectRefSqlRoute: AppProjectRefSqlRouteWithChildren,
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
+  AppProjectRefAdvisorsQueryPerformanceRoute:
+    AppProjectRefAdvisorsQueryPerformanceRoute,
+  AppProjectRefAuthAuditLogsRoute: AppProjectRefAuthAuditLogsRoute,
   AppProjectRefAuthPoliciesRoute: AppProjectRefAuthPoliciesRoute,
   AppProjectRefAuthUsersRoute: AppProjectRefAuthUsersRoute,
   AppProjectRefDatabaseColumnPrivilegesRoute:
@@ -1194,11 +1323,15 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefIntegrationsVaultRoute: AppProjectRefIntegrationsVaultRoute,
   AppProjectRefIntegrationsWebhooksRoute:
     AppProjectRefIntegrationsWebhooksRoute,
+  AppProjectRefRealtimeInspectorRoute: AppProjectRefRealtimeInspectorRoute,
+  AppProjectRefRealtimePoliciesRoute: AppProjectRefRealtimePoliciesRoute,
   AppProjectRefSettingsApiKeysRoute: AppProjectRefSettingsApiKeysRoute,
   AppProjectRefSettingsGeneralRoute: AppProjectRefSettingsGeneralRoute,
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
   AppProjectRefStoragePoliciesRoute: AppProjectRefStoragePoliciesRoute,
+  AppProjectRefFunctionsIndexRoute: AppProjectRefFunctionsIndexRoute,
   AppProjectRefIntegrationsIndexRoute: AppProjectRefIntegrationsIndexRoute,
+  AppProjectRefObservabilityIndexRoute: AppProjectRefObservabilityIndexRoute,
   AppProjectRefIntegrationsData_apiDocsRoute:
     AppProjectRefIntegrationsData_apiDocsRoute,
   AppProjectRefStorageBucketsBucketRoute:

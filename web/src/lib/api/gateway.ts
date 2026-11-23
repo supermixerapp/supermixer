@@ -1,5 +1,6 @@
 /*
- * Calls to a project's own HTTP APIs (Auth admin, Storage, PostgREST spec)
+ * Calls to a project's own HTTP APIs (Auth admin, Storage, PostgREST spec,
+ * Edge Functions, the Realtime socket)
  * through Supermixer's gateway proxy, which adds the stack's admin key.
  */
 import { ApiError, readCookie } from './client'
@@ -22,21 +23,33 @@ export interface GatewayInit {
   signal?: AbortSignal
 }
 
-/** Any request to `/projects/{ref}/gateway/{path}`; throws ApiError with the stack's message. */
-export async function gatewayFetch(ref: string, path: string, init: GatewayInit = {}): Promise<Response> {
+/** A request to `/projects/{ref}/gateway/{path}`, whatever its status. */
+export function gatewayRaw(ref: string, path: string, init: GatewayInit = {}): Promise<Response> {
   const method = init.method ?? 'GET'
   const headers: Record<string, string> = { ...init.headers }
-  if (method !== 'GET' && method !== 'HEAD') {
-    const token = readCookie('sm_csrf')
-    if (token) headers['X-CSRF-Token'] = decodeURIComponent(token)
-  }
-  const res = await fetch(`/api/v1/projects/${encodeURIComponent(ref)}/gateway/${path}`, {
+  // Always: some routes act on GET too (calling an Edge Function).
+  const token = readCookie('sm_csrf')
+  if (token) headers['X-CSRF-Token'] = decodeURIComponent(token)
+  return fetch(`/api/v1/projects/${encodeURIComponent(ref)}/gateway/${path}`, {
     method,
     headers,
     credentials: 'same-origin',
     ...(init.body !== undefined && { body: init.body }),
     ...(init.signal && { signal: init.signal }),
   })
+}
+
+/** The gateway's WebSocket URL for a path, with the CSRF token browsers can't send as a header. */
+export function gatewaySocketUrl(ref: string, path: string, query: Record<string, string> = {}): string {
+  const token = readCookie('sm_csrf')
+  const params = new URLSearchParams({ ...query, ...(token && { csrf: decodeURIComponent(token) }) })
+  const scheme = location.protocol === 'https:' ? 'wss:' : 'ws:'
+  return `${scheme}//${location.host}/api/v1/projects/${encodeURIComponent(ref)}/gateway/${path}?${params}`
+}
+
+/** Any request to `/projects/{ref}/gateway/{path}`; throws ApiError with the stack's message. */
+export async function gatewayFetch(ref: string, path: string, init: GatewayInit = {}): Promise<Response> {
+  const res = await gatewayRaw(ref, path, init)
   if (!res.ok) {
     const text = await res.text()
     let body: unknown

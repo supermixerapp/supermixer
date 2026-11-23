@@ -467,6 +467,46 @@ export const POLICY_TEMPLATES: PolicyTemplate[] = [
   { title: 'Enable delete for users based on user_id', command: 'DELETE', roles: ['authenticated'], using: '(select auth.uid()) = user_id', check: '' },
 ]
 
+/** Realtime Authorization: policies on realtime.messages for private channels. */
+export const REALTIME_POLICY_TEMPLATES: PolicyTemplate[] = [
+  {
+    title: 'Allow authenticated users to receive broadcasts',
+    command: 'SELECT',
+    roles: ['authenticated'],
+    using: "realtime.messages.extension in ('broadcast')",
+    check: '',
+  },
+  {
+    title: 'Allow authenticated users to send broadcasts',
+    command: 'INSERT',
+    roles: ['authenticated'],
+    using: '',
+    check: "realtime.messages.extension in ('broadcast')",
+  },
+  {
+    title: 'Allow authenticated users to listen to presence',
+    command: 'SELECT',
+    roles: ['authenticated'],
+    using: "realtime.messages.extension in ('presence')",
+    check: '',
+  },
+  {
+    title: 'Allow authenticated users to track presence',
+    command: 'INSERT',
+    roles: ['authenticated'],
+    using: '',
+    check: "realtime.messages.extension in ('presence')",
+  },
+  {
+    title: "Only on a channel named after the user's ID",
+    name: 'Users can use their own channel',
+    command: 'SELECT',
+    roles: ['authenticated'],
+    using: '(select realtime.topic()) = (select auth.uid())::text',
+    check: '',
+  },
+]
+
 // ------------------------------------------------------------ migrations
 
 export interface MigrationRow {

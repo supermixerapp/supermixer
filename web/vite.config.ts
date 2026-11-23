@@ -53,7 +53,8 @@ export default defineConfig({
   server: {
     port: 5173,
     proxy: {
-      '/api': backend,
+      // ws: the Realtime Inspector's socket goes through the gateway too.
+      '/api': { target: backend, ws: true },
       '/theme.css': backend,
       '/favicon.svg': backend,
     },
