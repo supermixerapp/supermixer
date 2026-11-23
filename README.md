@@ -8,7 +8,7 @@ An on-premise management plane for self-hosted Supabase: organizations, projects
 
 - Go 1.24 or newer. The module needs Go 1.26, which Go downloads automatically.
 - Node 24 and pnpm 10
-- Docker, for Supermixer's own Postgres and for `make generate`
+- Docker, for Supermixer's own Postgres (`make dev`, `make test-integration`), `make generate`, and the dev Supabase stack (`make stack`, about 3 GB of images)
 
 ## Getting started
 
@@ -25,15 +25,16 @@ To try project registration against a real stack:
 make stack   # starts a self-hosted Supabase on :8100 (first run downloads ~3 GB) and prints its details
 ```
 
-Then use **New project** in Supermixer. **Fill from .env** reads the stack's `deploy/dev-stacks/.stack/.env` if you paste it in.
+Then use **New project** in Supermixer. **Fill from .env** fills the form from a pasted stack `.env`; for this stack that's `deploy/dev-stacks/.stack/.env`.
 
 ## Common tasks
 
 | Command | What it does |
 |---|---|
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
-| `make test` | Go tests (including integration tests against Postgres) and web tests |
-| `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack |
+| `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
+| `make test-integration` | Starts Postgres, then runs every Go test |
+| `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
 | `docker compose -f deploy/docker-compose.yml --profile app up -d --build` | Runs everything in containers |

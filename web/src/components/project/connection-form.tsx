@@ -305,8 +305,9 @@ export function EnvImportDialog({
         <DialogHeader>
           <DialogTitle>Fill from a .env file</DialogTitle>
           <DialogDescription>
-            Paste the stack&apos;s <code className="font-mono">docker/.env</code>. It is read in your browser; nothing is
-            saved until you create the project.
+            Paste the stack&apos;s <code className="font-mono">.env</code>: the one next to its{' '}
+            <code className="font-mono">docker-compose.yml</code> (<code className="font-mono">docker/.env</code> in a
+            Supabase checkout). It is read in your browser; nothing is saved until you create the project.
           </DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-2 border-t">

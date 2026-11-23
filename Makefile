@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env db db-down dev dev-backend dev-web generate build test lint stack stack-down
+.PHONY: help setup env db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -56,9 +56,12 @@ build: ## Build a single binary with the web UI embedded (bin/supermixer)
 		-o ../bin/supermixer ./cmd/supermixer
 	@echo "built bin/supermixer ($(VERSION))"
 
-test: db ## Run Go (incl. integration, needs Postgres) and web tests
+test: ## Run Go and web tests (integration tests skip if Postgres isn't running)
 	cd backend && go test ./...
 	cd web && pnpm test
+
+test-integration: db ## Start Postgres, then run all Go tests including integration
+	cd backend && go test -count=1 ./...
 
 lint: ## Vet, lint and type-check
 	cd backend && go vet ./...
