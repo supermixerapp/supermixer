@@ -31,6 +31,8 @@ import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$r
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppProjectRefAuthPoliciesRouteImport } from './routes/_app/project.$ref.auth.policies'
+import { Route as AppProjectRefAuthUsersRouteImport } from './routes/_app/project.$ref.auth.users'
 import { Route as AppProjectRefDatabaseExtensionsRouteImport } from './routes/_app/project.$ref.database.extensions'
 import { Route as AppProjectRefDatabaseFunctionsRouteImport } from './routes/_app/project.$ref.database.functions'
 import { Route as AppProjectRefDatabaseIndexesRouteImport } from './routes/_app/project.$ref.database.indexes'
@@ -157,6 +159,17 @@ const AppProjectRefEditorRoute = AppProjectRefEditorRouteImport.update({
 const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   id: '/sql',
   path: '/sql',
+  getParentRoute: () => AppProjectRefRoute,
+} as any)
+const AppProjectRefAuthPoliciesRoute =
+  AppProjectRefAuthPoliciesRouteImport.update({
+    id: '/auth/policies',
+    path: '/auth/policies',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAuthUsersRoute = AppProjectRefAuthUsersRouteImport.update({
+  id: '/auth/users',
+  path: '/auth/users',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
 const AppProjectRefDatabaseExtensionsRoute =
@@ -287,6 +300,8 @@ export interface FileRoutesByFullPath {
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
+  '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
   '/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
@@ -324,6 +339,8 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
+  '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
   '/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
@@ -367,6 +384,8 @@ export interface FileRoutesById {
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
+  '/_app/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
   '/_app/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/_app/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
   '/_app/project/$ref/database/indexes': typeof AppProjectRefDatabaseIndexesRoute
@@ -410,6 +429,8 @@ export interface FileRouteTypes {
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/auth/policies'
+    | '/project/$ref/auth/users'
     | '/project/$ref/database/extensions'
     | '/project/$ref/database/functions'
     | '/project/$ref/database/indexes'
@@ -447,6 +468,8 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/auth/policies'
+    | '/project/$ref/auth/users'
     | '/project/$ref/database/extensions'
     | '/project/$ref/database/functions'
     | '/project/$ref/database/indexes'
@@ -489,6 +512,8 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/project/$ref/auth/policies'
+    | '/_app/project/$ref/auth/users'
     | '/_app/project/$ref/database/extensions'
     | '/_app/project/$ref/database/functions'
     | '/_app/project/$ref/database/indexes'
@@ -670,6 +695,20 @@ declare module '@tanstack/react-router' {
       path: '/sql'
       fullPath: '/project/$ref/sql'
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/policies': {
+      id: '/_app/project/$ref/auth/policies'
+      path: '/auth/policies'
+      fullPath: '/project/$ref/auth/policies'
+      preLoaderRoute: typeof AppProjectRefAuthPoliciesRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/auth/users': {
+      id: '/_app/project/$ref/auth/users'
+      path: '/auth/users'
+      fullPath: '/project/$ref/auth/users'
+      preLoaderRoute: typeof AppProjectRefAuthUsersRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/database/extensions': {
@@ -856,6 +895,8 @@ interface AppProjectRefRouteChildren {
   AppProjectRefEditorRoute: typeof AppProjectRefEditorRouteWithChildren
   AppProjectRefSqlRoute: typeof AppProjectRefSqlRouteWithChildren
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
+  AppProjectRefAuthPoliciesRoute: typeof AppProjectRefAuthPoliciesRoute
+  AppProjectRefAuthUsersRoute: typeof AppProjectRefAuthUsersRoute
   AppProjectRefDatabaseExtensionsRoute: typeof AppProjectRefDatabaseExtensionsRoute
   AppProjectRefDatabaseFunctionsRoute: typeof AppProjectRefDatabaseFunctionsRoute
   AppProjectRefDatabaseIndexesRoute: typeof AppProjectRefDatabaseIndexesRoute
@@ -877,6 +918,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefEditorRoute: AppProjectRefEditorRouteWithChildren,
   AppProjectRefSqlRoute: AppProjectRefSqlRouteWithChildren,
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
+  AppProjectRefAuthPoliciesRoute: AppProjectRefAuthPoliciesRoute,
+  AppProjectRefAuthUsersRoute: AppProjectRefAuthUsersRoute,
   AppProjectRefDatabaseExtensionsRoute: AppProjectRefDatabaseExtensionsRoute,
   AppProjectRefDatabaseFunctionsRoute: AppProjectRefDatabaseFunctionsRoute,
   AppProjectRefDatabaseIndexesRoute: AppProjectRefDatabaseIndexesRoute,
