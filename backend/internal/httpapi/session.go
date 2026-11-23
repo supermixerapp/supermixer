@@ -124,7 +124,7 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 // sessionCookies are set on sign-in. The CSRF cookie is readable by
 // JavaScript so the web app can echo it in the X-CSRF-Token header.
 func (h *handlers) sessionCookies(token string, expires time.Time) []*http.Cookie {
-	secure := strings.HasPrefix(h.deps.Config.PublicURL, "https://")
+	secure := strings.HasPrefix(h.deps.Config.Server.PublicURL, "https://")
 	maxAge := int(time.Until(expires).Seconds())
 	return []*http.Cookie{
 		{Name: sessionCookie, Value: token, Path: "/", MaxAge: maxAge, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode},
@@ -146,7 +146,7 @@ func (h *handlers) startSession(ctx context.Context, q *db.Queries, userID uuid.
 		return nil, err
 	}
 	info := reqInfo(ctx)
-	expires := time.Now().Add(h.deps.Config.SessionTTL)
+	expires := time.Now().Add(h.deps.Config.Security.SessionTTL)
 	if _, err := q.CreateSession(ctx, db.CreateSessionParams{
 		UserID: userID, TokenHash: hash, Ip: info.IP, UserAgent: info.UserAgent, ExpiresAt: expires,
 	}); err != nil {
@@ -155,9 +155,9 @@ func (h *handlers) startSession(ctx context.Context, q *db.Queries, userID uuid.
 	return h.sessionCookies(token, expires), nil
 }
 
-// joinURL builds an absolute link under SUPERMIXER_PUBLIC_URL.
+// joinURL builds an absolute link under server.public_url.
 func (h *handlers) joinURL(path string, query url.Values) string {
-	u := strings.TrimRight(h.deps.Config.PublicURL, "/") + path
+	u := strings.TrimRight(h.deps.Config.Server.PublicURL, "/") + path
 	if len(query) > 0 {
 		u += "?" + query.Encode()
 	}

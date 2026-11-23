@@ -22,5 +22,7 @@ RUN CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X supermixer/internal/vers
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=backend /out/supermixer /usr/local/bin/supermixer
 EXPOSE 8080
-# Configuration comes from the environment (compose passes the .env file).
-ENTRYPOINT ["/usr/local/bin/supermixer", "--env-file", ""]
+# Reads /etc/supermixer/.env.toml if it is mounted; any setting can also come
+# from SUPERMIXER_* environment variables (see .env.example.toml).
+WORKDIR /etc/supermixer
+ENTRYPOINT ["/usr/local/bin/supermixer"]

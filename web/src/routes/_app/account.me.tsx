@@ -135,7 +135,7 @@ function BrandSection() {
       title="Brand colour"
       description={
         <>
-          Set by <code className="font-mono text-xs">BRAND_COLOR</code> in the server&apos;s .env file. Restart
+          Set by <code className="font-mono text-xs">appearance.brand_color</code> in the server&apos;s .env.toml. Restart
           Supermixer to apply a change; every shade below is derived from it.
         </>
       }

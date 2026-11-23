@@ -30,17 +30,17 @@ func EnsureAdmin(ctx context.Context, st *store.Store, cfg *config.Config, logge
 		return err
 	}
 	if n == 0 {
-		username := strings.ToLower(strings.TrimSpace(cfg.BootstrapAdminUsername))
+		username := strings.ToLower(strings.TrimSpace(cfg.BootstrapAdmin.Username))
 		if !usernamePattern.MatchString(username) {
-			return fmt.Errorf("SUPERMIXER_BOOTSTRAP_ADMIN_USERNAME %q is not a valid username (3–40 of a-z 0-9 . _ -)", cfg.BootstrapAdminUsername)
+			return fmt.Errorf("bootstrap_admin.username %q is not a valid username (3–40 of a-z 0-9 . _ -)", cfg.BootstrapAdmin.Username)
 		}
-		hash, err := auth.HashPassword(cfg.BootstrapAdminPassword)
+		hash, err := auth.HashPassword(cfg.BootstrapAdmin.Password)
 		if err != nil {
 			return err
 		}
 		if _, err := q.CreateUser(ctx, db.CreateUserParams{
 			Username: username, DisplayName: "Administrator", PasswordHash: hash,
-			IsInstanceAdmin: true, DefaultPassword: cfg.BootstrapAdminPassword == WellKnownPassword,
+			IsInstanceAdmin: true, DefaultPassword: cfg.BootstrapAdmin.Password == WellKnownPassword,
 		}); err != nil {
 			return fmt.Errorf("creating bootstrap admin: %w", err)
 		}

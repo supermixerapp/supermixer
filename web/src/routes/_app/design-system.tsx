@@ -87,7 +87,7 @@ function DesignSystemPage() {
           description="Supermixer's components and tokens, ported from Supabase Studio. See Design.md for the full specification."
         />
         <PageContainer size="large" className="flex flex-col gap-14 pb-24">
-          <Section id="colours" title="Colour" description="Neutrals follow Studio's OKLCH system; brand colours come from BRAND_COLOR.">
+          <Section id="colours" title="Colour" description="Neutrals follow Studio's OKLCH system; brand colours come from appearance.brand_color.">
             <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
               <Swatch name="background" className="bg-background" />
               <Swatch name="surface-100" className="bg-surface-100" />

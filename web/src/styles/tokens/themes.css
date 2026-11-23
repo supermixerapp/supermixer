@@ -3,7 +3,7 @@
  * (packages/ui/build/css/themes/{dark,light}.css, Apache-2.0; see NOTICE).
  *
  * The stepped brand scale (brand-200…600) is Supabase's green re-hued to
- * BRAND_COLOR by the Go backend (--sm-{dark,light}-brand-*). Fallbacks are
+ * appearance.brand_color by the Go backend (--sm-{dark,light}-brand-*). Fallbacks are
  * Studio's original green. Warning, destructive and secondary scales are
  * unchanged from Studio.
  */

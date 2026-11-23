@@ -14,7 +14,7 @@ import (
 // Box encrypts and decrypts with a single 32-byte key.
 type Box struct{ aead cipher.AEAD }
 
-// New builds a Box from a base64-encoded 32-byte key (SUPERMIXER_ENCRYPTION_KEY).
+// New builds a Box from a base64-encoded 32-byte key (security.encryption_key).
 func New(base64Key string) (*Box, error) {
 	key, err := base64.StdEncoding.DecodeString(base64Key)
 	if err != nil || len(key) != 32 {
@@ -48,7 +48,7 @@ func (b *Box) Open(sealed, additionalData []byte) ([]byte, error) {
 	}
 	out, err := b.aead.Open(nil, sealed[:n], sealed[n:], additionalData)
 	if err != nil {
-		return nil, fmt.Errorf("decrypting credentials (was SUPERMIXER_ENCRYPTION_KEY changed?): %w", err)
+		return nil, fmt.Errorf("decrypting credentials (was security.encryption_key changed?): %w", err)
 	}
 	return out, nil
 }

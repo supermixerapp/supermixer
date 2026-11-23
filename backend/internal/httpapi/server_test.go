@@ -31,7 +31,7 @@ func newTestServer(t *testing.T, db DB, web fstest.MapFS) http.Handler {
 	}
 	var webFS = web
 	return New(Deps{
-		Config:  &config.Config{DefaultTheme: "light"},
+		Config:  lightConfig(),
 		DB:      db,
 		Palette: p,
 		Logger:  slog.New(slog.NewTextHandler(io.Discard, nil)),
@@ -149,4 +149,10 @@ func TestSPANotBuilt(t *testing.T) {
 	if !strings.Contains(rec.Body.String(), "web UI has not been built") {
 		t.Errorf("body = %s", rec.Body)
 	}
+}
+
+func lightConfig() *config.Config {
+	c := config.Default()
+	c.Appearance.DefaultTheme = "light"
+	return &c
 }

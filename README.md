@@ -13,11 +13,11 @@ An on-premise management plane for self-hosted Supabase: organizations, projects
 ## Getting started
 
 ```sh
-make setup   # install dependencies; creates .env with a fresh encryption key
+make setup   # install dependencies; creates .env.toml with a fresh encryption key
 make dev     # starts Postgres (port 5433), the API (:8080, live reload) and Vite (:5173)
 ```
 
-Open http://localhost:5173 and sign in as `admin` / `admin` (from `.env`). Change the password right away; a banner reminds you until you do.
+Open http://localhost:5173 and sign in as `admin` / `admin` (from `.env.toml`). Change the password right away; a banner reminds you until you do.
 
 To try project registration against a real stack:
 
@@ -37,9 +37,23 @@ Then use **New project** in Supermixer. **Fill from .env** fills the form from a
 | `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
-| `docker compose -f deploy/docker-compose.yml --profile app up -d --build` | Runs everything in containers |
+| `make app` | Runs Supermixer and its database in containers, reading `.env.toml` |
 
-All settings are documented in [.env.example](.env.example). To re-theme the whole UI, change `BRAND_COLOR` and restart; no rebuild is needed.
+## Configuration
+
+Settings live in `.env.toml`, a TOML file with sections for the server, logging, the database, security, appearance and how Supermixer talks to projects. Every setting is documented in [.env.example.toml](.env.example.toml); unknown keys stop the server with an error, so typos don't go unnoticed.
+
+```toml
+[appearance]
+brand_color = "#0019A8"   # re-themes the whole UI on restart, no rebuild
+
+[security.sign_in]
+max_failures = 10
+lockout = "15m"
+```
+
+- `supermixer --config path/to/file.toml` picks another file; so does `SUPERMIXER_CONFIG`.
+- Any setting can be overridden by an environment variable named after its key: `SUPERMIXER_<SECTION>_<KEY>`, for example `SUPERMIXER_DATABASE_URL` or `SUPERMIXER_SECURITY_SIGN_IN_LOCKOUT`. Containers can inject secrets this way without a file.
 
 ## Layout
 

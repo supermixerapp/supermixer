@@ -4,20 +4,26 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down
+.PHONY: help setup env app db db-down dev dev-backend dev-web generate build test test-integration lint stack stack-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
 
-setup: env ## Install dependencies and create .env if missing
+setup: env ## Install dependencies and create .env.toml if missing
 	cd web && pnpm install
 	cd backend && go mod download
 
-env: ## Create .env from .env.example with a fresh encryption key (never overwrites)
-	@if [ -f .env ]; then echo ".env already exists, leaving it alone"; else \
-		key=$$(openssl rand -base64 32); \
-		sed "s|^SUPERMIXER_ENCRYPTION_KEY=$$|SUPERMIXER_ENCRYPTION_KEY=$$key|" .env.example > .env; \
-		echo "created .env"; fi
+env: ## Create .env.toml from .env.example.toml with a fresh encryption key (never overwrites)
+	@if [ -d .env.toml ]; then echo ".env.toml is a directory (Docker makes one when it mounts a missing file). Delete it, then run make env again." >&2; exit 1; \
+	elif [ -f .env.toml ]; then echo ".env.toml already exists, leaving it alone"; \
+	else key=$$(openssl rand -base64 32); \
+		sed 's|^encryption_key = ""$$|encryption_key = "'"$$key"'"|' .env.example.toml > .env.toml; \
+		chmod 600 .env.toml; \
+		echo "created .env.toml"; fi
+
+app: ## Run Supermixer and its Postgres in containers (reads .env.toml)
+	@test -f .env.toml || { echo "no .env.toml; run make env first" >&2; exit 1; }
+	SUPERMIXER_UID=$$(id -u) SUPERMIXER_GID=$$(id -g) $(COMPOSE) --profile app up -d --build
 
 db: ## Start Supermixer's Postgres (port 5433)
 	$(COMPOSE) up -d --wait db

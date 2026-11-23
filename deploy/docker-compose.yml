@@ -1,7 +1,7 @@
 # Supermixer and its own PostgreSQL database.
 #
 #   Development (database only):  docker compose -f deploy/docker-compose.yml up -d db
-#   Everything:                    docker compose -f deploy/docker-compose.yml --profile app up -d --build
+#   Everything:                    make app   (needs .env.toml: run `make env` first)
 #
 # Supermixer's database is separate from the Supabase stacks it manages.
 name: supermixer
@@ -30,9 +30,22 @@ services:
       context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
-    env_file: ../.env
+    # .env.toml holds the encryption key, so it is mode 600. The container
+    # runs as the file's owner (make app passes your uid/gid) to read it.
+    user: "${SUPERMIXER_UID:-65532}:${SUPERMIXER_GID:-65532}"
+    # Settings come from .env.toml (create it with `make env`). A missing file
+    # stops `up` with an error instead of Docker creating a directory there.
+    # The database URL is overridden so the container reaches the db service.
+    volumes:
+      - type: bind
+        source: ../.env.toml
+        target: /etc/supermixer/.env.toml
+        read_only: true
+        bind:
+          create_host_path: false
     environment:
       SUPERMIXER_DATABASE_URL: postgres://supermixer:${SUPERMIXER_DB_PASSWORD:-supermixer}@db:5432/supermixer?sslmode=disable
+      SUPERMIXER_SERVER_LISTEN: ":8080"
     ports:
       - "8080:8080"
     depends_on:

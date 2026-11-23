@@ -4,7 +4,7 @@
  *
  * Studio derives every semantic colour in OKLCH from a few inputs, chiefly
  * --hue. Supermixer changes only the inputs: --hue and the primary colours
- * come from /theme.css, which the Go backend generates from BRAND_COLOR
+ * come from /theme.css, which the Go backend generates from appearance.brand_color
  * (--sm-* variables). Every var() keeps Studio's own value as a fallback, so
  * the UI still renders if /theme.css fails to load.
  */
@@ -92,7 +92,7 @@
   /*
    * Primary ink (text, small indicators) vs primary solid (button plates).
    * Supermixer: ink comes from the generated palette (AA-checked), solid
-   * fills use the exact BRAND_COLOR.
+   * fills use the exact appearance.brand_color.
    */
   --primary: var(--sm-dark-primary, oklch(0.76 0.15 var(--primary-hue)));
   --primary-bright: var(

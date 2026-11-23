@@ -10,7 +10,7 @@ import (
 )
 
 // defaultThemePlaceholder in web/index.html is replaced with
-// SUPERMIXER_DEFAULT_THEME so the first paint uses the right theme.
+// appearance.default_theme so the first paint uses the right theme.
 const defaultThemePlaceholder = "%SM_DEFAULT_THEME%"
 
 const notBuiltPage = `<!doctype html><html><head><meta charset="utf-8"><title>Supermixer</title></head>

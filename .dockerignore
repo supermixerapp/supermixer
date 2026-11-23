@@ -4,5 +4,5 @@ bin
 backend/tmp
 # Locally built UI from `make build`; the image embeds a fresh build instead.
 backend/internal/webui/dist
-.env
+.env.toml
 plans

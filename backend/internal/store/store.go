@@ -32,11 +32,15 @@ type Store struct {
 	logger *slog.Logger
 }
 
-// Open connects to databaseURL and verifies the connection.
-func Open(ctx context.Context, databaseURL string, logger *slog.Logger) (*Store, error) {
+// Open connects to databaseURL and verifies the connection. maxConns 0
+// keeps pgx's default pool size.
+func Open(ctx context.Context, databaseURL string, maxConns int, logger *slog.Logger) (*Store, error) {
 	cfg, err := pgxpool.ParseConfig(databaseURL)
 	if err != nil {
-		return nil, fmt.Errorf("parsing SUPERMIXER_DATABASE_URL: %w", err)
+		return nil, fmt.Errorf("parsing database.url: %w", err)
+	}
+	if maxConns > 0 {
+		cfg.MaxConns = int32(maxConns)
 	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {

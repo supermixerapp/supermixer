@@ -18,6 +18,7 @@ import (
 	"supermixer/internal/config"
 	"supermixer/internal/httpapi"
 	"supermixer/internal/secrets"
+	"supermixer/internal/stack"
 	"supermixer/internal/store"
 	"supermixer/internal/theme"
 	"supermixer/internal/version"
@@ -25,33 +26,55 @@ import (
 )
 
 func main() {
-	envFile := flag.String("env-file", ".env", "path to a .env file (real environment variables take precedence)")
+	configFile := flag.String("config", "", "TOML config file (default: $SUPERMIXER_CONFIG, else ./.env.toml)")
 	flag.Parse()
 
-	if err := run(*envFile); err != nil {
+	if err := run(*configFile); err != nil {
 		fmt.Fprintln(os.Stderr, "supermixer:", err)
 		os.Exit(1)
 	}
 }
 
-func run(envFile string) error {
-	cfg, err := config.Load(envFile)
+// configPath picks the config file. A path given explicitly must exist; the
+// default may be missing when everything comes from the environment.
+func configPath(flagValue string) (path string, required bool) {
+	switch {
+	case flagValue != "":
+		return flagValue, true
+	case os.Getenv("SUPERMIXER_CONFIG") != "":
+		return os.Getenv("SUPERMIXER_CONFIG"), true
+	default:
+		return ".env.toml", false
+	}
+}
+
+func run(configFile string) error {
+	path, required := configPath(configFile)
+	cfg, err := config.Load(path, required)
 	if err != nil {
 		return fmt.Errorf("configuration: %w", err)
 	}
 	level, _ := cfg.SlogLevel()
-	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: level}))
+	opts := &slog.HandlerOptions{Level: level}
+	var handler slog.Handler = slog.NewTextHandler(os.Stderr, opts)
+	if cfg.Log.Format == "json" {
+		handler = slog.NewJSONHandler(os.Stderr, opts)
+	}
+	logger := slog.New(handler)
 	slog.SetDefault(logger)
+	for _, n := range cfg.Notes {
+		logger.Warn(n)
+	}
 
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	palette, err := theme.Derive(cfg.BrandColor)
+	palette, err := theme.Derive(cfg.Appearance.BrandColor)
 	if err != nil {
 		return err
 	}
 
-	st, err := store.Open(ctx, cfg.DatabaseURL, logger)
+	st, err := store.Open(ctx, cfg.Database.URL, cfg.Database.MaxConnections, logger)
 	if err != nil {
 		return err
 	}
@@ -62,14 +85,16 @@ func run(envFile string) error {
 	if err := bootstrap.EnsureAdmin(ctx, st, cfg, logger); err != nil {
 		return err
 	}
-	box, err := secrets.New(cfg.EncryptionKey)
+	box, err := secrets.New(cfg.Security.EncryptionKey)
 	if err != nil {
 		return err
 	}
 	go cleanupSessions(ctx, st, logger)
+	pools := stack.NewPools(cfg.Projects.DBPoolSize) // connections to projects' databases
+	defer pools.Close()
 
 	srv := &http.Server{
-		Addr: cfg.HTTPAddr,
+		Addr: cfg.Server.Listen,
 		Handler: httpapi.New(httpapi.Deps{
 			Config:  cfg,
 			DB:      st,
@@ -78,13 +103,14 @@ func run(envFile string) error {
 			Palette: palette,
 			Logger:  logger,
 			WebUI:   webui.FS(),
+			Pools:   pools,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	errc := make(chan error, 1)
 	go func() {
-		logger.Info("supermixer listening", "addr", cfg.HTTPAddr, "public_url", cfg.PublicURL, "version", version.Version, "brand_color", palette.Brand.Hex())
+		logger.Info("supermixer listening", "addr", cfg.Server.Listen, "public_url", cfg.Server.PublicURL, "version", version.Version, "brand_color", palette.Brand.Hex())
 		errc <- srv.ListenAndServe()
 	}()
 

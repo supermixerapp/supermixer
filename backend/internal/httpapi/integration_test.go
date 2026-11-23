@@ -70,7 +70,7 @@ func newTestEnv(t *testing.T) *testEnv {
 	dbURL := testDatabase(t)
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := context.Background()
-	st, err := store.Open(ctx, dbURL, logger)
+	st, err := store.Open(ctx, dbURL, 0, logger)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,10 +78,11 @@ func newTestEnv(t *testing.T) *testEnv {
 	if err := st.Migrate(ctx); err != nil {
 		t.Fatal(err)
 	}
-	cfg := &config.Config{
-		PublicURL: "http://supermixer.test", EncryptionKey: testKey, SessionTTL: time.Hour,
-		BootstrapAdminUsername: "admin", BootstrapAdminPassword: "admin", DefaultTheme: "dark",
-	}
+	def := config.Default()
+	cfg := &def
+	cfg.Server.PublicURL = "http://supermixer.test"
+	cfg.Security.EncryptionKey = testKey
+	cfg.Security.SessionTTL = time.Hour
 	if err := bootstrap.EnsureAdmin(ctx, st, cfg, logger); err != nil {
 		t.Fatal(err)
 	}

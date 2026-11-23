@@ -37,11 +37,11 @@ The implementation lives in `web/src/styles/tokens/*` and `web/src/components/ui
 |---|---|
 | Name | Piccadilly blue (London Underground Piccadilly line, TfL digital colour standard; Pantone 072) |
 | Default | `#0019A8` |
-| Configured by | `BRAND_COLOR` in `.env`. Takes effect on restart, with no rebuild. |
+| Configured by | `appearance.brand_color` in `.env.toml`. Takes effect on restart, with no rebuild. |
 
 ### How it flows through the system
 
-The Go backend (`backend/internal/theme`) converts `BRAND_COLOR` to OKLCH. It then serves `/theme.css`, which defines `--sm-*` variables. The token files read those variables and fall back to Studio's own values if `/theme.css` is missing.
+The Go backend (`backend/internal/theme`) converts `appearance.brand_color` to OKLCH. It then serves `/theme.css`, which defines `--sm-*` variables. The token files read those variables and fall back to Studio's own values if `/theme.css` is missing.
 
 | Generated variable | Studio token it feeds | Derivation |
 |---|---|---|
@@ -304,7 +304,7 @@ When adding an icon, add it to `web/src/components/icons.ts` and to this table.
 
 ## 9. Theming behaviour
 
-- `SUPERMIXER_DEFAULT_THEME` (`dark`, `light` or `system`) is written into `index.html` by the server. Each user's choice overrides it and is stored in `localStorage["supermixer.theme"]`.
+- `appearance.default_theme` (`dark`, `light` or `system`) is written into `index.html` by the server. Each user's choice overrides it and is stored in `localStorage["supermixer.theme"]`.
 - An inline script in `index.html` sets `data-theme` before first paint, so the page never flashes the wrong theme. `system` follows `prefers-color-scheme` live.
 - Dark-mode variants use `@custom-variant dark` on `[data-theme*='dark']`, as in Studio.
 - Theme tokens are resolved on `<html>`. A nested `data-theme` does **not** re-theme a subtree. Previews of the other theme, such as the theme picker, use fixed colours.
@@ -314,6 +314,6 @@ When adding an icon, add it to `web/src/components/icons.ts` and to this table.
 ## 10. Accessibility checks
 
 These are enforced by the Go tests in `backend/internal/theme`:
-- Primary ink (`--primary`) reaches ≥ 4.5:1 on the canvas in both themes, for any `BRAND_COLOR`.
+- Primary ink (`--primary`) reaches ≥ 4.5:1 on the canvas in both themes, for any `appearance.brand_color`.
 - Text on solid brand buttons reaches ≥ 4.5:1, or uses the higher-contrast of light and dark ink.
 - Focus is always visible: `focus-ring` (2px `ring`, 2px offset) on controls, and `focus-inset` (an outline) inside dense lists.
