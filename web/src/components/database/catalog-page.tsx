@@ -24,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { PROTECTED_SCHEMAS, SCHEMAS_SQL, type SchemaRow } from '@/lib/pg/catalog'
+import { PARTIAL_GRANT } from '@/lib/pg/column-privileges'
 import { runSql, SqlError, usePg } from '@/lib/pg/run'
 
 /** ?schema= on Database pages; defaults to public. */
@@ -41,7 +42,13 @@ export function useCanChange(schema?: string) {
 export function useDdl(projectRef: string) {
   const queryClient = useQueryClient()
   return useMutation<unknown, Error, { sql: string; done: string }>({
-    mutationFn: ({ sql }) => runSql(projectRef, sql),
+    mutationFn: async ({ sql }) => {
+      const res = await runSql(projectRef, sql)
+      // GRANT and REVOKE only warn when they change less than asked.
+      const partial = res.results.flatMap((r) => r.notices ?? []).find((n) => PARTIAL_GRANT.test(n))
+      if (partial) throw new Error(partial.replace(/^WARNING: /, ''))
+      return res
+    },
     onSuccess: async (_, { done }) => {
       toast.success(done)
       await queryClient.invalidateQueries({ queryKey: ['projects', projectRef, 'pg'] })
