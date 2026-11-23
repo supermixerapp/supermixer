@@ -40,6 +40,7 @@ import { Route as AppProjectRefDatabaseMigrationsRouteImport } from './routes/_a
 import { Route as AppProjectRefDatabasePoliciesRouteImport } from './routes/_app/project.$ref.database.policies'
 import { Route as AppProjectRefDatabasePublicationsRouteImport } from './routes/_app/project.$ref.database.publications'
 import { Route as AppProjectRefDatabaseRolesRouteImport } from './routes/_app/project.$ref.database.roles'
+import { Route as AppProjectRefDatabaseSchemasRouteImport } from './routes/_app/project.$ref.database.schemas'
 import { Route as AppProjectRefDatabaseSettingsRouteImport } from './routes/_app/project.$ref.database.settings'
 import { Route as AppProjectRefDatabaseTablesRouteImport } from './routes/_app/project.$ref.database.tables'
 import { Route as AppProjectRefDatabaseTriggersRouteImport } from './routes/_app/project.$ref.database.triggers'
@@ -217,6 +218,12 @@ const AppProjectRefDatabaseRolesRoute =
     path: '/database/roles',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefDatabaseSchemasRoute =
+  AppProjectRefDatabaseSchemasRouteImport.update({
+    id: '/database/schemas',
+    path: '/database/schemas',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefDatabaseSettingsRoute =
   AppProjectRefDatabaseSettingsRouteImport.update({
     id: '/database/settings',
@@ -330,6 +337,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/database/policies': typeof AppProjectRefDatabasePoliciesRoute
   '/project/$ref/database/publications': typeof AppProjectRefDatabasePublicationsRoute
   '/project/$ref/database/roles': typeof AppProjectRefDatabaseRolesRoute
+  '/project/$ref/database/schemas': typeof AppProjectRefDatabaseSchemasRoute
   '/project/$ref/database/settings': typeof AppProjectRefDatabaseSettingsRoute
   '/project/$ref/database/tables': typeof AppProjectRefDatabaseTablesRoute
   '/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
@@ -372,6 +380,7 @@ export interface FileRoutesByTo {
   '/project/$ref/database/policies': typeof AppProjectRefDatabasePoliciesRoute
   '/project/$ref/database/publications': typeof AppProjectRefDatabasePublicationsRoute
   '/project/$ref/database/roles': typeof AppProjectRefDatabaseRolesRoute
+  '/project/$ref/database/schemas': typeof AppProjectRefDatabaseSchemasRoute
   '/project/$ref/database/settings': typeof AppProjectRefDatabaseSettingsRoute
   '/project/$ref/database/tables': typeof AppProjectRefDatabaseTablesRoute
   '/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
@@ -420,6 +429,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/database/policies': typeof AppProjectRefDatabasePoliciesRoute
   '/_app/project/$ref/database/publications': typeof AppProjectRefDatabasePublicationsRoute
   '/_app/project/$ref/database/roles': typeof AppProjectRefDatabaseRolesRoute
+  '/_app/project/$ref/database/schemas': typeof AppProjectRefDatabaseSchemasRoute
   '/_app/project/$ref/database/settings': typeof AppProjectRefDatabaseSettingsRoute
   '/_app/project/$ref/database/tables': typeof AppProjectRefDatabaseTablesRoute
   '/_app/project/$ref/database/triggers': typeof AppProjectRefDatabaseTriggersRoute
@@ -468,6 +478,7 @@ export interface FileRouteTypes {
     | '/project/$ref/database/policies'
     | '/project/$ref/database/publications'
     | '/project/$ref/database/roles'
+    | '/project/$ref/database/schemas'
     | '/project/$ref/database/settings'
     | '/project/$ref/database/tables'
     | '/project/$ref/database/triggers'
@@ -510,6 +521,7 @@ export interface FileRouteTypes {
     | '/project/$ref/database/policies'
     | '/project/$ref/database/publications'
     | '/project/$ref/database/roles'
+    | '/project/$ref/database/schemas'
     | '/project/$ref/database/settings'
     | '/project/$ref/database/tables'
     | '/project/$ref/database/triggers'
@@ -557,6 +569,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/database/policies'
     | '/_app/project/$ref/database/publications'
     | '/_app/project/$ref/database/roles'
+    | '/_app/project/$ref/database/schemas'
     | '/_app/project/$ref/database/settings'
     | '/_app/project/$ref/database/tables'
     | '/_app/project/$ref/database/triggers'
@@ -799,6 +812,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefDatabaseRolesRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/database/schemas': {
+      id: '/_app/project/$ref/database/schemas'
+      path: '/database/schemas'
+      fullPath: '/project/$ref/database/schemas'
+      preLoaderRoute: typeof AppProjectRefDatabaseSchemasRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/database/settings': {
       id: '/_app/project/$ref/database/settings'
       path: '/database/settings'
@@ -964,6 +984,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefDatabasePoliciesRoute: typeof AppProjectRefDatabasePoliciesRoute
   AppProjectRefDatabasePublicationsRoute: typeof AppProjectRefDatabasePublicationsRoute
   AppProjectRefDatabaseRolesRoute: typeof AppProjectRefDatabaseRolesRoute
+  AppProjectRefDatabaseSchemasRoute: typeof AppProjectRefDatabaseSchemasRoute
   AppProjectRefDatabaseSettingsRoute: typeof AppProjectRefDatabaseSettingsRoute
   AppProjectRefDatabaseTablesRoute: typeof AppProjectRefDatabaseTablesRoute
   AppProjectRefDatabaseTriggersRoute: typeof AppProjectRefDatabaseTriggersRoute
@@ -991,6 +1012,7 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefDatabasePublicationsRoute:
     AppProjectRefDatabasePublicationsRoute,
   AppProjectRefDatabaseRolesRoute: AppProjectRefDatabaseRolesRoute,
+  AppProjectRefDatabaseSchemasRoute: AppProjectRefDatabaseSchemasRoute,
   AppProjectRefDatabaseSettingsRoute: AppProjectRefDatabaseSettingsRoute,
   AppProjectRefDatabaseTablesRoute: AppProjectRefDatabaseTablesRoute,
   AppProjectRefDatabaseTriggersRoute: AppProjectRefDatabaseTriggersRoute,

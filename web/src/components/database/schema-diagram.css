@@ -1,0 +1,28 @@
+/* React Flow, themed with Supermixer's tokens (dark and light follow them). */
+.schema-diagram .react-flow {
+  --xy-background-color: transparent;
+  --xy-background-pattern-dots-color-default: var(--color-border-strong);
+  --xy-edge-stroke-default: var(--color-foreground-muted);
+  --xy-edge-stroke-selected-default: var(--color-brand-default);
+  --xy-controls-button-background-color-default: var(--color-background-surface-100);
+  --xy-controls-button-background-color-hover-default: var(--color-background-surface-200);
+  --xy-controls-button-color-default: var(--color-foreground-light);
+  --xy-controls-button-color-hover-default: var(--color-foreground);
+  --xy-controls-button-border-color-default: var(--color-border);
+  --xy-minimap-background-color-default: var(--color-background-surface-75);
+  --xy-minimap-mask-background-color-default: color-mix(in oklab, var(--color-background) 70%, transparent);
+  --xy-minimap-node-background-color-default: var(--color-border-strong);
+  --xy-attribution-background-color-default: transparent;
+}
+.schema-diagram .react-flow__handle {
+  width: 6px;
+  height: 6px;
+  min-width: 0;
+  min-height: 0;
+  border: 0;
+  background: transparent;
+}
+.schema-diagram .react-flow__edge.selected .react-flow__edge-path,
+.schema-diagram .react-flow__edge:hover .react-flow__edge-path {
+  stroke: var(--color-brand-default);
+}
