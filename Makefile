@@ -1,0 +1,60 @@
+# Supermixer developer tasks. Run `make help` for a list.
+SHELL := /bin/bash
+VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.0-dev)
+SQLC_IMAGE := sqlc/sqlc:1.29.0
+COMPOSE := docker compose -f deploy/docker-compose.yml
+
+.PHONY: help setup env db db-down dev dev-backend dev-web generate build test lint
+
+help: ## Show this help
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
+
+setup: env ## Install dependencies and create .env if missing
+	cd web && pnpm install
+	cd backend && go mod download
+
+env: ## Create .env from .env.example with a fresh encryption key (never overwrites)
+	@if [ -f .env ]; then echo ".env already exists, leaving it alone"; else \
+		key=$$(openssl rand -base64 32); \
+		sed "s|^SUPERMIXER_ENCRYPTION_KEY=$$|SUPERMIXER_ENCRYPTION_KEY=$$key|" .env.example > .env; \
+		echo "created .env"; fi
+
+db: ## Start Supermixer's Postgres (port 5433)
+	$(COMPOSE) up -d --wait db
+
+db-down: ## Stop Supermixer's Postgres (data is kept)
+	$(COMPOSE) down
+
+dev: db ## Run the API (live reload, :8080) and the web app (Vite, :5173)
+	@trap 'kill 0' EXIT; \
+	$(MAKE) --no-print-directory dev-backend & \
+	$(MAKE) --no-print-directory dev-web & \
+	wait
+
+dev-backend:
+	cd backend && go tool air
+
+dev-web:
+	cd web && pnpm dev
+
+generate: ## Regenerate code from api/openapi.yaml and SQL queries
+	cd backend && go generate ./...
+	cd backend && docker run --rm -v "$$PWD":/src -w /src $(SQLC_IMAGE) generate
+	cd web && pnpm generate:api
+
+build: ## Build a single binary with the web UI embedded (bin/supermixer)
+	cd web && pnpm build
+	rsync -a --delete --exclude .gitkeep web/dist/ backend/internal/webui/dist/
+	cd backend && CGO_ENABLED=0 go build -trimpath \
+		-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
+		-o ../bin/supermixer ./cmd/supermixer
+	@echo "built bin/supermixer ($(VERSION))"
+
+test: ## Run Go and web tests
+	cd backend && go test ./...
+	cd web && pnpm test
+
+lint: ## Vet, lint and type-check
+	cd backend && go vet ./...
+	@if command -v golangci-lint >/dev/null; then cd backend && golangci-lint run; else echo "golangci-lint not installed, skipped"; fi
+	cd web && pnpm lint && pnpm typecheck

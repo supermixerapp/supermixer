@@ -1,0 +1,21 @@
+# Planning documents (local only)
+plans/
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Build output
+/bin/
+/web/dist/
+/backend/internal/webui/dist/*
+!/backend/internal/webui/dist/.gitkeep
+
+# Dependencies and tool caches
+node_modules/
+/web/.tanstack/
+/backend/tmp/
+coverage/
+*.log
+.DS_Store

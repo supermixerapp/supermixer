@@ -1,0 +1,15 @@
+Supermixer
+Copyright 2026 the Supermixer authors
+
+This product includes design tokens, styles and component code adapted from
+Supabase (https://github.com/supabase/supabase), licensed under the Apache
+License, Version 2.0. Adapted files carry a comment naming their source in
+packages/ui, packages/config or apps/studio. Supabase is a trademark of
+Supabase, Inc.; Supermixer is not affiliated with or endorsed by Supabase.
+
+This product bundles:
+  - Material Icons (Two-Tone), Copyright Google LLC, Apache License 2.0
+    (https://github.com/google/material-design-icons)
+  - Inter, Copyright The Inter Project Authors, SIL Open Font License 1.1
+  - Manrope, Copyright The Manrope Project Authors, SIL Open Font License 1.1
+  - Source Code Pro, Copyright Adobe, SIL Open Font License 1.1
