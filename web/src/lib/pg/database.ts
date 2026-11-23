@@ -309,12 +309,16 @@ export interface RoleRow {
   bypass_rls: boolean
   connection_limit: number
   connections: number
+  inherit: boolean
+  /** Full timestamp (ISO), kept exact so saving doesn't move it. */
+  valid_until: string | null
 }
 
 export const ROLES_SQL = `
 select r.rolname as name, r.rolcanlogin as login, r.rolsuper as superuser, r.rolcreaterole as create_role,
        r.rolcreatedb as create_db, r.rolreplication as replication, r.rolbypassrls as bypass_rls,
-       r.rolconnlimit as connection_limit,
+       r.rolconnlimit as connection_limit, r.rolinherit as inherit,
+       case when r.rolvaliduntil is null or r.rolvaliduntil = 'infinity' then null else to_json(r.rolvaliduntil) end as valid_until,
        (select count(*)::int from pg_stat_activity a where a.usename = r.rolname) as connections
 from pg_roles r
 where r.rolname not like 'pg\\_%'
