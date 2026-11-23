@@ -32,6 +32,11 @@ func newRecordingGateway(t *testing.T) (*recordingGateway, string) {
 		g.mu.Unlock()
 		w.Header().Set("Set-Cookie", "upstream=1")
 		w.Header().Set("Content-Type", "application/json")
+		if strings.HasSuffix(r.URL.Path, "/reject-key") {
+			w.WriteHeader(http.StatusUnauthorized)
+			_, _ = w.Write([]byte(`{"msg":"invalid JWT"}`))
+			return
+		}
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	t.Cleanup(srv.Close)
@@ -65,6 +70,15 @@ func TestGatewayProxy(t *testing.T) {
 		if r.Host == "" || strings.Contains(r.Host, "supermixer") {
 			t.Fatalf("host = %q", r.Host)
 		}
+	})
+
+	t.Run("a stack rejecting our key is not a Supermixer sign-out", func(t *testing.T) {
+		var body struct{ Msg string }
+		admin.must(502, "GET", base+"auth/v1/admin/users/reject-key", nil, &body)
+		if body.Msg != "invalid JWT" {
+			t.Fatalf("body = %+v", body)
+		}
+		admin.must(200, "GET", "/profile", nil, nil) // still signed in
 	})
 
 	t.Run("keeps PostgREST's trailing slash and escapes names", func(t *testing.T) {
@@ -107,6 +121,8 @@ func TestGatewayProxy(t *testing.T) {
 			{"GET", "storage/v1/object//pg/tables", 400},
 			{"GET", "rest/v1/some_table", 404},
 			{"GET", "auth/v1/token", 404},
+			{"GET", "auth/v1/recover", 405},
+			{"POST", "auth/v1/recover/x", 404},
 			{"DELETE", "rest/v1/", 405},
 			{"PATCH", "storage/v1/bucket/x", 405},
 		} {

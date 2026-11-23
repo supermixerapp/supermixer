@@ -28,6 +28,9 @@ var gatewayRoutes = []gatewayRoute{
 	// Auth admin API: users, invitations.
 	{prefix: "auth/v1/admin/users", methods: []string{"GET", "POST", "PUT", "DELETE"}, auditAs: "project.auth_changed"},
 	{prefix: "auth/v1/invite", exact: true, methods: []string{"POST"}, auditAs: "project.auth_changed"},
+	// Emails a user a password recovery or sign-in link.
+	{prefix: "auth/v1/recover", exact: true, methods: []string{"POST"}, auditAs: "project.auth_changed"},
+	{prefix: "auth/v1/magiclink", exact: true, methods: []string{"POST"}, auditAs: "project.auth_changed"},
 	{prefix: "auth/v1/settings", exact: true, methods: []string{"GET"}},
 	// Storage API: buckets and objects.
 	{prefix: "storage/v1/bucket", methods: []string{"GET", "POST", "PUT", "DELETE"}, auditAs: "project.storage_changed"},
@@ -97,6 +100,13 @@ func (h *handlers) gateway() http.Handler {
 			pr.Out.Header.Set("Authorization", "Bearer "+t.key)
 		},
 		ModifyResponse: func(res *http.Response) error {
+			// A 401 from the stack means it rejected Supermixer's key, not that
+			// the member's Supermixer session ended; the UI signs out on 401.
+			if res.StatusCode == http.StatusUnauthorized {
+				res.StatusCode = http.StatusBadGateway
+				res.Status = "502 Bad Gateway"
+				res.Header.Set("X-Supermixer-Upstream-Status", "401")
+			}
 			res.Header.Del("Set-Cookie")
 			res.Header.Del("Access-Control-Allow-Origin")
 			// Files come from users; keep any HTML or SVG away from our origin.
