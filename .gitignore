@@ -19,3 +19,7 @@ node_modules/
 coverage/
 *.log
 .DS_Store
+
+# Dev Supabase stack (deploy/dev-stacks/up.sh)
+/deploy/dev-stacks/.stack/
+/deploy/dev-stacks/.src/
