@@ -188,3 +188,14 @@ func TestDirectoryInsteadOfFile(t *testing.T) {
 		t.Fatal("an explicitly named directory should be an error")
 	}
 }
+
+func TestHostNames(t *testing.T) {
+	for host, ok := range map[string]bool{
+		"localhost": true, "supabase.example.internal": true, "10.0.0.5": true, "::1": true, "[::1]": true,
+		"[::1": false, "::1]": false, "-bad": false, "a b": false, "http://x": false, "": false,
+	} {
+		if hostName.MatchString(host) != ok {
+			t.Errorf("%q: want valid=%v", host, ok)
+		}
+	}
+}

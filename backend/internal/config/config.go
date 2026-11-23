@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/url"
 	"os"
+	"path/filepath"
 	"reflect"
 	"regexp"
 	"sort"
@@ -35,6 +36,7 @@ type Config struct {
 	BootstrapAdmin BootstrapAdmin `toml:"bootstrap_admin"`
 	Appearance     Appearance     `toml:"appearance"`
 	Projects       Projects       `toml:"projects"`
+	Provisioning   Provisioning   `toml:"provisioning"`
 }
 
 type Server struct {
@@ -97,6 +99,46 @@ type Projects struct {
 	GatewayTimeout time.Duration `toml:"gateway_timeout"`
 }
 
+// Provisioning lets Supermixer create Supabase stacks itself, with the
+// docker compose CLI. It is off unless enabled: driving Docker is
+// root-equivalent on the host.
+type Provisioning struct {
+	Enabled bool `toml:"enabled"`
+	// StacksDir holds one folder per stack. Compose resolves the stacks' bind
+	// mounts on the Docker host, so when Supermixer runs in a container this
+	// folder must be mounted at the same path inside it.
+	StacksDir string `toml:"stacks_dir"`
+	// Docker is the docker CLI to run (with the compose plugin).
+	Docker string `toml:"docker"`
+	// PublicHost is the host name in stacks' URLs, as users reach them.
+	PublicHost string `toml:"public_host"`
+	// ConnectHost is how Supermixer itself reaches the stacks' ports; empty
+	// means public_host. In a container, host.docker.internal or the host's IP.
+	ConnectHost string `toml:"connect_host"`
+	// Host port ranges, "first-last", each stack taking one port from each.
+	APIPorts    string `toml:"api_ports"`
+	DBPorts     string `toml:"db_ports"`
+	PoolerPorts string `toml:"pooler_ports"`
+	// StartTimeout bounds creating or starting a stack, image pulls included.
+	StartTimeout time.Duration `toml:"start_timeout"`
+}
+
+// PortRange is an inclusive range of host ports.
+type PortRange struct{ First, Last int }
+
+// ParsePortRange reads "first-last".
+func ParsePortRange(s string) (PortRange, error) {
+	a, b, ok := strings.Cut(strings.TrimSpace(s), "-")
+	first, err1 := strconv.Atoi(strings.TrimSpace(a))
+	last, err2 := strconv.Atoi(strings.TrimSpace(b))
+	if !ok || err1 != nil || err2 != nil || first < 1024 || last > 65535 || first > last {
+		return PortRange{}, fmt.Errorf("%q isn't a port range like 8200-8299 (ports 1024-65535)", s)
+	}
+	return PortRange{first, last}, nil
+}
+
+func (r PortRange) overlaps(o PortRange) bool { return r.First <= o.Last && o.First <= r.Last }
+
 // Default returns the settings used for anything the file leaves out.
 func Default() Config {
 	return Config{
@@ -108,6 +150,10 @@ func Default() Config {
 		Projects: Projects{
 			HealthCheckTimeout: 5 * time.Second, HealthCacheTTL: 15 * time.Second,
 			QueryTimeout: 60 * time.Second, QueryMaxRows: 1000, DBPoolSize: 4, GatewayTimeout: 60 * time.Second,
+		},
+		Provisioning: Provisioning{
+			StacksDir: "/var/lib/supermixer/stacks", Docker: "docker", PublicHost: "localhost",
+			APIPorts: "8200-8299", DBPorts: "54400-54499", PoolerPorts: "64400-64499", StartTimeout: 20 * time.Minute,
 		},
 	}
 }
@@ -272,6 +318,9 @@ func applyEnv(v reflect.Value, path []string, lookup func(string) (string, bool)
 
 var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
+// A DNS name or IPv4 address, or an IPv6 address with both brackets or neither.
+var hostName = regexp.MustCompile(`^[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?$|^\[[0-9a-fA-F:]+\]$|^[0-9a-fA-F:]*:[0-9a-fA-F:]*$`)
+
 func (c *Config) validate() error {
 	var errs []error
 	fail := func(format string, args ...any) { errs = append(errs, fmt.Errorf(format, args...)) }
@@ -331,8 +380,52 @@ func (c *Config) validate() error {
 	if p.DBPoolSize < 1 || p.DBPoolSize > 100 {
 		fail("projects.db_pool_size must be between 1 and 100, got %d", p.DBPoolSize)
 	}
+	if pv := c.Provisioning; pv.Enabled {
+		if !filepath.IsAbs(pv.StacksDir) {
+			fail("provisioning.stacks_dir must be an absolute path, got %q", pv.StacksDir)
+		}
+		if strings.TrimSpace(pv.Docker) == "" {
+			fail("provisioning.docker must name the docker CLI")
+		}
+		if !hostName.MatchString(pv.PublicHost) {
+			fail("provisioning.public_host must be a host name or IP address, got %q", pv.PublicHost)
+		}
+		if pv.ConnectHost != "" && !hostName.MatchString(pv.ConnectHost) {
+			fail("provisioning.connect_host must be a host name or IP address, got %q", pv.ConnectHost)
+		}
+		if pv.StartTimeout < time.Minute {
+			fail("provisioning.start_timeout must be at least 1m, got %s", pv.StartTimeout)
+		}
+		ranges := map[string]PortRange{}
+		for name, raw := range map[string]string{"api_ports": pv.APIPorts, "db_ports": pv.DBPorts, "pooler_ports": pv.PoolerPorts} {
+			r, err := ParsePortRange(raw)
+			if err != nil {
+				fail("provisioning.%s: %v", name, err)
+				continue
+			}
+			ranges[name] = r
+		}
+		names := []string{"api_ports", "db_ports", "pooler_ports"}
+		for i, a := range names {
+			for _, b := range names[i+1:] {
+				if ra, ok := ranges[a]; ok {
+					if rb, ok := ranges[b]; ok && ra.overlaps(rb) {
+						fail("provisioning.%s and provisioning.%s overlap", a, b)
+					}
+				}
+			}
+		}
+	}
 	sort.Slice(errs, func(i, j int) bool { return errs[i].Error() < errs[j].Error() })
 	return errors.Join(errs...)
+}
+
+// StackHost is how Supermixer reaches the stacks it creates.
+func (p Provisioning) StackHost() string {
+	if p.ConnectHost != "" {
+		return p.ConnectHost
+	}
+	return p.PublicHost
 }
 
 // SlogLevel converts log.level to a slog.Level.

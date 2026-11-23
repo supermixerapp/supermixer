@@ -8,6 +8,9 @@ packages/ui, packages/config or apps/studio. Supabase is a trademark of
 Supabase, Inc.; Supermixer is not affiliated with or endorsed by Supabase.
 
 This product bundles:
+  - Supabase's self-hosting files (backend/internal/provision/template, from
+    supabase/supabase's docker/ folder at the commit in template/VERSION),
+    Copyright Supabase, Apache License 2.0
   - splinter, Supabase's database linter (backend/internal/advisors/splinter.sql,
     unchanged), Copyright (c) 2024 Supabase, PostgreSQL License; the full
     licence is in backend/internal/advisors/SPLINTER_LICENSE
