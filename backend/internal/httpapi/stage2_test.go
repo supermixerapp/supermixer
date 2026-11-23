@@ -105,6 +105,27 @@ func TestGatewayProxy(t *testing.T) {
 		}
 	})
 
+	t.Run("listing files is a read: open to read-only members and not audited", func(t *testing.T) {
+		auditCount := func() int {
+			var page struct{ Entries []struct{ Action string } }
+			admin.must(200, "GET", "/organizations/gw/audit-logs?action=project.storage", nil, &page)
+			return len(page.Entries)
+		}
+		before := auditCount()
+		reader := joinAs(t, env, admin, "gw", "gwreader", "read_only")
+		reader.must(200, "POST", base+"storage/v1/object/list/avatars", map[string]any{"prefix": ""}, nil)
+		if r, _ := gw.last(); r.Method != "POST" || r.URL.Path != "/storage/v1/object/list/avatars" {
+			t.Fatalf("upstream got %s %s", r.Method, r.URL.Path)
+		}
+		admin.must(200, "POST", base+"storage/v1/object/list/avatars", map[string]any{"prefix": ""}, nil)
+		if got := auditCount(); got != before {
+			t.Fatalf("listing wrote %d audit entries", got-before)
+		}
+		// Uploads still need write access, and a bucket named "list" still downloads.
+		reader.must(403, "POST", base+"storage/v1/object/avatars/x.png", map[string]any{}, nil)
+		reader.must(200, "GET", base+"storage/v1/object/list/photo.png", nil, nil)
+	})
+
 	t.Run("refuses anything off the allowlist, however it is encoded", func(t *testing.T) {
 		before := len(gw.reqs)
 		for _, c := range []struct {

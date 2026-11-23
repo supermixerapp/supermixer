@@ -22,6 +22,9 @@ type gatewayRoute struct {
 	methods []string
 	// auditAs names the audit action for changes, e.g. "project.auth_changed".
 	auditAs string
+	// read marks a POST that only reads (Storage's file listing): it needs
+	// data read, not write, and isn't audited.
+	read bool
 }
 
 var gatewayRoutes = []gatewayRoute{
@@ -32,15 +35,21 @@ var gatewayRoutes = []gatewayRoute{
 	{prefix: "auth/v1/recover", exact: true, methods: []string{"POST"}, auditAs: "project.auth_changed"},
 	{prefix: "auth/v1/magiclink", exact: true, methods: []string{"POST"}, auditAs: "project.auth_changed"},
 	{prefix: "auth/v1/settings", exact: true, methods: []string{"GET"}},
-	// Storage API: buckets and objects.
+	// Storage API: buckets and objects. Listing files is a POST that only
+	// reads; Storage routes POST object/list/<bucket> to it before uploads.
+	{prefix: "storage/v1/object/list", methods: []string{"POST"}, read: true},
 	{prefix: "storage/v1/bucket", methods: []string{"GET", "POST", "PUT", "DELETE"}, auditAs: "project.storage_changed"},
 	{prefix: "storage/v1/object", methods: []string{"GET", "HEAD", "POST", "PUT", "DELETE"}, auditAs: "project.storage_changed"},
 	// PostgREST's OpenAPI description, for the API docs.
 	{prefix: "rest/v1", exact: true, methods: []string{"GET"}},
 }
 
-// matchGateway finds the route for a cleaned path, or nil.
+// matchGateway finds the route for a cleaned path and method. If a route
+// matches the path but not the method, later routes are still tried (a GET of
+// object/list/x is a download from a bucket called "list"); it returns that
+// route with false when none allows the method, and nil when no path matches.
 func matchGateway(p, method string) (*gatewayRoute, bool) {
+	var pathOnly *gatewayRoute
 	for i := range gatewayRoutes {
 		rt := &gatewayRoutes[i]
 		if p == rt.prefix || (!rt.exact && strings.HasPrefix(p, rt.prefix+"/")) {
@@ -49,10 +58,12 @@ func matchGateway(p, method string) (*gatewayRoute, bool) {
 					return rt, true
 				}
 			}
-			return rt, false
+			if pathOnly == nil {
+				pathOnly = rt
+			}
 		}
 	}
-	return nil, false
+	return pathOnly, false
 }
 
 // gatewaySegments decodes a proxied path one segment at a time and rejects
@@ -147,7 +158,7 @@ func (h *handlers) gateway() http.Handler {
 			return
 		}
 		perm, action := rbac.ProjectDataRead, "view this project's data"
-		if r.Method != http.MethodGet && r.Method != http.MethodHead {
+		if r.Method != http.MethodGet && r.Method != http.MethodHead && !rt.read {
 			perm, action = rbac.ProjectDataWrite, "change this project's data"
 		}
 		ctx := r.Context()
