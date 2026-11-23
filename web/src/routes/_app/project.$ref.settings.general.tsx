@@ -13,6 +13,7 @@ import {
   toConnectionPayload,
   type ConnectionValue,
 } from '@/components/project/connection-form'
+import { ReadOnlyAccess } from '@/components/project/read-only-access'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardFooter } from '@/components/ui/card'
@@ -172,6 +173,8 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
             </Card>
           </SettingsSection>
         )}
+
+        <ReadOnlyAccess project={project} />
 
         <SettingsSection
           title="Transfer project"
