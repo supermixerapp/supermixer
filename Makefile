@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env db db-down dev dev-backend dev-web generate build test lint
+.PHONY: help setup env db db-down dev dev-backend dev-web generate build test lint stack stack-down
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +37,12 @@ dev-backend:
 dev-web:
 	cd web && pnpm dev
 
+stack: ## Start a dev self-hosted Supabase stack to register as a project (API :8100)
+	deploy/dev-stacks/up.sh
+
+stack-down: ## Stop the dev Supabase stack (data is kept)
+	deploy/dev-stacks/down.sh
+
 generate: ## Regenerate code from api/openapi.yaml and SQL queries
 	cd backend && go generate ./...
 	cd backend && docker run --rm -v "$$PWD":/src -w /src $(SQLC_IMAGE) generate
@@ -50,7 +56,7 @@ build: ## Build a single binary with the web UI embedded (bin/supermixer)
 		-o ../bin/supermixer ./cmd/supermixer
 	@echo "built bin/supermixer ($(VERSION))"
 
-test: ## Run Go and web tests
+test: db ## Run Go (incl. integration, needs Postgres) and web tests
 	cd backend && go test ./...
 	cd web && pnpm test
 

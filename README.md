@@ -2,7 +2,7 @@
 
 An on-premise management plane for self-hosted Supabase: organizations, projects, users and access control, in a console that looks and works like supabase.com/dashboard.
 
-**Status: Stage 0** (foundations and design system). The app shell, theme and component library are in place. Organizations and projects shown in the UI are placeholder data until Stage 1.
+**Status: Stage 1** (identity, organizations, projects, access control). You can sign in, create organizations, invite a team with Supabase's roles, and register running self-hosted Supabase stacks as projects with live health checks. Pages for later stages show which stage brings them.
 
 ## Requirements
 
@@ -17,14 +17,23 @@ make setup   # install dependencies; creates .env with a fresh encryption key
 make dev     # starts Postgres (port 5433), the API (:8080, live reload) and Vite (:5173)
 ```
 
-Open http://localhost:5173.
+Open http://localhost:5173 and sign in as `admin` / `admin` (from `.env`). Change the password right away; a banner reminds you until you do.
+
+To try project registration against a real stack:
+
+```sh
+make stack   # starts a self-hosted Supabase on :8100 (first run downloads ~3 GB) and prints its details
+```
+
+Then use **New project** in Supermixer. **Fill from .env** reads the stack's `deploy/dev-stacks/.stack/.env` if you paste it in.
 
 ## Common tasks
 
 | Command | What it does |
 |---|---|
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
-| `make test` | Go and web tests |
+| `make test` | Go tests (including integration tests against Postgres) and web tests |
+| `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
 | `docker compose -f deploy/docker-compose.yml --profile app up -d --build` | Runs everything in containers |
