@@ -47,8 +47,8 @@ const DOCS_SCHEMA = 'public'
 /** Each relation's kind, and the columns Postgres fills in itself (defaults, identity, generated). */
 const RELATION_KINDS_SQL = `
 select c.relname as name, c.relkind as kind,
-  array(select a.attname from pg_attribute a where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
-        and (a.atthasdef or a.attidentity <> '' or a.attgenerated <> '')) as filled
+  to_json(array(select a.attname from pg_attribute a where a.attrelid = c.oid and a.attnum > 0 and not a.attisdropped
+        and (a.atthasdef or a.attidentity <> '' or a.attgenerated <> ''))) as filled
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = $1 and c.relkind in ('r', 'p', 'v', 'm', 'f')`
 

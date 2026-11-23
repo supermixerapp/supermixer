@@ -75,15 +75,20 @@ function ColumnPrivilegesPage() {
   const role = roles.data?.find((r) => r.name === roleName)
   // A ?role= that names no role (any more).
   const roleMissing = !!roles.data && !!roleName && !role
+  const writable = useCanChange(schema)
   const privileges = useQuery({
-    ...pgQuery<TablePrivileges>(ref, ['column-privileges', schema, table, roleName], TABLE_PRIVILEGES_SQL, [schema, table ?? '', roleName ?? '']),
+    // Which grants are "locked" depends on who runs the REVOKE: the admin
+    // user, not the read-only login that ordinary reads use.
+    ...pgQuery<TablePrivileges>(ref, ['column-privileges', schema, table, roleName], TABLE_PRIVILEGES_SQL, [schema, table ?? '', roleName ?? ''], {
+      readOnly: !writable,
+    }),
     enabled: !!table && !!role,
   })
   const t = privileges.data?.[0]
   // A ?table= that isn't (or is no longer) in this schema.
   const missing = !!table && privileges.data?.length === 0
 
-  const canChange = useCanChange(schema) && !!role && !role.superuser
+  const canChange = writable && !!role && !role.superuser
   const ddl = useDdl(ref)
   const [pending, setPending] = useState<Pending | null>(null)
   const target = { schema, table: table ?? '', role: roleName ?? '' }

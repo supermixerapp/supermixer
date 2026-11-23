@@ -45,14 +45,16 @@ export interface TablePrivileges {
 }
 
 /*
+ * Arrays go out as JSON: the query API returns Postgres arrays as text.
+ *
  * REVOKE only removes grants made by the role it runs as (the object's owner
  * when the current user is a member of it), and just warns about the rest.
  * Grants made by a role the current user can't act for are reported as locked.
  */
 const grants = (acl: string, who: string, where = '') =>
-  `array(select distinct e.privilege_type from aclexplode(${acl}) e where e.grantee = ${who}${where} order by 1)`
+  `to_json(array(select distinct e.privilege_type from aclexplode(${acl}) e where e.grantee = ${who}${where} order by 1))`
 const lockedBySql = (acl: string) =>
-  `array(select distinct pg_get_userbyid(e.grantor) from aclexplode(${acl}) e where e.grantee = (select oid from r) and ${FOREIGN} order by 1)`
+  `to_json(array(select distinct pg_get_userbyid(e.grantor) from aclexplode(${acl}) e where e.grantee = (select oid from r) and ${FOREIGN} order by 1))`
 const FOREIGN = `not pg_has_role(current_user, e.grantor, 'MEMBER')`
 const TABLE_ACL = `coalesce(c.relacl, acldefault('r', c.relowner))`
 

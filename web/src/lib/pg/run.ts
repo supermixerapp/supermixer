@@ -49,11 +49,22 @@ export function rowsOf<T = Record<string, unknown>>(res: QueryResponse): T[] {
   return last.rows.map((row) => Object.fromEntries(last.columns.map((c, i) => [c.name, row[i]])) as T)
 }
 
-/** A cached read of the project's catalog (tables, functions, …). */
-export function pgQuery<T = Record<string, unknown>>(ref: string, key: readonly unknown[], sql: string, params?: (string | null)[]) {
+/**
+ * A cached read of the project's catalog (tables, functions, …). Reads run
+ * read-only, which uses the project's read-only login when it has one; pass
+ * readOnly false for fixed SELECTs that need the admin user's view (members
+ * without write access are kept read-only by the server anyway).
+ */
+export function pgQuery<T = Record<string, unknown>>(
+  ref: string,
+  key: readonly unknown[],
+  sql: string,
+  params?: (string | null)[],
+  { readOnly = true }: { readOnly?: boolean } = {}
+) {
   return queryOptions({
-    queryKey: ['projects', ref, 'pg', ...key],
-    queryFn: async ({ signal }) => rowsOf<T>(await runSql(ref, sql, { params, readOnly: true, maxRows: 10000, signal })),
+    queryKey: ['projects', ref, 'pg', ...key, ...(readOnly ? [] : ['admin'])],
+    queryFn: async ({ signal }) => rowsOf<T>(await runSql(ref, sql, { params, readOnly, maxRows: 10000, signal })),
     staleTime: 30_000,
   })
 }
