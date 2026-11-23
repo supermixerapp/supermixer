@@ -320,8 +320,10 @@ func decode(v []byte, oid uint32, format int16) any {
 			return f
 		}
 	case pgtype.JSONOID, pgtype.JSONBOID:
+		// Copy: v points into the connection's read buffer, which the next
+		// row overwrites.
 		if json.Valid(v) {
-			return json.RawMessage(v)
+			return json.RawMessage(s)
 		}
 	}
 	return s

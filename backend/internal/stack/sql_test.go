@@ -66,6 +66,23 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("JSON values survive later rows", func(t *testing.T) {
+		// Enough rows that the connection's read buffer is reused.
+		rs, err := run(`select json_build_object('i', i, 'pad', repeat('x', 2000)) as j from generate_series(1, 200) i`, QueryOptions{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		for i, row := range rs[0].Rows {
+			var v struct{ I int }
+			if err := json.Unmarshal(row[0].(json.RawMessage), &v); err != nil || v.I != i+1 {
+				t.Fatalf("row %d = %.40s… (%v)", i, row[0], err)
+			}
+		}
+		if _, err := json.Marshal(rs); err != nil {
+			t.Fatal(err)
+		}
+	})
+
 	t.Run("row cap", func(t *testing.T) {
 		rs, err := run("select generate_series(1, 50)", QueryOptions{MaxRows: 10})
 		if err != nil {
