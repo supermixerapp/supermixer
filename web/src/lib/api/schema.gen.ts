@@ -486,6 +486,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/advisors/lints": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Run Supabase's database linter (splinter) on the project's database.
+         * @description The checks behind the Security and Performance Advisors. They run in a
+         *     read-only transaction as the project's admin user.
+         */
+        get: operations["listLints"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/api-keys": {
         parameters: {
             query?: never;
@@ -963,6 +986,26 @@ export interface components {
             auth_version?: string;
             /** Format: date-time */
             checked_at: string;
+        };
+        Lint: {
+            /** @description The check */
+            name: string;
+            title: string;
+            /** @enum {string} */
+            level: "ERROR" | "WARN" | "INFO";
+            /** @enum {string} */
+            facing: "EXTERNAL" | "INTERNAL";
+            categories: ("SECURITY" | "PERFORMANCE")[];
+            description: string;
+            /** @description What was found */
+            detail: string;
+            /** @description Supabase's guide to fixing it. */
+            remediation: string;
+            /** @description The object it's about: schema, name, type, … */
+            metadata: {
+                [key: string]: unknown;
+            };
+            cache_key: string;
         };
         ApiKey: {
             /** @enum {string} */
@@ -1878,6 +1921,42 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["HealthReport"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listLints: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Findings, most severe first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        lints: components["schemas"]["Lint"][];
+                        /** Format: date-time */
+                        ran_at: string;
+                    };
+                };
+            };
+            /** @description The linter failed on this database. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueryError"];
                 };
             };
             default: components["responses"]["Error"];

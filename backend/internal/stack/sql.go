@@ -33,6 +33,10 @@ type QueryOptions struct {
 	MaxRows int
 	// Timeout is the statement_timeout; 0 means 60s.
 	Timeout time.Duration
+	// Trusted marks SQL that Supermixer itself wrote (never text from a
+	// request). A read-only run may then hold several statements: they go
+	// with the simple protocol inside the READ ONLY transaction.
+	Trusted bool
 }
 
 // Column describes one result column.
@@ -202,12 +206,17 @@ func (p *Pools) Query(ctx context.Context, ref string, d Database, sql string, o
 		if err := conn.Exec(ctx, "BEGIN READ ONLY").Close(); err != nil {
 			return nil, wrapPgError(err)
 		}
-		r, err := execParams(ctx, conn, tm, sql, opt)
+		if opt.Trusted && opt.Params == nil {
+			results, err = execAll(ctx, conn, tm, sql, opt.MaxRows)
+		} else {
+			var r Result
+			r, err = execParams(ctx, conn, tm, sql, opt)
+			results = []Result{r}
+		}
 		_ = conn.Exec(ctx, "ROLLBACK").Close()
 		if err != nil {
 			return nil, err
 		}
-		results = []Result{r}
 	} else if opt.Params != nil {
 		r, err := execParams(ctx, conn, tm, sql, opt)
 		if err != nil {
@@ -215,21 +224,31 @@ func (p *Pools) Query(ctx context.Context, ref string, d Database, sql string, o
 		}
 		results = []Result{r}
 	} else {
-		mrr := conn.Exec(ctx, sql)
-		for mrr.NextResult() {
-			r, err := collect(mrr.ResultReader(), tm, opt.MaxRows)
-			if err != nil {
-				_ = mrr.Close()
-				return nil, wrapPgError(err)
-			}
-			results = append(results, r)
-		}
-		if err := mrr.Close(); err != nil {
-			return nil, wrapPgError(err)
+		results, err = execAll(ctx, conn, tm, sql, opt.MaxRows)
+		if err != nil {
+			return nil, err
 		}
 	}
 	if len(results) > 0 {
 		results[len(results)-1].Notices = notices
+	}
+	return results, nil
+}
+
+// execAll runs a script with the simple protocol, one result per statement.
+func execAll(ctx context.Context, conn *pgconn.PgConn, tm *pgtype.Map, sql string, maxRows int) ([]Result, error) {
+	var results []Result
+	mrr := conn.Exec(ctx, sql)
+	for mrr.NextResult() {
+		r, err := collect(mrr.ResultReader(), tm, maxRows)
+		if err != nil {
+			_ = mrr.Close()
+			return nil, wrapPgError(err)
+		}
+		results = append(results, r)
+	}
+	if err := mrr.Close(); err != nil {
+		return nil, wrapPgError(err)
 	}
 	return results, nil
 }

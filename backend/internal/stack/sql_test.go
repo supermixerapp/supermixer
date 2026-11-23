@@ -83,6 +83,23 @@ func TestQuery(t *testing.T) {
 		}
 	})
 
+	t.Run("trusted read-only scripts run several statements but still can't write", func(t *testing.T) {
+		rs, err := run(`set local search_path = ''; do $$ begin perform pg_catalog.set_config('x.y', 'ok', true); end $$; select pg_catalog.current_setting('x.y') as v`, QueryOptions{ReadOnly: true, Trusted: true})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if last := rs[len(rs)-1]; len(last.Rows) != 1 || last.Rows[0][0] != "ok" {
+			t.Fatalf("results = %+v", rs)
+		}
+		var qe *QueryError
+		if _, err := run("select 1; create table trusted_write (a int)", QueryOptions{ReadOnly: true, Trusted: true}); !errors.As(err, &qe) || qe.Code != "25006" {
+			t.Fatalf("write in a trusted read-only run: %v", err)
+		}
+		if _, err := run("select 1; select 2", QueryOptions{ReadOnly: true}); err == nil {
+			t.Fatal("an untrusted read-only run accepted two statements")
+		}
+	})
+
 	t.Run("row cap", func(t *testing.T) {
 		rs, err := run("select generate_series(1, 50)", QueryOptions{MaxRows: 10})
 		if err != nil {

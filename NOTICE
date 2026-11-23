@@ -8,6 +8,9 @@ packages/ui, packages/config or apps/studio. Supabase is a trademark of
 Supabase, Inc.; Supermixer is not affiliated with or endorsed by Supabase.
 
 This product bundles:
+  - splinter, Supabase's database linter (backend/internal/advisors/splinter.sql,
+    unchanged), Copyright (c) 2024 Supabase, PostgreSQL License; the full
+    licence is in backend/internal/advisors/SPLINTER_LICENSE
   - Material Icons (Two-Tone), Copyright Google LLC, Apache License 2.0
     (https://github.com/google/material-design-icons)
   - Inter, Copyright The Inter Project Authors, SIL Open Font License 1.1

@@ -555,6 +555,35 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/HealthReport" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/advisors/lints:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listLints
+      tags: [Projects]
+      summary: Run Supabase's database linter (splinter) on the project's database.
+      description: |
+        The checks behind the Security and Performance Advisors. They run in a
+        read-only transaction as the project's admin user.
+      responses:
+        "200":
+          description: Findings, most severe first.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [lints, ran_at]
+                properties:
+                  lints:
+                    type: array
+                    items: { $ref: "#/components/schemas/Lint" }
+                  ran_at: { type: string, format: date-time }
+        "422":
+          description: The linter failed on this database.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueryError" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/api-keys:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1156,6 +1185,23 @@ components:
         postgres_version: { type: string }
         auth_version: { type: string }
         checked_at: { type: string, format: date-time }
+    Lint:
+      type: object
+      required: [name, title, level, facing, categories, description, detail, remediation, metadata, cache_key]
+      properties:
+        name: { type: string, description: The check, e.g. rls_disabled_in_public }
+        title: { type: string }
+        level: { type: string, enum: [ERROR, WARN, INFO] }
+        facing: { type: string, enum: [EXTERNAL, INTERNAL] }
+        categories:
+          type: array
+          items: { type: string, enum: [SECURITY, PERFORMANCE] }
+        description: { type: string }
+        detail: { type: string, description: What was found, in Markdown. }
+        remediation: { type: string, description: Supabase's guide to fixing it. }
+        metadata: { type: object, additionalProperties: true, description: "The object it's about: schema, name, type, …" }
+        cache_key: { type: string }
+
     ApiKey:
       type: object
       required: [id, name, kind, secret, present, description]

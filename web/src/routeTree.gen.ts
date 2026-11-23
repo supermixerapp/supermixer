@@ -31,7 +31,9 @@ import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$r
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppProjectRefAdvisorsPerformanceRouteImport } from './routes/_app/project.$ref.advisors.performance'
 import { Route as AppProjectRefAdvisorsQueryPerformanceRouteImport } from './routes/_app/project.$ref.advisors.query-performance'
+import { Route as AppProjectRefAdvisorsSecurityRouteImport } from './routes/_app/project.$ref.advisors.security'
 import { Route as AppProjectRefAuthAuditLogsRouteImport } from './routes/_app/project.$ref.auth.audit-logs'
 import { Route as AppProjectRefAuthPoliciesRouteImport } from './routes/_app/project.$ref.auth.policies'
 import { Route as AppProjectRefAuthUsersRouteImport } from './routes/_app/project.$ref.auth.users'
@@ -179,10 +181,22 @@ const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   path: '/sql',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefAdvisorsPerformanceRoute =
+  AppProjectRefAdvisorsPerformanceRouteImport.update({
+    id: '/advisors/performance',
+    path: '/advisors/performance',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefAdvisorsQueryPerformanceRoute =
   AppProjectRefAdvisorsQueryPerformanceRouteImport.update({
     id: '/advisors/query-performance',
     path: '/advisors/query-performance',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
+const AppProjectRefAdvisorsSecurityRoute =
+  AppProjectRefAdvisorsSecurityRouteImport.update({
+    id: '/advisors/security',
+    path: '/advisors/security',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
 const AppProjectRefAuthAuditLogsRoute =
@@ -426,7 +440,9 @@ export interface FileRoutesByFullPath {
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  '/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
   '/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
@@ -483,7 +499,9 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  '/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
   '/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
   '/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
@@ -546,7 +564,9 @@ export interface FileRoutesById {
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/_app/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  '/_app/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
   '/_app/project/$ref/auth/audit-logs': typeof AppProjectRefAuthAuditLogsRoute
   '/_app/project/$ref/auth/policies': typeof AppProjectRefAuthPoliciesRoute
   '/_app/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
@@ -609,7 +629,9 @@ export interface FileRouteTypes {
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/advisors/performance'
     | '/project/$ref/advisors/query-performance'
+    | '/project/$ref/advisors/security'
     | '/project/$ref/auth/audit-logs'
     | '/project/$ref/auth/policies'
     | '/project/$ref/auth/users'
@@ -666,7 +688,9 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/advisors/performance'
     | '/project/$ref/advisors/query-performance'
+    | '/project/$ref/advisors/security'
     | '/project/$ref/auth/audit-logs'
     | '/project/$ref/auth/policies'
     | '/project/$ref/auth/users'
@@ -728,7 +752,9 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/project/$ref/advisors/performance'
     | '/_app/project/$ref/advisors/query-performance'
+    | '/_app/project/$ref/advisors/security'
     | '/_app/project/$ref/auth/audit-logs'
     | '/_app/project/$ref/auth/policies'
     | '/_app/project/$ref/auth/users'
@@ -931,11 +957,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/advisors/performance': {
+      id: '/_app/project/$ref/advisors/performance'
+      path: '/advisors/performance'
+      fullPath: '/project/$ref/advisors/performance'
+      preLoaderRoute: typeof AppProjectRefAdvisorsPerformanceRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/advisors/query-performance': {
       id: '/_app/project/$ref/advisors/query-performance'
       path: '/advisors/query-performance'
       fullPath: '/project/$ref/advisors/query-performance'
       preLoaderRoute: typeof AppProjectRefAdvisorsQueryPerformanceRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/advisors/security': {
+      id: '/_app/project/$ref/advisors/security'
+      path: '/advisors/security'
+      fullPath: '/project/$ref/advisors/security'
+      preLoaderRoute: typeof AppProjectRefAdvisorsSecurityRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/auth/audit-logs': {
@@ -1255,7 +1295,9 @@ interface AppProjectRefRouteChildren {
   AppProjectRefEditorRoute: typeof AppProjectRefEditorRouteWithChildren
   AppProjectRefSqlRoute: typeof AppProjectRefSqlRouteWithChildren
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
+  AppProjectRefAdvisorsPerformanceRoute: typeof AppProjectRefAdvisorsPerformanceRoute
   AppProjectRefAdvisorsQueryPerformanceRoute: typeof AppProjectRefAdvisorsQueryPerformanceRoute
+  AppProjectRefAdvisorsSecurityRoute: typeof AppProjectRefAdvisorsSecurityRoute
   AppProjectRefAuthAuditLogsRoute: typeof AppProjectRefAuthAuditLogsRoute
   AppProjectRefAuthPoliciesRoute: typeof AppProjectRefAuthPoliciesRoute
   AppProjectRefAuthUsersRoute: typeof AppProjectRefAuthUsersRoute
@@ -1296,8 +1338,10 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefEditorRoute: AppProjectRefEditorRouteWithChildren,
   AppProjectRefSqlRoute: AppProjectRefSqlRouteWithChildren,
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
+  AppProjectRefAdvisorsPerformanceRoute: AppProjectRefAdvisorsPerformanceRoute,
   AppProjectRefAdvisorsQueryPerformanceRoute:
     AppProjectRefAdvisorsQueryPerformanceRoute,
+  AppProjectRefAdvisorsSecurityRoute: AppProjectRefAdvisorsSecurityRoute,
   AppProjectRefAuthAuditLogsRoute: AppProjectRefAuthAuditLogsRoute,
   AppProjectRefAuthPoliciesRoute: AppProjectRefAuthPoliciesRoute,
   AppProjectRefAuthUsersRoute: AppProjectRefAuthUsersRoute,
