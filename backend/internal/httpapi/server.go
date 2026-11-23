@@ -18,7 +18,11 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"supermixer/internal/api"
+	"supermixer/internal/auth"
 	"supermixer/internal/config"
+	"supermixer/internal/secrets"
+	"supermixer/internal/stack"
+	"supermixer/internal/store"
 	"supermixer/internal/theme"
 )
 
@@ -32,7 +36,9 @@ type DB interface {
 // Deps are the server's collaborators.
 type Deps struct {
 	Config  *config.Config
-	DB      DB
+	DB      DB           // health checks
+	Store   *store.Store // everything else
+	Box     *secrets.Box
 	Palette *theme.Palette
 	Logger  *slog.Logger
 	WebUI   fs.FS // built React app; may be empty in development
@@ -42,22 +48,35 @@ type Deps struct {
 func New(deps Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	r.Use(middleware.RealIP)
+	if deps.Config.TrustProxy {
+		// Only behind a reverse proxy: otherwise clients could spoof their IP.
+		r.Use(middleware.RealIP)
+	}
 	r.Use(requestLogger(deps.Logger))
 	r.Use(middleware.Recoverer)
 
-	h := &handlers{deps: deps}
+	h := &handlers{
+		deps:    deps,
+		csrf:    auth.NewCSRF([]byte(deps.Config.EncryptionKey)),
+		limiter: auth.NewLimiter(10, 15*time.Minute),
+		checker: stack.NewChecker(5 * time.Second),
+		health:  &healthCache{},
+	}
 	strict := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
 			writeError(w, http.StatusBadRequest, err.Error())
 		},
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			deps.Logger.ErrorContext(r.Context(), "api handler failed", "path", r.URL.Path, "err", err)
-			writeError(w, http.StatusInternalServerError, "internal server error")
+			status, msg, expected := errorStatus(err)
+			if !expected {
+				deps.Logger.ErrorContext(r.Context(), "api handler failed", "path", r.URL.Path, "err", err)
+			}
+			writeError(w, status, msg)
 		},
 	})
 
 	r.Route("/api/v1", func(r chi.Router) {
+		r.Use(h.sessionMiddleware)
 		api.HandlerFromMux(strict, r)
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 			writeError(w, http.StatusNotFound, "not found")

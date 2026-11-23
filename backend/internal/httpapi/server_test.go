@@ -83,9 +83,11 @@ func TestUiConfig(t *testing.T) {
 	}
 }
 
-func TestUnknownAPIRouteIsJSON404(t *testing.T) {
+// API routes are deny-by-default: without a session even unknown paths get a
+// JSON 401, so the route list is not discoverable.
+func TestUnknownAPIRouteRequiresSignIn(t *testing.T) {
 	rec := get(t, newTestServer(t, fakeDB{}, builtUI), "/api/v1/nope")
-	if rec.Code != http.StatusNotFound || !strings.Contains(rec.Header().Get("Content-Type"), "json") {
+	if rec.Code != http.StatusUnauthorized || !strings.Contains(rec.Header().Get("Content-Type"), "json") {
 		t.Fatalf("got %d %s", rec.Code, rec.Header().Get("Content-Type"))
 	}
 }

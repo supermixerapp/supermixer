@@ -14,8 +14,10 @@ import (
 	"syscall"
 	"time"
 
+	"supermixer/internal/bootstrap"
 	"supermixer/internal/config"
 	"supermixer/internal/httpapi"
+	"supermixer/internal/secrets"
 	"supermixer/internal/store"
 	"supermixer/internal/theme"
 	"supermixer/internal/version"
@@ -57,12 +59,22 @@ func run(envFile string) error {
 	if err := st.Migrate(ctx); err != nil {
 		return err
 	}
+	if err := bootstrap.EnsureAdmin(ctx, st, cfg, logger); err != nil {
+		return err
+	}
+	box, err := secrets.New(cfg.EncryptionKey)
+	if err != nil {
+		return err
+	}
+	go cleanupSessions(ctx, st, logger)
 
 	srv := &http.Server{
 		Addr: cfg.HTTPAddr,
 		Handler: httpapi.New(httpapi.Deps{
 			Config:  cfg,
 			DB:      st,
+			Store:   st,
+			Box:     box,
 			Palette: palette,
 			Logger:  logger,
 			WebUI:   webui.FS(),
@@ -90,4 +102,20 @@ func run(envFile string) error {
 		}
 	}
 	return nil
+}
+
+// cleanupSessions deletes expired sessions hourly.
+func cleanupSessions(ctx context.Context, st *store.Store, logger *slog.Logger) {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for {
+		if err := st.Queries.DeleteExpiredSessions(ctx); err != nil && ctx.Err() == nil {
+			logger.Warn("deleting expired sessions", "err", err)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
+	}
 }

@@ -1,22 +1,36 @@
 openapi: 3.0.3
 info:
   title: Supermixer API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Management API for Supermixer, an on-premise management plane for
     self-hosted Supabase. Resource paths follow the shape of the Supabase
     Management API (https://api.supabase.com/api/v1) where a concept exists in both.
+
+    Authentication is a session cookie set by `POST /auth/sign-in`. Requests
+    that change state must send the `X-CSRF-Token` header, whose value is in
+    the `sm_csrf` cookie.
 servers:
   - url: /api/v1
 tags:
   - name: System
-    description: Health and instance configuration.
+  - name: Auth
+  - name: Profile
+  - name: Users
+    description: Instance user administration (instance admins only).
+  - name: Organizations
+  - name: Members
+  - name: Invitations
+  - name: Projects
+  - name: Audit
 paths:
+  # ---------------------------------------------------------------- System
   /health:
     get:
       operationId: getHealth
       tags: [System]
       summary: Report service and database health
+      security: []
       responses:
         "200":
           description: Supermixer and its database are reachable.
@@ -34,6 +48,7 @@ paths:
       operationId: getUiConfig
       tags: [System]
       summary: Settings the web UI needs before sign-in
+      security: []
       responses:
         "200":
           description: UI configuration.
@@ -41,7 +56,548 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/UiConfig" }
         default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ Auth
+  /auth/sign-in:
+    post:
+      operationId: signIn
+      tags: [Auth]
+      summary: Sign in with username and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignInRequest" }
+      responses:
+        "200":
+          description: Signed in; session cookies are set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+  /auth/sign-out:
+    post:
+      operationId: signOut
+      tags: [Auth]
+      summary: End the current session
+      responses:
+        "204": { description: Signed out; cookies cleared. }
+        default: { $ref: "#/components/responses/Error" }
+
+  # --------------------------------------------------------------- Profile
+  /profile:
+    get:
+      operationId: getProfile
+      tags: [Profile]
+      summary: The signed-in user
+      responses:
+        "200":
+          description: Profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateProfile
+      tags: [Profile]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProfileUpdate" }
+      responses:
+        "200":
+          description: Updated profile.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/password:
+    post:
+      operationId: changePassword
+      tags: [Profile]
+      summary: Change your password; other sessions are signed out
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordChange" }
+      responses:
+        "204": { description: Password changed. }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/sessions:
+    get:
+      operationId: listSessions
+      tags: [Profile]
+      responses:
+        "200":
+          description: Active sessions, most recent first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Session" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/sessions/{session_id}:
+    delete:
+      operationId: revokeSession
+      tags: [Profile]
+      parameters:
+        - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Session revoked. }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/permissions:
+    get:
+      operationId: getPermissions
+      tags: [Profile]
+      summary: Your role and permissions in every organization and project you can see
+      responses:
+        "200":
+          description: Permissions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/OrganizationPermissions" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ----------------------------------------------------------------- Users
+  /admin/users:
+    get:
+      operationId: listUsers
+      tags: [Users]
+      responses:
+        "200":
+          description: All users.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/User" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createUser
+      tags: [Users]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserCreate" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/users/{user_id}:
+    patch:
+      operationId: updateUser
+      tags: [Users]
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/UserUpdate" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/users/{user_id}/password:
+    post:
+      operationId: resetUserPassword
+      tags: [Users]
+      summary: Set a new password and sign the user out everywhere
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordReset" }
+      responses:
+        "204": { description: Password reset. }
+        default: { $ref: "#/components/responses/Error" }
+
+  # --------------------------------------------------------- Organizations
+  /organizations:
+    get:
+      operationId: listOrganizations
+      tags: [Organizations]
+      responses:
+        "200":
+          description: Organizations you belong to.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Organization" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createOrganization
+      tags: [Organizations]
+      summary: Create an organization; you become its Owner
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationCreate" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: getOrganization
+      tags: [Organizations]
+      responses:
+        "200":
+          description: Organization.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateOrganization
+      tags: [Organizations]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationUpdate" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteOrganization
+      tags: [Organizations]
+      summary: Delete an organization (it must have no projects)
+      responses:
+        "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ---------------------------------------------------------------- Members
+  /organizations/{slug}/members:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: listMembers
+      tags: [Members]
+      responses:
+        "200":
+          description: Members.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Member" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/members/{user_id}:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+      - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateMember
+      tags: [Members]
+      summary: Change a member's organization role and project-scoped roles
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MemberUpdate" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Member" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: removeMember
+      tags: [Members]
+      summary: Remove a member, or leave the organization when it is you
+      responses:
+        "204": { description: Removed. }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------ Invitations
+  /organizations/{slug}/invitations:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: listInvitations
+      tags: [Invitations]
+      responses:
+        "200":
+          description: Pending invitations.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Invitation" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createInvitation
+      tags: [Invitations]
+      summary: Create an invitation link (valid 7 days)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationCreate" }
+      responses:
+        "201":
+          description: Created. The token is only returned here.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationCreated" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/invitations/{invitation_id}:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+      - { name: invitation_id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: revokeInvitation
+      tags: [Invitations]
+      responses:
+        "204": { description: Revoked. }
+        default: { $ref: "#/components/responses/Error" }
+  /invitations/{token}:
+    parameters:
+      - { $ref: "#/components/parameters/InvitationToken" }
+    get:
+      operationId: getInvitation
+      tags: [Invitations]
+      summary: What an invitation link is for (no sign-in needed)
+      security: []
+      responses:
+        "200":
+          description: Invitation details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/InvitationPreview" }
+        default: { $ref: "#/components/responses/Error" }
+  /invitations/{token}/accept:
+    parameters:
+      - { $ref: "#/components/parameters/InvitationToken" }
+    post:
+      operationId: acceptInvitation
+      tags: [Invitations]
+      summary: Join the organization as the signed-in user
+      responses:
+        "200":
+          description: Joined.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Organization" }
+        default: { $ref: "#/components/responses/Error" }
+  /invitations/{token}/sign-up:
+    parameters:
+      - { $ref: "#/components/parameters/InvitationToken" }
+    post:
+      operationId: signUpWithInvitation
+      tags: [Invitations]
+      summary: Create an account from an invitation and join; signs you in
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/InvitationSignUp" }
+      responses:
+        "201":
+          description: Account created and session cookies set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # --------------------------------------------------------------- Projects
+  /projects:
+    get:
+      operationId: listProjects
+      tags: [Projects]
+      summary: Projects you can see, across organizations
+      parameters:
+        - { name: organization_slug, in: query, required: false, schema: { type: string } }
+      responses:
+        "200":
+          description: Projects.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/projects:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    post:
+      operationId: createProject
+      tags: [Projects]
+      summary: Register an existing self-hosted Supabase stack as a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectCreate" }
+      responses:
+        "201":
+          description: Registered.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/projects/test-connection:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    post:
+      operationId: testConnection
+      tags: [Projects]
+      summary: Check connection details before registering a project
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectConnection" }
+      responses:
+        "200":
+          description: Results of each check.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReport" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getProject
+      tags: [Projects]
+      responses:
+        "200":
+          description: Project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateProject
+      tags: [Projects]
+      summary: Rename a project or update its connection details
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectUpdate" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteProject
+      tags: [Projects]
+      summary: Unregister a project. The Supabase stack itself is untouched.
+      responses:
+        "204": { description: Unregistered. }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/transfer:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    post:
+      operationId: transferProject
+      tags: [Projects]
+      summary: Move a project to another organization you own
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ProjectTransfer" }
+      responses:
+        "200":
+          description: Moved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/health:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getProjectHealth
+      tags: [Projects]
+      responses:
+        "200":
+          description: Health of each service (cached for 15 seconds).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/HealthReport" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/api-keys:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listApiKeys
+      tags: [Projects]
+      summary: The project's API keys. Secret values only with reveal=true.
+      parameters:
+        - { name: reveal, in: query, required: false, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: Keys.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/ApiKey" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ Audit
+  /organizations/{slug}/audit-logs:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: listAuditLogs
+      tags: [Audit]
+      parameters:
+        - { name: action, in: query, required: false, description: Action prefix, e.g. "project." , schema: { type: string } }
+        - { name: actor_id, in: query, required: false, schema: { type: string, format: uuid } }
+        - { name: since, in: query, required: false, schema: { type: string, format: date-time } }
+        - { name: before, in: query, required: false, description: Cursor from next_before, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Entries, newest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogPage" }
+        default: { $ref: "#/components/responses/Error" }
+
 components:
+  parameters:
+    Slug: { name: slug, in: path, required: true, schema: { type: string } }
+    Ref: { name: ref, in: path, required: true, schema: { type: string } }
+    InvitationToken: { name: token, in: path, required: true, schema: { type: string } }
   responses:
     Error:
       description: Error response.
@@ -54,21 +610,24 @@ components:
       required: [message]
       properties:
         message: { type: string }
+    OrgRole:
+      type: string
+      enum: [owner, administrator, developer, read_only, no_access]
+    ProjectRole:
+      type: string
+      enum: [administrator, developer, read_only]
+
     Health:
       type: object
       required: [status, version, database]
       properties:
-        status:
-          type: string
-          enum: [healthy, unhealthy]
-        version: { type: string, example: "0.1.0" }
+        status: { type: string, enum: [healthy, unhealthy] }
+        version: { type: string }
         database:
           type: object
           required: [status]
           properties:
-            status:
-              type: string
-              enum: [healthy, unhealthy]
+            status: { type: string, enum: [healthy, unhealthy] }
             schema_version: { type: integer, format: int64 }
             installed_at: { type: string, format: date-time }
             error: { type: string }
@@ -76,12 +635,341 @@ components:
       type: object
       required: [app_name, version, brand_color, default_theme]
       properties:
-        app_name: { type: string, example: Supermixer }
+        app_name: { type: string }
         version: { type: string }
-        brand_color:
-          type: string
-          description: The configured BRAND_COLOR, as #rrggbb.
-          example: "#0019a8"
-        default_theme:
-          type: string
-          enum: [dark, light, system]
+        brand_color: { type: string, description: "BRAND_COLOR as #rrggbb" }
+        default_theme: { type: string, enum: [dark, light, system] }
+
+    SignInRequest:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+    Profile:
+      type: object
+      required: [id, username, display_name, is_instance_admin, default_password, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        display_name: { type: string }
+        is_instance_admin: { type: boolean }
+        default_password:
+          type: boolean
+          description: Still using the well-known bootstrap password.
+        created_at: { type: string, format: date-time }
+    ProfileUpdate:
+      type: object
+      properties:
+        display_name: { type: string, maxLength: 64 }
+        email: { type: string, nullable: true }
+    PasswordChange:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string }
+        new_password: { type: string }
+    PasswordReset:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string }
+    Session:
+      type: object
+      required: [id, created_at, last_seen_at, expires_at, ip, user_agent, current]
+      properties:
+        id: { type: string, format: uuid }
+        created_at: { type: string, format: date-time }
+        last_seen_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        ip: { type: string }
+        user_agent: { type: string }
+        current: { type: boolean }
+    OrganizationPermissions:
+      type: object
+      required: [organization_slug, role, permissions, projects]
+      properties:
+        organization_slug: { type: string }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        permissions: { type: array, items: { type: string } }
+        projects:
+          type: array
+          items: { $ref: "#/components/schemas/ProjectPermissions" }
+    ProjectPermissions:
+      type: object
+      required: [ref, role, permissions]
+      properties:
+        ref: { type: string }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        permissions: { type: array, items: { type: string } }
+
+    User:
+      type: object
+      required: [id, username, display_name, is_instance_admin, default_password, disabled, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        email: { type: string, nullable: true }
+        display_name: { type: string }
+        is_instance_admin: { type: boolean }
+        default_password: { type: boolean }
+        disabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+    UserCreate:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        email: { type: string, nullable: true }
+        display_name: { type: string }
+        is_instance_admin: { type: boolean, default: false }
+    UserUpdate:
+      type: object
+      properties:
+        email: { type: string, nullable: true }
+        display_name: { type: string }
+        is_instance_admin: { type: boolean }
+        disabled: { type: boolean }
+
+    Organization:
+      type: object
+      required: [id, slug, name, role, permissions, project_count, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        permissions: { type: array, items: { type: string } }
+        project_count: { type: integer }
+        created_at: { type: string, format: date-time }
+    OrganizationCreate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+    OrganizationUpdate:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+
+    MemberProjectRole:
+      type: object
+      required: [ref, name, role]
+      properties:
+        ref: { type: string }
+        name: { type: string }
+        role: { $ref: "#/components/schemas/ProjectRole" }
+    Member:
+      type: object
+      required: [user_id, username, display_name, role, project_roles, joined_at]
+      properties:
+        user_id: { type: string, format: uuid }
+        username: { type: string }
+        display_name: { type: string }
+        email: { type: string, nullable: true }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        project_roles:
+          type: array
+          items: { $ref: "#/components/schemas/MemberProjectRole" }
+        joined_at: { type: string, format: date-time }
+    ProjectRoleAssignment:
+      type: object
+      required: [ref, role]
+      properties:
+        ref: { type: string }
+        role: { $ref: "#/components/schemas/ProjectRole" }
+    MemberUpdate:
+      type: object
+      required: [role]
+      properties:
+        role: { $ref: "#/components/schemas/OrgRole" }
+        project_roles:
+          type: array
+          description: Replaces all of the member's project-scoped roles in this organization.
+          items: { $ref: "#/components/schemas/ProjectRoleAssignment" }
+
+    Invitation:
+      type: object
+      required: [id, email, role, project_roles, invited_by, created_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        email: { type: string }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        project_roles:
+          type: array
+          items: { $ref: "#/components/schemas/MemberProjectRole" }
+        invited_by: { type: string }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+    InvitationCreate:
+      type: object
+      required: [role]
+      properties:
+        email: { type: string, description: Who the link is for (informational). }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        project_roles:
+          type: array
+          items: { $ref: "#/components/schemas/ProjectRoleAssignment" }
+    InvitationCreated:
+      allOf:
+        - { $ref: "#/components/schemas/Invitation" }
+        - type: object
+          required: [token, url]
+          properties:
+            token: { type: string }
+            url: { type: string, description: Link to share with the invitee. }
+    InvitationPreview:
+      type: object
+      required: [organization_name, organization_slug, role, email, invited_by, expires_at, valid]
+      properties:
+        organization_name: { type: string }
+        organization_slug: { type: string }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        email: { type: string }
+        invited_by: { type: string }
+        expires_at: { type: string, format: date-time }
+        valid: { type: boolean, description: False once accepted or expired. }
+    InvitationSignUp:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        display_name: { type: string }
+        email: { type: string, nullable: true }
+
+    DatabaseConnection:
+      type: object
+      required: [host, port, name, user, sslmode]
+      properties:
+        host: { type: string }
+        port: { type: integer, minimum: 1, maximum: 65535 }
+        name: { type: string }
+        user: { type: string }
+        password: { type: string, description: Write-only. Omit on update to keep the current one. }
+        sslmode: { type: string, enum: [disable, prefer, require, verify-ca, verify-full] }
+    ApiKeysInput:
+      type: object
+      description: Write-only. On update, omitted or empty keys keep their current value.
+      properties:
+        anon: { type: string }
+        service_role: { type: string }
+        publishable: { type: string }
+        secret: { type: string }
+        jwt_secret: { type: string }
+    ProjectConnection:
+      type: object
+      required: [api_url, database, keys]
+      properties:
+        api_url: { type: string, description: The stack's API gateway, e.g. http://localhost:8000 }
+        studio_url: { type: string }
+        database: { $ref: "#/components/schemas/DatabaseConnection" }
+        keys: { $ref: "#/components/schemas/ApiKeysInput" }
+    ProjectCreate:
+      type: object
+      required: [name, connection]
+      properties:
+        name: { type: string }
+        connection: { $ref: "#/components/schemas/ProjectConnection" }
+    ProjectUpdate:
+      type: object
+      properties:
+        name: { type: string }
+        connection: { $ref: "#/components/schemas/ProjectConnection" }
+    ProjectTransfer:
+      type: object
+      required: [organization_slug]
+      properties:
+        organization_slug: { type: string }
+    Project:
+      type: object
+      required: [id, ref, name, organization_slug, organization_name, api_url, studio_url, database, keys_present, role, permissions, created_at, updated_at]
+      properties:
+        id: { type: string, format: uuid }
+        ref: { type: string }
+        name: { type: string }
+        organization_slug: { type: string }
+        organization_name: { type: string }
+        api_url: { type: string }
+        studio_url: { type: string }
+        database:
+          type: object
+          required: [host, port, name, user, sslmode, uri]
+          properties:
+            host: { type: string }
+            port: { type: integer }
+            name: { type: string }
+            user: { type: string }
+            sslmode: { type: string }
+            uri: { type: string, description: Connection string with a password placeholder. }
+        keys_present:
+          type: object
+          required: [anon, service_role, publishable, secret, jwt_secret]
+          properties:
+            anon: { type: boolean }
+            service_role: { type: boolean }
+            publishable: { type: boolean }
+            secret: { type: boolean }
+            jwt_secret: { type: boolean }
+        role: { $ref: "#/components/schemas/OrgRole" }
+        permissions: { type: array, items: { type: string } }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ServiceCheck:
+      type: object
+      required: [service, label, status, latency_ms]
+      properties:
+        service: { type: string, enum: [auth, rest, storage, meta, database] }
+        label: { type: string }
+        status: { type: string, enum: [ok, error] }
+        latency_ms: { type: integer, format: int64 }
+        detail: { type: string }
+    HealthReport:
+      type: object
+      required: [status, services, checked_at]
+      properties:
+        status: { type: string, enum: [healthy, degraded, unhealthy] }
+        services:
+          type: array
+          items: { $ref: "#/components/schemas/ServiceCheck" }
+        postgres_version: { type: string }
+        auth_version: { type: string }
+        checked_at: { type: string, format: date-time }
+    ApiKey:
+      type: object
+      required: [id, name, kind, secret, present, description]
+      properties:
+        id: { type: string, enum: [anon, service_role, publishable, secret, jwt_secret] }
+        name: { type: string }
+        kind: { type: string, enum: [legacy, api_key, jwt_secret] }
+        secret: { type: boolean, description: Must never be exposed in a browser. }
+        present: { type: boolean }
+        value: { type: string, description: Present for public keys, and for secret ones when revealed. }
+        description: { type: string }
+
+    AuditLogEntry:
+      type: object
+      required: [id, action, actor_username, target_type, target_id, target_name, metadata, ip, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        action: { type: string }
+        actor_id: { type: string, format: uuid, nullable: true }
+        actor_username: { type: string }
+        project_ref: { type: string, nullable: true }
+        target_type: { type: string }
+        target_id: { type: string }
+        target_name: { type: string }
+        metadata: { type: object, additionalProperties: true }
+        ip: { type: string }
+        created_at: { type: string, format: date-time }
+    AuditLogPage:
+      type: object
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items: { $ref: "#/components/schemas/AuditLogEntry" }
+        next_before: { type: integer, format: int64, nullable: true }

@@ -40,6 +40,10 @@ type Config struct {
 	DefaultTheme string `env:"SUPERMIXER_DEFAULT_THEME" envDefault:"dark"`
 
 	LogLevel string `env:"SUPERMIXER_LOG_LEVEL" envDefault:"info"`
+
+	// TrustProxy takes client IPs from X-Forwarded-For / X-Real-IP. Enable
+	// only behind a reverse proxy that sets them.
+	TrustProxy bool `env:"SUPERMIXER_TRUST_PROXY" envDefault:"false"`
 }
 
 var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)

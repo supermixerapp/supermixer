@@ -5,12 +5,18 @@ import (
 	"time"
 
 	"supermixer/internal/api"
+	"supermixer/internal/auth"
+	"supermixer/internal/stack"
 	"supermixer/internal/version"
 )
 
 // handlers implements api.StrictServerInterface.
 type handlers struct {
-	deps Deps
+	deps    Deps
+	csrf    *auth.CSRF
+	limiter *auth.Limiter
+	checker *stack.Checker
+	health  *healthCache
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)
