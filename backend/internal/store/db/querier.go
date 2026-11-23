@@ -21,6 +21,7 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
@@ -30,6 +31,7 @@ type Querier interface {
 	DeleteProject(ctx context.Context, id uuid.UUID) error
 	DeleteProjectRoles(ctx context.Context, projectID uuid.UUID) error
 	DeleteSession(ctx context.Context, id uuid.UUID) error
+	DeleteSnippet(ctx context.Context, id uuid.UUID) error
 	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
 	// The session for a token, if it is unexpired and its user is enabled.
@@ -40,6 +42,7 @@ type Querier interface {
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
 	GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error)
 	GetProjectByRef(ctx context.Context, ref string) (GetProjectByRefRow, error)
+	GetSnippet(ctx context.Context, arg GetSnippetParams) (GetSnippetRow, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
@@ -51,6 +54,7 @@ type Querier interface {
 	ListPendingInvitations(ctx context.Context, organizationID uuid.UUID) ([]ListPendingInvitationsRow, error)
 	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
 	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
+	ListSnippets(ctx context.Context, arg ListSnippetsParams) ([]ListSnippetsRow, error)
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
 	ListUsers(ctx context.Context) ([]User, error)
@@ -60,11 +64,14 @@ type Querier interface {
 	ProjectRefExists(ctx context.Context, ref string) (bool, error)
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
+	SetSnippetFavorite(ctx context.Context, arg SetSnippetFavoriteParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	TouchSession(ctx context.Context, id uuid.UUID) error
+	UnsetSnippetFavorite(ctx context.Context, arg UnsetSnippetFavoriteParams) error
 	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error
 	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (Organization, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
+	UpdateSnippet(ctx context.Context, arg UpdateSnippetParams) (SqlSnippet, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 }
 

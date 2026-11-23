@@ -42,25 +42,32 @@ type Deps struct {
 	Palette *theme.Palette
 	Logger  *slog.Logger
 	WebUI   fs.FS // built React app; may be empty in development
+	Pools   *stack.Pools
 }
 
 // New builds the root handler.
 func New(deps Deps) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
-	if deps.Config.TrustProxy {
+	if deps.Config.Server.TrustProxy {
 		// Only behind a reverse proxy: otherwise clients could spoof their IP.
 		r.Use(middleware.RealIP)
 	}
 	r.Use(requestLogger(deps.Logger))
 	r.Use(middleware.Recoverer)
 
+	pc := deps.Config.Projects
+	if deps.Pools == nil {
+		deps.Pools = stack.NewPools(pc.DBPoolSize)
+	}
+	signIn := deps.Config.Security.SignIn
 	h := &handlers{
 		deps:    deps,
-		csrf:    auth.NewCSRF([]byte(deps.Config.EncryptionKey)),
-		limiter: auth.NewLimiter(10, 15*time.Minute),
-		checker: stack.NewChecker(5 * time.Second),
-		health:  &healthCache{},
+		csrf:    auth.NewCSRF([]byte(deps.Config.Security.EncryptionKey)),
+		limiter: auth.NewLimiter(signIn.MaxFailures, signIn.Lockout),
+		checker: stack.NewChecker(pc.HealthCheckTimeout),
+		health:  &healthCache{ttl: pc.HealthCacheTTL},
+		pools:   deps.Pools,
 	}
 	strict := api.NewStrictHandlerWithOptions(h, nil, api.StrictHTTPServerOptions{
 		RequestErrorHandlerFunc: func(w http.ResponseWriter, _ *http.Request, err error) {
@@ -77,6 +84,7 @@ func New(deps Deps) http.Handler {
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(h.sessionMiddleware)
+		r.Handle("/projects/{ref}/gateway/*", h.gateway())
 		api.HandlerFromMux(strict, r)
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 			writeError(w, http.StatusNotFound, "not found")
@@ -96,7 +104,7 @@ func New(deps Deps) http.Handler {
 		r.Head(path, h)
 	}
 
-	r.NotFound(newSPAHandler(deps.WebUI, deps.Config.DefaultTheme).ServeHTTP)
+	r.NotFound(newSPAHandler(deps.WebUI, deps.Config.Appearance.DefaultTheme).ServeHTTP)
 	return r
 }
 

@@ -96,11 +96,26 @@ func (d Database) URI(withPassword bool) string {
 	return s
 }
 
+// Login is a database user and password.
+type Login struct {
+	User     string `json:"user"`
+	Password string `json:"password"`
+}
+
+// As returns the same database reached as another user.
+func (d Database) As(l Login) Database {
+	d.User, d.Password = l.User, l.Password
+	return d
+}
+
 // Connection is everything needed to reach a stack.
 type Connection struct {
 	APIURL   string
 	Database Database
 	Keys     Keys
+	// ReadOnly, when set, is a low-privilege login that read-only queries
+	// use instead of Database's user (see CreateReadOnlyUser).
+	ReadOnly *Login
 }
 
 // NormalizeAPIURL validates an http(s) URL and strips a trailing slash.
@@ -210,7 +225,7 @@ func (c *Checker) Check(ctx context.Context, conn Connection) Report {
 			check := ServiceCheck{Service: p.service, Label: p.label, Status: StatusOK, LatencyMS: time.Since(start).Milliseconds()}
 			if err != nil {
 				check.Status = StatusError
-				check.Detail = describe(err)
+				check.Detail = Describe(err)
 			}
 			results[i] = result{i, check, version}
 		}()
@@ -310,7 +325,8 @@ func (c *Checker) postgresVersion(ctx context.Context, d Database) (string, erro
 }
 
 // describe turns low-level errors into something an operator can act on.
-func describe(err error) string {
+// Describe turns a connection error into a short, user-facing reason.
+func Describe(err error) string {
 	var he *httpError
 	if errors.As(err, &he) {
 		return he.Error()

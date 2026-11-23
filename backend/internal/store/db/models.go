@@ -100,6 +100,48 @@ func (ns NullProjectRole) Value() (driver.Value, error) {
 	return string(ns.ProjectRole), nil
 }
 
+type SnippetVisibility string
+
+const (
+	SnippetVisibilityPrivate SnippetVisibility = "private"
+	SnippetVisibilityProject SnippetVisibility = "project"
+)
+
+func (e *SnippetVisibility) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = SnippetVisibility(s)
+	case string:
+		*e = SnippetVisibility(s)
+	default:
+		return fmt.Errorf("unsupported scan type for SnippetVisibility: %T", src)
+	}
+	return nil
+}
+
+type NullSnippetVisibility struct {
+	SnippetVisibility SnippetVisibility `json:"snippet_visibility"`
+	Valid             bool              `json:"valid"` // Valid is true if SnippetVisibility is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullSnippetVisibility) Scan(value interface{}) error {
+	if value == nil {
+		ns.SnippetVisibility, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.SnippetVisibility.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullSnippetVisibility) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.SnippetVisibility), nil
+}
+
 type AuditLog struct {
 	ID             int64      `json:"id"`
 	OrganizationID *uuid.UUID `json:"organization_id"`
@@ -184,6 +226,22 @@ type Session struct {
 	CreatedAt  time.Time `json:"created_at"`
 	LastSeenAt time.Time `json:"last_seen_at"`
 	ExpiresAt  time.Time `json:"expires_at"`
+}
+
+type SqlSnippet struct {
+	ID         uuid.UUID         `json:"id"`
+	ProjectID  uuid.UUID         `json:"project_id"`
+	OwnerID    uuid.UUID         `json:"owner_id"`
+	Name       string            `json:"name"`
+	Content    string            `json:"content"`
+	Visibility SnippetVisibility `json:"visibility"`
+	CreatedAt  time.Time         `json:"created_at"`
+	UpdatedAt  time.Time         `json:"updated_at"`
+}
+
+type SqlSnippetFavorite struct {
+	UserID    uuid.UUID `json:"user_id"`
+	SnippetID uuid.UUID `json:"snippet_id"`
 }
 
 type User struct {

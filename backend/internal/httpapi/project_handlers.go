@@ -18,10 +18,9 @@ import (
 	"supermixer/internal/store/db"
 )
 
-const healthCacheTTL = 15 * time.Second
-
 // healthCache avoids re-probing a stack on every page load.
 type healthCache struct {
+	ttl     time.Duration
 	mu      sync.Mutex
 	entries map[string]healthEntry
 }
@@ -35,7 +34,7 @@ func (c *healthCache) get(ref string) (stack.Report, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	e, ok := c.entries[ref]
-	if !ok || time.Since(e.at) > healthCacheTTL {
+	if !ok || time.Since(e.at) > c.ttl {
 		return stack.Report{}, false
 	}
 	return e.report, true
@@ -110,6 +109,12 @@ func buildConnection(in api.ProjectConnection, existing *stack.Connection) (stac
 		keep(&c.Keys.Secret, existing.Keys.Secret)
 		keep(&c.Keys.JWTSecret, existing.Keys.JWTSecret)
 		keep(&c.Database.Password, existing.Database.Password)
+		// The read-only login lives in the same database; keep it while the
+		// connection still points there.
+		same := existing.Database
+		if c.Database.Host == same.Host && c.Database.Port == same.Port && c.Database.Name == same.Name {
+			c.ReadOnly = existing.ReadOnly
+		}
 	}
 	if c.Database.Password == "" {
 		return c, "", badRequest("database password is required")
@@ -122,12 +127,13 @@ func buildConnection(in api.ProjectConnection, existing *stack.Connection) (stac
 
 // sealedSecrets is what gets encrypted into projects.secrets.
 type sealedSecrets struct {
-	Keys       stack.Keys `json:"keys"`
-	DBPassword string     `json:"db_password"`
+	Keys       stack.Keys   `json:"keys"`
+	DBPassword string       `json:"db_password"`
+	ReadOnly   *stack.Login `json:"read_only,omitempty"`
 }
 
 func (h *handlers) seal(ref string, c stack.Connection) ([]byte, error) {
-	return h.deps.Box.SealJSON(sealedSecrets{Keys: c.Keys, DBPassword: c.Database.Password}, []byte(ref))
+	return h.deps.Box.SealJSON(sealedSecrets{Keys: c.Keys, DBPassword: c.Database.Password, ReadOnly: c.ReadOnly}, []byte(ref))
 }
 
 // connection decrypts a project's stored connection.
@@ -141,7 +147,8 @@ func (h *handlers) connection(p db.Project) (stack.Connection, error) {
 		Database: stack.Database{
 			Host: p.DbHost, Port: int(p.DbPort), Name: p.DbName, User: p.DbUser, Password: s.DBPassword, SSLMode: p.DbSslmode,
 		},
-		Keys: s.Keys,
+		Keys:     s.Keys,
+		ReadOnly: s.ReadOnly,
 	}, nil
 }
 
@@ -158,6 +165,9 @@ func (h *handlers) toProject(p db.Project, orgSlug, orgName string, role rbac.Ro
 	out.Database.Host, out.Database.Port, out.Database.Name = p.DbHost, int(p.DbPort), p.DbName
 	out.Database.User, out.Database.Sslmode = p.DbUser, p.DbSslmode
 	out.Database.Uri = conn.Database.URI(false)
+	if conn.ReadOnly != nil {
+		out.Database.ReadOnlyUser = &conn.ReadOnly.User
+	}
 	k := conn.Keys
 	out.KeysPresent.Anon, out.KeysPresent.ServiceRole = k.Anon != "", k.ServiceRole != ""
 	out.KeysPresent.Publishable, out.KeysPresent.Secret, out.KeysPresent.JwtSecret = k.Publishable != "", k.Secret != "", k.JWTSecret != ""
@@ -306,6 +316,7 @@ func (h *handlers) UpdateProject(ctx context.Context, req api.UpdateProjectReque
 		return nil, err
 	}
 	h.health.forget(p.Ref)
+	h.pools.Forget(p.Ref)
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.updated", TargetType: "project",
 		TargetID: p.Ref, TargetName: updated.Name, Metadata: map[string]any{"changed": changed}})
 	out, err := h.toProject(updated, a.Row.OrganizationSlug, a.Row.OrganizationName, a.Role)
@@ -369,6 +380,7 @@ func (h *handlers) DeleteProject(ctx context.Context, req api.DeleteProjectReque
 		return nil, err
 	}
 	h.health.forget(p.Ref)
+	h.pools.Forget(p.Ref)
 	return api.DeleteProject204Response{}, nil
 }
 

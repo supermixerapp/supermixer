@@ -523,10 +523,170 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/read-only-user": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a read-only database login for Read-only members' queries.
+         * @description Creates a LOGIN role with pg_read_all_data (and BYPASSRLS, like
+         *     Supabase's own read-only user) on the project's database, tests it and
+         *     stores its password encrypted. Read-only queries then run as that user,
+         *     which cannot write, change role or signal other connections.
+         */
+        post: operations["createReadOnlyUser"];
+        /** Drop the read-only login; read-only queries go back to a read-only transaction. */
+        delete: operations["deleteReadOnlyUser"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/query": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Run SQL on the project's database.
+         * @description Members without data write access run one statement at a time, in a
+         *     read-only transaction.
+         */
+        post: operations["runQuery"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/snippets": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** Your snippets and the ones shared with the project. */
+        get: operations["listSnippets"];
+        put?: never;
+        post: operations["createSnippet"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/snippets/{snippet_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                snippet_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["getSnippet"];
+        put?: never;
+        post?: never;
+        delete: operations["deleteSnippet"];
+        options?: never;
+        head?: never;
+        patch: operations["updateSnippet"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        QueryRequest: {
+            query: string;
+            /** @description Text values for $1, $2, …; only one statement is allowed with params. */
+            params?: (string | null)[];
+            /**
+             * @description Run read-only even if you may write.
+             * @default false
+             */
+            read_only: boolean;
+            /** @description Rows to return; defaults to projects.query_max_rows. */
+            max_rows?: number;
+        };
+        QueryColumn: {
+            name: string;
+            /** @description Postgres type name */
+            type: string;
+        };
+        QueryResult: {
+            /** @example SELECT */
+            command: string;
+            /** Format: int64 */
+            row_count: number;
+            columns: components["schemas"]["QueryColumn"][];
+            rows: unknown[][];
+            /** @description More rows matched than max_rows. */
+            truncated: boolean;
+            notices?: string[];
+        };
+        QueryResponse: {
+            results: components["schemas"]["QueryResult"][];
+            read_only: boolean;
+            /** Format: int64 */
+            duration_ms: number;
+        };
+        QueryError: {
+            message: string;
+            /** @description SQLSTATE */
+            code?: string;
+            detail?: string;
+            hint?: string;
+            /** @description 1-based character offset in the query. */
+            position?: number;
+        };
+        /** @enum {string} */
+        SnippetVisibility: "private" | "project";
+        Snippet: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @description Only on single-snippet responses. */
+            content?: string;
+            visibility: components["schemas"]["SnippetVisibility"];
+            favorite?: boolean;
+            /** Format: uuid */
+            owner_id: string;
+            owner_username: string;
+            can_edit: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        SnippetCreate: {
+            name: string;
+            content: string;
+            visibility?: components["schemas"]["SnippetVisibility"];
+        };
+        SnippetUpdate: {
+            name?: string;
+            content?: string;
+            visibility?: components["schemas"]["SnippetVisibility"];
+            favorite?: boolean;
+        };
         Error: {
             message: string;
         };
@@ -551,7 +711,7 @@ export interface components {
         UiConfig: {
             app_name: string;
             version: string;
-            /** @description BRAND_COLOR as #rrggbb */
+            /** @description appearance.brand_color as #rrggbb */
             brand_color: string;
             /** @enum {string} */
             default_theme: "dark" | "light" | "system";
@@ -768,6 +928,8 @@ export interface components {
                 sslmode: string;
                 /** @description Connection string with a password placeholder. */
                 uri: string;
+                /** @description Login that Read-only members' queries use, when one was created. */
+                read_only_user?: string | null;
             };
             keys_present: {
                 anon: boolean;
@@ -1772,6 +1934,212 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPage"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createReadOnlyUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The project, now with database.read_only_user. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteReadOnlyUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The project. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    runQuery: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QueryRequest"];
+            };
+        };
+        responses: {
+            /** @description One result per statement. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueryResponse"];
+                };
+            };
+            /** @description Postgres rejected the SQL. */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QueryError"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listSnippets: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Snippets, most recently updated first (without content). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snippet"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createSnippet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnippetCreate"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snippet"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getSnippet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                snippet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The snippet with its content. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snippet"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteSnippet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                snippet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateSnippet: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                snippet_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SnippetUpdate"];
+            };
+        };
+        responses: {
+            /** @description Updated. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Snippet"];
                 };
             };
             default: components["responses"]["Error"];

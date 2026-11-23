@@ -247,6 +247,24 @@ func (e ServiceCheckStatus) Valid() bool {
 	}
 }
 
+// Defines values for SnippetVisibility.
+const (
+	SnippetVisibilityPrivate SnippetVisibility = "private"
+	SnippetVisibilityProject SnippetVisibility = "project"
+)
+
+// Valid indicates whether the value is a known member of the SnippetVisibility enum.
+func (e SnippetVisibility) Valid() bool {
+	switch e {
+	case SnippetVisibilityPrivate:
+		return true
+	case SnippetVisibilityProject:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for UiConfigDefaultTheme.
 const (
 	UiConfigDefaultThemeDark   UiConfigDefaultTheme = "dark"
@@ -516,10 +534,13 @@ type Project struct {
 	ApiUrl    string    `json:"api_url"`
 	CreatedAt time.Time `json:"created_at"`
 	Database  struct {
-		Host    string `json:"host"`
-		Name    string `json:"name"`
-		Port    int    `json:"port"`
-		Sslmode string `json:"sslmode"`
+		Host string `json:"host"`
+		Name string `json:"name"`
+		Port int    `json:"port"`
+
+		// ReadOnlyUser Login that Read-only members' queries use, when one was created.
+		ReadOnlyUser *string `json:"read_only_user"`
+		Sslmode      string  `json:"sslmode"`
 
 		// Uri Connection string with a password placeholder.
 		Uri  string `json:"uri"`
@@ -587,6 +608,60 @@ type ProjectUpdate struct {
 	Name       *string            `json:"name,omitempty"`
 }
 
+// QueryColumn defines model for QueryColumn.
+type QueryColumn struct {
+	Name string `json:"name"`
+
+	// Type Postgres type name
+	Type string `json:"type"`
+}
+
+// QueryError defines model for QueryError.
+type QueryError struct {
+	// Code SQLSTATE
+	Code    *string `json:"code,omitempty"`
+	Detail  *string `json:"detail,omitempty"`
+	Hint    *string `json:"hint,omitempty"`
+	Message string  `json:"message"`
+
+	// Position 1-based character offset in the query.
+	Position *int `json:"position,omitempty"`
+}
+
+// QueryRequest defines model for QueryRequest.
+type QueryRequest struct {
+	// MaxRows Rows to return; defaults to projects.query_max_rows.
+	MaxRows *int `json:"max_rows,omitempty"`
+
+	// Params Text values for $1, $2, …; only one statement is allowed with params.
+	Params *[]*string `json:"params,omitempty"`
+	Query  string     `json:"query"`
+
+	// ReadOnly Run read-only even if you may write.
+	ReadOnly *bool `json:"read_only,omitempty"`
+}
+
+// QueryResponse defines model for QueryResponse.
+type QueryResponse struct {
+	DurationMs int64         `json:"duration_ms"`
+	ReadOnly   bool          `json:"read_only"`
+	Results    []QueryResult `json:"results"`
+}
+
+// QueryResult defines model for QueryResult.
+type QueryResult struct {
+	Columns []QueryColumn `json:"columns"`
+
+	// Command Example: SELECT
+	Command  string    `json:"command"`
+	Notices  *[]string `json:"notices,omitempty"`
+	RowCount int64     `json:"row_count"`
+	Rows     [][]any   `json:"rows"`
+
+	// Truncated More rows matched than max_rows.
+	Truncated bool `json:"truncated"`
+}
+
 // ServiceCheck defines model for ServiceCheck.
 type ServiceCheck struct {
 	Detail    *string             `json:"detail,omitempty"`
@@ -619,11 +694,45 @@ type SignInRequest struct {
 	Username string `json:"username"`
 }
 
+// Snippet defines model for Snippet.
+type Snippet struct {
+	CanEdit bool `json:"can_edit"`
+
+	// Content Only on single-snippet responses.
+	Content       *string            `json:"content,omitempty"`
+	CreatedAt     time.Time          `json:"created_at"`
+	Favorite      *bool              `json:"favorite,omitempty"`
+	Id            openapi_types.UUID `json:"id"`
+	Name          string             `json:"name"`
+	OwnerId       openapi_types.UUID `json:"owner_id"`
+	OwnerUsername string             `json:"owner_username"`
+	UpdatedAt     time.Time          `json:"updated_at"`
+	Visibility    SnippetVisibility  `json:"visibility"`
+}
+
+// SnippetCreate defines model for SnippetCreate.
+type SnippetCreate struct {
+	Content    string             `json:"content"`
+	Name       string             `json:"name"`
+	Visibility *SnippetVisibility `json:"visibility,omitempty"`
+}
+
+// SnippetUpdate defines model for SnippetUpdate.
+type SnippetUpdate struct {
+	Content    *string            `json:"content,omitempty"`
+	Favorite   *bool              `json:"favorite,omitempty"`
+	Name       *string            `json:"name,omitempty"`
+	Visibility *SnippetVisibility `json:"visibility,omitempty"`
+}
+
+// SnippetVisibility defines model for SnippetVisibility.
+type SnippetVisibility string
+
 // UiConfig defines model for UiConfig.
 type UiConfig struct {
 	AppName string `json:"app_name"`
 
-	// BrandColor BRAND_COLOR as #rrggbb
+	// BrandColor appearance.brand_color as #rrggbb
 	BrandColor   string               `json:"brand_color"`
 	DefaultTheme UiConfigDefaultTheme `json:"default_theme"`
 	Version      string               `json:"version"`
@@ -733,6 +842,15 @@ type ChangePasswordJSONRequestBody = PasswordChange
 
 // UpdateProjectJSONRequestBody defines body for UpdateProject for application/json ContentType.
 type UpdateProjectJSONRequestBody = ProjectUpdate
+
+// RunQueryJSONRequestBody defines body for RunQuery for application/json ContentType.
+type RunQueryJSONRequestBody = QueryRequest
+
+// CreateSnippetJSONRequestBody defines body for CreateSnippet for application/json ContentType.
+type CreateSnippetJSONRequestBody = SnippetCreate
+
+// UpdateSnippetJSONRequestBody defines body for UpdateSnippet for application/json ContentType.
+type UpdateSnippetJSONRequestBody = SnippetUpdate
 
 // TransferProjectJSONRequestBody defines body for TransferProject for application/json ContentType.
 type TransferProjectJSONRequestBody = ProjectTransfer
@@ -847,6 +965,30 @@ type ServerInterface interface {
 
 	// (GET /projects/{ref}/health)
 	GetProjectHealth(w http.ResponseWriter, r *http.Request, ref Ref)
+	// RunQuery Run SQL on the project's database.
+	// (POST /projects/{ref}/query)
+	RunQuery(w http.ResponseWriter, r *http.Request, ref Ref)
+	// DeleteReadOnlyUser Drop the read-only login; read-only queries go back to a read-only transaction.
+	// (DELETE /projects/{ref}/read-only-user)
+	DeleteReadOnlyUser(w http.ResponseWriter, r *http.Request, ref Ref)
+	// CreateReadOnlyUser Create a read-only database login for Read-only members' queries.
+	// (POST /projects/{ref}/read-only-user)
+	CreateReadOnlyUser(w http.ResponseWriter, r *http.Request, ref Ref)
+	// ListSnippets Your snippets and the ones shared with the project.
+	// (GET /projects/{ref}/snippets)
+	ListSnippets(w http.ResponseWriter, r *http.Request, ref Ref)
+
+	// (POST /projects/{ref}/snippets)
+	CreateSnippet(w http.ResponseWriter, r *http.Request, ref Ref)
+
+	// (DELETE /projects/{ref}/snippets/{snippet_id})
+	DeleteSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID)
+
+	// (GET /projects/{ref}/snippets/{snippet_id})
+	GetSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID)
+
+	// (PATCH /projects/{ref}/snippets/{snippet_id})
+	UpdateSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID)
 	// TransferProject Move a project to another organization you own
 	// (POST /projects/{ref}/transfer)
 	TransferProject(w http.ResponseWriter, r *http.Request, ref Ref)
@@ -1056,6 +1198,50 @@ func (_ Unimplemented) ListApiKeys(w http.ResponseWriter, r *http.Request, ref R
 
 // (GET /projects/{ref}/health)
 func (_ Unimplemented) GetProjectHealth(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RunQuery Run SQL on the project's database.
+// (POST /projects/{ref}/query)
+func (_ Unimplemented) RunQuery(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteReadOnlyUser Drop the read-only login; read-only queries go back to a read-only transaction.
+// (DELETE /projects/{ref}/read-only-user)
+func (_ Unimplemented) DeleteReadOnlyUser(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateReadOnlyUser Create a read-only database login for Read-only members' queries.
+// (POST /projects/{ref}/read-only-user)
+func (_ Unimplemented) CreateReadOnlyUser(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// ListSnippets Your snippets and the ones shared with the project.
+// (GET /projects/{ref}/snippets)
+func (_ Unimplemented) ListSnippets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (POST /projects/{ref}/snippets)
+func (_ Unimplemented) CreateSnippet(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (DELETE /projects/{ref}/snippets/{snippet_id})
+func (_ Unimplemented) DeleteSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (GET /projects/{ref}/snippets/{snippet_id})
+func (_ Unimplemented) GetSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// (PATCH /projects/{ref}/snippets/{snippet_id})
+func (_ Unimplemented) UpdateSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -1990,6 +2176,241 @@ func (siw *ServerInterfaceWrapper) GetProjectHealth(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// RunQuery operation middleware
+func (siw *ServerInterfaceWrapper) RunQuery(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RunQuery(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteReadOnlyUser operation middleware
+func (siw *ServerInterfaceWrapper) DeleteReadOnlyUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteReadOnlyUser(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateReadOnlyUser operation middleware
+func (siw *ServerInterfaceWrapper) CreateReadOnlyUser(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateReadOnlyUser(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// ListSnippets operation middleware
+func (siw *ServerInterfaceWrapper) ListSnippets(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListSnippets(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateSnippet operation middleware
+func (siw *ServerInterfaceWrapper) CreateSnippet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateSnippet(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteSnippet operation middleware
+func (siw *ServerInterfaceWrapper) DeleteSnippet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "snippet_id" -------------
+	var snippetId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "snippet_id", chi.URLParam(r, "snippet_id"), &snippetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "snippet_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteSnippet(w, r, ref, snippetId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetSnippet operation middleware
+func (siw *ServerInterfaceWrapper) GetSnippet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "snippet_id" -------------
+	var snippetId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "snippet_id", chi.URLParam(r, "snippet_id"), &snippetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "snippet_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetSnippet(w, r, ref, snippetId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateSnippet operation middleware
+func (siw *ServerInterfaceWrapper) UpdateSnippet(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "snippet_id" -------------
+	var snippetId openapi_types.UUID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "snippet_id", chi.URLParam(r, "snippet_id"), &snippetId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "uuid", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "snippet_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateSnippet(w, r, ref, snippetId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // TransferProject operation middleware
 func (siw *ServerInterfaceWrapper) TransferProject(w http.ResponseWriter, r *http.Request) {
 
@@ -2257,6 +2678,30 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/organizations/{slug}/audit-logs", wrapper.ListAuditLogs)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/projects/{ref}/read-only-user", wrapper.DeleteReadOnlyUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/read-only-user", wrapper.CreateReadOnlyUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/query", wrapper.RunQuery)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/snippets", wrapper.ListSnippets)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/snippets", wrapper.CreateSnippet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/projects/{ref}/snippets/{snippet_id}", wrapper.DeleteSnippet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/snippets/{snippet_id}", wrapper.GetSnippet)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/projects/{ref}/snippets/{snippet_id}", wrapper.UpdateSnippet)
 	})
 
 	return r
@@ -3669,6 +4114,332 @@ func (response GetProjectHealthdefaultJSONResponse) VisitGetProjectHealthRespons
 	return err
 }
 
+type RunQueryRequestObject struct {
+	Ref  Ref `json:"ref"`
+	Body *RunQueryJSONRequestBody
+}
+
+type RunQueryResponseObject interface {
+	VisitRunQueryResponse(w http.ResponseWriter) error
+}
+
+type RunQuery200JSONResponse QueryResponse
+
+func (response RunQuery200JSONResponse) VisitRunQueryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunQuery422JSONResponse QueryError
+
+func (response RunQuery422JSONResponse) VisitRunQueryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(422)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RunQuerydefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response RunQuerydefaultJSONResponse) VisitRunQueryResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteReadOnlyUserRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type DeleteReadOnlyUserResponseObject interface {
+	VisitDeleteReadOnlyUserResponse(w http.ResponseWriter) error
+}
+
+type DeleteReadOnlyUser200JSONResponse Project
+
+func (response DeleteReadOnlyUser200JSONResponse) VisitDeleteReadOnlyUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteReadOnlyUserdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteReadOnlyUserdefaultJSONResponse) VisitDeleteReadOnlyUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReadOnlyUserRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type CreateReadOnlyUserResponseObject interface {
+	VisitCreateReadOnlyUserResponse(w http.ResponseWriter) error
+}
+
+type CreateReadOnlyUser200JSONResponse Project
+
+func (response CreateReadOnlyUser200JSONResponse) VisitCreateReadOnlyUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateReadOnlyUserdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateReadOnlyUserdefaultJSONResponse) VisitCreateReadOnlyUserResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSnippetsRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type ListSnippetsResponseObject interface {
+	VisitListSnippetsResponse(w http.ResponseWriter) error
+}
+
+type ListSnippets200JSONResponse []Snippet
+
+func (response ListSnippets200JSONResponse) VisitListSnippetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListSnippetsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListSnippetsdefaultJSONResponse) VisitListSnippetsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSnippetRequestObject struct {
+	Ref  Ref `json:"ref"`
+	Body *CreateSnippetJSONRequestBody
+}
+
+type CreateSnippetResponseObject interface {
+	VisitCreateSnippetResponse(w http.ResponseWriter) error
+}
+
+type CreateSnippet201JSONResponse Snippet
+
+func (response CreateSnippet201JSONResponse) VisitCreateSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateSnippetdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateSnippetdefaultJSONResponse) VisitCreateSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteSnippetRequestObject struct {
+	Ref       Ref                `json:"ref"`
+	SnippetId openapi_types.UUID `json:"snippet_id"`
+}
+
+type DeleteSnippetResponseObject interface {
+	VisitDeleteSnippetResponse(w http.ResponseWriter) error
+}
+
+type DeleteSnippet204Response struct {
+}
+
+func (response DeleteSnippet204Response) VisitDeleteSnippetResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteSnippetdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteSnippetdefaultJSONResponse) VisitDeleteSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSnippetRequestObject struct {
+	Ref       Ref                `json:"ref"`
+	SnippetId openapi_types.UUID `json:"snippet_id"`
+}
+
+type GetSnippetResponseObject interface {
+	VisitGetSnippetResponse(w http.ResponseWriter) error
+}
+
+type GetSnippet200JSONResponse Snippet
+
+func (response GetSnippet200JSONResponse) VisitGetSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetSnippetdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetSnippetdefaultJSONResponse) VisitGetSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSnippetRequestObject struct {
+	Ref       Ref                `json:"ref"`
+	SnippetId openapi_types.UUID `json:"snippet_id"`
+	Body      *UpdateSnippetJSONRequestBody
+}
+
+type UpdateSnippetResponseObject interface {
+	VisitUpdateSnippetResponse(w http.ResponseWriter) error
+}
+
+type UpdateSnippet200JSONResponse Snippet
+
+func (response UpdateSnippet200JSONResponse) VisitUpdateSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateSnippetdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UpdateSnippetdefaultJSONResponse) VisitUpdateSnippetResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type TransferProjectRequestObject struct {
 	Ref  Ref `json:"ref"`
 	Body *TransferProjectJSONRequestBody
@@ -3857,6 +4628,30 @@ type StrictServerInterface interface {
 
 	// (GET /projects/{ref}/health)
 	GetProjectHealth(ctx context.Context, request GetProjectHealthRequestObject) (GetProjectHealthResponseObject, error)
+	// RunQuery Run SQL on the project's database.
+	// (POST /projects/{ref}/query)
+	RunQuery(ctx context.Context, request RunQueryRequestObject) (RunQueryResponseObject, error)
+	// DeleteReadOnlyUser Drop the read-only login; read-only queries go back to a read-only transaction.
+	// (DELETE /projects/{ref}/read-only-user)
+	DeleteReadOnlyUser(ctx context.Context, request DeleteReadOnlyUserRequestObject) (DeleteReadOnlyUserResponseObject, error)
+	// CreateReadOnlyUser Create a read-only database login for Read-only members' queries.
+	// (POST /projects/{ref}/read-only-user)
+	CreateReadOnlyUser(ctx context.Context, request CreateReadOnlyUserRequestObject) (CreateReadOnlyUserResponseObject, error)
+	// ListSnippets Your snippets and the ones shared with the project.
+	// (GET /projects/{ref}/snippets)
+	ListSnippets(ctx context.Context, request ListSnippetsRequestObject) (ListSnippetsResponseObject, error)
+
+	// (POST /projects/{ref}/snippets)
+	CreateSnippet(ctx context.Context, request CreateSnippetRequestObject) (CreateSnippetResponseObject, error)
+
+	// (DELETE /projects/{ref}/snippets/{snippet_id})
+	DeleteSnippet(ctx context.Context, request DeleteSnippetRequestObject) (DeleteSnippetResponseObject, error)
+
+	// (GET /projects/{ref}/snippets/{snippet_id})
+	GetSnippet(ctx context.Context, request GetSnippetRequestObject) (GetSnippetResponseObject, error)
+
+	// (PATCH /projects/{ref}/snippets/{snippet_id})
+	UpdateSnippet(ctx context.Context, request UpdateSnippetRequestObject) (UpdateSnippetResponseObject, error)
 	// TransferProject Move a project to another organization you own
 	// (POST /projects/{ref}/transfer)
 	TransferProject(ctx context.Context, request TransferProjectRequestObject) (TransferProjectResponseObject, error)
@@ -4922,6 +5717,238 @@ func (sh *strictHandler) GetProjectHealth(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// RunQuery operation middleware
+func (sh *strictHandler) RunQuery(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request RunQueryRequestObject
+
+	request.Ref = ref
+
+	var body RunQueryJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.RunQuery(ctx, request.(RunQueryRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RunQuery")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RunQueryResponseObject); ok {
+		if err := validResponse.VisitRunQueryResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteReadOnlyUser operation middleware
+func (sh *strictHandler) DeleteReadOnlyUser(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request DeleteReadOnlyUserRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.DeleteReadOnlyUser(ctx, request.(DeleteReadOnlyUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteReadOnlyUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteReadOnlyUserResponseObject); ok {
+		if err := validResponse.VisitDeleteReadOnlyUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateReadOnlyUser operation middleware
+func (sh *strictHandler) CreateReadOnlyUser(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request CreateReadOnlyUserRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.CreateReadOnlyUser(ctx, request.(CreateReadOnlyUserRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateReadOnlyUser")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateReadOnlyUserResponseObject); ok {
+		if err := validResponse.VisitCreateReadOnlyUserResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// ListSnippets operation middleware
+func (sh *strictHandler) ListSnippets(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request ListSnippetsRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.ListSnippets(ctx, request.(ListSnippetsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListSnippets")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListSnippetsResponseObject); ok {
+		if err := validResponse.VisitListSnippetsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateSnippet operation middleware
+func (sh *strictHandler) CreateSnippet(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request CreateSnippetRequestObject
+
+	request.Ref = ref
+
+	var body CreateSnippetJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.CreateSnippet(ctx, request.(CreateSnippetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateSnippet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateSnippetResponseObject); ok {
+		if err := validResponse.VisitCreateSnippetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteSnippet operation middleware
+func (sh *strictHandler) DeleteSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
+	var request DeleteSnippetRequestObject
+
+	request.Ref = ref
+	request.SnippetId = snippetId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.DeleteSnippet(ctx, request.(DeleteSnippetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteSnippet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteSnippetResponseObject); ok {
+		if err := validResponse.VisitDeleteSnippetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetSnippet operation middleware
+func (sh *strictHandler) GetSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
+	var request GetSnippetRequestObject
+
+	request.Ref = ref
+	request.SnippetId = snippetId
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.GetSnippet(ctx, request.(GetSnippetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSnippet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetSnippetResponseObject); ok {
+		if err := validResponse.VisitGetSnippetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateSnippet operation middleware
+func (sh *strictHandler) UpdateSnippet(w http.ResponseWriter, r *http.Request, ref Ref, snippetId openapi_types.UUID) {
+	var request UpdateSnippetRequestObject
+
+	request.Ref = ref
+	request.SnippetId = snippetId
+
+	var body UpdateSnippetJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.UpdateSnippet(ctx, request.(UpdateSnippetRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateSnippet")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateSnippetResponseObject); ok {
+		if err := validResponse.VisitUpdateSnippetResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // TransferProject operation middleware
 func (sh *strictHandler) TransferProject(w http.ResponseWriter, r *http.Request, ref Ref) {
 	var request TransferProjectRequestObject
@@ -4984,81 +6011,101 @@ func (sh *strictHandler) GetUiConfig(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
+	"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",
+	"30FcuYsO5JWuerx+/L8AAAD//w==",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

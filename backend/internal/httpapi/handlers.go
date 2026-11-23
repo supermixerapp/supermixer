@@ -17,6 +17,7 @@ type handlers struct {
 	limiter *auth.Limiter
 	checker *stack.Checker
 	health  *healthCache
+	pools   *stack.Pools
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)
@@ -60,6 +61,6 @@ func (h *handlers) GetUiConfig(_ context.Context, _ api.GetUiConfigRequestObject
 		AppName:      "Supermixer",
 		Version:      version.Version,
 		BrandColor:   h.deps.Palette.Brand.Hex(),
-		DefaultTheme: api.UiConfigDefaultTheme(h.deps.Config.DefaultTheme),
+		DefaultTheme: api.UiConfigDefaultTheme(h.deps.Config.Appearance.DefaultTheme),
 	}, nil
 }

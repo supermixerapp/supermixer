@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Supermixer API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Management API for Supermixer, an on-premise management plane for
     self-hosted Supabase. Resource paths follow the shape of the Supabase
@@ -23,6 +23,8 @@ tags:
   - name: Invitations
   - name: Projects
   - name: Audit
+  - name: Database
+    description: SQL on a project's database, and saved snippets.
 paths:
   # ---------------------------------------------------------------- System
   /health:
@@ -593,6 +595,134 @@ paths:
               schema: { $ref: "#/components/schemas/AuditLogPage" }
         default: { $ref: "#/components/responses/Error" }
 
+  /projects/{ref}/read-only-user:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    post:
+      operationId: createReadOnlyUser
+      tags: [Projects]
+      summary: Create a read-only database login for Read-only members' queries.
+      description: |
+        Creates a LOGIN role with pg_read_all_data (and BYPASSRLS, like
+        Supabase's own read-only user) on the project's database, tests it and
+        stores its password encrypted. Read-only queries then run as that user,
+        which cannot write, change role or signal other connections.
+      responses:
+        "200":
+          description: The project, now with database.read_only_user.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteReadOnlyUser
+      tags: [Projects]
+      summary: Drop the read-only login; read-only queries go back to a read-only transaction.
+      responses:
+        "200":
+          description: The project.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
+
+  # ------------------------------------------------------------------ SQL
+  /projects/{ref}/query:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    post:
+      operationId: runQuery
+      tags: [Database]
+      summary: Run SQL on the project's database.
+      description: |
+        Members without data write access run one statement at a time, in a
+        read-only transaction.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/QueryRequest" }
+      responses:
+        "200":
+          description: One result per statement.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueryResponse" }
+        "422":
+          description: Postgres rejected the SQL.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/QueryError" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /projects/{ref}/snippets:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listSnippets
+      tags: [Database]
+      summary: Your snippets and the ones shared with the project.
+      responses:
+        "200":
+          description: Snippets, most recently updated first (without content).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Snippet" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createSnippet
+      tags: [Database]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SnippetCreate" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Snippet" }
+        default: { $ref: "#/components/responses/Error" }
+
+  /projects/{ref}/snippets/{snippet_id}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: snippet_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: getSnippet
+      tags: [Database]
+      responses:
+        "200":
+          description: The snippet with its content.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Snippet" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateSnippet
+      tags: [Database]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SnippetUpdate" }
+      responses:
+        "200":
+          description: Updated.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Snippet" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteSnippet
+      tags: [Database]
+      responses:
+        "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Error" }
+
 components:
   parameters:
     Slug: { name: slug, in: path, required: true, schema: { type: string } }
@@ -605,6 +735,90 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
   schemas:
+    QueryRequest:
+      type: object
+      required: [query]
+      properties:
+        query: { type: string, maxLength: 1000000 }
+        params:
+          type: array
+          description: Text values for $1, $2, …; only one statement is allowed with params.
+          items: { type: string, nullable: true }
+        read_only: { type: boolean, default: false, description: Run read-only even if you may write. }
+        max_rows: { type: integer, minimum: 1, maximum: 10000, description: "Rows to return; defaults to projects.query_max_rows." }
+    QueryColumn:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { type: string, description: Postgres type name, or its OID when unknown. }
+    QueryResult:
+      type: object
+      required: [command, row_count, columns, rows, truncated]
+      properties:
+        command: { type: string, example: SELECT }
+        row_count: { type: integer, format: int64 }
+        columns:
+          type: array
+          items: { $ref: "#/components/schemas/QueryColumn" }
+        rows:
+          type: array
+          items:
+            type: array
+            items: {}
+        truncated: { type: boolean, description: More rows matched than max_rows. }
+        notices:
+          type: array
+          items: { type: string }
+    QueryResponse:
+      type: object
+      required: [results, read_only, duration_ms]
+      properties:
+        results:
+          type: array
+          items: { $ref: "#/components/schemas/QueryResult" }
+        read_only: { type: boolean }
+        duration_ms: { type: integer, format: int64 }
+    QueryError:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+        code: { type: string, description: SQLSTATE }
+        detail: { type: string }
+        hint: { type: string }
+        position: { type: integer, description: 1-based character offset in the query. }
+    SnippetVisibility:
+      type: string
+      enum: [private, project]
+    Snippet:
+      type: object
+      required: [id, name, visibility, owner_id, owner_username, created_at, updated_at, can_edit]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        content: { type: string, description: Only on single-snippet responses. }
+        visibility: { $ref: "#/components/schemas/SnippetVisibility" }
+        favorite: { type: boolean }
+        owner_id: { type: string, format: uuid }
+        owner_username: { type: string }
+        can_edit: { type: boolean }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    SnippetCreate:
+      type: object
+      required: [name, content]
+      properties:
+        name: { type: string, minLength: 1, maxLength: 128 }
+        content: { type: string, maxLength: 1000000 }
+        visibility: { $ref: "#/components/schemas/SnippetVisibility" }
+    SnippetUpdate:
+      type: object
+      properties:
+        name: { type: string, minLength: 1, maxLength: 128 }
+        content: { type: string, maxLength: 1000000 }
+        visibility: { $ref: "#/components/schemas/SnippetVisibility" }
+        favorite: { type: boolean }
     Error:
       type: object
       required: [message]
@@ -637,7 +851,7 @@ components:
       properties:
         app_name: { type: string }
         version: { type: string }
-        brand_color: { type: string, description: "BRAND_COLOR as #rrggbb" }
+        brand_color: { type: string, description: "appearance.brand_color as #rrggbb" }
         default_theme: { type: string, enum: [dark, light, system] }
 
     SignInRequest:
@@ -905,6 +1119,10 @@ components:
             user: { type: string }
             sslmode: { type: string }
             uri: { type: string, description: Connection string with a password placeholder. }
+            read_only_user:
+              type: string
+              nullable: true
+              description: Login that Read-only members' queries use, when one was created.
         keys_present:
           type: object
           required: [anon, service_role, publishable, secret, jwt_secret]
