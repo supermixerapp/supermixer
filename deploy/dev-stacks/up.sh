@@ -35,6 +35,8 @@ if [ ! -f "$stack/docker-compose.yml" ]; then
 fi
 
 cd "$stack"
+python3 "$here/scope-containers.py" docker-compose*.yml
+
 if [ ! -f .env ]; then
   echo "Generating secrets..."
   cp .env.example .env
@@ -58,6 +60,13 @@ fi
 docker compose -p "$PROJECT" up -d --wait
 
 get() { grep "^$1=" .env | head -1 | cut -d= -f2-; }
+# Ports are fixed when .env is first generated; report what the stack really uses.
+API_PORT="$(get API_GW_HTTP_PORT)"
+DB_PORT="$(get POSTGRES_PORT)"
+TENANT="$(get POOLER_TENANT_ID)"
+if [ -n "${STACK_API_PORT:-}${STACK_DB_PORT:-}" ]; then
+  echo "Note: STACK_API_PORT/STACK_DB_PORT only apply to a new stack. Edit $stack/.env to change ports." >&2
+fi
 cat <<EOF
 
 Supabase dev stack is running. Register it in Supermixer with:
