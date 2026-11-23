@@ -22,6 +22,15 @@ describe('layoutGraph', () => {
     expect(pos.loose!.x).toBeGreaterThan(pos.items!.x + NODE_WIDTH - 1)
   })
 
+  it('wraps a tall layer into more columns, still left of its dependents', () => {
+    const many = Array.from({ length: 12 }, (_, i) => ({ id: `t${i}`, columns: 8 }))
+    const pos = layoutGraph([{ id: 'users', columns: 2 }, ...many], many.map((m) => ({ from: m.id, to: 'users' })))
+    const xs = new Set(many.map((m) => pos[m.id]!.x))
+    expect(xs.size).toBeGreaterThan(1)
+    for (const m of many) expect(pos[m.id]!.x).toBeGreaterThan(pos.users!.x)
+    expect(Math.max(...many.map((m) => pos[m.id]!.y))).toBeLessThan(1400)
+  })
+
   it('survives cycles and self references', () => {
     const pos = layoutGraph(
       [

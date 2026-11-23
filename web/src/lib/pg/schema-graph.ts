@@ -72,6 +72,8 @@ const HEADER = 40
 const ROW = 26
 const GAP_X = 120
 const GAP_Y = 40
+/** Wrap a layer into another column past this height. */
+const LAYER_MAX_HEIGHT = 1400
 
 export const nodeHeight = (columns: number) => HEADER + Math.max(columns, 1) * ROW + 8
 
@@ -108,20 +110,33 @@ export function layoutGraph(
     return r
   }
 
-  const pos: Record<string, { x: number; y: number }> = {}
-  const columnsY = new Map<number, number>()
-  let maxRank = -1
+  // One layer per rank, left to right. A tall layer wraps into extra
+  // columns so a table that many others reference doesn't make one tower.
+  const layers = new Map<number, { id: string; columns: number }[]>()
   for (const n of nodes.filter((n) => linked.has(n.id))) {
     const r = rankOf(n.id)
-    maxRank = Math.max(maxRank, r)
-    const y = columnsY.get(r) ?? 0
-    pos[n.id] = { x: r * (NODE_WIDTH + GAP_X), y }
-    columnsY.set(r, y + nodeHeight(n.columns) + GAP_Y)
+    if (!layers.has(r)) layers.set(r, [])
+    layers.get(r)!.push(n)
+  }
+  const pos: Record<string, { x: number; y: number }> = {}
+  let column = 0
+  for (const r of [...layers.keys()].sort((a, b) => a - b)) {
+    let y = 0
+    for (const n of layers.get(r)!) {
+      const h = nodeHeight(n.columns)
+      if (y > 0 && y + h > LAYER_MAX_HEIGHT) {
+        column++
+        y = 0
+      }
+      pos[n.id] = { x: column * (NODE_WIDTH + GAP_X), y }
+      y += h + GAP_Y
+    }
+    column++
   }
 
   // Unlinked tables: a grid of up to 4 columns to the right.
   const loose = nodes.filter((n) => !linked.has(n.id))
-  const startX = (maxRank + 1) * (NODE_WIDTH + GAP_X)
+  const startX = column * (NODE_WIDTH + GAP_X)
   const perRow = 4
   let y = 0
   for (let i = 0; i < loose.length; i += perRow) {
