@@ -57,7 +57,8 @@ if [ ! -f .env ]; then
   set_env API_EXTERNAL_URL "http://localhost:$API_PORT/auth/v1"
 fi
 
-docker compose -p "$PROJECT" up -d --wait
+# storage-volume.yml: uploads need a file system with extended attributes.
+docker compose -p "$PROJECT" -f docker-compose.yml -f "$here/storage-volume.yml" up -d --wait
 
 get() { grep "^$1=" .env | head -1 | cut -d= -f2-; }
 # Ports are fixed when .env is first generated; report what the stack really uses.

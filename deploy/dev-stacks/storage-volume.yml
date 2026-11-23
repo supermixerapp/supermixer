@@ -1,0 +1,16 @@
+# Dev stack override: keep Storage's files on a Docker named volume.
+#
+# Supabase's compose file bind-mounts ./volumes/storage from the host. Storage's
+# file backend writes extended attributes, which Docker Desktop's macOS file
+# sharing doesn't support, so every upload fails with "The file system does not
+# support extended attributes". A named volume lives inside Docker's Linux VM.
+services:
+  storage:
+    volumes:
+      - storage-files:/var/lib/storage
+  imgproxy:
+    volumes:
+      - storage-files:/var/lib/storage
+
+volumes:
+  storage-files:

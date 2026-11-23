@@ -7,4 +7,4 @@ if [ ! -f "$here/.stack/docker-compose.yml" ]; then
   exit 0
 fi
 cd "$here/.stack"
-docker compose -p supermixer-dev-stack down
+docker compose -p supermixer-dev-stack -f docker-compose.yml -f "$here/storage-volume.yml" down
