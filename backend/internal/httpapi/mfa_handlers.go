@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -309,6 +310,7 @@ func (h *handlers) EnableMfa(ctx context.Context, req api.EnableMfaRequestObject
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.mfa_enabled", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"other_sessions_signed_out": true}})
+	h.notify(ctx, u, "Two-factor sign-in was turned on", "Two-factor sign-in was turned on, and your other sessions were signed out,")
 	return api.EnableMfa200JSONResponse{Codes: codes}, nil
 }
 
@@ -340,6 +342,7 @@ func (h *handlers) DisableMfa(ctx context.Context, req api.DisableMfaRequestObje
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.mfa_disabled", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"confirmed_with": method}})
+	h.notify(ctx, u, "Two-factor sign-in was turned off", "Two-factor sign-in was turned off")
 	return api.DisableMfa204Response{}, nil
 }
 
@@ -396,5 +399,6 @@ func (h *handlers) ResetUserMfa(ctx context.Context, req api.ResetUserMfaRequest
 		return nil, err
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.mfa_reset", TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username})
+	h.notify(ctx, target, "Two-factor sign-in was reset", fmt.Sprintf("An instance admin (%s) turned off two-factor sign-in", me.User.Username))
 	return api.ResetUserMfa204Response{}, nil
 }

@@ -57,6 +57,21 @@ lockout = "15m"
 - `supermixer --config path/to/file.toml` picks another file; so does `SUPERMIXER_CONFIG`.
 - Any setting can be overridden by an environment variable named after its key: `SUPERMIXER_<SECTION>_<KEY>`, for example `SUPERMIXER_DATABASE_URL` or `SUPERMIXER_SECURITY_SIGN_IN_LOCKOUT`. Containers can inject secrets this way without a file.
 
+## Email
+
+With an SMTP server in `[email]`, Supermixer emails invitation links, "Forgot your password?" links (accounts with two-factor sign-in need a code as well) and notices when an account's password or two-factor sign-in changes. Without one, invitations give a link to share and only instance admins reset passwords. **Instance › Overview › Send test email** checks the settings.
+
+```toml
+[email]
+smtp_host = "smtp.example.com"
+smtp_port = 587
+security = "starttls"           # or tls (port 465), or none
+username = "supermixer"         # password: SUPERMIXER_EMAIL_PASSWORD
+from = "Supermixer <supermixer@example.com>"
+```
+
+For development, `make mail` runs [Mailpit](https://mailpit.axllent.org), which keeps everything it's sent: set `smtp_host = "localhost"`, `smtp_port = 1025`, `security = "none"` and read the mail at http://localhost:8025.
+
 ## Creating stacks
 
 Besides connecting to Supabase stacks that already run, Supermixer can create them: **New project › Create a new stack**. It runs Supabase's official compose files (bundled at a pinned commit, see `backend/internal/provision/template/VERSION`) with the `docker compose` CLI, generates every secret, gives each stack its own ports, and can pause, restart and delete them from **Settings › Infrastructure**.

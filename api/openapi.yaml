@@ -105,6 +105,59 @@ paths:
         "401": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
         default: { $ref: "#/components/responses/Error" }
+  /auth/password-reset:
+    post:
+      operationId: requestPasswordReset
+      tags: [Auth]
+      summary: Email a link to choose a new password
+      description: |
+        Always answers the same way, so it doesn't tell who has an account.
+        If the username or email address is an active account's, and it has
+        an email address, a link that works once, for an hour, is sent to it.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [login]
+              properties:
+                login: { type: string, description: Username or email address. }
+      responses:
+        "202": { description: "If there's such an account with an email address, a link is on its way." }
+        "429": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+  /auth/password-reset/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getPasswordReset
+      tags: [Auth]
+      summary: Who a reset link is for, and whether it needs a two-factor code
+      security: []
+      responses:
+        "200":
+          description: The link works.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PasswordResetInfo" }
+        "410": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: completePasswordReset
+      tags: [Auth]
+      summary: Choose a new password with a reset link; every session is signed out
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordResetComplete" }
+      responses:
+        "204": { description: The password is changed; sign in with it. }
+        "410": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
   /auth/sign-out:
     post:
       operationId: signOut
@@ -335,6 +388,22 @@ paths:
         - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         "204": { description: Turned off. }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/email/test:
+    post:
+      operationId: sendTestEmail
+      tags: [Users]
+      summary: Send a test email to your own address
+      responses:
+        "200":
+          description: The server took it.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sent_to]
+                properties:
+                  sent_to: { type: string }
         default: { $ref: "#/components/responses/Error" }
   /admin/overview:
     get:
@@ -1738,9 +1807,10 @@ components:
             error: { type: string }
     UiConfig:
       type: object
-      required: [app_name, version, brand_color, default_theme, provisioning]
+      required: [app_name, version, brand_color, default_theme, provisioning, email_enabled]
       properties:
         app_name: { type: string }
+        email_enabled: { type: boolean, description: "Supermixer sends email, so the sign-in page offers \"Forgot your password?\"." }
         version: { type: string }
         brand_color: { type: string, description: "appearance.brand_color as #rrggbb" }
         default_theme: { type: string, enum: [dark, light, system] }
@@ -2118,6 +2188,19 @@ components:
       properties:
         password: { type: string }
         require_password_change: { type: boolean, default: true, description: "They choose their own password at next sign-in (not for your own account)." }
+    PasswordResetInfo:
+      type: object
+      required: [username, mfa_required, expires_at]
+      properties:
+        username: { type: string }
+        mfa_required: { type: boolean, description: The account has two-factor sign-in; a code is needed as well. }
+        expires_at: { type: string, format: date-time }
+    PasswordResetComplete:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string }
+        code: { type: string, description: "With two-factor sign-in: a code from the app, or a recovery code." }
     MfaChallenge:
       type: object
       required: [mfa_required, challenge, expires_at]
@@ -2168,7 +2251,7 @@ components:
         codes: { type: array, items: { type: string }, description: "Single-use; each signs in once in place of a code." }
     AdminOverview:
       type: object
-      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups]
+      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email]
       properties:
         version: { type: string }
         users: { type: integer }
@@ -2194,6 +2277,13 @@ components:
             interval_hours: { type: number }
             keep: { type: integer }
             s3: { type: string, nullable: true, description: "s3://bucket/prefix, if backups are copied to a bucket." }
+        email:
+          type: object
+          required: [enabled]
+          properties:
+            enabled: { type: boolean }
+            from: { type: string, nullable: true }
+            server: { type: string, nullable: true, description: "host:port, and how it's secured." }
     Session:
       type: object
       required: [id, created_at, last_seen_at, expires_at, ip, user_agent, current]
@@ -2346,10 +2436,12 @@ components:
       allOf:
         - { $ref: "#/components/schemas/Invitation" }
         - type: object
-          required: [token, url]
+          required: [token, url, email_sent]
           properties:
             token: { type: string }
             url: { type: string, description: Link to share with the invitee. }
+            email_sent: { type: boolean, description: The link was emailed to the invitation's address. }
+            email_error: { type: string, nullable: true, description: "Why it couldn't be emailed; share the link yourself." }
     InvitationPreview:
       type: object
       required: [organization_name, organization_slug, role, email, invited_by, expires_at, valid]

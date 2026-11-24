@@ -28,6 +28,7 @@ type Querier interface {
 	CreateBackup(ctx context.Context, arg CreateBackupParams) (Backup, error)
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
+	CreatePasswordReset(ctx context.Context, arg CreatePasswordResetParams) (PasswordReset, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
@@ -39,6 +40,8 @@ type Querier interface {
 	DeleteMemberProjectRoles(ctx context.Context, arg DeleteMemberProjectRolesParams) error
 	DeleteOrganization(ctx context.Context, id uuid.UUID) error
 	DeleteOtherUserSessions(ctx context.Context, arg DeleteOtherUserSessionsParams) error
+	// A new link, or a changed password, ends the earlier links.
+	DeletePasswordResets(ctx context.Context, userID uuid.UUID) error
 	DeleteProject(ctx context.Context, id uuid.UUID) error
 	DeleteProjectRoles(ctx context.Context, projectID uuid.UUID) error
 	DeleteRecoveryCodes(ctx context.Context, userID uuid.UUID) error
@@ -62,8 +65,10 @@ type Querier interface {
 	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (OrgRole, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
 	GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error)
+	GetPasswordReset(ctx context.Context, tokenHash []byte) (PasswordReset, error)
 	GetProjectByRef(ctx context.Context, ref string) (GetProjectByRefRow, error)
 	GetSnippet(ctx context.Context, arg GetSnippetParams) (GetSnippetRow, error)
+	GetUserByEmail(ctx context.Context, email *string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
@@ -141,6 +146,7 @@ type Querier interface {
 	UploadedLocalBackups(ctx context.Context, bucket string) ([]UploadedLocalBackupsRow, error)
 	// Records a sign-in challenge as used; no row if it already was.
 	UseChallenge(ctx context.Context, arg UseChallengeParams) (uuid.UUID, error)
+	UsePasswordReset(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	UseRecoveryCode(ctx context.Context, arg UseRecoveryCodeParams) (uuid.UUID, error)
 	// Accepts a code's step only once, and only after the last one accepted.
 	UseTOTPStep(ctx context.Context, arg UseTOTPStepParams) (uuid.UUID, error)

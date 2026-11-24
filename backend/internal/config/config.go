@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net/mail"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -37,7 +38,29 @@ type Config struct {
 	Appearance     Appearance     `toml:"appearance"`
 	Projects       Projects       `toml:"projects"`
 	Provisioning   Provisioning   `toml:"provisioning"`
+	Email          Email          `toml:"email"`
 }
+
+// Email is how Supermixer sends email: invitations, password-reset links and
+// security notices. Off while smtp_host is empty.
+type Email struct {
+	SMTPHost string `toml:"smtp_host"`
+	SMTPPort int    `toml:"smtp_port"`
+	// Security is starttls (upgrade the connection; port 587), tls (TLS
+	// from the start; port 465) or none (a relay on the same host or a
+	// trusted network only).
+	Security string `toml:"security"`
+	// Username and Password sign in to the server; leave both empty for a
+	// relay that doesn't ask.
+	Username string `toml:"username"`
+	Password string `toml:"password"`
+	// From is the sender, like "Supermixer <supermixer@example.com>".
+	From    string        `toml:"from"`
+	Timeout time.Duration `toml:"timeout"`
+}
+
+// Enabled reports whether Supermixer sends email.
+func (e Email) Enabled() bool { return e.SMTPHost != "" }
 
 type Server struct {
 	// Listen is the address the HTTP server binds, e.g. ":8080".
@@ -194,6 +217,7 @@ func Default() Config {
 			BackupsDir: "/var/lib/supermixer/backups", BackupInterval: 24 * time.Hour, BackupKeep: 7,
 			BackupS3: BackupS3{Prefix: "supermixer", KeepLocal: true},
 		},
+		Email: Email{SMTPPort: 587, Security: "starttls", Timeout: 15 * time.Second},
 	}
 }
 
@@ -377,6 +401,28 @@ func (c *Config) validate() error {
 	}
 	if c.Log.Format != "text" && c.Log.Format != "json" {
 		fail("log.format must be text or json, got %q", c.Log.Format)
+	}
+	if e := c.Email; e.Enabled() {
+		if e.SMTPPort < 1 || e.SMTPPort > 65535 {
+			fail("email.smtp_port must be 1-65535, got %d", e.SMTPPort)
+		}
+		switch e.Security {
+		case "starttls", "tls", "none":
+		default:
+			fail("email.security must be starttls, tls or none, got %q", e.Security)
+		}
+		if (e.Username == "") != (e.Password == "") {
+			fail("email needs both username and password, or neither")
+		}
+		if e.Username != "" && e.Security == "none" {
+			fail("email.security = \"none\" would send the password unencrypted; use starttls or tls")
+		}
+		if a, err := mail.ParseAddress(e.From); err != nil || strings.ContainsAny(a.Address, "\r\n") {
+			fail("email.from must be an address like \"Supermixer <supermixer@example.com>\", got %q", e.From)
+		}
+		if e.Timeout <= 0 {
+			fail("email.timeout must be positive, got %s", e.Timeout)
+		}
 	}
 	if c.Database.URL == "" {
 		fail("database.url is required (or set %s)", EnvName([]string{"database", "url"}))

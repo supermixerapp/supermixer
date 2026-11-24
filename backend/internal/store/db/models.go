@@ -374,6 +374,16 @@ type Organization struct {
 	MfaRequired bool      `json:"mfa_required"`
 }
 
+type PasswordReset struct {
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	TokenHash []byte     `json:"token_hash"`
+	Ip        string     `json:"ip"`
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at"`
+}
+
 type Project struct {
 	ID              uuid.UUID       `json:"id"`
 	Ref             string          `json:"ref"`

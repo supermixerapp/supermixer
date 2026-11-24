@@ -3,6 +3,7 @@ package httpapi
 import (
 	"context"
 	"errors"
+	"fmt"
 	"net/http"
 	"path"
 	"strings"
@@ -235,6 +236,9 @@ func (h *handlers) ResetUserPassword(ctx context.Context, req api.ResetUserPassw
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.password_reset", TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username,
 		Metadata: map[string]any{"password_change_required": change}})
+	if target.ID != me.User.ID {
+		h.notify(ctx, target, "Your Supermixer password was reset", fmt.Sprintf("An instance admin (%s) set a new password", me.User.Username))
+	}
 	return api.ResetUserPassword204Response{}, nil
 }
 
@@ -287,6 +291,12 @@ func (h *handlers) GetAdminOverview(ctx context.Context, _ api.GetAdminOverviewR
 	if h.s3 != nil {
 		loc := "s3://" + path.Join(h.s3.Bucket(), pv.BackupS3.Prefix)
 		out.Backups.S3 = &loc
+	}
+	if h.mailer != nil {
+		e := h.deps.Config.Email
+		from := h.mailer.From()
+		server := fmt.Sprintf("%s:%d (%s)", e.SMTPHost, e.SMTPPort, map[string]string{"starttls": "STARTTLS", "tls": "TLS", "none": "unencrypted"}[e.Security])
+		out.Email.Enabled, out.Email.From, out.Email.Server = true, &from, &server
 	}
 	return out, nil
 }

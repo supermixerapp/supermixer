@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -93,6 +94,7 @@ func run(configFile string) error {
 	pools := stack.NewPools(cfg.Projects.DBPoolSize) // connections to projects' databases
 	defer pools.Close()
 
+	var pending sync.WaitGroup // emails still being sent, and the like
 	srv := &http.Server{
 		Addr: cfg.Server.Listen,
 		Handler: httpapi.New(httpapi.Deps{
@@ -105,6 +107,7 @@ func run(configFile string) error {
 			WebUI:      webui.FS(),
 			Pools:      pools,
 			Background: ctx,
+			Pending:    &pending,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -126,6 +129,13 @@ func run(configFile string) error {
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			return err
+		}
+		done := make(chan struct{})
+		go func() { pending.Wait(); close(done) }()
+		select {
+		case <-done:
+		case <-shutdownCtx.Done():
+			logger.Warn("stopped before every email was sent")
 		}
 	}
 	return nil

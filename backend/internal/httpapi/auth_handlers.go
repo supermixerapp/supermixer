@@ -235,6 +235,7 @@ func (h *handlers) ChangePassword(ctx context.Context, req api.ChangePasswordReq
 		return nil, err
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.password_changed", TargetType: "user", TargetID: p.User.ID.String(), TargetName: p.User.Username})
+	h.notify(ctx, p.User, "Your Supermixer password was changed", "Your password was changed")
 	return api.ChangePassword204Response{}, nil
 }
 

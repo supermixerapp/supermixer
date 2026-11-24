@@ -2,10 +2,12 @@ package httpapi
 
 import (
 	"context"
+	"sync"
 	"time"
 
 	"supermixer/internal/api"
 	"supermixer/internal/auth"
+	"supermixer/internal/mail"
 	"supermixer/internal/provision"
 	"supermixer/internal/stack"
 	"supermixer/internal/version"
@@ -23,6 +25,13 @@ type handlers struct {
 	// s3 is the bucket backups are copied to, nil without one.
 	s3      provision.ObjectStore
 	uploads *uploader
+	// mailer sends email; nil while it's off.
+	mailer mail.Sender
+	// inviteMail and resetMail limit the emails people can have sent to
+	// others: invitations per inviter, reset links per account.
+	inviteMail, resetMail *auth.Limiter
+	// pending is work in the background that shutting down waits for.
+	pending *sync.WaitGroup
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)
@@ -71,5 +80,6 @@ func (h *handlers) GetUiConfig(_ context.Context, _ api.GetUiConfigRequestObject
 			Enabled  bool   `json:"enabled"`
 			Template string `json:"template"`
 		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion()},
+		EmailEnabled: h.mailer != nil,
 	}, nil
 }

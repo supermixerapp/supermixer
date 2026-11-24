@@ -529,11 +529,48 @@ func (h *handlers) CreateInvitation(ctx context.Context, req api.CreateInvitatio
 	if err != nil {
 		return nil, err
 	}
-	return api.CreateInvitation201JSONResponse{
+	link := h.joinURL("/join", url.Values{"token": {token}})
+	out := api.CreateInvitation201JSONResponse{
 		Id: base.Id, Email: base.Email, Role: base.Role, ProjectRoles: base.ProjectRoles, InvitedBy: base.InvitedBy,
 		CreatedAt: base.CreatedAt, ExpiresAt: base.ExpiresAt,
-		Token: token, Url: h.joinURL("/join", url.Values{"token": {token}}),
-	}, nil
+		Token: token, Url: link,
+	}
+	// Emailed while the inviter waits, so they know whether to share the
+	// link themselves. A limit per inviter keeps the server from being used
+	// to send mail in bulk (the organization's name is in the email).
+	if email != "" && h.mailer != nil {
+		if ok, _ := h.inviteMail.Attempt(a.User.User.ID.String()); !ok {
+			msg := "you've sent many invitation emails in the last hour; share this link yourself"
+			out.EmailError = &msg
+			return out, nil
+		}
+		inviter := a.User.User.DisplayName
+		if inviter == "" {
+			inviter = a.User.User.Username
+		}
+		err := h.sendEmail(ctx, email, fmt.Sprintf("%s invited you to %s on Supermixer", inviter, a.Org.Name), emailContent{
+			Heading: "Join " + a.Org.Name + " on Supermixer",
+			Intro: []string{
+				fmt.Sprintf("%s invited you to the organization %s on Supermixer at %s, with the %s role.", inviter, a.Org.Name, h.host(), describeRole(role)),
+				"Supermixer manages self-hosted Supabase projects. Accept to sign in, or create an account if you don't have one.",
+			},
+			Button: "Accept the invitation",
+			Link:   link,
+			Outro:  []string{fmt.Sprintf("The invitation works until %s. If you didn't expect it, ignore this email.", inv.ExpiresAt.UTC().Format("2 January 2006"))},
+		})
+		if err != nil {
+			h.deps.Logger.Warn("emailing an invitation", "to", email, "err", err)
+			// The mail server's details are for instance admins.
+			msg := "the mail server didn't take it; an instance admin can find out why in Supermixer's log"
+			if a.User.User.IsInstanceAdmin {
+				msg = err.Error()
+			}
+			out.EmailError = &msg
+		} else {
+			out.EmailSent = true
+		}
+	}
+	return out, nil
 }
 
 func (h *handlers) RevokeInvitation(ctx context.Context, req api.RevokeInvitationRequestObject) (api.RevokeInvitationResponseObject, error) {

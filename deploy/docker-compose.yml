@@ -24,6 +24,22 @@ services:
       timeout: 5s
       retries: 10
 
+  # A mail server for development that keeps what it's sent: `make mail`,
+  # then read the mail at http://localhost:8025. Point Supermixer at it with
+  # [email] smtp_host = "localhost", smtp_port = 1025, security = "none".
+  mailpit:
+    profiles: [mail]
+    image: axllent/mailpit:v1.21
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${SUPERMIXER_MAIL_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${SUPERMIXER_MAIL_UI_PORT:-8025}:8025"
+    healthcheck:
+      test: ["CMD", "/mailpit", "readyz"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   supermixer:
     profiles: [app]
     build:

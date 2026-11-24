@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -20,6 +21,7 @@ import (
 	"supermixer/internal/api"
 	"supermixer/internal/auth"
 	"supermixer/internal/config"
+	"supermixer/internal/mail"
 	"supermixer/internal/provision"
 	"supermixer/internal/secrets"
 	"supermixer/internal/stack"
@@ -46,6 +48,11 @@ type Deps struct {
 	Pools   *stack.Pools
 	// BackupStore replaces the bucket provisioning.backup_s3 describes (tests).
 	BackupStore provision.ObjectStore
+	// Mailer replaces the SMTP server email describes (tests).
+	Mailer mail.Sender
+	// Pending counts work to finish before exiting, such as emails being
+	// sent in the background; the caller waits for it after shutting down.
+	Pending *sync.WaitGroup
 	// Background, if set, runs periodic work (recovering stuck stack
 	// operations) until it's cancelled.
 	Background context.Context
@@ -76,6 +83,13 @@ func New(deps Deps) http.Handler {
 		pools:   deps.Pools,
 		stacks:  &stackJobs{},
 		uploads: newUploader(),
+		// Emails people can ask Supermixer to send to others.
+		inviteMail: auth.NewLimiter(30, time.Hour), // per inviter
+		resetMail:  auth.NewLimiter(5, time.Hour),  // per account
+		pending:    deps.Pending,
+	}
+	if h.pending == nil {
+		h.pending = &sync.WaitGroup{}
 	}
 	if pv := deps.Config.Provisioning; deps.BackupStore != nil {
 		h.s3 = deps.BackupStore
@@ -86,6 +100,13 @@ func New(deps Deps) http.Handler {
 		} else {
 			h.s3 = s3
 		}
+	}
+	if deps.Mailer != nil {
+		h.mailer = deps.Mailer
+	} else if m, err := mail.New(deps.Config.Email); err != nil {
+		deps.Logger.Error("email is off", "err", err)
+	} else if m != nil {
+		h.mailer = m
 	}
 	if deps.Store != nil {
 		if deps.Background != nil {
