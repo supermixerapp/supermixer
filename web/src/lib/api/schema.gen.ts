@@ -2134,6 +2134,33 @@ export interface components {
                 /** @description host:port, and how it's secured. */
                 server?: string | null;
             };
+            /** @description Where Prometheus metrics are served ([metrics] listen); null if off. */
+            metrics_listen?: string | null;
+            audit_drains: components["schemas"]["AuditDrainStatus"][];
+        };
+        /** @description Where audit log entries are sent ([[audit.drains]]), and how that's going. */
+        AuditDrainStatus: {
+            id: string;
+            /** @enum {string} */
+            type: "http" | "file";
+            /** @description The URL (without its query) or file. */
+            target: string;
+            /**
+             * @description not_started: no instance has started it yet (just added, or its database row couldn't be made); unknown: its status couldn't be read.
+             * @enum {string}
+             */
+            state: "running" | "not_started" | "unknown";
+            /**
+             * Format: int64
+             * @description Entries not yet delivered; null if unknown.
+             */
+            pending: number | null;
+            /** Format: date-time */
+            last_success_at?: string | null;
+            /** @description Why the last delivery failed; empty once one succeeds. */
+            last_error: string;
+            /** Format: date-time */
+            last_error_at?: string | null;
         };
         Session: {
             /** Format: uuid */
