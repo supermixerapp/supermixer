@@ -104,7 +104,14 @@ test('the first admin sets up an organization, a project and a Read-only member'
   await test.step("the organization's projects show it healthy", async () => {
     const health = await (await page.request.get(`/api/v1/projects/${ref}/health`)).json()
     expect(health.status, JSON.stringify(health, null, 2)).toBe('healthy')
+    // What the card itself is given, to say why if it isn't healthy.
+    // (The org page's request, not one the project page made before it.)
+    const cardHealth = page.waitForResponse(
+      (r) => r.url().includes(`/api/v1/projects/${ref}/health`) && (r.request().headers()['referer'] ?? '').endsWith(`/org/${slug}`)
+    )
     await page.goto(`/org/${slug}`)
+    const seen = await (await cardHealth).json()
+    expect(seen.status, `the card's health: ${JSON.stringify(seen, null, 2)}`).toBe('healthy')
     const card = page.getByRole('link').filter({ hasText: 'Dev stack' })
     await expect(card.getByText('Healthy', { exact: true })).toBeVisible({ timeout: 30_000 })
   })

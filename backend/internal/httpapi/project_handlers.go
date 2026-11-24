@@ -466,7 +466,10 @@ func (h *handlers) GetProjectHealth(ctx context.Context, req api.GetProjectHealt
 	if err != nil {
 		return nil, err
 	}
-	r := h.checker.Check(ctx, conn)
+	// Not cancelled with the request: a page navigating away mid-check would
+	// otherwise cache a report of "context canceled" failures for everyone
+	// (each probe has its own timeout).
+	r := h.checker.Check(context.WithoutCancel(ctx), conn)
 	h.health.put(req.Ref, r)
 	return api.GetProjectHealth200JSONResponse(toHealthReport(r)), nil
 }
