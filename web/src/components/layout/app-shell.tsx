@@ -4,12 +4,14 @@ import type { ReactNode } from 'react'
 import { WarningIcon } from '@/components/icons'
 import { useProfile } from '@/lib/api/hooks'
 
+import { GlobalNotice } from './global-notice'
 import { LayoutHeader } from './layout-header'
 
 /** Header across the top; optional icon rail and content below (Studio's layout). */
 export function AppShell({ sidebar, title, children }: { sidebar?: ReactNode; title?: string; children: ReactNode }) {
   return (
     <div className="flex h-full flex-col">
+      <GlobalNotice />
       <DefaultPasswordBanner />
       <LayoutHeader title={title} />
       <div className="flex min-h-0 flex-1">

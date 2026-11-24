@@ -189,6 +189,64 @@ test('the first admin sets up an organization, a project and a Read-only member'
     expect(res.status()).toBe(403)
   })
 
+  await test.step('an instance admin posts a global notice; everyone sees it above the header', async () => {
+    // With the Markdown a notice may use: bold, and a link.
+    const message = 'Supermixer will be down on **Saturday, 22:00–23:00 UTC**. [Your account](/account/me)'
+    const shown = 'Supermixer will be down on Saturday, 22:00–23:00 UTC. Your account'
+    await page.goto('/admin/notice')
+    await expect(page.getByText('Write a message to see the notice.')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Take down' })).toHaveCount(0)
+    await page.getByRole('combobox', { name: 'Notice type' }).click()
+    await page.getByRole('option', { name: 'Warning' }).click()
+    await page.getByLabel('Message').fill('x'.repeat(257))
+    await expect(page.getByText('1 characters too many')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Post notice' })).toBeDisabled()
+    await page.getByLabel('Message').fill(message)
+    await expect(page.getByText(`${message.length} / 256`)).toBeVisible()
+    await page.getByRole('button', { name: 'Post notice' }).click()
+    await expect(page.getByText('Notice posted')).toBeVisible()
+
+    // The member: after a reload (otherwise within a minute), on any page, as tall as the header.
+    await reader.goto(`/org/${slug}`)
+    const band = reader.getByRole('status', { name: 'Warning notice' })
+    await expect(band).toHaveText(shown)
+    await expect(band.locator('strong')).toHaveText('Saturday, 22:00–23:00 UTC')
+    const bandBox = await band.boundingBox()
+    const headerBox = await reader.locator('header').first().boundingBox()
+    expect(bandBox?.y).toBe(0)
+    expect(bandBox?.height).toBe(headerBox?.height)
+    // A path in Supermixer opens in place.
+    await band.getByRole('link', { name: 'Your account' }).click()
+    await expect(reader).toHaveURL(/\/account\/me$/)
+    await expect(reader.getByRole('heading', { name: 'Preferences' })).toBeVisible()
+    await reader.goto(`/org/${slug}`)
+    const csrf = (await reader.context().cookies()).find((c) => c.name === 'sm_csrf')?.value ?? ''
+    const res = await reader.request.put('/api/v1/admin/notice', {
+      headers: { 'X-CSRF-Token': decodeURIComponent(csrf) },
+      data: { type: 'info', message: 'Not mine to post' },
+    })
+    expect(res.status()).toBe(403)
+
+    // Critical, then taken down.
+    await page.getByRole('combobox', { name: 'Notice type' }).click()
+    await page.getByRole('option', { name: 'Critical' }).click()
+    await page.getByRole('button', { name: 'Update notice' }).click()
+    await expect(page.getByText('Notice updated')).toBeVisible()
+    await reader.reload()
+    await expect(reader.getByRole('alert', { name: 'Critical notice' })).toHaveText(shown)
+    await expect(page.getByText(/^Showing now; posted by admin/)).toBeVisible()
+    await page.getByLabel('Message').fill('Edited')
+    await expect(page.getByText('Not posted yet: admin’s notice shows until you update it.')).toBeVisible()
+    await page.getByRole('button', { name: 'Cancel' }).click()
+    await page.getByRole('button', { name: 'Take down' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Take down' }).click()
+    await expect(page.getByText('Not posted yet: nobody sees it until you post it.')).toBeVisible()
+    await reader.reload()
+    await expect(reader.getByRole('heading', { name: 'Projects' })).toBeVisible()
+    await expect(reader.getByRole('status', { name: /notice$/ })).toHaveCount(0)
+    await expect(reader.getByRole('alert', { name: /notice$/ })).toHaveCount(0)
+  })
+
   await test.step('the audit log recorded each step', async () => {
     await page.goto(`/org/${slug}/audit`)
     const table = page.getByRole('table')

@@ -10,6 +10,7 @@ import { useProfile } from '@/lib/api/hooks'
 const LINKS = [
   { label: 'Overview', to: '/admin' },
   { label: 'Users', to: '/admin/users' },
+  { label: 'Global notice', to: '/admin/notice' },
   { label: 'Audit log', to: '/admin/audit' },
 ]
 

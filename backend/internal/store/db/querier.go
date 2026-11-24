@@ -54,6 +54,7 @@ type Querier interface {
 	DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) (UserIdentity, error)
+	DeleteInstanceSetting(ctx context.Context, key string) (int64, error)
 	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
 	DeleteMemberProjectRoles(ctx context.Context, arg DeleteMemberProjectRolesParams) error
 	DeleteOrganization(ctx context.Context, id uuid.UUID) error
@@ -88,6 +89,7 @@ type Querier interface {
 	GetDBSnapshot(ctx context.Context, arg GetDBSnapshotParams) (DbSnapshot, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (UserIdentity, error)
 	GetInstalledAt(ctx context.Context) (time.Time, error)
+	GetInstanceSetting(ctx context.Context, key string) (GetInstanceSettingRow, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash []byte) (GetInvitationByTokenHashRow, error)
 	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (OrgRole, error)
 	GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error)
@@ -167,6 +169,7 @@ type Querier interface {
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
 	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
+	SetInstanceSetting(ctx context.Context, arg SetInstanceSettingParams) error
 	SetOrganizationSSO(ctx context.Context, arg SetOrganizationSSOParams) (Organization, error)
 	SetPasswordChangeRequired(ctx context.Context, arg SetPasswordChangeRequiredParams) (User, error)
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error

@@ -500,6 +500,43 @@ paths:
                 properties:
                   sent_to: { type: string }
         default: { $ref: "#/components/responses/Error" }
+  /notice:
+    get:
+      operationId: getNotice
+      tags: [Users]
+      summary: The instance-wide notice, if an instance admin posted one
+      description: Shown to everyone signed in, as a band above the header (downtime, say).
+      responses:
+        "200":
+          description: The notice, or none.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoticeState" }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/notice:
+    put:
+      operationId: setNotice
+      tags: [Users]
+      summary: Post (or replace) the instance-wide notice; instance admins only
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/GlobalNoticeInput" }
+      responses:
+        "200":
+          description: Posted.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/GlobalNotice" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteNotice
+      tags: [Users]
+      summary: Take the instance-wide notice down; instance admins only
+      responses:
+        "204": { description: Taken down (or there was none). }
+        default: { $ref: "#/components/responses/Error" }
   /admin/overview:
     get:
       operationId: getAdminOverview
@@ -2263,6 +2300,27 @@ components:
           type: array
           items: { type: string }
           description: Files that can't be shown as text.
+    NoticeType:
+      type: string
+      enum: [info, warning, critical]
+    GlobalNoticeInput:
+      type: object
+      required: [type, message]
+      properties:
+        type: { $ref: "#/components/schemas/NoticeType" }
+        message: { type: string, description: "Up to 256 characters; runs of whitespace (line breaks too) become one space." }
+    GlobalNotice:
+      type: object
+      required: [type, message, posted_at, posted_by]
+      properties:
+        type: { $ref: "#/components/schemas/NoticeType" }
+        message: { type: string }
+        posted_at: { type: string, format: date-time }
+        posted_by: { type: string, description: The instance admin's username. }
+    NoticeState:
+      type: object
+      properties:
+        notice: { allOf: [{ $ref: "#/components/schemas/GlobalNotice" }], nullable: true }
     StorageConfig:
       type: object
       required: [file_size_limit, image_transformation]

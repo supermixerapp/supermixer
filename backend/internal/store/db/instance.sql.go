@@ -10,6 +10,18 @@ import (
 	"time"
 )
 
+const deleteInstanceSetting = `-- name: DeleteInstanceSetting :execrows
+DELETE FROM instance_settings WHERE key = $1
+`
+
+func (q *Queries) DeleteInstanceSetting(ctx context.Context, key string) (int64, error) {
+	result, err := q.db.Exec(ctx, deleteInstanceSetting, key)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getInstalledAt = `-- name: GetInstalledAt :one
 SELECT (value #>> '{}')::timestamptz AS installed_at
 FROM instance_settings
@@ -21,4 +33,35 @@ func (q *Queries) GetInstalledAt(ctx context.Context) (time.Time, error) {
 	var installed_at time.Time
 	err := row.Scan(&installed_at)
 	return installed_at, err
+}
+
+const getInstanceSetting = `-- name: GetInstanceSetting :one
+SELECT value, updated_at FROM instance_settings WHERE key = $1
+`
+
+type GetInstanceSettingRow struct {
+	Value     []byte    `json:"value"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+func (q *Queries) GetInstanceSetting(ctx context.Context, key string) (GetInstanceSettingRow, error) {
+	row := q.db.QueryRow(ctx, getInstanceSetting, key)
+	var i GetInstanceSettingRow
+	err := row.Scan(&i.Value, &i.UpdatedAt)
+	return i, err
+}
+
+const setInstanceSetting = `-- name: SetInstanceSetting :exec
+INSERT INTO instance_settings (key, value, updated_at) VALUES ($1, $2, now())
+ON CONFLICT (key) DO UPDATE SET value = excluded.value, updated_at = now()
+`
+
+type SetInstanceSettingParams struct {
+	Key   string `json:"key"`
+	Value []byte `json:"value"`
+}
+
+func (q *Queries) SetInstanceSetting(ctx context.Context, arg SetInstanceSettingParams) error {
+	_, err := q.db.Exec(ctx, setInstanceSetting, arg.Key, arg.Value)
+	return err
 }

@@ -24,6 +24,7 @@ import { Route as AppAccountMeRouteImport } from './routes/_app/account.me'
 import { Route as AppAccountSecurityRouteImport } from './routes/_app/account.security'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin.index'
 import { Route as AppAdminAuditRouteImport } from './routes/_app/admin.audit'
+import { Route as AppAdminNoticeRouteImport } from './routes/_app/admin.notice'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
 import { Route as AppNewSlugRouteImport } from './routes/_app/new.$slug'
 import { Route as AppOrgSlugRouteImport } from './routes/_app/org.$slug'
@@ -175,6 +176,11 @@ const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
 const AppAdminAuditRoute = AppAdminAuditRouteImport.update({
   id: '/admin/audit',
   path: '/admin/audit',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminNoticeRoute = AppAdminNoticeRouteImport.update({
+  id: '/admin/notice',
+  path: '/admin/notice',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
@@ -635,6 +641,7 @@ export interface FileRoutesByFullPath {
   '/account/me': typeof AppAccountMeRoute
   '/account/security': typeof AppAccountSecurityRoute
   '/admin/audit': typeof AppAdminAuditRoute
+  '/admin/notice': typeof AppAdminNoticeRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/org/$slug': typeof AppOrgSlugRouteWithChildren
@@ -729,6 +736,7 @@ export interface FileRoutesByTo {
   '/account/me': typeof AppAccountMeRoute
   '/account/security': typeof AppAccountSecurityRoute
   '/admin/audit': typeof AppAdminAuditRoute
+  '/admin/notice': typeof AppAdminNoticeRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/admin': typeof AppAdminIndexRoute
@@ -821,6 +829,7 @@ export interface FileRoutesById {
   '/_app/account/me': typeof AppAccountMeRoute
   '/_app/account/security': typeof AppAccountSecurityRoute
   '/_app/admin/audit': typeof AppAdminAuditRoute
+  '/_app/admin/notice': typeof AppAdminNoticeRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/new/$slug': typeof AppNewSlugRoute
   '/_app/org/$slug': typeof AppOrgSlugRouteWithChildren
@@ -917,6 +926,7 @@ export interface FileRouteTypes {
     | '/account/me'
     | '/account/security'
     | '/admin/audit'
+    | '/admin/notice'
     | '/admin/users'
     | '/new/$slug'
     | '/org/$slug'
@@ -1011,6 +1021,7 @@ export interface FileRouteTypes {
     | '/account/me'
     | '/account/security'
     | '/admin/audit'
+    | '/admin/notice'
     | '/admin/users'
     | '/new/$slug'
     | '/admin'
@@ -1102,6 +1113,7 @@ export interface FileRouteTypes {
     | '/_app/account/me'
     | '/_app/account/security'
     | '/_app/admin/audit'
+    | '/_app/admin/notice'
     | '/_app/admin/users'
     | '/_app/new/$slug'
     | '/_app/org/$slug'
@@ -1297,6 +1309,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/audit'
       fullPath: '/admin/audit'
       preLoaderRoute: typeof AppAdminAuditRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/notice': {
+      id: '/_app/admin/notice'
+      path: '/admin/notice'
+      fullPath: '/admin/notice'
+      preLoaderRoute: typeof AppAdminNoticeRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/users': {
@@ -2053,6 +2072,7 @@ interface AppRouteChildren {
   AppAccountMeRoute: typeof AppAccountMeRoute
   AppAccountSecurityRoute: typeof AppAccountSecurityRoute
   AppAdminAuditRoute: typeof AppAdminAuditRoute
+  AppAdminNoticeRoute: typeof AppAdminNoticeRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppNewSlugRoute: typeof AppNewSlugRoute
   AppOrgSlugRoute: typeof AppOrgSlugRouteWithChildren
@@ -2069,6 +2089,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAccountMeRoute: AppAccountMeRoute,
   AppAccountSecurityRoute: AppAccountSecurityRoute,
   AppAdminAuditRoute: AppAdminAuditRoute,
+  AppAdminNoticeRoute: AppAdminNoticeRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppNewSlugRoute: AppNewSlugRoute,
   AppOrgSlugRoute: AppOrgSlugRouteWithChildren,

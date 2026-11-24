@@ -481,6 +481,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * The instance-wide notice, if an instance admin posted one
+         * @description Shown to everyone signed in, as a band above the header (downtime, say).
+         */
+        get: operations["getNotice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/notice": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Post (or replace) the instance-wide notice; instance admins only */
+        put: operations["setNotice"];
+        post?: never;
+        /** Take the instance-wide notice down; instance admins only */
+        delete: operations["deleteNotice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/overview": {
         parameters: {
             query?: never;
@@ -2010,6 +2048,24 @@ export interface components {
             files: components["schemas"]["EdgeFunctionFile"][];
             /** @description Files that can't be shown as text. */
             other_files: string[];
+        };
+        /** @enum {string} */
+        NoticeType: "info" | "warning" | "critical";
+        GlobalNoticeInput: {
+            type: components["schemas"]["NoticeType"];
+            /** @description Up to 256 characters; runs of whitespace (line breaks too) become one space. */
+            message: string;
+        };
+        GlobalNotice: {
+            type: components["schemas"]["NoticeType"];
+            message: string;
+            /** Format: date-time */
+            posted_at: string;
+            /** @description The instance admin's username. */
+            posted_by: string;
+        };
+        NoticeState: {
+            notice?: components["schemas"]["GlobalNotice"] | null;
         };
         StorageConfig: {
             /**
@@ -3586,6 +3642,71 @@ export interface operations {
                         sent_to: string;
                     };
                 };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The notice, or none. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["NoticeState"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["GlobalNoticeInput"];
+            };
+        };
+        responses: {
+            /** @description Posted. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["GlobalNotice"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Taken down (or there was none). */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
             default: components["responses"]["Error"];
         };
