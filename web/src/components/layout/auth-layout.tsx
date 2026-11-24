@@ -10,10 +10,12 @@ import { AppIcon } from '@/components/icons'
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col bg-alternative">
-      <header className="flex h-16 shrink-0 items-center px-8">
-        <Link to="/" className="flex items-center gap-1.5 rounded-sm text-primary focus-ring">
-          <AppIcon size={24} />
-          <span className="font-heading text-base font-semibold tracking-tight text-foreground">Supermixer</span>
+      {/* The logo exactly where the homepage's and the app's navbar have it
+          (their 1px bottom border included, here transparent). */}
+      <header className="flex h-12 shrink-0 items-center border-b border-transparent pr-3 pl-4">
+        <Link to="/" className="flex shrink-0 items-center gap-1.5 rounded-sm text-primary focus-ring">
+          <AppIcon size={22} />
+          <span className="font-heading text-[15px] font-semibold tracking-tight text-foreground">Supermixer</span>
         </Link>
       </header>
       <div className="flex flex-1">
