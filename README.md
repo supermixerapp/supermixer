@@ -2,7 +2,24 @@
 
 An on-premise management plane for self-hosted Supabase: organizations, projects, users and access control, in a console that looks and works like supabase.com/dashboard.
 
-**Status: Stage 1** (identity, organizations, projects, access control). You can sign in, create organizations, invite a team with Supabase's roles, and register running self-hosted Supabase stacks as projects with live health checks. Pages for later stages show which stage brings them.
+## What it does
+
+After signing in you land on your organization's projects (or the list of organizations, if you're in several). From there, much as on supabase.com/dashboard:
+
+- **Organizations:** projects (as cards or a list) with live health, a team with Supabase's roles (Owner, Administrator, Developer, Read-only, or chosen projects only), invitations, usage, an audit log, and settings: General, Security (require two-factor sign-in), SSO and Webhooks.
+- **Projects:** connect a self-hosted Supabase stack that's already running, or have Supermixer create one ([Creating stacks](#creating-stacks)). Each project has:
+  - Table Editor and SQL Editor, with saved snippets; Read-only members run SQL read-only
+  - Database: tables, functions, triggers, types, extensions, indexes, publications, policies, roles, column privileges, a schema visualizer, migrations, settings and backups
+  - Authentication: users and policies, plus the Auth settings of created stacks (providers, emails, sessions, rate limits, MFA, URLs, attack protection, hooks)
+  - Storage: buckets and files, policies, and for created stacks its settings and S3 connection
+  - Edge Functions (deployed and edited on created stacks), and the Realtime inspector and policies
+  - Advisors (Supabase's security and performance lints, query performance, and Changes: snapshots of what could keep an intruder in), Observability reports and Logs
+  - Integrations: Data API docs, GraphQL, Cron, Queues, Vault, database webhooks and foreign data wrappers
+  - Settings: general, infrastructure, API keys (secret ones shown only to roles allowed to see them), JWT keys and log drains
+- **Your account:** name, email and password, sessions, two-factor sign-in, connected sign-in providers, access tokens, light or dark appearance, and your own audit log.
+- **Instance admins:** an Instance console ([Instance administration](#instance-administration)).
+
+Organization **OAuth Apps** and **Integrations** (such as GitHub) say "Coming soon".
 
 ## Requirements
 
@@ -34,13 +51,18 @@ Then use **New project** in Supermixer. **Fill from Supabase .env** fills the fo
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
-| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), a Read-only member who can't see keys or change settings, the audit log, a webhook receiving signed events, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
+| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
 | `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
 | `make app` | Runs Supermixer and its database in containers, reading `.env.toml` |
 | `make app-stacks` | Like `make app`, but the container may create Supabase stacks (see below) |
 | `make stack-check-logs` | Checks the dev stack's Logs pages get its own logs and no other container's |
+| `make db` / `make db-down` | Start Supermixer's own Postgres (port 5433), or stop it along with Mailpit and Dex (data is kept) |
+| `make mail` | Mailpit, for trying email ([Email](#email)) |
+| `make sso` | Dex, for trying single sign-on ([Single sign-on](#single-sign-on)) |
+| `make env` | Creates `.env.toml` with a fresh encryption key, if it doesn't exist (`make setup` does this too) |
+| `make image` / `make helm-lint` | Build the container image; check the Helm chart ([Kubernetes](#kubernetes)) |
 
 ## Configuration
 
@@ -76,6 +98,17 @@ For development, `make mail` runs [Mailpit](https://mailpit.axllent.org), which 
 ## Passwords
 
 New passwords follow NIST SP 800-63B-4: at least 15 characters for an account that signs in with a password alone, or 8 with two-factor sign-in on; not one of the UK NCSC's 100,000 most used passwords (bundled, so this works offline) or the username. Characters are counted after Unicode normalization (NFKC). An account without two-factor sign-in whose password is shorter than 15 characters is asked to choose a new one at its next sign-in.
+
+Two-factor sign-in uses an authenticator app's codes, with recovery codes as a fallback; each person turns it on under **Account › Security**. An organization's Owners can require it of every member under **Organization Settings › Security**.
+
+## Instance administration
+
+The first account, `admin`, is an instance admin, and can make others instance admins. They get **Instance** in the account menu:
+
+- **Overview:** counts of users, organizations and projects; the server's settings; audit log drains and their backlog; and a test email.
+- **Users:** create accounts, reset passwords or two-factor sign-in, sign accounts out, disable them, and make instance admins.
+- **Global notice:** a message for everyone signed in, such as planned downtime, shown as a band above the header on every page. Choose Info, Warning or Critical and write up to 256 characters; `**bold**` and `[links](https://example.com)` work, linking to `https://`, `http://`, `mailto:` or a page in Supermixer such as `/account/security`. It reaches open pages within a minute and stays until an instance admin takes it down.
+- **Audit log:** everything recorded across the instance.
 
 ## Single sign-on
 
@@ -118,6 +151,15 @@ curl -X POST https://supermixer.example.com/v1/projects/<ref>/database/query \
 ## Creating stacks
 
 Besides connecting to Supabase stacks that already run, Supermixer can create them: **New project › Create a new stack**. It runs Supabase's official compose files (bundled at a pinned commit, see `backend/internal/provision/template/VERSION`) with the `docker compose` CLI, generates every secret, gives each stack its own ports, and can pause, restart and delete them from **Settings › Infrastructure**.
+
+Because Supermixer holds a created stack's files, it can also change them, where for a connected stack you would edit its `.env` and compose files yourself:
+
+- **Supabase upgrades** to the version bundled with Supermixer (**Settings › Infrastructure**), rolled back if they fail.
+- **Edge Functions:** deploy and edit functions, keep earlier versions to restore, and set their secrets.
+- **Auth settings** (**Authentication › Configuration**) and **Storage settings** (upload size limit, image transformations), applied by restarting just that service.
+- **S3 connection** (**Storage › S3 Connection**): the endpoint, region and keys for S3 clients.
+- **Key rotation** (**Settings › API Keys**): new API keys, JWT secret or signing key, S3 keys or the Edge Functions' database password. When someone who could see a project's keys leaves or loses access, its admins are told to rotate them; the notice goes once the secret key, the JWT secret and the S3 keys are all new.
+- **Backups and log drains** (**Database › Backups**, **Settings › Log Drains**).
 
 It is off by default, because control of the Docker daemon is root-equivalent on the host. To turn it on:
 
@@ -171,15 +213,17 @@ Counters are per replica; the database-backed gauges are the same on every repli
 
 ### Audit log drains
 
-`[[audit.drains]]` sends each audit log entry elsewhere as it's written: `type = "http"` POSTs JSON arrays of entries to a URL (with any `headers`, such as Authorization), and `type = "file"` appends JSON lines for a log shipper. Delivery is in order and at least once: each drain's position is kept in the database, so restarts, failovers and outages of the receiver resume where they stopped (retrying with backoff, up to 5 minutes apart), and receivers can de-duplicate on `id`. A new drain starts with entries written after it's added. **Admin › Overview** shows each drain's backlog and last error.
+`[[audit.drains]]` sends each audit log entry elsewhere as it's written: `type = "http"` POSTs JSON arrays of entries to a URL (with any `headers`, such as Authorization), and `type = "file"` appends JSON lines for a log shipper. Delivery is in order and at least once: each drain's position is kept in the database, so restarts, failovers and outages of the receiver resume where they stopped (retrying with backoff, up to 5 minutes apart), and receivers can de-duplicate on `id`. A new drain starts with entries written after it's added. **Instance › Overview** shows each drain's backlog and last error.
 
 ## Layout
 
 | Path | Contents |
 |---|---|
 | `api/openapi.yaml` | REST contract. Go handlers and the TypeScript client are generated from it. |
-| `backend/` | Go server: chi, pgx, sqlc, goose. Its parts: `internal/config` (settings), `internal/store` (database), `internal/theme` (brand palette), `internal/httpapi` (HTTP). |
-| `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. |
-| `deploy/` | Docker Compose for Supermixer and its database. |
+| `backend/` | Go server: chi, pgx, sqlc, goose. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config` and `bootstrap` (the first admin). |
+| `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. End-to-end tests and their screenshots are in `web/e2e/`. |
+| `deploy/` | Docker Compose for Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`) and Dex (`dev-sso/`). |
 
-Supermixer adapts design tokens and components from Supabase (Apache-2.0). See [NOTICE](NOTICE).
+## License
+
+Supermixer is released under the [Apache License 2.0](LICENSE). It adapts design tokens and components from Supabase, also Apache-2.0, and bundles a few other files under their own licences; see [NOTICE](NOTICE). Supabase is a trademark of Supabase, Inc.; Supermixer is not affiliated with or endorsed by Supabase.
