@@ -34,6 +34,8 @@ type handlers struct {
 	pending *sync.WaitGroup
 	// sso are the single sign-on providers, by id.
 	sso map[string]*ssoProvider
+	// auditNudge wakes the audit drains when an entry is written.
+	auditNudge chan struct{}
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)

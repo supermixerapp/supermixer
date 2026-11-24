@@ -22,6 +22,7 @@ import (
 	"supermixer/internal/auth"
 	"supermixer/internal/config"
 	"supermixer/internal/mail"
+	"supermixer/internal/metrics"
 	"supermixer/internal/provision"
 	"supermixer/internal/secrets"
 	"supermixer/internal/stack"
@@ -53,6 +54,11 @@ type Deps struct {
 	// Pending counts work to finish before exiting, such as emails being
 	// sent in the background; the caller waits for it after shutting down.
 	Pending *sync.WaitGroup
+	// Metrics records Prometheus metrics; nil records nothing.
+	Metrics *metrics.Metrics
+	// LeaderRetry is how often an instance that isn't doing the background
+	// work checks whether it should (10s if zero).
+	LeaderRetry time.Duration
 	// Background, if set, runs periodic work (recovering stuck stack
 	// operations) until it's cancelled.
 	Background context.Context
@@ -67,6 +73,7 @@ func New(deps Deps) http.Handler {
 		r.Use(middleware.RealIP)
 	}
 	r.Use(requestLogger(deps.Logger))
+	r.Use(requestMetrics(deps.Metrics))
 	r.Use(middleware.Recoverer)
 
 	pc := deps.Config.Projects
@@ -88,6 +95,7 @@ func New(deps Deps) http.Handler {
 		resetMail:  auth.NewLimiter(5, time.Hour),  // per account
 		pending:    deps.Pending,
 		sso:        newSSOProviders(deps.Config.SSO),
+		auditNudge: make(chan struct{}, 1),
 	}
 	if h.pending == nil {
 		h.pending = &sync.WaitGroup{}
@@ -111,11 +119,12 @@ func New(deps Deps) http.Handler {
 	}
 	if deps.Store != nil {
 		if deps.Background != nil {
-			go h.watchStacks(deps.Background)
-			go h.backupLoop(deps.Background)
-			if h.s3 != nil {
-				go h.uploadLoop(deps.Background)
+			// With several replicas, one does the background work.
+			retry := deps.LeaderRetry
+			if retry == 0 {
+				retry = 10 * time.Second
 			}
+			go deps.Store.RunAsLeader(deps.Background, deps.Logger, retry, h.backgroundWork)
 		} else {
 			h.recoverStacks(context.Background(), time.Now().Add(-stackStale))
 		}
@@ -238,6 +247,44 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 				slog.Duration("duration", time.Since(start)),
 				slog.String("request_id", middleware.GetReqID(r.Context())),
 			)
+		})
+	}
+}
+
+// backgroundWork is what the leader instance runs, until ctx ends.
+func (h *handlers) backgroundWork(ctx context.Context) {
+	var wg sync.WaitGroup
+	run := func(f func(context.Context)) {
+		wg.Add(1)
+		go func() { defer wg.Done(); f(ctx) }()
+	}
+	run(h.watchStacks)
+	run(h.backupLoop)
+	if h.s3 != nil {
+		run(h.uploadLoop)
+	}
+	run(h.drainLoop)
+	wg.Wait()
+}
+
+// requestMetrics counts requests by their route pattern.
+func requestMetrics(m *metrics.Metrics) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if m == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			start := time.Now()
+			ww := middleware.NewWrapResponseWriter(w, r.ProtoMajor)
+			next.ServeHTTP(ww, r)
+			route := ""
+			if rc := chi.RouteContext(r.Context()); rc != nil {
+				route = rc.RoutePattern()
+			}
+			if route == "" || route == "/*" {
+				route = "static" // the web app and its files
+			}
+			m.Request(r.Method, route, ww.Status(), time.Since(start))
 		})
 	}
 }

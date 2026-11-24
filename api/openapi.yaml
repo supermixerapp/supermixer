@@ -2369,7 +2369,7 @@ components:
         codes: { type: array, items: { type: string }, description: "Single-use; each signs in once in place of a code." }
     AdminOverview:
       type: object
-      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email, sso]
+      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email, sso, audit_drains]
       properties:
         version: { type: string }
         users: { type: integer }
@@ -2414,6 +2414,26 @@ components:
             enabled: { type: boolean }
             from: { type: string, nullable: true }
             server: { type: string, nullable: true, description: "host:port, and how it's secured." }
+        metrics_listen: { type: string, nullable: true, description: "Where Prometheus metrics are served ([metrics] listen); null if off." }
+        audit_drains:
+          type: array
+          items: { $ref: '#/components/schemas/AuditDrainStatus' }
+    AuditDrainStatus:
+      type: object
+      description: Where audit log entries are sent ([[audit.drains]]), and how that's going.
+      required: [id, type, target, state, pending, last_error]
+      properties:
+        id: { type: string }
+        type: { type: string, enum: [http, file] }
+        target: { type: string, description: "The URL (without its query) or file." }
+        state:
+          type: string
+          enum: [running, not_started, unknown]
+          description: "not_started: no instance has started it yet (just added, or its database row couldn't be made); unknown: its status couldn't be read."
+        pending: { type: integer, format: int64, nullable: true, description: Entries not yet delivered; null if unknown. }
+        last_success_at: { type: string, format: date-time, nullable: true }
+        last_error: { type: string, description: "Why the last delivery failed; empty once one succeeds." }
+        last_error_at: { type: string, format: date-time, nullable: true }
     Session:
       type: object
       required: [id, created_at, last_seen_at, expires_at, ip, user_agent, current]

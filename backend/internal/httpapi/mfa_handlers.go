@@ -166,6 +166,7 @@ func (h *handlers) VerifyMfa(ctx context.Context, req api.VerifyMfaRequestObject
 	method, err := h.checkCode(ctx, q, u, req.Body.Code)
 	if err != nil {
 		if errors.Is(err, errWrongCode) {
+			h.deps.Metrics.SignIn("mfa", false)
 			reqInfo(ctx).Principal = &principal{User: u}
 			h.audit(ctx, nil, auditEntry{Action: "user.mfa_failed", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username})
 		}
@@ -179,6 +180,7 @@ func (h *handlers) VerifyMfa(ctx context.Context, req api.VerifyMfaRequestObject
 		return nil, err
 	}
 	h.limiter.Reset(ipKey)
+	h.deps.Metrics.SignIn("mfa", true)
 	cookies, err := h.startSession(ctx, q, u.ID)
 	if err != nil {
 		return nil, err

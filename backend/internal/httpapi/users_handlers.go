@@ -361,6 +361,10 @@ func (h *handlers) GetAdminOverview(ctx context.Context, _ api.GetAdminOverviewR
 		server := fmt.Sprintf("%s:%d (%s)", e.SMTPHost, e.SMTPPort, map[string]string{"starttls": "STARTTLS", "tls": "TLS", "none": "unencrypted"}[e.Security])
 		out.Email.Enabled, out.Email.From, out.Email.Server = true, &from, &server
 	}
+	if l := h.deps.Config.Metrics.Listen; l != "" {
+		out.MetricsListen = &l
+	}
+	out.AuditDrains = h.drainStatuses(ctx)
 	return out, nil
 }
 

@@ -18,6 +18,11 @@ type Querier interface {
 	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
 	AddRecoveryCode(ctx context.Context, arg AddRecoveryCodeParams) error
 	AddRotationAdvisory(ctx context.Context, arg AddRotationAdvisoryParams) error
+	AdvanceAuditDrain(ctx context.Context, arg AdvanceAuditDrainParams) error
+	AuditDrainFailed(ctx context.Context, arg AuditDrainFailedParams) error
+	AuditDrainLag(ctx context.Context, arg AuditDrainLagParams) (int64, error)
+	// Entries after the position, from transactions that have all finished.
+	AuditLogsAfter(ctx context.Context, arg AuditLogsAfterParams) ([]AuditLogsAfterRow, error)
 	ChallengeUsed(ctx context.Context, id uuid.UUID) (bool, error)
 	// Those recorded before a time (a rotation's start: later ones may concern its new keys).
 	ClearRotationAdvisories(ctx context.Context, arg ClearRotationAdvisoriesParams) (int64, error)
@@ -59,14 +64,18 @@ type Querier interface {
 	DisableMFA(ctx context.Context, id uuid.UUID) error
 	// Confirms the pending secret, remembering the step its first code used.
 	EnableTOTP(ctx context.Context, arg EnableTOTPParams) (User, error)
+	// A drain seen for the first time starts after the entries already there.
+	EnsureAuditDrain(ctx context.Context, id string) error
 	// Backups still running after the longest a backup may take: a restart (of
 	// this server or another) cut them short. Returns them to remove their files.
 	FailStaleBackups(ctx context.Context, before time.Time) ([]FailStaleBackupsRow, error)
+	FailedBackupsLastDay(ctx context.Context) ([]FailedBackupsLastDayRow, error)
 	FinishBackup(ctx context.Context, arg FinishBackupParams) (Backup, error)
 	// A token that works: not expired, and its owner not disabled.
 	GetActiveAccessToken(ctx context.Context, tokenHash []byte) (GetActiveAccessTokenRow, error)
 	// The session for a token, if it is unexpired and its user is enabled.
 	GetActiveSession(ctx context.Context, tokenHash []byte) (GetActiveSessionRow, error)
+	GetAuditDrain(ctx context.Context, id string) (AuditDrain, error)
 	GetBackup(ctx context.Context, arg GetBackupParams) (Backup, error)
 	GetDBSnapshot(ctx context.Context, arg GetDBSnapshotParams) (DbSnapshot, error)
 	GetIdentity(ctx context.Context, arg GetIdentityParams) (UserIdentity, error)
@@ -83,6 +92,7 @@ type Querier interface {
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InstanceCounts(ctx context.Context) (InstanceCountsRow, error)
+	LastCompletedBackups(ctx context.Context) ([]LastCompletedBackupsRow, error)
 	// When the stack's last scheduled backup started (failed ones count, so a
 	// failing stack isn't retried every minute).
 	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
@@ -147,6 +157,7 @@ type Querier interface {
 	SetTOTPPending(ctx context.Context, arg SetTOTPPendingParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
+	StacksByStatus(ctx context.Context) ([]StacksByStatusRow, error)
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
 	// Keeps the last address the provider vouched for.
 	TouchIdentity(ctx context.Context, arg TouchIdentityParams) error

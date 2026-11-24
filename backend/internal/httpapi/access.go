@@ -224,6 +224,11 @@ func (h *handlers) audit(ctx context.Context, q *db.Queries, e auditEntry) {
 	if err := q.InsertAuditLog(ctx, params); err != nil {
 		h.deps.Logger.ErrorContext(ctx, "writing audit log", "action", e.Action, "err", err)
 	}
+	// Wake the drains (on this instance; others poll).
+	select {
+	case h.auditNudge <- struct{}{}:
+	default:
+	}
 }
 
 func ptr[T any](v T) *T { return &v }

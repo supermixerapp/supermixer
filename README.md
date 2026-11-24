@@ -122,6 +122,44 @@ public_host = "supabase.example.internal"   # the host name in stacks' URLs
 - Each stack takes one port from each of `api_ports`, `db_ports` and `pooler_ports`; widen them for more stacks.
 - To update the bundled Supabase version, run `backend/internal/provision/sync-template.sh <commit>`, then the tests, and create a stack before committing.
 
+## Running in production
+
+### Several replicas
+
+Supermixer keeps everything in its PostgreSQL database (sessions, sign-in challenges, audit log, settings), so replicas behind a load balancer are interchangeable; no sticky sessions are needed. Give every replica the same settings, above all `security.encryption_key`. Background work (scheduled backups, S3 uploads, audit log drains, recovering interrupted stack operations) runs on one replica at a time, which holds a Postgres advisory lock on its own connection; if it stops or loses that connection, another takes over within about 10 seconds (about half a minute if its machine dies outright, through TCP keepalives). The lock needs a session-level connection: point `database.url` at Postgres directly or at a pooler in session mode, not PgBouncer's transaction mode.
+
+Two things are per replica: the sign-in rate limits (so N replicas allow up to N times as many attempts; put a rate limit in front as well if that matters), and creating stacks, which runs `docker compose` on the replica's own Docker host, so with provisioning on, run one replica.
+
+### Kubernetes
+
+`deploy/helm/supermixer` is a Helm chart: two replicas by default, the settings in a Secret, readiness on `/api/v1/health`, a PodDisruptionBudget, an optional Ingress and a ServiceMonitor for the Prometheus Operator. Build the image (`make image IMAGE=registry.example.com/supermixer`) and push it, then
+
+```sh
+helm install supermixer deploy/helm/supermixer \
+  --set image.repository=registry.example.com/supermixer --set-file config=prod.env.toml
+```
+
+Provisioning isn't supported there; register existing stacks instead.
+
+### Metrics
+
+With `[metrics] listen = "127.0.0.1:9100"` (or `":9100"` in a pod), Prometheus metrics are at `/metrics` on that address, which isn't authenticated:
+
+| Metric | |
+|---|---|
+| `supermixer_http_requests_total`, `supermixer_http_request_duration_seconds` | by method, route pattern and status |
+| `supermixer_sign_ins_total` | by method (password, mfa, sso) and result |
+| `supermixer_emails_total` | sent or failed |
+| `supermixer_audit_drain_entries_total`, `_errors_total`, `_lag_entries` | per drain |
+| `supermixer_users`, `_organizations`, `_projects`, `_stacks` | read from the database at each scrape |
+| `supermixer_backup_last_success_timestamp_seconds`, `supermixer_backups_failed_last_day` | per stack, for alerts like `time() - supermixer_backup_last_success_timestamp_seconds > 2 * 86400` |
+
+Counters are per replica; the database-backed gauges are the same on every replica, so use `max` rather than `sum` across them.
+
+### Audit log drains
+
+`[[audit.drains]]` sends each audit log entry elsewhere as it's written: `type = "http"` POSTs JSON arrays of entries to a URL (with any `headers`, such as Authorization), and `type = "file"` appends JSON lines for a log shipper. Delivery is in order and at least once: each drain's position is kept in the database, so restarts, failovers and outages of the receiver resume where they stopped (retrying with backoff, up to 5 minutes apart), and receivers can de-duplicate on `id`. A new drain starts with entries written after it's added. **Admin › Overview** shows each drain's backlog and last error.
+
 ## Layout
 
 | Path | Contents |

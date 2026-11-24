@@ -233,3 +233,62 @@ access_key_id = "AKIA"`)
 		}
 	}
 }
+
+func TestOpsSettings(t *testing.T) {
+	dir := t.TempDir()
+	c, err := Load(write(t, minimal+`
+[metrics]
+listen = "127.0.0.1:9100"
+[[audit.drains]]
+id = "siem"
+type = "http"
+url = "https://siem.example.com/in"
+headers = { Authorization = "Bearer x" }
+[[audit.drains]]
+id = "file"
+type = "file"
+path = "`+filepath.Join(dir, "audit.jsonl")+`"
+`), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.Metrics.Listen != "127.0.0.1:9100" || len(c.Audit.Drains) != 2 || c.Audit.Drains[0].Headers["Authorization"] != "Bearer x" {
+		t.Fatalf("loaded %+v %+v", c.Metrics, c.Audit)
+	}
+	_, err = Load(write(t, minimal+`
+[server]
+listen = ":8080"
+[metrics]
+listen = "9100"
+[[audit.drains]]
+id = "Bad Id"
+type = "http"
+url = "siem.example.com"
+[[audit.drains]]
+id = "x"
+type = "file"
+path = "relative.jsonl"
+[[audit.drains]]
+id = "x"
+type = "kafka"
+[[audit.drains]]
+id = "y"
+type = "file"
+path = "/no/such/folder/audit.jsonl"
+`), true)
+	for _, want := range []string{"metrics.listen", "audit.drains[0].id", "audit.drains[0].url", "audit.drains[1].path must be an absolute",
+		"audit.drains[2].id \"x\" is used twice", "audit.drains[2].type", "audit.drains[3].path's folder"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not mention %s: %v", want, err)
+		}
+	}
+}
+
+func TestMetricsPortClash(t *testing.T) {
+	for listen, clash := range map[string]bool{":8080": true, "127.0.0.1:8080": true, "127.0.0.1:9100": false} {
+		_, err := Load(write(t, minimal+"[server]\nlisten = \":8080\"\n[metrics]\nlisten = \""+listen+"\"\n"), true)
+		if clash != (err != nil && strings.Contains(err.Error(), "different port")) {
+			t.Errorf("metrics.listen %s: %v", listen, err)
+		}
+	}
+}

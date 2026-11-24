@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/mail"
 	"net/url"
 	"os"
@@ -41,6 +42,35 @@ type Config struct {
 	Provisioning   Provisioning   `toml:"provisioning"`
 	Email          Email          `toml:"email"`
 	SSO            SSO            `toml:"sso"`
+	Metrics        Metrics        `toml:"metrics"`
+	Audit          Audit          `toml:"audit"`
+}
+
+// Metrics serves Prometheus metrics on their own address.
+type Metrics struct {
+	// Listen is where /metrics is served, like "127.0.0.1:9100"; off while
+	// empty. Keep it off the public network: it isn't authenticated.
+	Listen string `toml:"listen"`
+}
+
+// Audit is where audit log entries go besides Supermixer's database.
+type Audit struct {
+	Drains []AuditDrain `toml:"drains"`
+}
+
+// AuditDrain sends audit log entries somewhere else as they're written:
+// a SIEM, a log pipeline, a file a shipper reads. Delivery is at least
+// once, in order, resuming where it stopped after restarts and outages.
+type AuditDrain struct {
+	// ID names the drain (a-z, 0-9, -); its position is kept under it.
+	ID string `toml:"id"`
+	// Type is http (POST a JSON array of entries) or file (append JSON
+	// lines).
+	Type string `toml:"type"`
+	URL  string `toml:"url"`
+	// Headers are sent with each POST, like Authorization.
+	Headers map[string]string `toml:"headers"`
+	Path    string            `toml:"path"`
 }
 
 // SSO is signing in through an OpenID Connect identity provider (Okta,
@@ -476,6 +506,41 @@ func (c *Config) validate() error {
 		}
 		for j, d := range p.AllowedDomains {
 			p.AllowedDomains[j] = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(d), "@"))
+		}
+	}
+	if c.Metrics.Listen != "" {
+		mh, mp, err := net.SplitHostPort(c.Metrics.Listen)
+		if err != nil {
+			fail("metrics.listen must be host:port, like 127.0.0.1:9100, got %q", c.Metrics.Listen)
+		} else if sh, sp, err := net.SplitHostPort(c.Server.Listen); err == nil && sp == mp {
+			wildcard := func(h string) bool { return h == "" || h == "0.0.0.0" || h == "::" }
+			if mh == sh || wildcard(mh) || wildcard(sh) {
+				fail("metrics.listen (%s) must be a different port from server.listen (%s)", c.Metrics.Listen, c.Server.Listen)
+			}
+		}
+	}
+	drains := map[string]bool{}
+	for i, d := range c.Audit.Drains {
+		where := fmt.Sprintf("audit.drains[%d]", i)
+		if !ssoIDPattern.MatchString(d.ID) {
+			fail("%s.id must be 1-31 of a-z, 0-9 and -, got %q", where, d.ID)
+		} else if drains[d.ID] {
+			fail("%s.id %q is used twice", where, d.ID)
+		}
+		drains[d.ID] = true
+		switch d.Type {
+		case "http":
+			if u, err := url.Parse(d.URL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+				fail("%s.url must be an http(s) URL, got %q", where, d.URL)
+			}
+		case "file":
+			if !filepath.IsAbs(d.Path) {
+				fail("%s.path must be an absolute path, got %q", where, d.Path)
+			} else if st, err := os.Stat(filepath.Dir(d.Path)); err != nil || !st.IsDir() {
+				fail("%s.path's folder %s must exist", where, filepath.Dir(d.Path))
+			}
+		default:
+			fail("%s.type must be http or file, got %q", where, d.Type)
 		}
 	}
 	if e := c.Email; e.Enabled() {

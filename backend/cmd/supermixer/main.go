@@ -8,6 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,6 +19,7 @@ import (
 	"supermixer/internal/bootstrap"
 	"supermixer/internal/config"
 	"supermixer/internal/httpapi"
+	"supermixer/internal/metrics"
 	"supermixer/internal/secrets"
 	"supermixer/internal/stack"
 	"supermixer/internal/store"
@@ -94,6 +96,28 @@ func run(configFile string) error {
 	pools := stack.NewPools(cfg.Projects.DBPoolSize) // connections to projects' databases
 	defer pools.Close()
 
+	// Prometheus metrics, on their own address.
+	var m *metrics.Metrics
+	var metricsSrv *http.Server
+	if cfg.Metrics.Listen != "" {
+		m = metrics.New(httpapi.MetricsState(st))
+		mux := http.NewServeMux()
+		mux.Handle("GET /metrics", m.Handler())
+		metricsSrv = &http.Server{Addr: cfg.Metrics.Listen, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		// Bound now, so a port in use stops start-up instead of leaving
+		// Supermixer running without metrics.
+		ln, err := net.Listen("tcp", cfg.Metrics.Listen)
+		if err != nil {
+			return fmt.Errorf("metrics.listen: %w", err)
+		}
+		go func() {
+			logger.Info("metrics listening", "addr", cfg.Metrics.Listen)
+			if err := metricsSrv.Serve(ln); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				logger.Error("metrics server stopped", "err", err)
+			}
+		}()
+	}
+
 	var pending sync.WaitGroup // emails still being sent, and the like
 	srv := &http.Server{
 		Addr: cfg.Server.Listen,
@@ -108,6 +132,7 @@ func run(configFile string) error {
 			Pools:      pools,
 			Background: ctx,
 			Pending:    &pending,
+			Metrics:    m,
 		}),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
@@ -129,6 +154,9 @@ func run(configFile string) error {
 		defer cancel()
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			return err
+		}
+		if metricsSrv != nil {
+			_ = metricsSrv.Shutdown(shutdownCtx)
 		}
 		done := make(chan struct{})
 		go func() { pending.Wait(); close(done) }()

@@ -180,6 +180,9 @@ func (h *handlers) ssoConnect(w http.ResponseWriter, r *http.Request) {
 // ssoFail goes back to the sign-in page (or Account › Security when
 // connecting) with a message.
 func (h *handlers) ssoFail(w http.ResponseWriter, r *http.Request, page, msg string) {
+	if page == "" { // a sign-in, not connecting a provider
+		h.deps.Metrics.SignIn("sso", false)
+	}
 	http.SetCookie(w, &http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true})
 	if page == "" {
 		page = "/sign-in"
@@ -375,6 +378,7 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 			h.ssoFail(w, r, "", "Something went wrong; try again")
 			return
 		}
+		h.deps.Metrics.SignIn("sso", true) // the code step counts as mfa
 		http.SetCookie(w, &http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true})
 		// The challenge stands in for the first factor: in a cookie only
 		// POST /auth/mfa gets, not the URL (history, proxy logs).
@@ -390,6 +394,7 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 		h.ssoFail(w, r, "", "Something went wrong; try again")
 		return
 	}
+	h.deps.Metrics.SignIn("sso", true)
 	reqInfo(ctx).Principal = &principal{User: u}
 	h.audit(ctx, nil, auditEntry{Action: "user.signed_in", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"sso": p.cfg.ID}})

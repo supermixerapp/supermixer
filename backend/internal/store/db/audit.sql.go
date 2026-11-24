@@ -50,7 +50,7 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 }
 
 const listAuditLogs = `-- name: ListAuditLogs :many
-SELECT id, organization_id, project_id, actor_id, actor_username, action, target_type, target_id, target_name, metadata, ip, user_agent, created_at FROM audit_logs
+SELECT id, organization_id, project_id, actor_id, actor_username, action, target_type, target_id, target_name, metadata, ip, user_agent, created_at, txid FROM audit_logs
 WHERE organization_id = $1
   AND ($2::text IS NULL OR action LIKE $2 || '%')
   AND ($3::uuid IS NULL OR actor_id = $3)
@@ -99,6 +99,7 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([
 			&i.Ip,
 			&i.UserAgent,
 			&i.CreatedAt,
+			&i.Txid,
 		); err != nil {
 			return nil, err
 		}
@@ -111,7 +112,7 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([
 }
 
 const listInstanceAuditLogs = `-- name: ListInstanceAuditLogs :many
-SELECT id, organization_id, project_id, actor_id, actor_username, action, target_type, target_id, target_name, metadata, ip, user_agent, created_at FROM audit_logs
+SELECT id, organization_id, project_id, actor_id, actor_username, action, target_type, target_id, target_name, metadata, ip, user_agent, created_at, txid FROM audit_logs
 WHERE organization_id IS NULL
   AND ($1::text IS NULL OR action LIKE $1 || '%')
   AND ($2::bigint IS NULL OR id < $2)
@@ -149,6 +150,7 @@ func (q *Queries) ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAud
 			&i.Ip,
 			&i.UserAgent,
 			&i.CreatedAt,
+			&i.Txid,
 		); err != nil {
 			return nil, err
 		}

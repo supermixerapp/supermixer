@@ -116,6 +116,7 @@ func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api
 	}
 
 	fail := func() (api.SignInResponseObject, error) {
+		h.deps.Metrics.SignIn("password", false)
 		return nil, newError(http.StatusUnauthorized, "Invalid username or password")
 	}
 
@@ -131,6 +132,7 @@ func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api
 	}
 	h.limiter.Reset(ipKey)
 	h.limiter.Reset(userKey)
+	h.deps.Metrics.SignIn("password", true)
 
 	// Two-factor sign-in: no session until a code from the app.
 	if hasMFA(user) {

@@ -80,7 +80,9 @@ func (h *handlers) sendEmail(ctx context.Context, to, subject string, c emailCon
 		return fmt.Errorf("email is off (email.smtp_host)")
 	}
 	text, html := h.renderEmail(c)
-	return h.mailer.Send(ctx, mail.Message{To: []string{to}, Subject: subject, Text: text, HTML: html})
+	err := h.mailer.Send(ctx, mail.Message{To: []string{to}, Subject: subject, Text: text, HTML: html})
+	h.deps.Metrics.Email(err == nil)
+	return err
 }
 
 // sendLater sends in the background (a request doesn't wait for, or

@@ -286,6 +286,15 @@ type AccessToken struct {
 	LastUsedIp string     `json:"last_used_ip"`
 }
 
+type AuditDrain struct {
+	ID            string     `json:"id"`
+	LastTxid      int64      `json:"last_txid"`
+	LastID        int64      `json:"last_id"`
+	LastSuccessAt *time.Time `json:"last_success_at"`
+	LastError     string     `json:"last_error"`
+	LastErrorAt   *time.Time `json:"last_error_at"`
+}
+
 type AuditLog struct {
 	ID             int64      `json:"id"`
 	OrganizationID *uuid.UUID `json:"organization_id"`
@@ -300,6 +309,7 @@ type AuditLog struct {
 	Ip             string     `json:"ip"`
 	UserAgent      string     `json:"user_agent"`
 	CreatedAt      time.Time  `json:"created_at"`
+	Txid           int64      `json:"txid"`
 }
 
 type Backup struct {

@@ -133,7 +133,8 @@ func newTestEnvDeps(t *testing.T, dbURL string, configure func(*config.Config), 
 	}
 	box, _ := secrets.New(testKey)
 	palette, _ := theme.Derive("#0019A8")
-	deps := Deps{Config: cfg, DB: st, Store: st, Box: box, Palette: palette, Logger: logger}
+	// Another server on the same database takes over background work quickly.
+	deps := Deps{Config: cfg, DB: st, Store: st, Box: box, Palette: palette, Logger: logger, LeaderRetry: 50 * time.Millisecond}
 	if withDeps != nil {
 		withDeps(&deps)
 	}
