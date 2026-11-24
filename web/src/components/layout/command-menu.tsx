@@ -148,6 +148,9 @@ export function CommandMenu() {
     setOpen(false)
   }
 
+  // Nothing in it works until the account has chosen a new password.
+  if (me?.password_change_required) return null
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent size="large" hideClose className="overflow-hidden p-0">

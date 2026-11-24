@@ -61,7 +61,7 @@ function OverviewPage() {
               </Row>
               <Row label="Backups">
                 {o.backups.interval_hours > 0
-                  ? `Every ${o.backups.interval_hours} hours, newest ${o.backups.keep} kept`
+                  ? `${every(o.backups.interval_hours)}, newest ${o.backups.keep} kept`
                   : 'Scheduled backups off'}
                 , in <span className="font-mono text-xs">{o.backups.dir}</span>
               </Row>
@@ -74,6 +74,15 @@ function OverviewPage() {
       )}
     </AdminLayout>
   )
+}
+
+/** "Every hour", "Every 6 hours", "Every 30 minutes". */
+function every(hours: number) {
+  if (hours === 1) return 'Every hour'
+  if (Number.isInteger(hours)) return `Every ${hours} hours`
+  const minutes = Math.round(hours * 60)
+  if (minutes < 60) return minutes === 1 ? 'Every minute' : `Every ${minutes} minutes`
+  return `Every ${Math.floor(minutes / 60)} h ${minutes % 60} min`
 }
 
 function Stat({ label, value, detail }: { label: string; value: number; detail?: string }) {

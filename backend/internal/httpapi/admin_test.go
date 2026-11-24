@@ -74,7 +74,11 @@ func TestInstanceAdminConsole(t *testing.T) {
 
 	// An admin can require it again, and sign her out everywhere.
 	admin.must(200, "PATCH", "/admin/users/"+created.ID, map[string]any{"password_change_required": true}, nil)
-	carol.must(403, "GET", "/organizations", nil, nil)
+	var denied struct{ Code string }
+	carol.must(403, "GET", "/organizations", nil, &denied)
+	if denied.Code != "password_change_required" {
+		t.Errorf("code = %q", denied.Code)
+	}
 	admin.must(204, "DELETE", "/admin/users/"+created.ID+"/sessions", nil, nil)
 	carol.must(401, "GET", "/profile", nil, nil)
 	// A reset password is temporary too, unless the admin says otherwise.

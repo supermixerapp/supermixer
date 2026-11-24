@@ -134,7 +134,7 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 		// Someone who must choose a new password can do that and nothing else
 		// (the password they have was set by someone else, or is in a log).
 		if info.Principal != nil && info.Principal.User.PasswordChangeRequired && !passwordChangeRoute(r.Method, r.URL.Path) {
-			writeError(w, http.StatusForbidden, "choose a new password to continue")
+			writeErrorCode(w, http.StatusForbidden, "password_change_required", "choose a new password to continue")
 			return
 		}
 

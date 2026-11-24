@@ -141,7 +141,10 @@ function UsersPage() {
                               >
                                 {u.password_change_required ? 'Don’t require a new password' : 'Require a new password'}
                               </DropdownMenuItem>
-                              <DropdownMenuItem disabled={u.sessions === 0} onSelect={() => signOut.mutate(u)}>
+                              <DropdownMenuItem
+                                disabled={u.id === me.id ? u.sessions <= 1 : u.sessions === 0}
+                                onSelect={() => signOut.mutate(u)}
+                              >
                                 {u.id === me.id ? 'Sign out other sessions' : 'Sign out everywhere'}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
@@ -267,7 +270,11 @@ function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolea
         })
       ),
     onSuccess: () => {
-      toast.success(`Password reset for ${user.username}; they were signed out everywhere`)
+      toast.success(
+        self
+          ? 'Password changed; your other sessions were signed out'
+          : `Password reset for ${user.username}; they were signed out everywhere`
+      )
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
       onClose()
     },
@@ -283,7 +290,9 @@ function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolea
         >
           <DialogHeader>
             <DialogTitle>Reset password for {user.username}</DialogTitle>
-            <DialogDescription>They will be signed out of every session.</DialogDescription>
+            <DialogDescription>
+              {self ? 'Your other sessions will be signed out; this one stays.' : 'They will be signed out of every session.'}
+            </DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
             <FormField label="New password" htmlFor="rp-password" description="At least 8 characters, and not a common password or their username">

@@ -1600,6 +1600,9 @@ components:
       required: [message]
       properties:
         message: { type: string }
+        code:
+          type: string
+          description: "Set for errors a client handles specially: password_change_required (403) means the account must choose a new password first."
     OrgRole:
       type: string
       enum: [owner, administrator, developer, read_only, no_access]

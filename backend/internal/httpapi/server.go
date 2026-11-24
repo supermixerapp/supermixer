@@ -171,9 +171,18 @@ func etagMatches(header, etag string) bool {
 }
 
 func writeError(w http.ResponseWriter, status int, msg string) {
+	writeErrorCode(w, status, "", msg)
+}
+
+// writeErrorCode writes an error with a code clients can act on.
+func writeErrorCode(w http.ResponseWriter, status int, code, msg string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(api.Error{Message: msg})
+	e := api.Error{Message: msg}
+	if code != "" {
+		e.Code = &code
+	}
+	_ = json.NewEncoder(w).Encode(e)
 }
 
 func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {

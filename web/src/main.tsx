@@ -6,6 +6,7 @@ import { createRoot } from 'react-dom/client'
 import { CommandMenuProvider } from '@/components/layout/command-menu'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { isApiError } from '@/lib/api/client'
+import { profileQuery } from '@/lib/api/queries'
 import { ThemeProvider } from '@/lib/theme'
 
 import { routeTree } from './routeTree.gen'
@@ -17,6 +18,11 @@ function onAuthError(error: unknown) {
   if (isApiError(error, 401) && !window.location.pathname.startsWith('/sign-in')) {
     queryClient.clear()
     void router.navigate({ to: '/sign-in', search: { redirect: window.location.pathname + window.location.search } })
+  }
+  // An admin asked for a new password while this tab was open: refetching
+  // the profile brings up the screen to choose one.
+  if (isApiError(error, 403) && error.code === 'password_change_required') {
+    void queryClient.invalidateQueries({ queryKey: profileQuery.queryKey })
   }
 }
 

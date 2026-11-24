@@ -25,7 +25,7 @@ export function AdminLayout({
   actions?: ReactNode
   children: ReactNode
 }) {
-  const { pathname } = useLocation()
+  const pathname = useLocation().pathname.replace(/\/+$/, '') || '/'
   const { data: me } = useProfile()
   return (
     <AppShell title="Instance">

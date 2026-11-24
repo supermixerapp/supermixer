@@ -1387,6 +1387,8 @@ export interface components {
         };
         Error: {
             message: string;
+            /** @description Set for errors a client handles specially: password_change_required (403) means the account must choose a new password first. */
+            code?: string;
         };
         /** @enum {string} */
         OrgRole: "owner" | "administrator" | "developer" | "read_only" | "no_access";

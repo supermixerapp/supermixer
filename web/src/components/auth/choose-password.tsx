@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { api, unwrap } from '@/lib/api/client'
+import { profileQuery } from '@/lib/api/queries'
 
 export function ChoosePassword({ username }: { username: string }) {
   const queryClient = useQueryClient()
@@ -25,10 +26,11 @@ export function ChoosePassword({ username }: { username: string }) {
   const change = useMutation({
     mutationFn: () => unwrap(api.POST('/profile/password', { body: { current_password: current, new_password: next } })),
     onSuccess: async () => {
-      // Requests made while the change was required failed: refetch the
-      // profile (which swaps this screen for the app) and rerun the loaders.
-      await queryClient.resetQueries()
+      // Requests made while the change was required failed: rerun the
+      // page's loaders first, then refetch the profile, which swaps this
+      // screen for the page.
       await router.invalidate()
+      await queryClient.invalidateQueries({ queryKey: profileQuery.queryKey })
     },
   })
   const signOut = useMutation({

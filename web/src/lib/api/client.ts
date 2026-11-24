@@ -8,7 +8,9 @@ export type Schemas = components['schemas']
 export class ApiError extends Error {
   constructor(
     public status: number,
-    message: string
+    message: string,
+    /** The server's error code, for errors handled specially (e.g. password_change_required). */
+    public code?: string
   ) {
     super(message)
     this.name = 'ApiError'
@@ -44,9 +46,12 @@ export async function unwrap<T>(
   const { data, error, response } = await call
   if (!response.ok) {
     let message = response.statusText || 'Request failed'
-    if (typeof error === 'object' && error !== null && 'message' in error) message = String(error.message)
-    else if (typeof error === 'string' && error) message = error
-    throw new ApiError(response.status, message)
+    let code: string | undefined
+    if (typeof error === 'object' && error !== null && 'message' in error) {
+      message = String(error.message)
+      if ('code' in error && typeof error.code === 'string') code = error.code
+    } else if (typeof error === 'string' && error) message = error
+    throw new ApiError(response.status, message, code)
   }
   return data as T
 }
