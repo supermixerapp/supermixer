@@ -80,7 +80,8 @@ func currentUser(ctx context.Context) (*principal, error) {
 func publicRoute(method, path string) bool {
 	p := strings.TrimPrefix(path, "/api/v1")
 	switch {
-	case method == http.MethodGet && (p == "/health" || p == "/ui-config"):
+	// The global notice is for everyone, the homepage's visitors too.
+	case method == http.MethodGet && (p == "/health" || p == "/ui-config" || p == "/notice"):
 		return true
 	case method == http.MethodPost && (p == "/auth/sign-in" || p == "/auth/mfa" || p == "/auth/sign-out" || p == "/auth/password-reset"):
 		return true

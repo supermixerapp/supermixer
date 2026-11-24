@@ -490,7 +490,7 @@ export interface paths {
         };
         /**
          * The instance-wide notice, if an instance admin posted one
-         * @description Shown to everyone signed in, as a band above the header (downtime, say).
+         * @description Shown to everyone, signed in or not (the homepage too), as a band above the header (downtime, say).
          */
         get: operations["getNotice"];
         put?: never;

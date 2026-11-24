@@ -42,12 +42,16 @@ func TestGlobalNotice(t *testing.T) {
 		t.Fatalf("posted = %+v", posted)
 	}
 
-	// Everyone signed in sees it; nobody else.
+	// Everyone sees it, signed in or not (the homepage shows it).
 	member.must(200, "GET", "/notice", nil, &state)
 	if state.Notice == nil || *state.Notice != posted {
 		t.Fatalf("member sees %+v", state.Notice)
 	}
-	env.client(t).must(401, "GET", "/notice", nil, nil)
+	var anon struct{ Notice *notice }
+	env.client(t).must(200, "GET", "/notice", nil, &anon)
+	if anon.Notice == nil || *anon.Notice != posted {
+		t.Fatalf("a visitor sees %+v", anon.Notice)
+	}
 
 	member.must(403, "DELETE", "/admin/notice", nil, nil)
 	admin.must(204, "DELETE", "/admin/notice", nil, nil)
