@@ -287,14 +287,22 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                           <DropdownMenuContent align="end" className="w-56">
                             {b.status === 'completed' && (
                               <>
+                                {unreadable(b, s3) && (
+                                  <>
+                                    <DropdownMenuLabel className="text-xs font-normal text-warning-600">
+                                      {unreadable(b, s3)}
+                                    </DropdownMenuLabel>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
                                 <DropdownMenuItem
-                                  disabled={!allowed || !!cantBackUp}
+                                  disabled={!allowed || !!cantBackUp || !!unreadable(b, s3)}
                                   onSelect={() => setRestoring(b)}
                                 >
                                   Restore to this project…
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                  disabled={!allowed}
+                                  disabled={!allowed || !!unreadable(b, s3)}
                                   onSelect={() => {
                                     setCopyName(`${project.name} (restored)`)
                                     setCopying(b)
@@ -307,8 +315,12 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                                   Download
                                 </DropdownMenuLabel>
                                 {FILES.map((f) => (
-                                  <DropdownMenuItem key={f} disabled={!allowed} asChild={allowed}>
-                                    {allowed ? (
+                                  <DropdownMenuItem
+                                    key={f}
+                                    disabled={!allowed || !!unreadable(b, s3)}
+                                    asChild={allowed && !unreadable(b, s3)}
+                                  >
+                                    {allowed && !unreadable(b, s3) ? (
                                       <a
                                         href={`/api/v1/projects/${ref}/backups/${b.id}/files/${f}`}
                                         download
@@ -403,11 +415,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         title="Delete this backup?"
-        description={
-          deleting?.remote
-            ? "Its files are removed from the Supermixer server and from the bucket. This can't be undone."
-            : "Its files are removed from the Supermixer server. This can't be undone."
-        }
+        description={deleting && deleteText(deleting, s3)}
         confirmLabel="Delete backup"
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
@@ -429,6 +437,41 @@ function StatusBadge({ backup }: { backup: Backup }) {
       <TooltipContent className="max-w-sm">{backup.error || 'Failed'}</TooltipContent>
     </Tooltip>
   )
+}
+
+type S3 = Schemas['BackupList']['s3']
+
+/** The bucket in an s3://bucket/... location. */
+function bucketOf(location: string): string {
+  return location.replace(/^s3:\/\//, '').split('/')[0] ?? ''
+}
+
+/** Why Supermixer can't read a backup's files, if it can't: they're only in a bucket it isn't set up for. */
+function unreadable(b: Backup, s3: S3): string | null {
+  if (b.local) return null
+  if (!b.remote) return 'The backup’s files are missing.'
+  const bucket = bucketOf(b.remote)
+  if (!s3)
+    return `The backup is only in bucket ${bucket}, and Supermixer isn’t set up for a bucket.`
+  const current = bucketOf(s3.location)
+  return bucket === current
+    ? null
+    : `The backup is only in bucket ${bucket}, and Supermixer is set up for bucket ${current}.`
+}
+
+/** What deleting a backup removes, from where it is. */
+function deleteText(b: Backup, s3: S3): string {
+  const parts: string[] = []
+  if (b.local) parts.push('Its files are removed from the Supermixer server.')
+  if (b.remote) {
+    const bucket = bucketOf(b.remote)
+    parts.push(
+      s3 && bucketOf(s3.location) === bucket
+        ? `Its copy in bucket ${bucket} is removed too (later, if Supermixer can’t reach the bucket right now).`
+        : `Its copy in bucket ${bucket} is removed once Supermixer is set up for that bucket again.`
+    )
+  }
+  return [...parts, 'This can’t be undone.'].join(' ')
 }
 
 /** Whether a backup is waiting to be copied to the bucket. */
@@ -459,7 +502,10 @@ function StoredBadges({ backup: b, s3 }: { backup: Backup; s3: boolean }) {
             </span>
           </TooltipTrigger>
           <TooltipContent className="max-w-sm">
-            {b.upload_error}. Supermixer tries again on its own, waiting longer each time.
+            {b.upload_error.replace(/\.+$/, '')}.{' '}
+            {s3
+              ? 'Supermixer tries again on its own, waiting longer each time.'
+              : 'Backups aren’t copied to a bucket any more, so it won’t be tried again.'}
           </TooltipContent>
         </Tooltip>
       ) : (
