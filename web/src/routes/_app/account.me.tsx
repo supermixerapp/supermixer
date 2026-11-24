@@ -150,12 +150,21 @@ function PasswordSection() {
   }
   return (
     <section id="password" className="scroll-mt-6">
-      <SettingsSection title="Password" description="Changing it signs out your other sessions and revokes your access tokens.">
+      <SettingsSection
+        title="Password"
+        description="Changing it signs out your other sessions and revokes your access tokens. Connected sign-in providers (Account › Security) stay connected."
+      >
         {me?.default_password && (
           <Alert variant="warning" title="You are still using the default password">
             Anyone who knows the default can sign in as you. Choose a new password now.
           </Alert>
         )}
+        {me && !me.has_password ? (
+          <Alert title="You sign in through a sign-in provider">
+            Your account doesn&apos;t have a password. To set one, sign out and use &ldquo;Forgot your password?&rdquo; (if
+            Supermixer sends email), or ask an instance admin.
+          </Alert>
+        ) : (
         <form onSubmit={submit}>
           <Card>
             <CardContent className="flex flex-col gap-6">
@@ -186,6 +195,7 @@ function PasswordSection() {
             </CardFooter>
           </Card>
         </form>
+        )}
       </SettingsSection>
     </section>
   )

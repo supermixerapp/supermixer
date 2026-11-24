@@ -34,7 +34,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
-import { usersQuery } from '@/lib/api/queries'
+import { uiConfigQuery, usersQuery } from '@/lib/api/queries'
 import { relativeTime } from '@/lib/auth-users'
 
 export const Route = createFileRoute('/_app/admin/users')({
@@ -50,6 +50,7 @@ function UsersPage() {
   const [creating, setCreating] = useState(false)
   const [resetting, setResetting] = useState<User | null>(null)
   const [resettingMfa, setResettingMfa] = useState<User | null>(null)
+  const providerNames = new Map((useQuery(uiConfigQuery).data?.sso_providers ?? []).map((p) => [p.id, p.name]))
   const resetMfa = useMutation({
     mutationFn: (user: User) =>
       unwrap(api.DELETE('/admin/users/{user_id}/mfa', { params: { path: { user_id: user.id } } })),
@@ -123,6 +124,12 @@ function UsersPage() {
                             {u.disabled ? <Badge variant="destructive">Disabled</Badge> : <Badge variant="success">Active</Badge>}
                             {u.is_instance_admin && <Badge>Instance admin</Badge>}
                             {u.mfa_enabled && <Badge variant="success">2FA</Badge>}
+                            {u.identities.map((id) => (
+                              <Badge key={id} title="Signs in through this provider">
+                                {providerNames.get(id) ?? id}
+                              </Badge>
+                            ))}
+                            {!u.has_password && <Badge title="Made through single sign-on; no password yet">No password</Badge>}
                             {u.password_change_required && <Badge variant="warning">Must change password</Badge>}
                             {u.default_password && <Badge variant="warning">Default password</Badge>}
                           </span>

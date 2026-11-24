@@ -3,9 +3,10 @@
  * recovery codes for a lost device.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { AccountLayout } from '@/components/layout/account-layout'
 import { SettingsSection } from '@/components/layout/section'
 import { Alert } from '@/components/ui/alert'
@@ -28,9 +29,15 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
-import { profileQuery } from '@/lib/api/queries'
+import { profileQuery, uiConfigQuery } from '@/lib/api/queries'
+import { relativeTime } from '@/lib/auth-users'
 
 export const Route = createFileRoute('/_app/account/security')({
+  // Set when a sign-in provider sends the browser back here.
+  validateSearch: (search: Record<string, unknown>): { connected?: string; sso_error?: string } => ({
+    connected: typeof search.connected === 'string' ? search.connected : undefined,
+    sso_error: typeof search.sso_error === 'string' ? search.sso_error : undefined,
+  }),
   component: SecurityPage,
 })
 
@@ -43,6 +50,7 @@ function SecurityPage() {
   return (
     <AccountLayout title="Security">
       <TwoFactorSection />
+      <ProvidersSection />
     </AccountLayout>
   )
 }
@@ -178,11 +186,14 @@ function SetupDialog({ onClose }: { onClose: () => void }) {
               <DialogDescription>
                 {setup
                   ? 'Scan the QR code with the app, or type in the key, then enter the 6-digit code it shows.'
-                  : 'Confirm your password to start. Turning it on signs out your other sessions and revokes your access tokens.'}
+                  : me?.has_password === false
+                    ? 'Your account signs in through a provider, so a recent sign-in confirms it’s you. Turning it on signs out your other sessions and revokes your access tokens.'
+                    : 'Confirm your password to start. Turning it on signs out your other sessions and revokes your access tokens.'}
               </DialogDescription>
             </DialogHeader>
             <DialogSection className="flex flex-col gap-4 border-t">
               {!setup ? (
+                me?.has_password === false ? null : (
                 <>
                   <input type="text" autoComplete="username" value={me?.username ?? ''} readOnly hidden />
                   <FormField label="Password" htmlFor="mfa-password">
@@ -197,6 +208,7 @@ function SetupDialog({ onClose }: { onClose: () => void }) {
                     />
                   </FormField>
                 </>
+                )
               ) : (
                 <>
                   <div className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
@@ -372,18 +384,22 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
             </DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
-            <input type="text" autoComplete="username" value={me?.username ?? ''} readOnly hidden />
-            <FormField label="Password" htmlFor="off-password">
-              <Input
-                id="off-password"
-                type="password"
-                autoComplete="current-password"
-                autoFocus
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </FormField>
+            {me?.has_password !== false && (
+              <>
+                <input type="text" autoComplete="username" value={me?.username ?? ''} readOnly hidden />
+                <FormField label="Password" htmlFor="off-password">
+                  <Input
+                    id="off-password"
+                    type="password"
+                    autoComplete="current-password"
+                    autoFocus
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                  />
+                </FormField>
+              </>
+            )}
             <FormField label="Code from the app, or a recovery code" htmlFor="off-code">
               <Input
                 id="off-code"
@@ -407,5 +423,167 @@ function DisableDialog({ onClose }: { onClose: () => void }) {
         </form>
       </DialogContent>
     </Dialog>
+  )
+}
+
+const identitiesQuery = {
+  queryKey: ['profile', 'identities'],
+  queryFn: () => unwrap(api.GET('/profile/identities')),
+}
+
+/** Single sign-on providers: connect one to sign in with it. */
+function ProvidersSection() {
+  const providers = useQuery(uiConfigQuery).data?.sso_providers ?? []
+  const identities = useQuery({ ...identitiesQuery, enabled: providers.length > 0 })
+  const { connected, sso_error: ssoError } = Route.useSearch()
+  const navigate = useNavigate()
+  const queryClient = useQueryClient()
+  const [disconnecting, setDisconnecting] = useState<Schemas['Identity'] | null>(null)
+  const { data: me } = useProfile()
+  // Connecting is another way to sign in: the password confirms it's you
+  // (or, without one, a recent sign-in).
+  const [connecting, setConnecting] = useState<{ id: string; name: string } | null>(null)
+  const [password, setPassword] = useState('')
+  const connect = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/v1/profile/identities/${encodeURIComponent(id)}/connect`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-Token': decodeURIComponent(document.cookie.split('; ').find((c) => c.startsWith('sm_csrf='))?.split('=')[1] ?? ''),
+        },
+        body: JSON.stringify({ password }),
+      })
+      const body = (await res.json()) as { url?: string; message?: string }
+      if (!res.ok || !body.url) throw new Error(body.message ?? 'Couldn’t start connecting')
+      return body.url
+    },
+    // Off to the provider; it sends the browser back here.
+    onSuccess: (url) => window.location.assign(url),
+    onError: (e) => {
+      if (!connecting) toast.error(e.message)
+    },
+  })
+  const startConnect = (p: { id: string; name: string }) => {
+    if (me?.has_password === false) connect.mutate(p.id)
+    else {
+      setPassword('')
+      connect.reset()
+      setConnecting(p)
+    }
+  }
+  const disconnect = useMutation({
+    mutationFn: (i: Schemas['Identity']) =>
+      unwrap(api.DELETE('/profile/identities/{identity_id}', { params: { path: { identity_id: i.id } } })),
+    onSuccess: (_, i) => {
+      toast.success(`Disconnected ${i.provider_name}`)
+      setDisconnecting(null)
+      void queryClient.invalidateQueries({ queryKey: identitiesQuery.queryKey })
+    },
+    onError: (e) => {
+      setDisconnecting(null)
+      toast.error(e.message)
+    },
+  })
+  if (providers.length === 0) return null
+  const byProvider = new Map((identities.data ?? []).map((i) => [i.provider, i]))
+  const clear = () => void navigate({ to: '/account/security', search: {}, replace: true })
+  return (
+    <SettingsSection
+      title="Sign-in providers"
+      description="Connect your organization's sign-in to sign in to Supermixer with it. Two-factor sign-in, if it's on, still asks for a code."
+    >
+      {ssoError && (
+        <Alert variant="destructive" title={ssoError} actions={<Button size="tiny" variant="default" onClick={clear}>Dismiss</Button>} />
+      )}
+      {connected && !ssoError && (
+        <Alert
+          title={`Connected ${providers.find((p) => p.id === connected)?.name ?? connected}`}
+          actions={<Button size="tiny" variant="default" onClick={clear}>Dismiss</Button>}
+        >
+          You can sign in with it now.
+        </Alert>
+      )}
+      <Card className="flex flex-col divide-y text-sm">
+        {providers.map((p) => {
+          const i = byProvider.get(p.id)
+          return (
+            <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
+              <span className="flex flex-col">
+                <span className="flex items-center gap-2 text-foreground">
+                  {p.name}
+                  {i && <Badge variant="success">Connected</Badge>}
+                </span>
+                {i && (
+                  <span className="text-xs text-foreground-lighter">
+                    {i.email || 'No email address given'}
+                    {i.last_sign_in_at && <> · last signed in {relativeTime(i.last_sign_in_at)}</>}
+                  </span>
+                )}
+              </span>
+              {i ? (
+                <Button size="tiny" variant="default" onClick={() => setDisconnecting(i)}>
+                  Disconnect
+                </Button>
+              ) : (
+                <Button size="tiny" variant="default" loading={connect.isPending && connect.variables === p.id} onClick={() => startConnect(p)}>
+                  Connect
+                </Button>
+              )}
+            </div>
+          )
+        })}
+      </Card>
+      <Dialog open={connecting !== null} onOpenChange={(o) => !o && setConnecting(null)}>
+        <DialogContent size="small">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault()
+              if (connecting) connect.mutate(connecting.id)
+            }}
+          >
+            <DialogHeader>
+              <DialogTitle>Connect {connecting?.name}</DialogTitle>
+              <DialogDescription>
+                It will sign you in to Supermixer. Confirm your password, then sign in to {connecting?.name}.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogSection className="flex flex-col gap-4 border-t">
+              <input type="text" autoComplete="username" value={me?.username ?? ''} readOnly hidden />
+              <FormField label="Password" htmlFor="connect-password">
+                <Input
+                  id="connect-password"
+                  type="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              </FormField>
+              {connect.error && <Alert variant="destructive" title={connect.error.message} />}
+            </DialogSection>
+            <DialogFooter>
+              <Button variant="default" onClick={() => setConnecting(null)}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={connect.isPending}>
+                Continue
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <ConfirmDialog
+        open={disconnecting !== null}
+        onOpenChange={(o) => !o && setDisconnecting(null)}
+        variant="warning"
+        title={`Disconnect ${disconnecting?.provider_name}?`}
+        description="It won't sign you in to Supermixer any more. You can connect it again later."
+        confirmLabel="Disconnect"
+        loading={disconnect.isPending}
+        onConfirm={() => disconnecting && disconnect.mutate(disconnecting)}
+      />
+    </SettingsSection>
   )
 }

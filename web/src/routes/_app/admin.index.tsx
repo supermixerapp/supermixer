@@ -76,6 +76,26 @@ function OverviewPage() {
               <Row label="Backup copies">
                 {o.backups.s3 ? <span className="font-mono text-xs">{o.backups.s3}</span> : 'Not copied to a bucket'}
               </Row>
+              <Row label="Single sign-on">
+                {o.sso.length === 0 ? (
+                  'No providers (sso.providers)'
+                ) : (
+                  <span className="flex flex-col gap-2">
+                    {o.sso.map((p) => (
+                      <span key={p.id} className="flex flex-col">
+                        <span className="text-foreground">
+                          {p.name}{' '}
+                          <span className="text-xs text-foreground-lighter">
+                            {p.create_users ? 'creates accounts' : 'connected accounts only'}
+                            {p.allowed_domains.length > 0 && <> · {p.allowed_domains.join(', ')}</>}
+                          </span>
+                        </span>
+                        <span className="font-mono text-xs break-all text-foreground-lighter">{p.redirect_uri}</span>
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </Row>
               <Row label="Email">
                 {o.email.enabled ? (
                   <span className="flex flex-wrap items-center justify-between gap-2">

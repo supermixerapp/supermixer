@@ -72,6 +72,48 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/password-reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a link to choose a new password
+         * @description Always answers the same way, so it doesn't tell who has an account.
+         *     If the username or email address is an active account's, and it has
+         *     an email address, a link that works once, for an hour, is sent to it.
+         */
+        post: operations["requestPasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/password-reset/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        /** Who a reset link is for, and whether it needs a two-factor code */
+        get: operations["getPasswordReset"];
+        put?: never;
+        /** Choose a new password with a reset link; every session is signed out */
+        post: operations["completePasswordReset"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/sign-out": {
         parameters: {
             query?: never;
@@ -243,6 +285,80 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/profile/access-tokens": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Your personal access tokens */
+        get: operations["listAccessTokens"];
+        put?: never;
+        /** Create a personal access token; its value is shown only now */
+        post: operations["createAccessToken"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/access-tokens/{token_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke a personal access token */
+        delete: operations["deleteAccessToken"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/identities": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Single sign-on providers connected to your account
+         * @description Connecting one is a browser flow: POST /profile/identities/{provider}/connect
+         *     returns {"url": ...} to open; the provider sends you back to Account › Security.
+         *     Signing in through one starts at GET /auth/sso/{provider}/start.
+         */
+        get: operations["listIdentities"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/identities/{identity_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Disconnect a sign-in provider from your account */
+        delete: operations["deleteIdentity"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profile/permissions": {
         parameters: {
             query?: never;
@@ -321,6 +437,23 @@ export interface paths {
         post?: never;
         /** Turn off someone's two-factor sign-in (a lost device) and sign them out everywhere */
         delete: operations["resetUserMfa"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/email/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a test email to your own address */
+        post: operations["sendTestEmail"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1531,7 +1664,14 @@ export interface components {
             };
         };
         UiConfig: {
+            /** @description Single sign-on providers, for "Continue with" buttons. */
+            sso_providers: {
+                id: string;
+                name: string;
+            }[];
             app_name: string;
+            /** @description Supermixer sends email, so the sign-in page offers "Forgot your password?". */
+            email_enabled: boolean;
             version: string;
             /** @description appearance.brand_color as #rrggbb */
             brand_color: string;
@@ -1836,6 +1976,8 @@ export interface components {
             password_change_required: boolean;
             /** @description Signs in with a code from an authenticator app as well as the password. */
             mfa_enabled: boolean;
+            /** @description False for accounts made through single sign-on, until they set one ("Forgot your password?"). */
+            has_password: boolean;
             /** @description The theme the user chose; null if they haven't, and the instance default applies. */
             theme?: components["schemas"]["ThemePreference"] | null;
             /** Format: date-time */
@@ -1860,6 +2002,54 @@ export interface components {
              */
             require_password_change: boolean;
         };
+        Identity: {
+            /** Format: uuid */
+            id: string;
+            provider: string;
+            /** @description The provider's name, or its id if it's no longer set up. */
+            provider_name: string;
+            /** @description The address the provider gave, if it vouched for one. */
+            email: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            last_sign_in_at?: string | null;
+        };
+        AccessToken: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @description The token's start, like sbp_1a2b3c, to tell tokens apart. */
+            prefix: string;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** Format: date-time */
+            last_used_at?: string | null;
+            last_used_ip?: string | null;
+        };
+        AccessTokenCreate: {
+            /** @description What it's for, like "GitHub Actions deploys". */
+            name: string;
+            expires_in_days: number;
+        };
+        AccessTokenCreated: components["schemas"]["AccessToken"] & {
+            /** @description The token (sbp_…); shown only now. */
+            token: string;
+        };
+        PasswordResetInfo: {
+            username: string;
+            /** @description The account has two-factor sign-in; a code is needed as well. */
+            mfa_required: boolean;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        PasswordResetComplete: {
+            password: string;
+            /** @description With two-factor sign-in: a code from the app, or a recovery code. */
+            code?: string;
+        };
         MfaChallenge: {
             /** @enum {boolean} */
             mfa_required: true;
@@ -1869,7 +2059,8 @@ export interface components {
             expires_at: string;
         };
         MfaVerify: {
-            challenge: string;
+            /** @description From POST /auth/sign-in; after single sign-on, leave it out (it's in a cookie). */
+            challenge?: string;
             /** @description The 6-digit code from the app */
             code: string;
         };
@@ -1928,6 +2119,21 @@ export interface components {
                 /** @description s3://bucket/prefix, if backups are copied to a bucket. */
                 s3?: string | null;
             };
+            sso: {
+                id: string;
+                name: string;
+                issuer: string;
+                create_users: boolean;
+                allowed_domains: string[];
+                /** @description To register with the provider. */
+                redirect_uri: string;
+            }[];
+            email: {
+                enabled: boolean;
+                from?: string | null;
+                /** @description host:port, and how it's secured. */
+                server?: string | null;
+            };
         };
         Session: {
             /** Format: uuid */
@@ -1963,6 +2169,10 @@ export interface components {
             default_password: boolean;
             password_change_required: boolean;
             mfa_enabled: boolean;
+            /** @description Sign-in providers connected to the account (their ids). */
+            identities: string[];
+            /** @description False for accounts made through single sign-on until they set one. */
+            has_password: boolean;
             disabled: boolean;
             /** @description Signed-in sessions. */
             sessions: number;
@@ -2061,6 +2271,10 @@ export interface components {
             token: string;
             /** @description Link to share with the invitee. */
             url: string;
+            /** @description The link was emailed to the invitation's address. */
+            email_sent: boolean;
+            /** @description Why it couldn't be emailed; share the link yourself. */
+            email_error?: string | null;
         };
         InvitationPreview: {
             organization_name: string;
@@ -2410,6 +2624,83 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    requestPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Username or email address. */
+                    login: string;
+                };
+            };
+        };
+        responses: {
+            /** @description If there's such an account with an email address, a link is on its way. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getPasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link works. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PasswordResetInfo"];
+                };
+            };
+            410: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    completePasswordReset: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordResetComplete"];
+            };
+        };
+        responses: {
+            /** @description The password is changed; sign in with it. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            410: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
     signOut: {
         parameters: {
             query?: never;
@@ -2659,6 +2950,115 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    listAccessTokens: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Tokens, newest first (without their values). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessToken"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createAccessToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AccessTokenCreate"];
+            };
+        };
+        responses: {
+            /** @description Created. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AccessTokenCreated"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteAccessToken: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Revoked. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listIdentities: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Connected identities. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Identity"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                identity_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Disconnected. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     getPermissions: {
         parameters: {
             query?: never;
@@ -2791,6 +3191,29 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    sendTestEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The server took it. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        sent_to: string;
+                    };
+                };
             };
             default: components["responses"]["Error"];
         };

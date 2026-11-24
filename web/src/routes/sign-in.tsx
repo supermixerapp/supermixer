@@ -13,8 +13,11 @@ import { safeRedirect } from '@/lib/redirect'
 
 
 export const Route = createFileRoute('/sign-in')({
-  validateSearch: (search: Record<string, unknown>) => ({
+  validateSearch: (search: Record<string, unknown>): { redirect?: string; sso_error?: string; mfa?: string } => ({
     redirect: typeof search.redirect === 'string' ? search.redirect : undefined,
+    // Set when single sign-on sends the browser back here.
+    sso_error: typeof search.sso_error === 'string' ? search.sso_error : undefined,
+    mfa: typeof search.mfa === 'string' ? search.mfa : undefined,
   }),
   beforeLoad: async ({ context, search }) => {
     // Already signed in? Go straight on.
@@ -25,7 +28,8 @@ export const Route = createFileRoute('/sign-in')({
 })
 
 function SignInPage() {
-  const { redirect: target } = Route.useSearch()
+  const { redirect: target, sso_error: ssoError, mfa } = Route.useSearch()
+  const providers = useQuery(uiConfigQuery).data?.sso_providers ?? []
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [username, setUsername] = useState('')
@@ -54,15 +58,19 @@ function SignInPage() {
     signIn.mutate()
   }
 
-  if (challenge) {
+  // After a password, or after single sign-on for an account with
+  // two-factor sign-in (whose challenge is in a cookie: mfa=1).
+  const pending = challenge?.challenge ?? (mfa ? '' : undefined)
+  if (pending !== undefined) {
     return (
       <AuthLayout>
         <MfaStep
-          challenge={challenge.challenge}
+          challenge={pending}
           onSignedIn={signedIn}
           onRestart={() => {
             signIn.reset()
             setChallenge(null)
+            void navigate({ to: '/sign-in', search: { redirect: target } })
           }}
         />
       </AuthLayout>
@@ -75,6 +83,25 @@ function SignInPage() {
         <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Welcome back</h1>
         <h2 className="font-sans text-sm font-normal text-foreground-light">Sign in to your account</h2>
       </div>
+      {ssoError && <Alert variant="destructive" title={ssoError} className="mb-4" />}
+      {providers.length > 0 && (
+        <>
+          <div className="flex flex-col gap-2">
+            {providers.map((p) => (
+              <Button key={p.id} asChild variant="default" size="large" block>
+                <a href={`/api/v1/auth/sso/${encodeURIComponent(p.id)}/start?redirect=${encodeURIComponent(safeRedirect(target))}`}>
+                  Continue with {p.name}
+                </a>
+              </Button>
+            ))}
+          </div>
+          <div className="my-6 flex items-center gap-3 text-xs text-foreground-lighter">
+            <span className="h-px flex-1 bg-border" />
+            or
+            <span className="h-px flex-1 bg-border" />
+          </div>
+        </>
+      )}
       <form onSubmit={submit} className="flex flex-col gap-4">
         <FormField label="Username" htmlFor="username">
           <Input
@@ -131,7 +158,7 @@ function MfaStep({
   const [recovery, setRecovery] = useState(false)
   const [code, setCode] = useState('')
   const verify = useMutation({
-    mutationFn: () => unwrap(api.POST('/auth/mfa', { body: { challenge, code } })),
+    mutationFn: () => unwrap(api.POST('/auth/mfa', { body: challenge ? { challenge, code } : { code } })),
     onSuccess: onSignedIn,
   })
   const expired = verify.error?.message.startsWith('Your sign-in expired')
