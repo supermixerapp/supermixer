@@ -33,7 +33,8 @@ async function signIn(page: Page) {
   await page.getByLabel('Username').fill('admin')
   await page.getByLabel('Password', { exact: true }).fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  await expect(page).toHaveURL(/\/organizations$/)
+  // The landing page: one organization's projects, or the list.
+  await page.waitForURL((u) => !u.pathname.startsWith('/sign-in') && u.pathname !== '/')
 }
 
 test('an organization requires Dex, and people join by signing in with it', async ({ page, browser }) => {
@@ -91,8 +92,9 @@ test('an organization requires Dex, and people join by signing in with it', asyn
     const bea = await ctx.newPage()
     await bea.goto('/sign-in')
     await bea.getByRole('link', { name: 'Continue with Dex' }).click()
-    await atDex(bea, 'bea@example.test', /^\/organizations$/)
-    await expect(bea.getByText('SSO Labs')).toBeVisible()
+    // Their only organization: straight to its projects.
+    await atDex(bea, 'bea@example.test', /^\/org\/sso-labs$/)
+    await expect(bea.getByRole('heading', { name: 'Projects' })).toBeVisible()
     await ctx.close()
   })
 })

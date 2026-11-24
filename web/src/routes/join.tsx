@@ -122,7 +122,8 @@ function SignUp({ token, email }: { token: string; email: string }) {
     onSuccess: (profile) => {
       queryClient.clear()
       queryClient.setQueryData(profileQuery.queryKey, profile)
-      void navigate({ to: '/organizations' })
+      // The landing page: straight to the organization they joined, if it's their only one.
+      void navigate({ to: '/' })
     },
   })
 

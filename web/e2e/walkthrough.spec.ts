@@ -86,6 +86,16 @@ test('the first admin sets up an organization, a project and a Read-only member'
     slug = new URL(page.url()).pathname.split('/')[2]
   })
 
+  await test.step('with one organization, signing in opens its projects; the list is still there', async () => {
+    const ctx = await browser.newContext()
+    const again = await ctx.newPage()
+    await signIn(again, 'admin', ADMIN_PASSWORD)
+    await expect(again).toHaveURL(new RegExp(`/org/${slug}$`))
+    await again.goto('/organizations')
+    await expect(again.getByRole('heading', { name: 'Your Organizations' })).toBeVisible()
+    await ctx.close()
+  })
+
   let ref = ''
   await test.step('register the dev stack; Test connection passes', async () => {
     await page.goto(`/new/${slug}`)
@@ -139,8 +149,9 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await reader.getByLabel('Username').fill('reader')
     await reader.getByLabel('Password').fill(READER_PASSWORD)
     await reader.getByRole('button', { name: 'Create account and join' }).click()
-    await expect(reader).toHaveURL(/\/organizations$/)
-    await expect(reader.getByText('E2E Labs')).toBeVisible()
+    // Their only organization: straight to its projects.
+    await expect(reader).toHaveURL(new RegExp(`/org/${slug}$`))
+    await expect(reader.getByRole('heading', { name: 'Projects' })).toBeVisible()
   })
 
   await test.step("they can't see secret keys", async () => {
@@ -226,7 +237,7 @@ test('the first admin sets up an organization, a project and a Read-only member'
       await p.getByLabel('Username').fill('hooked')
       await p.getByLabel('Password').fill(READER_PASSWORD)
       await p.getByRole('button', { name: 'Create account and join' }).click()
-      await expect(p).toHaveURL(/\/organizations$/)
+      await expect(p).toHaveURL(new RegExp(`/org/${slug}$`))
       await joiner.close()
       await expect
         .poll(() => received.find((r) => r.event === 'member.joined')?.body, { timeout: 30_000 })
