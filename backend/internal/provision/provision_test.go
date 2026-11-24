@@ -263,7 +263,12 @@ func TestGenerateAPIKeys(t *testing.T) {
 			t.Errorf("%q isn't a valid opaque key", key)
 		}
 	}
-	if OpaqueKeyValid(k.Publishable[:len(k.Publishable)-1] + "x") {
+	// Change the checksum's last character (to one it isn't).
+	last := "x"
+	if strings.HasSuffix(k.Publishable, last) {
+		last = "y"
+	}
+	if OpaqueKeyValid(k.Publishable[:len(k.Publishable)-1] + last) {
 		t.Error("a bad checksum passed")
 	}
 	// Checksums can contain "_" (base64url); a key whose checksum does still checks.
