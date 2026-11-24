@@ -1,7 +1,8 @@
 /*
  * Database › Backups for stacks Supermixer created (Stage 4.4): Supabase-style
- * dumps (roles, schema, data) on Supermixer's server, taken on a schedule or
- * on demand, restored into this project or a new one.
+ * dumps (roles, schema, data) on Supermixer's server, and copied to an S3
+ * bucket when one is set up, taken on a schedule or on demand, restored into
+ * this project or a new one.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
@@ -83,8 +84,11 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
   const list = useQuery({
     queryKey: ['projects', ref, 'backups'],
     queryFn: () => unwrap(api.GET('/projects/{ref}/backups', { params: { path: { ref } } })),
-    refetchInterval: (q) =>
-      q.state.data?.backups.some((b) => b.status === 'running') ? 2000 : 30000,
+    refetchInterval: (q) => {
+      const d = q.state.data
+      if (d?.backups.some((b) => b.status === 'running')) return 2000
+      return d?.backups.some((b) => uploading(b, !!d.s3)) ? 5000 : 30000
+    },
   })
   const refresh = () => {
     void queryClient.invalidateQueries({ queryKey: ['projects', ref, 'backups'] })
@@ -119,6 +123,13 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
       refresh()
     },
   })
+  const retryUpload = useMutation({
+    mutationFn: (id: string) =>
+      unwrap(api.POST('/projects/{ref}/backups/{id}/upload', { params: { path: { ref, id } } })),
+    onSuccess: () => toast.success('Copying the backup to the bucket'),
+    onError: (e) => toast.error(e.message),
+    onSettled: refresh,
+  })
   const [copying, setCopying] = useState<Backup | null>(null)
   const [copyName, setCopyName] = useState('')
   const restoreToNew = useMutation({
@@ -141,7 +152,8 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
   const s = stack.data
   if (list.error) return <Alert variant="destructive" title={list.error.message} />
   if (!list.data || !s) return <Skeleton className="h-64" />
-  const { backups, interval_hours, keep } = list.data
+  const { backups, interval_hours, keep, s3 } = list.data
+  const showStored = !!s3 || backups.some((b) => b.remote)
   const busy = !!s.operation
   const running = s.status === 'running'
   const cantBackUp = !running
@@ -154,18 +166,37 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
     <>
       <SettingsSection
         title="Schedule"
-        description="Set by the Supermixer server's configuration (provisioning.backup_interval and backup_keep)."
+        description="Set by the Supermixer server's configuration (provisioning.backup_interval, backup_keep and backup_s3)."
       >
         <Card className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 text-sm">
-          <span className="text-foreground-light">
-            {interval_hours > 0 ? (
-              <>
-                Backed up every {formatInterval(interval_hours)} while running; the newest {keep}{' '}
-                scheduled backups are kept. Manual backups are kept until you delete them.
-              </>
-            ) : (
-              <>Scheduled backups are off. Manual backups are kept until you delete them.</>
-            )}
+          <span className="flex flex-col gap-1.5 text-foreground-light">
+            <span>
+              {interval_hours > 0 ? (
+                <>
+                  Backed up every {formatInterval(interval_hours)} while running; the newest {keep}{' '}
+                  scheduled backups are kept. Manual backups are kept until you delete them.
+                </>
+              ) : (
+                <>Scheduled backups are off. Manual backups are kept until you delete them.</>
+              )}
+            </span>
+            <span className="text-xs text-foreground-lighter">
+              {s3 ? (
+                <>
+                  Each backup is copied to{' '}
+                  <code className="font-mono text-foreground-light">{s3.location}</code> at{' '}
+                  {s3.endpoint}
+                  {s3.keep_local
+                    ? ', and kept on the Supermixer server too.'
+                    : '; once copied, it’s removed from the Supermixer server.'}
+                </>
+              ) : (
+                <>
+                  Backups are only on the Supermixer server. Set provisioning.backup_s3 to copy them
+                  to an S3-compatible bucket as well.
+                </>
+              )}
+            </span>
           </span>
           <WithReason reason={allowed ? cantBackUp : null}>
             <PermissionButton
@@ -191,7 +222,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
         )}
       </SettingsSection>
 
-      <SettingsSection title="Backups" description="Newest first, stored on the Supermixer server.">
+      <SettingsSection title="Backups" description="Newest first.">
         <Card>
           <Table>
             <TableHeader>
@@ -201,13 +232,17 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Size</TableHead>
                 <TableHead>Postgres</TableHead>
+                {showStored && <TableHead>Stored</TableHead>}
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {backups.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
-                  <TableCell colSpan={6} className="py-8 text-center text-foreground-lighter">
+                  <TableCell
+                    colSpan={showStored ? 7 : 6}
+                    className="py-8 text-center text-foreground-lighter"
+                  >
                     No backups yet
                   </TableCell>
                 </TableRow>
@@ -233,6 +268,11 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                     <TableCell className="font-mono text-xs text-foreground-light">
                       {b.postgres_version || '–'}
                     </TableCell>
+                    {showStored && (
+                      <TableCell>
+                        <StoredBadges backup={b} s3={!!s3} />
+                      </TableCell>
+                    )}
                     <TableCell className="text-right">
                       {b.status !== 'running' && (
                         <DropdownMenu>
@@ -282,6 +322,17 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                                   </DropdownMenuItem>
                                 ))}
                                 <DropdownMenuSeparator />
+                                {s3 && !b.remote && b.upload_error && (
+                                  <>
+                                    <DropdownMenuItem
+                                      disabled={!allowed}
+                                      onSelect={() => retryUpload.mutate(b.id)}
+                                    >
+                                      Copy to the bucket again
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                  </>
+                                )}
                               </>
                             )}
                             <DropdownMenuItem
@@ -352,7 +403,11 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         title="Delete this backup?"
-        description="Its files are removed from the Supermixer server. This can't be undone."
+        description={
+          deleting?.remote
+            ? "Its files are removed from the Supermixer server and from the bucket. This can't be undone."
+            : "Its files are removed from the Supermixer server. This can't be undone."
+        }
         confirmLabel="Delete backup"
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
@@ -373,6 +428,44 @@ function StatusBadge({ backup }: { backup: Backup }) {
       </TooltipTrigger>
       <TooltipContent className="max-w-sm">{backup.error || 'Failed'}</TooltipContent>
     </Tooltip>
+  )
+}
+
+/** Whether a backup is waiting to be copied to the bucket. */
+function uploading(b: Backup, s3: boolean): boolean {
+  return s3 && b.status === 'completed' && b.local && !b.remote && !b.upload_error
+}
+
+/** Where a completed backup's files are: the Supermixer server, the bucket. */
+function StoredBadges({ backup: b, s3 }: { backup: Backup; s3: boolean }) {
+  if (b.status !== 'completed') return <span className="text-foreground-lighter">–</span>
+  return (
+    <span className="flex flex-wrap gap-1">
+      {b.local && <Badge>Server</Badge>}
+      {b.remote ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Badge variant="success">S3</Badge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-md font-mono text-xs">{b.remote}</TooltipContent>
+        </Tooltip>
+      ) : b.upload_error ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-flex">
+              <Badge variant="warning">S3 copy failed</Badge>
+            </span>
+          </TooltipTrigger>
+          <TooltipContent className="max-w-sm">
+            {b.upload_error}. Supermixer tries again on its own, waiting longer each time.
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        uploading(b, s3) && <Badge variant="warning">Copying to S3…</Badge>
+      )}
+    </span>
   )
 }
 

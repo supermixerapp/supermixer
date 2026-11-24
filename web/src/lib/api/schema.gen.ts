@@ -731,8 +731,31 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
-        /** Delete a backup and its files */
+        /** Delete a backup and its files, in the bucket too */
         delete: operations["deleteBackup"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/backups/{id}/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Try copying a backup to the bucket again now
+         * @description After a failed upload, Supermixer tries again on its own, waiting longer each time (an hour at most).
+         */
+        post: operations["retryBackupUpload"];
+        delete?: never;
         options?: never;
         head?: never;
         patch?: never;
@@ -1324,6 +1347,12 @@ export interface components {
             started_at: string;
             /** Format: date-time */
             finished_at?: string | null;
+            /** @description Whether the files are on Supermixer's disk (backups_dir). */
+            local: boolean;
+            /** @description The copy in a bucket, as s3://bucket/key, once uploaded. */
+            remote?: string | null;
+            /** @description Why the last upload to the bucket failed; empty if it didn't. */
+            upload_error: string;
         };
         BackupList: {
             backups: components["schemas"]["Backup"][];
@@ -1331,6 +1360,14 @@ export interface components {
             interval_hours: number;
             /** @description Scheduled backups kept. */
             keep: number;
+            /** @description The bucket backups are copied to, if one is set up. */
+            s3?: {
+                /** @description s3://bucket/prefix/<ref> */
+                location: string;
+                endpoint: string;
+                /** @description Whether backups stay in backups_dir after they're copied. */
+                keep_local: boolean;
+            } | null;
         };
         AuthConfig: {
             /** @description Setting name → true/false, a number, text, or null (Auth's default). */
@@ -3036,6 +3073,30 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    retryBackupUpload: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Queued. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Backup"];
+                };
             };
             default: components["responses"]["Error"];
         };
