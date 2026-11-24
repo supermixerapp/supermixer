@@ -46,6 +46,7 @@ const KIND_LABELS: Record<Backup['kind'], string> = {
   scheduled: 'Scheduled',
   manual: 'Manual',
   pre_restore: 'Before a restore',
+  pre_upgrade: 'Before an upgrade',
 }
 
 const FILES = ['roles.sql', 'schema.sql', 'data.sql'] as const

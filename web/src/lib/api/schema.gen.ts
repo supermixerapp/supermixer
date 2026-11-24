@@ -599,6 +599,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/stack/upgrade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** What upgrading the stack to the Supabase version Supermixer bundles would change */
+        get: operations["getStackUpgrade"];
+        put?: never;
+        /**
+         * Upgrade the stack to the Supabase version Supermixer bundles
+         * @description Backs the database up, renders the stack's files from the new version (its .env and Edge
+         *     Functions kept), pulls the new images and recreates the services that changed. If the stack
+         *     doesn't come up, it goes back to its previous files and images. Runs in the background.
+         */
+        post: operations["upgradeStack"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/stack/rotate-keys": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Replace some of a created stack's keys
+         * @description Writes new values to the stack's .env and Supermixer's copy, then (if the stack runs) recreates
+         *     the services that use them. Old values stop working at once, except the previous signing key,
+         *     which still verifies sessions it signed until the next rotation. Runs in the background.
+         */
+        post: operations["rotateStackKeys"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/log-drains": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** Where a created stack's logs are also sent */
+        get: operations["listLogDrains"];
+        put?: never;
+        /**
+         * Add a log drain
+         * @description Vector checks the new configuration first, then restarts with it if the stack runs.
+         */
+        post: operations["createLogDrain"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/log-drains/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Remove a log drain */
+        delete: operations["deleteLogDrain"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a log drain
+         * @description Header values and the API key are kept when left out.
+         */
+        patch: operations["updateLogDrain"];
+        trace?: never;
+    };
     "/projects/{ref}/backups": {
         parameters: {
             query?: never;
@@ -1019,7 +1115,7 @@ export interface components {
         };
         QueryColumn: {
             name: string;
-            /** @description Postgres type name */
+            /** @description Postgres type name, or its OID when unknown. */
             type: string;
         };
         QueryResult: {
@@ -1117,7 +1213,7 @@ export interface components {
         /** @description Set on projects Supermixer created; null for connected ones. */
         Stack: {
             status: components["schemas"]["StackStatus"];
-            /** @description What went wrong */
+            /** @description What went wrong, when status is failed. */
             error: string;
             /** Format: date-time */
             status_at?: string | null;
@@ -1127,16 +1223,16 @@ export interface components {
              * @description What Supermixer is doing to the stack right now.
              * @enum {string|null}
              */
-            operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | null;
+            operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | "upgrading" | "rotating_keys" | null;
         };
         EdgeFunction: {
             name: string;
-            /** @description Where it's invoked */
+            /** @description Where it's invoked, through the stack's API gateway. */
             url: string;
             /** Format: date-time */
             updated_at: string;
             files: number;
-            /** @description Bytes */
+            /** @description Bytes, all files together. */
             size: number;
             /** @description The file it starts from; null if it has none. */
             entrypoint: string | null;
@@ -1157,11 +1253,61 @@ export interface components {
             /** @description Whether the functions service was recreated; false while the stack isn't running. */
             restarted: boolean;
         };
+        LogDrain: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            type: "http" | "loki" | "datadog";
+            enabled: boolean;
+            /** @description The HTTP endpoint, or Loki's base URL. */
+            url: string;
+            headers: {
+                name: string;
+                value_set: boolean;
+            }[];
+            gzip: boolean;
+            datadog_site: string;
+            api_key_set: boolean;
+        };
+        LogDrainInput: {
+            name: string;
+            /** @enum {string} */
+            type: "http" | "loki" | "datadog";
+            /** @default true */
+            enabled: boolean;
+            url?: string;
+            headers?: {
+                name: string;
+                /** @description Left out to keep the current value. */
+                value?: string;
+            }[];
+            gzip?: boolean;
+            datadog_site?: string;
+            /** @description Left out (or empty) to keep the current key. */
+            api_key?: string;
+        };
+        StackUpgrade: {
+            /** @description The supabase/supabase commit the stack's files come from. */
+            current: string;
+            /** @description The commit Supermixer bundles. */
+            latest: string;
+            up_to_date: boolean;
+            /** @description Services whose image changes. from is empty for a new service, to for a removed one. */
+            images: {
+                service: string;
+                from: string;
+                to: string;
+            }[];
+            /** @description .env settings the new version adds (generated, or the template's defaults). */
+            new_keys: string[];
+            /** @description Why the upgrade can't run, if it can't. */
+            blocked?: string;
+        };
         Backup: {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            kind: "scheduled" | "manual" | "pre_restore";
+            kind: "scheduled" | "manual" | "pre_restore" | "pre_upgrade";
             /** @enum {string} */
             status: "running" | "completed" | "failed";
             error: string;
@@ -1172,7 +1318,7 @@ export interface components {
             size_bytes: number;
             template: string;
             postgres_version: string;
-            /** @description Username */
+            /** @description Username, for manual backups. */
             created_by?: string | null;
             /** Format: date-time */
             started_at: string;
@@ -1194,7 +1340,7 @@ export interface components {
             secrets_set: string[];
             /** @description The redirect URL to register with OAuth providers. */
             callback_url: string;
-            /** @description After a change */
+            /** @description After a change, whether the auth service was recreated. */
             restarted?: boolean;
         };
         FunctionSettings: {
@@ -1208,7 +1354,7 @@ export interface components {
         };
         FunctionSecret: {
             name: string;
-            /** @description The value's SHA-256 */
+            /** @description The value's SHA-256, in hex. */
             digest: string;
         };
         FunctionSecretsChange: {
@@ -1415,7 +1561,7 @@ export interface components {
             jwt_secret?: string;
         };
         ProjectConnection: {
-            /** @description The stack's API gateway */
+            /** @description The stack's API gateway, e.g. http://localhost:8000 */
             api_url: string;
             studio_url?: string;
             database: components["schemas"]["DatabaseConnection"];
@@ -1533,7 +1679,7 @@ export interface components {
             }[];
         };
         Lint: {
-            /** @description The check */
+            /** @description The check, e.g. rls_disabled_in_public */
             name: string;
             title: string;
             /** @enum {string} */
@@ -1542,7 +1688,7 @@ export interface components {
             facing: "EXTERNAL" | "INTERNAL";
             categories: ("SECURITY" | "PERFORMANCE")[];
             description: string;
-            /** @description What was found */
+            /** @description What was found, in Markdown. */
             detail: string;
             /** @description Supabase's guide to fixing it. */
             remediation: string;
@@ -1561,7 +1707,7 @@ export interface components {
             /** @description Must never be exposed in a browser. */
             secret: boolean;
             present: boolean;
-            /** @description Present for public keys */
+            /** @description Present for public keys, and for secret ones when revealed. */
             value?: string;
             description: string;
         };
@@ -2644,6 +2790,183 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getStackUpgrade: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The upgrade. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackUpgrade"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    upgradeStack: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    rotateStackKeys: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    keys: ("secret_key" | "publishable_key" | "signing_key" | "jwt_secret" | "functions_db_password")[];
+                };
+            };
+        };
+        responses: {
+            /** @description Started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listLogDrains: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The drains; secrets are never returned. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        drains: components["schemas"]["LogDrain"][];
+                    };
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createLogDrain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogDrainInput"];
+            };
+        };
+        responses: {
+            /** @description Added. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogDrain"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteLogDrain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Removed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateLogDrain: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LogDrainInput"];
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LogDrain"];
                 };
             };
             default: components["responses"]["Error"];

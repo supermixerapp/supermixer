@@ -15,6 +15,7 @@ import {
   useStackAction,
   useStackSync,
 } from '@/components/project/stack'
+import { StackUpgrade } from '@/components/project/upgrade'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -150,6 +151,8 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
           </Alert>
         )}
       </SettingsSection>
+
+      <StackUpgrade projectRef={projectRef} stack={s} allowed={allowed} />
 
       <StudioLogin project={project} />
 

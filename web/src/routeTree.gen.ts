@@ -82,6 +82,7 @@ import { Route as AppProjectRefSettingsApiKeysRouteImport } from './routes/_app/
 import { Route as AppProjectRefSettingsGeneralRouteImport } from './routes/_app/project.$ref.settings.general'
 import { Route as AppProjectRefSettingsInfrastructureRouteImport } from './routes/_app/project.$ref.settings.infrastructure'
 import { Route as AppProjectRefSettingsJwtRouteImport } from './routes/_app/project.$ref.settings.jwt'
+import { Route as AppProjectRefSettingsLogDrainsRouteImport } from './routes/_app/project.$ref.settings.log-drains'
 import { Route as AppProjectRefSqlIndexRouteImport } from './routes/_app/project.$ref.sql.index'
 import { Route as AppProjectRefSqlIdRouteImport } from './routes/_app/project.$ref.sql.$id'
 import { Route as AppProjectRefStoragePoliciesRouteImport } from './routes/_app/project.$ref.storage.policies'
@@ -499,6 +500,12 @@ const AppProjectRefSettingsJwtRoute =
     path: '/settings/jwt',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefSettingsLogDrainsRoute =
+  AppProjectRefSettingsLogDrainsRouteImport.update({
+    id: '/settings/log-drains',
+    path: '/settings/log-drains',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefSqlIndexRoute = AppProjectRefSqlIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -603,6 +610,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/infrastructure': typeof AppProjectRefSettingsInfrastructureRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
+  '/project/$ref/settings/log-drains': typeof AppProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
@@ -679,6 +687,7 @@ export interface FileRoutesByTo {
   '/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/project/$ref/settings/infrastructure': typeof AppProjectRefSettingsInfrastructureRoute
   '/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
+  '/project/$ref/settings/log-drains': typeof AppProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
@@ -761,6 +770,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/settings/general': typeof AppProjectRefSettingsGeneralRoute
   '/_app/project/$ref/settings/infrastructure': typeof AppProjectRefSettingsInfrastructureRoute
   '/_app/project/$ref/settings/jwt': typeof AppProjectRefSettingsJwtRoute
+  '/_app/project/$ref/settings/log-drains': typeof AppProjectRefSettingsLogDrainsRoute
   '/_app/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
@@ -843,6 +853,7 @@ export interface FileRouteTypes {
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/infrastructure'
     | '/project/$ref/settings/jwt'
+    | '/project/$ref/settings/log-drains'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
     | '/project/$ref/editor/'
@@ -919,6 +930,7 @@ export interface FileRouteTypes {
     | '/project/$ref/settings/general'
     | '/project/$ref/settings/infrastructure'
     | '/project/$ref/settings/jwt'
+    | '/project/$ref/settings/log-drains'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
     | '/project/$ref/editor'
@@ -1000,6 +1012,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/settings/general'
     | '/_app/project/$ref/settings/infrastructure'
     | '/_app/project/$ref/settings/jwt'
+    | '/_app/project/$ref/settings/log-drains'
     | '/_app/project/$ref/sql/$id'
     | '/_app/project/$ref/storage/policies'
     | '/_app/project/$ref/editor/'
@@ -1532,6 +1545,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefSettingsJwtRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/settings/log-drains': {
+      id: '/_app/project/$ref/settings/log-drains'
+      path: '/settings/log-drains'
+      fullPath: '/project/$ref/settings/log-drains'
+      preLoaderRoute: typeof AppProjectRefSettingsLogDrainsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/sql/': {
       id: '/_app/project/$ref/sql/'
       path: '/'
@@ -1677,6 +1697,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefSettingsGeneralRoute: typeof AppProjectRefSettingsGeneralRoute
   AppProjectRefSettingsInfrastructureRoute: typeof AppProjectRefSettingsInfrastructureRoute
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
+  AppProjectRefSettingsLogDrainsRoute: typeof AppProjectRefSettingsLogDrainsRoute
   AppProjectRefStoragePoliciesRoute: typeof AppProjectRefStoragePoliciesRoute
   AppProjectRefFunctionsIndexRoute: typeof AppProjectRefFunctionsIndexRoute
   AppProjectRefIntegrationsIndexRoute: typeof AppProjectRefIntegrationsIndexRoute
@@ -1744,6 +1765,7 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefSettingsInfrastructureRoute:
     AppProjectRefSettingsInfrastructureRoute,
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
+  AppProjectRefSettingsLogDrainsRoute: AppProjectRefSettingsLogDrainsRoute,
   AppProjectRefStoragePoliciesRoute: AppProjectRefStoragePoliciesRoute,
   AppProjectRefFunctionsIndexRoute: AppProjectRefFunctionsIndexRoute,
   AppProjectRefIntegrationsIndexRoute: AppProjectRefIntegrationsIndexRoute,

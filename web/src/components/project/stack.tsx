@@ -37,6 +37,8 @@ const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
   updating: 'Updating functions…',
   backing_up: 'Backing up…',
   restoring: 'Restoring…',
+  upgrading: 'Upgrading…',
+  rotating_keys: 'Rotating keys…',
 }
 
 const STATUS: Record<
