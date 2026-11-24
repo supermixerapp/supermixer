@@ -278,6 +278,7 @@ export const orgSettingsMenu: ProductMenu = {
         { label: 'General', path: 'general', stage: 1 },
         { label: 'Security', path: 'security', stage: 5 },
         { label: 'SSO', path: 'sso', stage: 5 },
+        { label: 'Webhooks', path: 'webhooks', stage: 5 },
         { label: 'OAuth Apps', path: 'apps', stage: 5 },
         { label: 'Audit Logs', path: 'audit', stage: 1 },
       ],

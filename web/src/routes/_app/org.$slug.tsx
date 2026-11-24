@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, notFound, Outlet, useLocation } from '@tanstack/react-router'
 
 import { MfaRequired } from '@/components/auth/mfa-required'
+import { SsoRequired } from '@/components/auth/sso-required'
 import { AppShell } from '@/components/layout/app-shell'
 import { ProductMenu, WithProductMenu } from '@/components/layout/product-menu'
 import { Sidebar, type SidebarLink } from '@/components/layout/sidebar'
@@ -31,6 +32,13 @@ function OrgLayout() {
   const { data: me } = useProfile()
   const org = useQuery(organizationsQuery).data?.find((o) => o.slug === slug)
 
+  if (org && !org.sso_satisfied) {
+    return (
+      <AppShell>
+        <SsoRequired orgName={org.name} provider={org.sso_required_provider ?? undefined} />
+      </AppShell>
+    )
+  }
   if (org?.mfa_required && me && !me.mfa_enabled) {
     return (
       <AppShell>

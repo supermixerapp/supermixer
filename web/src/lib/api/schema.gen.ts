@@ -607,6 +607,140 @@ export interface paths {
         patch: operations["updateMember"];
         trace?: never;
     };
+    "/organizations/{slug}/sso": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        /** The organization's single sign-on settings (Owners) */
+        get: operations["getOrganizationSso"];
+        /**
+         * Change the organization's single sign-on settings (Owners)
+         * @description Requiring the provider needs you to be signed in through it now, so you don't lock yourself out. People
+         *     joining through it (join_role) are added when they sign in with it, if their email address (as the provider
+         *     vouches for it) is in join_domains, or always when join_domains is empty.
+         */
+        put: operations["updateOrganizationSso"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{slug}/webhooks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        /** The organization's webhooks (Owners) */
+        get: operations["listWebhooks"];
+        put?: never;
+        /**
+         * Add a webhook (Owners)
+         * @description The organization's audit log entries are POSTed to the URL one at a time, in order, as JSON, from when it's
+         *     added. Each request has `X-Supermixer-Event` (the action), `X-Supermixer-Delivery` (the entry's id, the same
+         *     on retries) and `X-Supermixer-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>" with the secret>`.
+         *     Answer 2xx; anything else is retried with backoff, holding back later events.
+         */
+        post: operations["createWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{slug}/webhooks/{webhook_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["deleteWebhook"];
+        options?: never;
+        head?: never;
+        /**
+         * Change a webhook, or turn it off and on (Owners)
+         * @description Turning a webhook back on starts with new events; what happened while it was off isn't sent.
+         */
+        patch: operations["updateWebhook"];
+        trace?: never;
+    };
+    "/organizations/{slug}/webhooks/{webhook_id}/secret": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace the signing secret; the old one stops working at once */
+        post: operations["rotateWebhookSecret"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{slug}/webhooks/{webhook_id}/test": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send a webhook.test event now and say how it went */
+        post: operations["testWebhook"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{slug}/webhooks/{webhook_id}/deliveries": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        /** The newest 100 attempts */
+        get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/organizations/{slug}/invitations": {
         parameters: {
             query?: never;
@@ -1664,7 +1798,7 @@ export interface components {
         };
         Error: {
             message: string;
-            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on. */
+            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't. */
             code?: string;
         };
         /** @enum {string} */
@@ -2256,6 +2390,10 @@ export interface components {
             id: string;
             slug: string;
             name: string;
+            /** @description Members must sign in through this single sign-on provider (its id); null if not required. */
+            sso_required_provider?: string | null;
+            /** @description Whether your sign-in meets the organization's single sign-on rule; until it does you can see its name and leave it, nothing else. */
+            sso_satisfied: boolean;
             /** @description Members must use two-factor sign-in; until they turn it on they can see the organization's name and leave it, nothing else. */
             mfa_required: boolean;
             role: components["schemas"]["OrgRole"];
@@ -2266,6 +2404,83 @@ export interface components {
         };
         OrganizationCreate: {
             name: string;
+        };
+        OrganizationSso: {
+            /** @description The instance provider (sso.providers id) the organization uses. */
+            provider: string | null;
+            /** @description The provider is no longer set up on this instance, so nothing about it is enforced. */
+            provider_missing?: boolean;
+            /** @description Members must sign in through the provider. */
+            required: boolean;
+            /** @description People signing in through the provider join with this role; null if they don't join by themselves. */
+            join_role: components["schemas"]["OrgRole"] | null;
+            /** @description Only these email domains join; empty for anyone the provider signs in. */
+            join_domains: string[];
+            /** @description The instance's providers. */
+            providers: {
+                id: string;
+                name: string;
+            }[];
+            /** @description The provider your current session came through */
+            signed_in_with: string | null;
+        };
+        OrganizationSsoUpdate: {
+            provider: string | null;
+            required: boolean;
+            join_role: components["schemas"]["OrgRole"] | null;
+            join_domains: string[];
+        };
+        Webhook: {
+            /** Format: uuid */
+            id: string;
+            url: string;
+            description: string;
+            /** @description Action prefixes sent ("project.", "member."), or ["*"] for every event. */
+            events: string[];
+            enabled: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            last_success_at?: string | null;
+            /** @description Why the last attempt failed; empty once one succeeds. */
+            last_error: string;
+            /** Format: date-time */
+            failing_since?: string | null;
+        };
+        WebhookCreate: {
+            url: string;
+            description?: string;
+            events: string[];
+        };
+        WebhookUpdate: {
+            url?: string;
+            description?: string;
+            events?: string[];
+            enabled?: boolean;
+        };
+        WebhookCreated: {
+            webhook: components["schemas"]["Webhook"];
+            /** @description whsec_…, for checking X-Supermixer-Signature. */
+            secret: string;
+        };
+        WebhookSecret: {
+            secret: string;
+        };
+        WebhookDelivery: {
+            /** Format: int64 */
+            id: number;
+            /**
+             * Format: int64
+             * @description The audit log entry; 0 for a test.
+             */
+            event_id: number;
+            event: string;
+            /** @description The HTTP status; 0 if there was no answer. */
+            status: number;
+            error: string;
+            duration_ms: number;
+            /** Format: date-time */
+            created_at: string;
         };
         OrganizationUpdate: {
             name?: string;
@@ -3554,6 +3769,228 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Member"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getOrganizationSso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Settings, and the instance's providers to choose from. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSso"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateOrganizationSso: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationSsoUpdate"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationSso"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listWebhooks: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Webhooks. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookCreate"];
+            };
+        };
+        responses: {
+            /** @description Added. The signing secret is only returned here (and when rotated). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookCreated"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["WebhookUpdate"];
+            };
+        };
+        responses: {
+            /** @description Changed. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Webhook"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    rotateWebhookSecret: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The new secret, only shown here. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookSecret"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    testWebhook: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The attempt (also in the deliveries list). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listWebhookDeliveries: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+                webhook_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Attempts, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WebhookDelivery"][];
                 };
             };
             default: components["responses"]["Error"];

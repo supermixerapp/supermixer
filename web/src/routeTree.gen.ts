@@ -33,8 +33,10 @@ import { Route as AppOrgSlugSplatRouteImport } from './routes/_app/org.$slug.$'
 import { Route as AppOrgSlugAuditRouteImport } from './routes/_app/org.$slug.audit'
 import { Route as AppOrgSlugGeneralRouteImport } from './routes/_app/org.$slug.general'
 import { Route as AppOrgSlugIntegrationsRouteImport } from './routes/_app/org.$slug.integrations'
+import { Route as AppOrgSlugSsoRouteImport } from './routes/_app/org.$slug.sso'
 import { Route as AppOrgSlugTeamRouteImport } from './routes/_app/org.$slug.team'
 import { Route as AppOrgSlugUsageRouteImport } from './routes/_app/org.$slug.usage'
+import { Route as AppOrgSlugWebhooksRouteImport } from './routes/_app/org.$slug.webhooks'
 import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$ref.index'
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
@@ -217,6 +219,11 @@ const AppOrgSlugIntegrationsRoute = AppOrgSlugIntegrationsRouteImport.update({
   path: '/integrations',
   getParentRoute: () => AppOrgSlugRoute,
 } as any)
+const AppOrgSlugSsoRoute = AppOrgSlugSsoRouteImport.update({
+  id: '/sso',
+  path: '/sso',
+  getParentRoute: () => AppOrgSlugRoute,
+} as any)
 const AppOrgSlugTeamRoute = AppOrgSlugTeamRouteImport.update({
   id: '/team',
   path: '/team',
@@ -225,6 +232,11 @@ const AppOrgSlugTeamRoute = AppOrgSlugTeamRouteImport.update({
 const AppOrgSlugUsageRoute = AppOrgSlugUsageRouteImport.update({
   id: '/usage',
   path: '/usage',
+  getParentRoute: () => AppOrgSlugRoute,
+} as any)
+const AppOrgSlugWebhooksRoute = AppOrgSlugWebhooksRouteImport.update({
+  id: '/webhooks',
+  path: '/webhooks',
   getParentRoute: () => AppOrgSlugRoute,
 } as any)
 const AppProjectRefIndexRoute = AppProjectRefIndexRouteImport.update({
@@ -613,8 +625,10 @@ export interface FileRoutesByFullPath {
   '/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/org/$slug/general': typeof AppOrgSlugGeneralRoute
   '/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
+  '/org/$slug/sso': typeof AppOrgSlugSsoRoute
   '/org/$slug/team': typeof AppOrgSlugTeamRoute
   '/org/$slug/usage': typeof AppOrgSlugUsageRoute
+  '/org/$slug/webhooks': typeof AppOrgSlugWebhooksRoute
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/project/$ref/editor': typeof AppProjectRefEditorRouteWithChildren
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
@@ -700,8 +714,10 @@ export interface FileRoutesByTo {
   '/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/org/$slug/general': typeof AppOrgSlugGeneralRoute
   '/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
+  '/org/$slug/sso': typeof AppOrgSlugSsoRoute
   '/org/$slug/team': typeof AppOrgSlugTeamRoute
   '/org/$slug/usage': typeof AppOrgSlugUsageRoute
+  '/org/$slug/webhooks': typeof AppOrgSlugWebhooksRoute
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
@@ -789,8 +805,10 @@ export interface FileRoutesById {
   '/_app/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/_app/org/$slug/general': typeof AppOrgSlugGeneralRoute
   '/_app/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
+  '/_app/org/$slug/sso': typeof AppOrgSlugSsoRoute
   '/_app/org/$slug/team': typeof AppOrgSlugTeamRoute
   '/_app/org/$slug/usage': typeof AppOrgSlugUsageRoute
+  '/_app/org/$slug/webhooks': typeof AppOrgSlugWebhooksRoute
   '/_app/project/$ref/$': typeof AppProjectRefSplatRoute
   '/_app/project/$ref/editor': typeof AppProjectRefEditorRouteWithChildren
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
@@ -880,8 +898,10 @@ export interface FileRouteTypes {
     | '/org/$slug/audit'
     | '/org/$slug/general'
     | '/org/$slug/integrations'
+    | '/org/$slug/sso'
     | '/org/$slug/team'
     | '/org/$slug/usage'
+    | '/org/$slug/webhooks'
     | '/project/$ref/$'
     | '/project/$ref/editor'
     | '/project/$ref/sql'
@@ -967,8 +987,10 @@ export interface FileRouteTypes {
     | '/org/$slug/audit'
     | '/org/$slug/general'
     | '/org/$slug/integrations'
+    | '/org/$slug/sso'
     | '/org/$slug/team'
     | '/org/$slug/usage'
+    | '/org/$slug/webhooks'
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
@@ -1055,8 +1077,10 @@ export interface FileRouteTypes {
     | '/_app/org/$slug/audit'
     | '/_app/org/$slug/general'
     | '/_app/org/$slug/integrations'
+    | '/_app/org/$slug/sso'
     | '/_app/org/$slug/team'
     | '/_app/org/$slug/usage'
+    | '/_app/org/$slug/webhooks'
     | '/_app/project/$ref/$'
     | '/_app/project/$ref/editor'
     | '/_app/project/$ref/sql'
@@ -1301,6 +1325,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugIntegrationsRouteImport
       parentRoute: typeof AppOrgSlugRoute
     }
+    '/_app/org/$slug/sso': {
+      id: '/_app/org/$slug/sso'
+      path: '/sso'
+      fullPath: '/org/$slug/sso'
+      preLoaderRoute: typeof AppOrgSlugSsoRouteImport
+      parentRoute: typeof AppOrgSlugRoute
+    }
     '/_app/org/$slug/team': {
       id: '/_app/org/$slug/team'
       path: '/team'
@@ -1313,6 +1344,13 @@ declare module '@tanstack/react-router' {
       path: '/usage'
       fullPath: '/org/$slug/usage'
       preLoaderRoute: typeof AppOrgSlugUsageRouteImport
+      parentRoute: typeof AppOrgSlugRoute
+    }
+    '/_app/org/$slug/webhooks': {
+      id: '/_app/org/$slug/webhooks'
+      path: '/webhooks'
+      fullPath: '/org/$slug/webhooks'
+      preLoaderRoute: typeof AppOrgSlugWebhooksRouteImport
       parentRoute: typeof AppOrgSlugRoute
     }
     '/_app/project/$ref/': {
@@ -1757,8 +1795,10 @@ interface AppOrgSlugRouteChildren {
   AppOrgSlugAuditRoute: typeof AppOrgSlugAuditRoute
   AppOrgSlugGeneralRoute: typeof AppOrgSlugGeneralRoute
   AppOrgSlugIntegrationsRoute: typeof AppOrgSlugIntegrationsRoute
+  AppOrgSlugSsoRoute: typeof AppOrgSlugSsoRoute
   AppOrgSlugTeamRoute: typeof AppOrgSlugTeamRoute
   AppOrgSlugUsageRoute: typeof AppOrgSlugUsageRoute
+  AppOrgSlugWebhooksRoute: typeof AppOrgSlugWebhooksRoute
   AppOrgSlugIndexRoute: typeof AppOrgSlugIndexRoute
 }
 
@@ -1767,8 +1807,10 @@ const AppOrgSlugRouteChildren: AppOrgSlugRouteChildren = {
   AppOrgSlugAuditRoute: AppOrgSlugAuditRoute,
   AppOrgSlugGeneralRoute: AppOrgSlugGeneralRoute,
   AppOrgSlugIntegrationsRoute: AppOrgSlugIntegrationsRoute,
+  AppOrgSlugSsoRoute: AppOrgSlugSsoRoute,
   AppOrgSlugTeamRoute: AppOrgSlugTeamRoute,
   AppOrgSlugUsageRoute: AppOrgSlugUsageRoute,
+  AppOrgSlugWebhooksRoute: AppOrgSlugWebhooksRoute,
   AppOrgSlugIndexRoute: AppOrgSlugIndexRoute,
 }
 
