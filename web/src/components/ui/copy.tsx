@@ -16,11 +16,25 @@ export async function writeClipboard(text: string) {
   }
 }
 
-export function CopyButton({ value, label = 'Copy', className }: { value: string; label?: string; className?: string }) {
+export function CopyButton({
+  value,
+  label = 'Copy',
+  className,
+  iconOnly = false,
+}: {
+  value: string
+  label?: string
+  className?: string
+  /** Just the icon, with label for screen readers and as a tooltip. */
+  iconOnly?: boolean
+}) {
   const [copied, setCopied] = useState(false)
   return (
     <Button
-      variant="default"
+      variant={iconOnly ? 'text' : 'default'}
+      size={iconOnly ? 'tiny' : undefined}
+      aria-label={iconOnly ? label : undefined}
+      title={iconOnly ? (copied ? 'Copied' : label) : undefined}
       className={className}
       icon={copied ? <CheckIcon /> : <CopyIcon />}
       onClick={async () => {
@@ -30,7 +44,7 @@ export function CopyButton({ value, label = 'Copy', className }: { value: string
         }
       }}
     >
-      {copied ? 'Copied' : label}
+      {iconOnly ? null : copied ? 'Copied' : label}
     </Button>
   )
 }

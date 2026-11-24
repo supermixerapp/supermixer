@@ -96,7 +96,7 @@ export function FunctionVersions({
                 <TableRow key={v.id}>
                   <TableCell>
                     <span className="flex flex-col">
-                      <span className="text-foreground">{new Date(v.created_at).toLocaleString()}</span>
+                      <span className="whitespace-nowrap text-foreground">{new Date(v.created_at).toLocaleString()}</span>
                       <span className="text-xs text-foreground-lighter">
                         {relativeTime(v.created_at)}
                         {v.created_by && <> · by {v.created_by}</>}
@@ -110,12 +110,12 @@ export function FunctionVersions({
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="flex items-center gap-1 font-mono text-xs text-foreground-light">
+                    <span className="flex items-center gap-1 font-mono text-xs whitespace-nowrap text-foreground-light">
                       {v.sha256.slice(0, 12)}…
-                      <CopyButton value={v.sha256} label="Copy hash" />
+                      <CopyButton value={v.sha256} label="Copy the full hash" iconOnly />
                     </span>
                   </TableCell>
-                  <TableCell className="text-right font-mono text-xs text-foreground-light">
+                  <TableCell className="text-right font-mono text-xs whitespace-nowrap text-foreground-light">
                     {v.files.length} · {formatBytes(v.size)}
                   </TableCell>
                   <TableCell className="text-right">

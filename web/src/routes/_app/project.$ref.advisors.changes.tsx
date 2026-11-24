@@ -147,8 +147,8 @@ function Results({ data }: { data: Schemas['DBChanges'] }) {
     <>
       <p className="text-sm text-foreground-light">
         {total === 0
-          ? `Nothing changed since ${relativeTime(data.since.taken_at)}.`
-          : `${total} ${total === 1 ? 'change' : 'changes'} since ${relativeTime(data.since.taken_at)}. Check that each is yours; anything you don't recognise may be a way back in.`}
+          ? `Nothing changed since this snapshot (${relativeTime(data.since.taken_at)}).`
+          : `${total} ${total === 1 ? 'change' : 'changes'} since this snapshot (${relativeTime(data.since.taken_at)}). Check that each is yours; anything you don't recognise may be a way back in.`}
       </p>
       {!data.superuser && (
         <Alert title="Read as the project's database user, not a superuser">
