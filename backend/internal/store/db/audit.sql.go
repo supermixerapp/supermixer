@@ -161,3 +161,74 @@ func (q *Queries) ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAud
 	}
 	return items, nil
 }
+
+const listUserAuditLogs = `-- name: ListUserAuditLogs :many
+SELECT a.id, a.action, a.actor_id, a.actor_username, a.target_type, a.target_id, a.target_name, a.metadata,
+       a.ip, a.created_at, o.slug AS organization_slug
+FROM audit_logs a
+LEFT JOIN organizations o ON o.id = a.organization_id
+WHERE (a.actor_id = $1::uuid OR (a.target_type = 'user' AND a.target_id = ($1::uuid)::text))
+  AND ($2::text IS NULL OR a.action LIKE $2 || '%')
+  AND ($3::bigint IS NULL OR a.id < $3)
+ORDER BY a.id DESC
+LIMIT $4
+`
+
+type ListUserAuditLogsParams struct {
+	UserID       uuid.UUID `json:"user_id"`
+	ActionPrefix *string   `json:"action_prefix"`
+	BeforeID     *int64    `json:"before_id"`
+	RowLimit     int32     `json:"row_limit"`
+}
+
+type ListUserAuditLogsRow struct {
+	ID               int64      `json:"id"`
+	Action           string     `json:"action"`
+	ActorID          *uuid.UUID `json:"actor_id"`
+	ActorUsername    string     `json:"actor_username"`
+	TargetType       string     `json:"target_type"`
+	TargetID         string     `json:"target_id"`
+	TargetName       string     `json:"target_name"`
+	Metadata         []byte     `json:"metadata"`
+	Ip               string     `json:"ip"`
+	CreatedAt        time.Time  `json:"created_at"`
+	OrganizationSlug *string    `json:"organization_slug"`
+}
+
+// What a user did, anywhere, and what was done to their account.
+func (q *Queries) ListUserAuditLogs(ctx context.Context, arg ListUserAuditLogsParams) ([]ListUserAuditLogsRow, error) {
+	rows, err := q.db.Query(ctx, listUserAuditLogs,
+		arg.UserID,
+		arg.ActionPrefix,
+		arg.BeforeID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListUserAuditLogsRow
+	for rows.Next() {
+		var i ListUserAuditLogsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Action,
+			&i.ActorID,
+			&i.ActorUsername,
+			&i.TargetType,
+			&i.TargetID,
+			&i.TargetName,
+			&i.Metadata,
+			&i.Ip,
+			&i.CreatedAt,
+			&i.OrganizationSlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

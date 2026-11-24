@@ -122,6 +122,8 @@ type Querier interface {
 	// touched by a running operation) since before. Compared as text: pgx can't
 	// send an array of the stack_status enum.
 	ListStacksWithStatus(ctx context.Context, arg ListStacksWithStatusParams) ([]Project, error)
+	// What a user did, anywhere, and what was done to their account.
+	ListUserAuditLogs(ctx context.Context, arg ListUserAuditLogsParams) ([]ListUserAuditLogsRow, error)
 	ListUserIdentities(ctx context.Context, userID uuid.UUID) ([]UserIdentity, error)
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)

@@ -381,6 +381,26 @@ paths:
       responses:
         "204": { description: Disconnected. }
         default: { $ref: "#/components/responses/Error" }
+  /profile/audit-logs:
+    get:
+      operationId: listMyAuditLogs
+      tags: [Audit]
+      summary: Your audit log
+      description: |
+        What you did, in any organization or outside them, and what others did to your account (an instance admin
+        resetting your password or two-factor sign-in, say). Entries made by someone else leave out their IP address.
+        Signed-in sessions only, not access tokens.
+      parameters:
+        - { name: action, in: query, required: false, description: "Action prefix, e.g. user.", schema: { type: string } }
+        - { name: before, in: query, required: false, description: Cursor from next_before, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Entries, newest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogPage" }
+        default: { $ref: "#/components/responses/Error" }
   /profile/permissions:
     get:
       operationId: getPermissions
@@ -2814,6 +2834,7 @@ components:
         actor_id: { type: string, format: uuid, nullable: true }
         actor_username: { type: string }
         project_ref: { type: string, nullable: true }
+        organization_slug: { type: string, nullable: true, description: "The entry's organization (in your own audit log)." }
         target_type: { type: string }
         target_id: { type: string }
         target_name: { type: string }

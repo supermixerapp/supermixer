@@ -21,3 +21,15 @@ WHERE organization_id IS NULL
   AND (sqlc.narg(before_id)::bigint IS NULL OR id < sqlc.narg(before_id))
 ORDER BY id DESC
 LIMIT @row_limit;
+
+-- name: ListUserAuditLogs :many
+-- What a user did, anywhere, and what was done to their account.
+SELECT a.id, a.action, a.actor_id, a.actor_username, a.target_type, a.target_id, a.target_name, a.metadata,
+       a.ip, a.created_at, o.slug AS organization_slug
+FROM audit_logs a
+LEFT JOIN organizations o ON o.id = a.organization_id
+WHERE (a.actor_id = @user_id::uuid OR (a.target_type = 'user' AND a.target_id = (@user_id::uuid)::text))
+  AND (sqlc.narg(action_prefix)::text IS NULL OR a.action LIKE sqlc.narg(action_prefix) || '%')
+  AND (sqlc.narg(before_id)::bigint IS NULL OR a.id < sqlc.narg(before_id))
+ORDER BY a.id DESC
+LIMIT @row_limit;

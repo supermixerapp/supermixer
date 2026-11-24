@@ -359,6 +359,28 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/profile/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Your audit log
+         * @description What you did, in any organization or outside them, and what others did to your account (an instance admin
+         *     resetting your password or two-factor sign-in, say). Entries made by someone else leave out their IP address.
+         *     Signed-in sessions only, not access tokens.
+         */
+        get: operations["listMyAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/profile/permissions": {
         parameters: {
             query?: never;
@@ -2499,6 +2521,8 @@ export interface components {
             actor_id?: string | null;
             actor_username: string;
             project_ref?: string | null;
+            /** @description The entry's organization (in your own audit log). */
+            organization_slug?: string | null;
             target_type: string;
             target_id: string;
             target_name: string;
@@ -3082,6 +3106,33 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listMyAuditLogs: {
+        parameters: {
+            query?: {
+                /** @description Action prefix, e.g. user. */
+                action?: string;
+                /** @description Cursor from next_before */
+                before?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entries, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPage"];
+                };
             };
             default: components["responses"]["Error"];
         };

@@ -10,6 +10,7 @@ const LINKS = [
   { label: 'Security', to: '/account/security' },
   { label: 'Access Tokens', to: '/account/access-tokens' },
   { label: 'Appearance', to: '/account/appearance' },
+  { label: 'Audit Logs', to: '/account/audit' },
 ]
 
 /** Account settings pages: the menu, a header and a narrow column. */
