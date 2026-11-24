@@ -32,6 +32,8 @@ type handlers struct {
 	inviteMail, resetMail *auth.Limiter
 	// pending is work in the background that shutting down waits for.
 	pending *sync.WaitGroup
+	// sso are the single sign-on providers, by id.
+	sso map[string]*ssoProvider
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)
@@ -81,5 +83,6 @@ func (h *handlers) GetUiConfig(_ context.Context, _ api.GetUiConfigRequestObject
 			Template string `json:"template"`
 		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion()},
 		EmailEnabled: h.mailer != nil,
+		SsoProviders: h.ssoList(),
 	}, nil
 }

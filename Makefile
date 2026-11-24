@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app app-stacks db db-down mail dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs
+.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -48,8 +48,11 @@ db: ## Start Supermixer's Postgres (port 5433)
 mail: ## Start Mailpit, a mail server that keeps what it's sent (SMTP :1025, read at http://localhost:8025)
 	$(COMPOSE) --profile mail up -d --wait mailpit
 
-db-down: ## Stop Supermixer's Postgres and Mailpit (data is kept)
-	$(COMPOSE) --profile mail down
+sso: ## Start Dex, an OpenID Connect provider for trying single sign-on (http://localhost:5556/dex; see deploy/dev-sso/dex.yaml)
+	$(COMPOSE) --profile sso up -d dex
+
+db-down: ## Stop Supermixer's Postgres, Mailpit and Dex (data is kept)
+	$(COMPOSE) --profile mail --profile sso down
 
 dev: db ## Run the API (live reload, :8080) and the web app (Vite, :5173)
 	@trap 'kill 0' EXIT; \

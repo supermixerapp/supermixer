@@ -72,6 +72,23 @@ from = "Supermixer <supermixer@example.com>"
 
 For development, `make mail` runs [Mailpit](https://mailpit.axllent.org), which keeps everything it's sent: set `smtp_host = "localhost"`, `smtp_port = 1025`, `security = "none"` and read the mail at http://localhost:8025.
 
+## Single sign-on
+
+Supermixer can sign people in through OpenID Connect providers (Okta, Microsoft Entra ID, Google Workspace, Keycloak, Authentik, Dex, ...), with a **Continue with ...** button for each on the sign-in page. Register `<public_url>/api/v1/auth/sso/<id>/callback` as the redirect URI with the provider, then:
+
+```toml
+[[sso.providers]]
+id = "okta"
+name = "Okta"
+issuer = "https://example.okta.com"
+client_id = "..."
+client_secret_file = "/run/secrets/okta"
+allowed_domains = ["example.com"]   # optional
+create_users = true                 # make accounts for new people; otherwise they connect it first
+```
+
+Accounts are never matched by email address: people connect a provider to their account under **Account › Security**, or, with `create_users`, get an account when they first sign in. Accounts with two-factor sign-in still enter their code. For local testing, `make sso` runs [Dex](https://dexidp.io); see `deploy/dev-sso/dex.yaml`.
+
 ## API and access tokens
 
 Scripts and CI use personal access tokens (**Account › Access Tokens**), sent as `Authorization: Bearer sbp_…`. A token acts as its owner, with the same roles in each organization, but can't change the account's password, two-factor sign-in, sessions or tokens; its uses are in the audit logs with its name.

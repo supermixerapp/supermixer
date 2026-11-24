@@ -1,0 +1,39 @@
+# Dex, an OpenID Connect provider for trying Supermixer's single sign-on
+# locally: `make sso`, then add to .env.toml:
+#
+#   [sso]
+#   [[sso.providers]]
+#   id = "dex"
+#   name = "Dex"
+#   issuer = "http://localhost:5556/dex"
+#   client_id = "supermixer"
+#   client_secret = "dev-only-secret"
+#   create_users = true
+#
+# and sign in as ada@example.test with the password "password" (Dex's
+# documented example user). For development only.
+issuer: http://localhost:5556/dex
+storage:
+  type: memory
+web:
+  http: 0.0.0.0:5556
+oauth2:
+  skipApprovalScreen: true
+staticClients:
+  - id: supermixer
+    name: Supermixer
+    secret: dev-only-secret
+    # <server.public_url>/api/v1/auth/sso/<id>/callback, for the usual
+    # development URLs.
+    redirectURIs:
+      - http://localhost:8080/api/v1/auth/sso/dex/callback
+      - http://localhost:5173/api/v1/auth/sso/dex/callback
+      - http://localhost:5174/api/v1/auth/sso/dex/callback
+      - http://127.0.0.1:5175/api/v1/auth/sso/dex/callback
+enablePasswordDB: true
+staticPasswords:
+  - email: ada@example.test
+    # bcrypt of "password"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: ada
+    userID: 08a8684b-db88-4b73-90a9-3cd1661f5466

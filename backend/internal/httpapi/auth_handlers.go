@@ -63,6 +63,7 @@ func toProfile(u db.User) api.Profile {
 		DefaultPassword:        u.DefaultPassword,
 		PasswordChangeRequired: u.PasswordChangeRequired,
 		MfaEnabled:             hasMFA(u),
+		HasPassword:            u.HasPassword,
 		CreatedAt:              u.CreatedAt,
 	}
 	if u.Theme != nil {
@@ -239,7 +240,16 @@ func (h *handlers) ChangePassword(ctx context.Context, req api.ChangePasswordReq
 		return nil, err
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.password_changed", TargetType: "user", TargetID: p.User.ID.String(), TargetName: p.User.Username})
-	h.notify(ctx, p.User, "Your Supermixer password was changed", "Your password was changed, your other sessions were signed out and your access tokens revoked,")
+	what := "Your password was changed, your other sessions were signed out and your access tokens revoked,"
+	// Connected sign-in providers stay: name them, in case one isn't yours.
+	if ids, err := h.deps.Store.Queries.ListUserIdentities(ctx, p.User.ID); err == nil && len(ids) > 0 {
+		names := make([]string, len(ids))
+		for i, id := range ids {
+			names[i] = h.providerName(id.Provider)
+		}
+		what = fmt.Sprintf("Your password was changed, your other sessions were signed out and your access tokens revoked (%s can still sign you in: disconnect it under Account › Security if it isn't yours),", strings.Join(names, ", "))
+	}
+	h.notify(ctx, p.User, "Your Supermixer password was changed", what)
 	return api.ChangePassword204Response{}, nil
 }
 

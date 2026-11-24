@@ -14,6 +14,7 @@ import (
 type Querier interface {
 	AddBackupLeftover(ctx context.Context, arg AddBackupLeftoverParams) error
 	AddDBSnapshot(ctx context.Context, arg AddDBSnapshotParams) (AddDBSnapshotRow, error)
+	AddIdentity(ctx context.Context, arg AddIdentityParams) (UserIdentity, error)
 	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
 	AddRecoveryCode(ctx context.Context, arg AddRecoveryCodeParams) error
 	AddRotationAdvisory(ctx context.Context, arg AddRotationAdvisoryParams) error
@@ -32,6 +33,7 @@ type Querier interface {
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
 	CreatePasswordReset(ctx context.Context, arg CreatePasswordResetParams) (PasswordReset, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
+	CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (User, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
@@ -39,6 +41,7 @@ type Querier interface {
 	DeleteBackup(ctx context.Context, id uuid.UUID) error
 	DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error
 	DeleteExpiredSessions(ctx context.Context) error
+	DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) (UserIdentity, error)
 	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
 	DeleteMemberProjectRoles(ctx context.Context, arg DeleteMemberProjectRolesParams) error
 	DeleteOrganization(ctx context.Context, id uuid.UUID) error
@@ -66,6 +69,7 @@ type Querier interface {
 	GetActiveSession(ctx context.Context, tokenHash []byte) (GetActiveSessionRow, error)
 	GetBackup(ctx context.Context, arg GetBackupParams) (Backup, error)
 	GetDBSnapshot(ctx context.Context, arg GetDBSnapshotParams) (DbSnapshot, error)
+	GetIdentity(ctx context.Context, arg GetIdentityParams) (UserIdentity, error)
 	GetInstalledAt(ctx context.Context) (time.Time, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash []byte) (GetInvitationByTokenHashRow, error)
 	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (OrgRole, error)
@@ -74,7 +78,7 @@ type Querier interface {
 	GetPasswordReset(ctx context.Context, tokenHash []byte) (PasswordReset, error)
 	GetProjectByRef(ctx context.Context, ref string) (GetProjectByRefRow, error)
 	GetSnippet(ctx context.Context, arg GetSnippetParams) (GetSnippetRow, error)
-	GetUserByEmail(ctx context.Context, email *string) (User, error)
+	GetUserByEmail(ctx context.Context, lower string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
@@ -84,6 +88,7 @@ type Querier interface {
 	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
 	LatestDBSnapshotData(ctx context.Context, projectID uuid.UUID) ([]byte, error)
 	ListAccessTokens(ctx context.Context, userID uuid.UUID) ([]AccessToken, error)
+	ListAllIdentities(ctx context.Context) ([]ListAllIdentitiesRow, error)
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
 	ListBackupLeftovers(ctx context.Context, bucket string) ([]BackupLeftover, error)
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
@@ -107,6 +112,7 @@ type Querier interface {
 	// touched by a running operation) since before. Compared as text: pgx can't
 	// send an array of the stack_status enum.
 	ListStacksWithStatus(ctx context.Context, arg ListStacksWithStatusParams) ([]Project, error)
+	ListUserIdentities(ctx context.Context, userID uuid.UUID) ([]UserIdentity, error)
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
 	ListUsers(ctx context.Context) ([]User, error)
@@ -142,6 +148,8 @@ type Querier interface {
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
+	// Keeps the last address the provider vouched for.
+	TouchIdentity(ctx context.Context, arg TouchIdentityParams) error
 	TouchSession(ctx context.Context, id uuid.UUID) error
 	// A running operation's heartbeat, so other servers don't think it's stuck.
 	TouchStack(ctx context.Context, id uuid.UUID) error
@@ -162,6 +170,7 @@ type Querier interface {
 	UseTOTPStep(ctx context.Context, arg UseTOTPStepParams) (uuid.UUID, error)
 	// When each user was last active, from their sessions.
 	UserLastSeen(ctx context.Context) ([]UserLastSeenRow, error)
+	UsernameTaken(ctx context.Context, username string) (bool, error)
 }
 
 var _ Querier = (*Queries)(nil)

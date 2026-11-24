@@ -40,6 +40,18 @@ services:
       timeout: 5s
       retries: 10
 
+  # An OpenID Connect provider for trying single sign-on: `make sso`; see
+  # dev-sso/dex.yaml for the settings and its test user.
+  dex:
+    profiles: [sso]
+    image: ghcr.io/dexidp/dex:v2.41.1
+    restart: unless-stopped
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    volumes:
+      - ./dev-sso/dex.yaml:/etc/dex/config.yaml:ro
+    ports:
+      - "127.0.0.1:5556:5556"
+
   supermixer:
     profiles: [app]
     build:

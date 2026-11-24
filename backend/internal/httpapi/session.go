@@ -39,6 +39,9 @@ type requestInfo struct {
 	IP        string
 	UserAgent string
 	Principal *principal
+	// MFAChallenge is the two-factor challenge single sign-on left in a
+	// cookie (sm_mfa), for POST /auth/mfa.
+	MFAChallenge string
 }
 
 type ctxKey struct{}
@@ -73,6 +76,8 @@ func publicRoute(method, path string) bool {
 	case method == http.MethodPost && (p == "/auth/sign-in" || p == "/auth/mfa" || p == "/auth/sign-out" || p == "/auth/password-reset"):
 		return true
 	case strings.HasPrefix(p, "/auth/password-reset/") && strings.Count(p, "/") == 3 && (method == http.MethodGet || method == http.MethodPost):
+		return true
+	case method == http.MethodGet && strings.HasPrefix(p, "/auth/sso/"):
 		return true
 	case strings.HasPrefix(p, "/invitations/"):
 		rest := strings.Split(strings.TrimPrefix(p, "/invitations/"), "/")
@@ -134,6 +139,9 @@ func safeMethod(m string) bool {
 func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		info := &requestInfo{IP: r.RemoteAddr, UserAgent: truncate(r.UserAgent(), 255)}
+		if c, err := r.Cookie(mfaCookie); err == nil {
+			info.MFAChallenge = c.Value
+		}
 		if host, _, err := net.SplitHostPort(r.RemoteAddr); err == nil {
 			info.IP = host
 		}

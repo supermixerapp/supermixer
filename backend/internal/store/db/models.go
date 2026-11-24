@@ -480,4 +480,15 @@ type User struct {
 	TotpPending            []byte     `json:"totp_pending"`
 	TotpLastStep           *int64     `json:"totp_last_step"`
 	MfaEnabledAt           *time.Time `json:"mfa_enabled_at"`
+	HasPassword            bool       `json:"has_password"`
+}
+
+type UserIdentity struct {
+	ID           uuid.UUID  `json:"id"`
+	UserID       uuid.UUID  `json:"user_id"`
+	Provider     string     `json:"provider"`
+	Subject      string     `json:"subject"`
+	Email        string     `json:"email"`
+	CreatedAt    time.Time  `json:"created_at"`
+	LastSignInAt *time.Time `json:"last_sign_in_at"`
 }

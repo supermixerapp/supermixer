@@ -57,7 +57,7 @@ func (h *handlers) sendResetLink(ctx context.Context, login string) error {
 	var u db.User
 	var err error
 	if strings.Contains(login, "@") {
-		u, err = q.GetUserByEmail(ctx, &login)
+		u, err = q.GetUserByEmail(ctx, login)
 	} else {
 		u, err = q.GetUserByUsername(ctx, login)
 	}

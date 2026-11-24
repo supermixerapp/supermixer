@@ -24,6 +24,8 @@ import (
 // instance key, and only a right code turns it into a session.
 
 const (
+	// mfaCookie carries the challenge after single sign-on.
+	mfaCookie         = "sm_mfa"
 	mfaChallengeTTL   = 5 * time.Minute
 	recoveryCodeCount = 10
 )
@@ -128,7 +130,11 @@ func codeError(err error, status int) error {
 
 func (h *handlers) VerifyMfa(ctx context.Context, req api.VerifyMfaRequestObject) (api.VerifyMfaResponseObject, error) {
 	again := newError(http.StatusUnauthorized, "Your sign-in expired; enter your password again")
-	raw, err := base64.RawURLEncoding.DecodeString(req.Body.Challenge)
+	challenge := deref(req.Body.Challenge)
+	if challenge == "" {
+		challenge = reqInfo(ctx).MFAChallenge // after single sign-on
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(challenge)
 	if err != nil {
 		return nil, again
 	}
@@ -180,6 +186,7 @@ func (h *handlers) VerifyMfa(ctx context.Context, req api.VerifyMfaRequestObject
 	reqInfo(ctx).Principal = &principal{User: u}
 	h.audit(ctx, nil, auditEntry{Action: "user.signed_in", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"mfa": method}})
+	cookies = append(cookies, &http.Cookie{Name: mfaCookie, Value: "", Path: "/api/v1/auth/mfa", MaxAge: -1, HttpOnly: true})
 	return verifyMfaResponse{withCookies{status: http.StatusOK, body: toProfile(u), cookies: cookies}}, nil
 }
 
@@ -200,8 +207,17 @@ func (h *handlers) GetMfaStatus(ctx context.Context, _ api.GetMfaStatusRequestOb
 }
 
 // confirmPassword checks the signed-in user's password before a security
-// change, counting wrong ones towards the sign-in lockout.
-func (h *handlers) confirmPassword(u db.User, password string) error {
+// change, counting wrong ones towards the sign-in lockout. An account
+// without a password (made through single sign-on) confirms by having
+// signed in recently instead.
+func (h *handlers) confirmPassword(p *principal, password string) error {
+	u := p.User
+	if !u.HasPassword {
+		if time.Since(p.Session.CreatedAt) > freshSignIn {
+			return newError(http.StatusForbidden, "to confirm it's you, sign out and sign in again, then do this within %d minutes", int(freshSignIn.Minutes()))
+		}
+		return nil
+	}
 	key := "user:" + u.Username
 	if err := h.attempt("password attempts", key); err != nil {
 		return err
@@ -213,6 +229,10 @@ func (h *handlers) confirmPassword(u db.User, password string) error {
 	return nil
 }
 
+// freshSignIn is how recent a sign-in confirms it's you, for accounts
+// without a password.
+const freshSignIn = 15 * time.Minute
+
 func (h *handlers) SetupMfa(ctx context.Context, req api.SetupMfaRequestObject) (api.SetupMfaResponseObject, error) {
 	p, err := currentUser(ctx)
 	if err != nil {
@@ -221,7 +241,7 @@ func (h *handlers) SetupMfa(ctx context.Context, req api.SetupMfaRequestObject) 
 	if hasMFA(p.User) {
 		return nil, conflict("two-factor sign-in is already on; turn it off first to use another app")
 	}
-	if err := h.confirmPassword(p.User, req.Body.Password); err != nil {
+	if err := h.confirmPassword(p, req.Body.Password); err != nil {
 		return nil, err
 	}
 	secret, err := auth.NewTOTPSecret()
@@ -326,7 +346,7 @@ func (h *handlers) DisableMfa(ctx context.Context, req api.DisableMfaRequestObje
 	if !hasMFA(u) {
 		return nil, conflict("two-factor sign-in is already off")
 	}
-	if err := h.confirmPassword(u, req.Body.Password); err != nil {
+	if err := h.confirmPassword(p, req.Body.Password); err != nil {
 		return nil, err
 	}
 	q := h.deps.Store.Queries

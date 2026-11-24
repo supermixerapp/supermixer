@@ -4,14 +4,17 @@ go 1.26.0
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/coreos/go-oidc/v3 v3.11.0
 	github.com/getkin/kin-openapi v0.153.0
 	github.com/go-chi/chi/v5 v5.5.0
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.13.0
 	github.com/minio/minio-go/v7 v7.4.1
 	github.com/oapi-codegen/runtime v1.9.1
 	github.com/pressly/goose/v3 v3.30.1
 	golang.org/x/crypto v0.59.0
+	golang.org/x/oauth2 v0.36.0
 	rsc.io/qr v0.2.0
 )
 

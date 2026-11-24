@@ -22,7 +22,7 @@ WHERE id = $1
 RETURNING *;
 
 -- name: SetUserPassword :exec
-UPDATE users SET password_hash = $2, default_password = $3, password_change_required = $4, updated_at = now() WHERE id = $1;
+UPDATE users SET password_hash = $2, default_password = $3, password_change_required = $4, has_password = true, updated_at = now() WHERE id = $1;
 
 -- name: SetPasswordChangeRequired :one
 UPDATE users SET password_change_required = $2, updated_at = now() WHERE id = $1

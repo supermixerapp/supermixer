@@ -87,6 +87,7 @@ func New(deps Deps) http.Handler {
 		inviteMail: auth.NewLimiter(30, time.Hour), // per inviter
 		resetMail:  auth.NewLimiter(5, time.Hour),  // per account
 		pending:    deps.Pending,
+		sso:        newSSOProviders(deps.Config.SSO),
 	}
 	if h.pending == nil {
 		h.pending = &sync.WaitGroup{}
@@ -138,6 +139,10 @@ func New(deps Deps) http.Handler {
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(h.sessionMiddleware)
 		r.Handle("/projects/{ref}/gateway/*", h.gateway())
+		// Single sign-on: redirects, so outside the JSON API's handlers.
+		r.Get("/auth/sso/{provider}/start", h.ssoStart)
+		r.Get("/auth/sso/{provider}/callback", h.ssoCallback)
+		r.Post("/profile/identities/{provider}/connect", h.ssoConnect)
 		// This API's OpenAPI description, for docs and client generators.
 		r.Get("/openapi.json", func(w http.ResponseWriter, _ *http.Request) {
 			spec, err := api.GetSwagger()

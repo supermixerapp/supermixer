@@ -353,6 +353,34 @@ paths:
       responses:
         "204": { description: Revoked. }
         default: { $ref: "#/components/responses/Error" }
+  /profile/identities:
+    get:
+      operationId: listIdentities
+      tags: [Profile]
+      summary: Single sign-on providers connected to your account
+      description: |
+        Connecting one is a browser flow: POST /profile/identities/{provider}/connect
+        returns {"url": ...} to open; the provider sends you back to Account › Security.
+        Signing in through one starts at GET /auth/sso/{provider}/start.
+      responses:
+        "200":
+          description: Connected identities.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Identity" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/identities/{identity_id}:
+    delete:
+      operationId: deleteIdentity
+      tags: [Profile]
+      summary: Disconnect a sign-in provider from your account
+      parameters:
+        - { name: identity_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Disconnected. }
+        default: { $ref: "#/components/responses/Error" }
   /profile/permissions:
     get:
       operationId: getPermissions
@@ -1853,8 +1881,17 @@ components:
             error: { type: string }
     UiConfig:
       type: object
-      required: [app_name, version, brand_color, default_theme, provisioning, email_enabled]
+      required: [app_name, version, brand_color, default_theme, provisioning, email_enabled, sso_providers]
       properties:
+        sso_providers:
+          type: array
+          description: Single sign-on providers, for "Continue with" buttons.
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string }
+              name: { type: string }
         app_name: { type: string }
         email_enabled: { type: boolean, description: "Supermixer sends email, so the sign-in page offers \"Forgot your password?\"." }
         version: { type: string }
@@ -2194,7 +2231,7 @@ components:
         password: { type: string }
     Profile:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, has_password, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -2208,6 +2245,7 @@ components:
           type: boolean
           description: "Must choose a new password before anything else; until then the API only allows the profile, changing the password and signing out."
         mfa_enabled: { type: boolean, description: Signs in with a code from an authenticator app as well as the password. }
+        has_password: { type: boolean, description: "False for accounts made through single sign-on, until they set one (\"Forgot your password?\")." }
         theme:
           allOf: [{ $ref: "#/components/schemas/ThemePreference" }]
           nullable: true
@@ -2234,6 +2272,16 @@ components:
       properties:
         password: { type: string }
         require_password_change: { type: boolean, default: true, description: "They choose their own password at next sign-in (not for your own account)." }
+    Identity:
+      type: object
+      required: [id, provider, provider_name, email, created_at]
+      properties:
+        id: { type: string, format: uuid }
+        provider: { type: string }
+        provider_name: { type: string, description: "The provider's name, or its id if it's no longer set up." }
+        email: { type: string, description: "The address the provider gave, if it vouched for one." }
+        created_at: { type: string, format: date-time }
+        last_sign_in_at: { type: string, format: date-time, nullable: true }
     AccessToken:
       type: object
       required: [id, name, prefix, created_at, expires_at]
@@ -2280,9 +2328,9 @@ components:
         expires_at: { type: string, format: date-time }
     MfaVerify:
       type: object
-      required: [challenge, code]
+      required: [code]
       properties:
-        challenge: { type: string }
+        challenge: { type: string, description: "From POST /auth/sign-in; after single sign-on, leave it out (it's in a cookie)." }
         code: { type: string, description: The 6-digit code from the app, or a recovery code. }
     MfaStatus:
       type: object
@@ -2321,7 +2369,7 @@ components:
         codes: { type: array, items: { type: string }, description: "Single-use; each signs in once in place of a code." }
     AdminOverview:
       type: object
-      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email]
+      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email, sso]
       properties:
         version: { type: string }
         users: { type: integer }
@@ -2347,6 +2395,18 @@ components:
             interval_hours: { type: number }
             keep: { type: integer }
             s3: { type: string, nullable: true, description: "s3://bucket/prefix, if backups are copied to a bucket." }
+        sso:
+          type: array
+          items:
+            type: object
+            required: [id, name, issuer, create_users, allowed_domains, redirect_uri]
+            properties:
+              id: { type: string }
+              name: { type: string }
+              issuer: { type: string }
+              create_users: { type: boolean }
+              allowed_domains: { type: array, items: { type: string } }
+              redirect_uri: { type: string, description: To register with the provider. }
         email:
           type: object
           required: [enabled]
@@ -2385,7 +2445,7 @@ components:
 
     User:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, disabled, sessions, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, identities, has_password, disabled, sessions, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -2395,6 +2455,8 @@ components:
         default_password: { type: boolean }
         password_change_required: { type: boolean }
         mfa_enabled: { type: boolean }
+        identities: { type: array, items: { type: string }, description: Sign-in providers connected to the account (their ids). }
+        has_password: { type: boolean, description: False for accounts made through single sign-on until they set one. }
         disabled: { type: boolean }
         sessions: { type: integer, description: Signed-in sessions. }
         last_seen_at: { type: string, format: date-time, nullable: true }

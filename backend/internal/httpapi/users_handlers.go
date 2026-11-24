@@ -21,7 +21,7 @@ func toUser(u db.User) api.User {
 	return api.User{
 		Id: u.ID, Username: u.Username, Email: u.Email, DisplayName: u.DisplayName,
 		IsInstanceAdmin: u.IsInstanceAdmin, DefaultPassword: u.DefaultPassword,
-		PasswordChangeRequired: u.PasswordChangeRequired, MfaEnabled: hasMFA(u),
+		PasswordChangeRequired: u.PasswordChangeRequired, MfaEnabled: hasMFA(u), HasPassword: u.HasPassword, Identities: []string{},
 		Disabled: u.DisabledAt != nil, CreatedAt: u.CreatedAt,
 	}
 }
@@ -64,11 +64,22 @@ func (h *handlers) ListUsers(ctx context.Context, _ api.ListUsersRequestObject) 
 	for _, r := range seen {
 		activity[r.UserID] = r
 	}
+	idents, err := h.deps.Store.Queries.ListAllIdentities(ctx)
+	if err != nil {
+		return nil, err
+	}
+	providers := map[[16]byte][]string{}
+	for _, r := range idents {
+		providers[r.UserID] = append(providers[r.UserID], r.Provider)
+	}
 	out := make(api.ListUsers200JSONResponse, 0, len(rows))
 	for _, u := range rows {
 		au := toUser(u)
 		if a, ok := activity[u.ID]; ok {
 			au.Sessions, au.LastSeenAt = int(a.Sessions), &a.LastSeenAt
+		}
+		if ps := providers[u.ID]; ps != nil {
+			au.Identities = ps
 		}
 		out = append(out, au)
 	}
@@ -321,6 +332,28 @@ func (h *handlers) GetAdminOverview(ctx context.Context, _ api.GetAdminOverviewR
 	if h.s3 != nil {
 		loc := "s3://" + path.Join(h.s3.Bucket(), pv.BackupS3.Prefix)
 		out.Backups.S3 = &loc
+	}
+	out.Sso = make([]struct {
+		AllowedDomains []string `json:"allowed_domains"`
+		CreateUsers    bool     `json:"create_users"`
+		Id             string   `json:"id"`
+		Issuer         string   `json:"issuer"`
+		Name           string   `json:"name"`
+		RedirectUri    string   `json:"redirect_uri"`
+	}, 0)
+	for _, p := range h.deps.Config.SSO.Providers {
+		d := p.AllowedDomains
+		if d == nil {
+			d = []string{}
+		}
+		out.Sso = append(out.Sso, struct {
+			AllowedDomains []string `json:"allowed_domains"`
+			CreateUsers    bool     `json:"create_users"`
+			Id             string   `json:"id"`
+			Issuer         string   `json:"issuer"`
+			Name           string   `json:"name"`
+			RedirectUri    string   `json:"redirect_uri"`
+		}{d, p.CreateUsers, p.ID, p.Issuer, p.Name, h.joinURL("/api/v1/auth/sso/"+p.ID+"/callback", nil)})
 	}
 	if h.mailer != nil {
 		e := h.deps.Config.Email

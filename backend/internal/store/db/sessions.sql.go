@@ -107,7 +107,7 @@ func (q *Queries) DeleteUserSessions(ctx context.Context, userID uuid.UUID) erro
 }
 
 const getActiveSession = `-- name: GetActiveSession :one
-SELECT s.id, s.user_id, s.token_hash, s.ip, s.user_agent, s.created_at, s.last_seen_at, s.expires_at, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at
+SELECT s.id, s.user_id, s.token_hash, s.ip, s.user_agent, s.created_at, s.last_seen_at, s.expires_at, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.expires_at > now() AND u.disabled_at IS NULL
@@ -147,6 +147,7 @@ func (q *Queries) GetActiveSession(ctx context.Context, tokenHash []byte) (GetAc
 		&i.User.TotpPending,
 		&i.User.TotpLastStep,
 		&i.User.MfaEnabledAt,
+		&i.User.HasPassword,
 	)
 	return i, err
 }

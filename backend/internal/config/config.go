@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -39,7 +40,44 @@ type Config struct {
 	Projects       Projects       `toml:"projects"`
 	Provisioning   Provisioning   `toml:"provisioning"`
 	Email          Email          `toml:"email"`
+	SSO            SSO            `toml:"sso"`
 }
+
+// SSO is signing in through an OpenID Connect identity provider (Okta,
+// Microsoft Entra ID, Google Workspace, Keycloak, Authentik, Dex, ...).
+type SSO struct {
+	Providers []SSOProvider `toml:"providers"`
+}
+
+// SSOProvider is one identity provider, with a "Continue with <name>"
+// button on the sign-in page.
+type SSOProvider struct {
+	// ID is in the provider's URLs (a-z, 0-9, -): the redirect URI to
+	// register with it is <public_url>/api/v1/auth/sso/<id>/callback.
+	ID   string `toml:"id"`
+	Name string `toml:"name"`
+	// Issuer is the provider's OpenID Connect issuer URL; its
+	// /.well-known/openid-configuration describes the rest.
+	Issuer       string `toml:"issuer"`
+	ClientID     string `toml:"client_id"`
+	ClientSecret string `toml:"client_secret"`
+	// ClientSecretFile holds the secret instead (a mounted secret).
+	ClientSecretFile string   `toml:"client_secret_file"`
+	Scopes           []string `toml:"scopes"`
+	// AllowedDomains limits sign-in to these email domains; empty allows any.
+	AllowedDomains []string `toml:"allowed_domains"`
+	// CreateUsers makes an account for someone signing in for the first
+	// time. Without it, people connect the provider to their account
+	// (Account › Security) first.
+	CreateUsers bool `toml:"create_users"`
+	// AssumeEmailVerified trusts the email address of a provider that
+	// checks addresses but doesn't send email_verified (Microsoft Entra ID
+	// with only verified domains, for one). Otherwise an address without
+	// email_verified = true isn't used.
+	AssumeEmailVerified bool `toml:"assume_email_verified"`
+}
+
+var ssoIDPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9-]{0,30}$`)
 
 // Email is how Supermixer sends email: invitations, password-reset links and
 // security notices. Off while smtp_host is empty.
@@ -401,6 +439,44 @@ func (c *Config) validate() error {
 	}
 	if c.Log.Format != "text" && c.Log.Format != "json" {
 		fail("log.format must be text or json, got %q", c.Log.Format)
+	}
+	seen := map[string]bool{}
+	for i := range c.SSO.Providers {
+		p := &c.SSO.Providers[i]
+		where := fmt.Sprintf("sso.providers[%d]", i)
+		if !ssoIDPattern.MatchString(p.ID) {
+			fail("%s.id must be 1-31 of a-z, 0-9 and -, got %q", where, p.ID)
+		} else if seen[p.ID] {
+			fail("%s.id %q is used twice", where, p.ID)
+		}
+		seen[p.ID] = true
+		if strings.TrimSpace(p.Name) == "" {
+			fail("%s.name must not be empty", where)
+		}
+		if u, err := url.Parse(p.Issuer); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+			fail("%s.issuer must be the provider's issuer URL, got %q", where, p.Issuer)
+		}
+		if p.ClientID == "" {
+			fail("%s.client_id must not be empty", where)
+		}
+		if p.ClientSecretFile != "" {
+			if p.ClientSecret != "" {
+				fail("%s: set client_secret or client_secret_file, not both", where)
+			} else if b, err := os.ReadFile(p.ClientSecretFile); err != nil {
+				fail("%s.client_secret_file: %v", where, err)
+			} else {
+				p.ClientSecret = strings.TrimSpace(string(b))
+			}
+		}
+		if len(p.Scopes) == 0 {
+			p.Scopes = []string{"openid", "email", "profile"}
+		} else if !slices.Contains(p.Scopes, "openid") {
+			// Without it there's no ID token, and no sign-in.
+			p.Scopes = append([]string{"openid"}, p.Scopes...)
+		}
+		for j, d := range p.AllowedDomains {
+			p.AllowedDomains[j] = strings.ToLower(strings.TrimPrefix(strings.TrimSpace(d), "@"))
+		}
 	}
 	if e := c.Email; e.Enabled() {
 		if e.SMTPPort < 1 || e.SMTPPort > 65535 {
