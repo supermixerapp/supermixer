@@ -8,6 +8,7 @@ import type { Icon } from '@/components/icon'
 import {
   DarkModeIcon,
   LightModeIcon,
+  KeyIcon,
   ManageAccountsIcon,
   VerifiedUserIcon,
   PaletteIcon,
@@ -194,6 +195,7 @@ export function CommandMenu() {
                 entry={{ label: 'Security (two-factor sign-in)', icon: VerifiedUserIcon, to: '/account/security' }}
                 onSelect={go}
               />
+              <NavItem entry={{ label: 'Access tokens', icon: KeyIcon, to: '/account/access-tokens' }} onSelect={go} />
               <NavItem
                 entry={{ label: 'Appearance', icon: DarkModeIcon, to: '/account/appearance' }}
                 onSelect={go}

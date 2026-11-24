@@ -147,7 +147,7 @@ function SetupDialog({ onClose }: { onClose: () => void }) {
   }
   // Once on, closing means they've seen the codes.
   const close = () => {
-    if (codes) toast.success('Two-factor sign-in is on; your other sessions were signed out')
+    if (codes) toast.success('Two-factor sign-in is on; your other sessions were signed out and access tokens revoked')
     onClose()
   }
   return (
@@ -178,7 +178,7 @@ function SetupDialog({ onClose }: { onClose: () => void }) {
               <DialogDescription>
                 {setup
                   ? 'Scan the QR code with the app, or type in the key, then enter the 6-digit code it shows.'
-                  : 'Confirm your password to start. Turning it on signs out your other sessions.'}
+                  : 'Confirm your password to start. Turning it on signs out your other sessions and revokes your access tokens.'}
               </DialogDescription>
             </DialogHeader>
             <DialogSection className="flex flex-col gap-4 border-t">

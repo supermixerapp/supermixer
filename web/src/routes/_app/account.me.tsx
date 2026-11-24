@@ -150,7 +150,7 @@ function PasswordSection() {
   }
   return (
     <section id="password" className="scroll-mt-6">
-      <SettingsSection title="Password">
+      <SettingsSection title="Password" description="Changing it signs out your other sessions and revokes your access tokens.">
         {me?.default_password && (
           <Alert variant="warning" title="You are still using the default password">
             Anyone who knows the default can sign in as you. Choose a new password now.

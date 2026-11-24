@@ -55,6 +55,8 @@ export default defineConfig({
     proxy: {
       // ws: the Realtime Inspector's socket goes through the gateway too.
       '/api': { target: backend, ws: true },
+      // The Supabase-style Management API (personal access tokens).
+      '/v1': backend,
       '/theme.css': backend,
       '/favicon.svg': backend,
     },
