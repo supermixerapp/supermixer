@@ -85,6 +85,8 @@ import HistoryIconSvg from '@material-design-icons/svg/two-tone/history.svg?reac
 import SchemaIconSvg from '@material-design-icons/svg/two-tone/schema.svg?react'
 import BoltIconSvg from '@material-design-icons/svg/two-tone/bolt.svg?react'
 import ListIconSvg from '@material-design-icons/svg/two-tone/list.svg?react'
+import GridViewIconSvg from '@material-design-icons/svg/two-tone/grid_view.svg?react'
+import ViewListIconSvg from '@material-design-icons/svg/two-tone/view_list.svg?react'
 import ArrowBackIconSvg from '@material-design-icons/svg/two-tone/arrow_back.svg?react'
 import ArrowUpIconSvg from '@material-design-icons/svg/two-tone/arrow_upward.svg?react'
 import ArrowDownIconSvg from '@material-design-icons/svg/two-tone/arrow_downward.svg?react'
@@ -220,6 +222,8 @@ export const HistoryIcon = createIcon(HistoryIconSvg, 'history')
 export const SchemaIcon = createIcon(SchemaIconSvg, 'schema')
 export const BoltIcon = createIcon(BoltIconSvg, 'bolt')
 export const ListIcon = createIcon(ListIconSvg, 'list')
+export const GridViewIcon = createIcon(GridViewIconSvg, 'grid_view')
+export const ViewListIcon = createIcon(ViewListIconSvg, 'view_list')
 export const ArrowBackIcon = createIcon(ArrowBackIconSvg, 'arrow_back')
 export const ArrowUpIcon = createIcon(ArrowUpIconSvg, 'arrow_upward')
 export const ArrowDownIcon = createIcon(ArrowDownIconSvg, 'arrow_downward')

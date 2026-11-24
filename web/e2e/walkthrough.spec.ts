@@ -126,6 +126,20 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(card.getByText('Healthy', { exact: true })).toBeVisible({ timeout: 30_000 })
   })
 
+  await test.step('projects show as a list too, and the choice is remembered', async () => {
+    await page.getByRole('button', { name: 'Toggle list view' }).click()
+    await expect(page.getByRole('button', { name: 'Toggle list view' })).toHaveAttribute('aria-pressed', 'true')
+    const row = page.getByRole('row').filter({ hasText: 'Dev stack' })
+    await expect(row.getByText('Healthy', { exact: true })).toBeVisible({ timeout: 30_000 })
+    await page.reload()
+    await expect(page.getByRole('row').filter({ hasText: 'Dev stack' })).toBeVisible()
+    await page.getByRole('row').filter({ hasText: 'Dev stack' }).getByText('localhost:8100').click()
+    await expect(page).toHaveURL(new RegExp(`/project/${ref}$`))
+    await page.goto(`/org/${slug}`)
+    await page.getByRole('button', { name: 'Toggle grid view' }).click()
+    await expect(page.getByRole('link').filter({ hasText: 'Dev stack' })).toBeVisible()
+  })
+
   let invite = ''
   await test.step('invite a Read-only member', async () => {
     await page.goto(`/org/${slug}/team`)
@@ -257,7 +271,8 @@ test('the first admin sets up an organization, a project and a Read-only member'
   })
 
   await test.step('key pages look as before, light and dark', async () => {
-    const shot = { fullPage: true, maxDiffPixelRatio: 0.01 }
+    // Strict enough to notice a new button; renders on one machine match exactly.
+    const shot = { fullPage: true, maxDiffPixels: 100 }
     // The sign-in page has a button per single sign-on provider (Dex, with make sso).
     const ui = await (await page.request.get('/api/v1/ui-config')).json()
     const sso = ui.sso_providers.length > 0 ? '-sso' : ''
@@ -280,6 +295,20 @@ test('the first admin sets up an organization, a project and a Read-only member'
       })
       await expect(page.locator('html')).toHaveAttribute('data-theme', theme)
       await expect(page).toHaveScreenshot(`projects-${theme}.png`, shot)
+      // The list shows each project's creation date: today's, so fixed here
+      // (it would change the columns' widths from one day to the next).
+      await page.route('**/api/v1/projects', async (route) => {
+        const res = await route.fetch()
+        const projects = (await res.json()) as { created_at: string }[]
+        await route.fulfill({ response: res, json: projects.map((p) => ({ ...p, created_at: '2026-01-15T12:00:00Z' })) })
+      })
+      await page.reload()
+      await page.getByRole('button', { name: 'Toggle list view' }).click()
+      await expect(page.getByRole('row').filter({ hasText: 'Dev stack' }).getByText('Healthy', { exact: true })).toBeVisible()
+      await expect(page.getByRole('cell', { name: new Date('2026-01-15T12:00:00Z').toLocaleDateString('en-US') })).toBeVisible()
+      await expect(page).toHaveScreenshot(`projects-list-${theme}.png`, shot)
+      await page.unroute('**/api/v1/projects')
+      await page.getByRole('button', { name: 'Toggle grid view' }).click()
       await page.goto('/account/me')
       await expect(page.getByRole('heading', { name: 'Preferences' })).toBeVisible()
       await expect(page).toHaveScreenshot(`account-${theme}.png`, shot)

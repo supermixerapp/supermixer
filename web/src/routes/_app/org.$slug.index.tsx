@@ -2,13 +2,16 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
-import { AddIcon, DatabaseIcon, SearchIcon } from '@/components/icons'
+import { AddIcon, DatabaseIcon, GridViewIcon, SearchIcon, ViewListIcon } from '@/components/icons'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { PermissionButton } from '@/components/permission-button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import type { Schemas } from '@/lib/api/client'
+import { cn } from '@/lib/utils'
 import { can, useProjects, useSelectedOrganization } from '@/lib/api/hooks'
 import { projectHealthQuery } from '@/lib/api/queries'
 
@@ -19,12 +22,66 @@ export const Route = createFileRoute('/_app/org/$slug/')({
   component: ProjectsPage,
 })
 
+type View = 'grid' | 'list'
+const VIEW_KEY = 'supermixer.projects.view'
+
+/** Grid or list, remembered in this browser (if it lets us). */
+function useView(): [View, (v: View) => void] {
+  const [view, setView] = useState<View>(() => {
+    try {
+      return localStorage.getItem(VIEW_KEY) === 'list' ? 'list' : 'grid'
+    } catch {
+      return 'grid'
+    }
+  })
+  const choose = (v: View) => {
+    setView(v)
+    try {
+      localStorage.setItem(VIEW_KEY, v)
+    } catch {
+      // still switches for this visit
+    }
+  }
+  return [view, choose]
+}
+
+function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
+  const options = [
+    { value: 'grid', label: 'Toggle grid view', Icon: GridViewIcon },
+    { value: 'list', label: 'Toggle list view', Icon: ViewListIcon },
+  ] as const
+  return (
+    <div className="flex shrink-0 items-center rounded-md border border-control bg-surface-100 p-0.5" role="group" aria-label="Project view">
+      {options.map(({ value, label, Icon }) => (
+        <Tooltip key={value}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              aria-label={label}
+              aria-pressed={view === value}
+              onClick={() => onChange(value)}
+              className={cn(
+                'flex h-[22px] w-7 items-center justify-center rounded-[4px] text-foreground-lighter transition-colors focus-ring',
+                view === value ? 'bg-surface-300 text-foreground' : 'hover:text-foreground'
+              )}
+            >
+              <Icon size={14} />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  )
+}
+
 function ProjectsPage() {
   const { slug } = Route.useParams()
   const org = useSelectedOrganization()
   const navigate = useNavigate()
   const { data: projects, isPending } = useProjects()
   const [search, setSearch] = useState('')
+  const [view, setView] = useView()
   const inOrg = (projects ?? []).filter((p) => p.organization_slug === slug)
   const visible = inOrg.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
   const canCreate = can(org, 'projects:create')
@@ -59,7 +116,10 @@ function ProjectsPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          {newProject}
+          <div className="flex items-center gap-2">
+            <ViewToggle view={view} onChange={setView} />
+            {newProject}
+          </div>
         </div>
         {isPending ? (
           <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
@@ -76,12 +136,30 @@ function ProjectsPage() {
             </p>
             <div className="mt-2">{newProject}</div>
           </Card>
-        ) : (
+        ) : visible.length === 0 ? null : view === 'grid' ? (
           <ul className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
             {visible.map((p) => (
               <ProjectCard key={p.ref} project={p} />
             ))}
           </ul>
+        ) : (
+          <Card className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Project</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Postgres</TableHead>
+                  <TableHead>Created</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {visible.map((p) => (
+                  <ProjectRow key={p.ref} project={p} onOpen={() => navigate({ to: '/project/$ref', params: { ref: p.ref } })} />
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
         )}
         {inOrg.length > 0 && visible.length === 0 && (
           <p className="py-12 text-center text-sm text-foreground-lighter">No projects match your search.</p>
@@ -91,13 +169,47 @@ function ProjectsPage() {
   )
 }
 
-function ProjectCard({ project }: { project: Schemas['Project'] }) {
-  // Follow stacks that are changing, so the card doesn't go stale.
+/** A project's live state: its stack (followed while changing) and health. */
+function useProjectStatus(project: Schemas['Project']) {
+  // Follow stacks that are changing, so the view doesn't go stale.
   const live = useQuery({ ...stackQuery(project.ref), enabled: stackBusy(project.stack) })
   const stack = live.data ?? project.stack
   useStackGone(live.error)
   // A paused, failed or still-starting stack has nothing to check yet.
   const health = useQuery({ ...projectHealthQuery(project.ref), enabled: stackUp(stack) })
+  const badge = stackUp(stack) ? (
+    <HealthBadge status={health.data?.status} loading={health.isPending} />
+  ) : (
+    <StackBadge stack={stack!} />
+  )
+  const postgres = stackUp(stack) ? health.data?.postgres_version : undefined
+  return { badge, postgres }
+}
+
+function ProjectRow({ project, onOpen }: { project: Schemas['Project']; onOpen: () => void }) {
+  const { badge, postgres } = useProjectStatus(project)
+  return (
+    <TableRow className="cursor-pointer" onClick={onOpen}>
+      <TableCell>
+        <Link
+          to="/project/$ref"
+          params={{ ref: project.ref }}
+          className="block text-foreground focus-ring"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {project.name}
+        </Link>
+        <span className="block truncate font-mono text-xs text-foreground-lighter">{project.api_url}</span>
+      </TableCell>
+      <TableCell>{badge}</TableCell>
+      <TableCell className="text-foreground-light">{postgres ?? '—'}</TableCell>
+      <TableCell className="whitespace-nowrap text-foreground-light">{new Date(project.created_at).toLocaleDateString()}</TableCell>
+    </TableRow>
+  )
+}
+
+function ProjectCard({ project }: { project: Schemas['Project'] }) {
+  const { badge, postgres } = useProjectStatus(project)
   return (
     <li>
       <Link to="/project/$ref" params={{ ref: project.ref }} className="group block rounded-panel focus-ring">
@@ -107,14 +219,8 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
             <p className="truncate font-mono text-xs text-foreground-lighter">{project.api_url}</p>
           </div>
           <div className="flex items-center gap-2">
-            {stackUp(stack) ? (
-              <HealthBadge status={health.data?.status} loading={health.isPending} />
-            ) : (
-              <StackBadge stack={stack!} />
-            )}
-            {stackUp(stack) && health.data?.postgres_version && (
-              <span className="text-xs text-foreground-lighter">Postgres {health.data.postgres_version}</span>
-            )}
+            {badge}
+            {postgres && <span className="text-xs text-foreground-lighter">Postgres {postgres}</span>}
           </div>
         </Card>
       </Link>
