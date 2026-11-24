@@ -264,6 +264,17 @@ test('the first admin sets up an organization, a project and a Read-only member'
     }
   })
 
+  await test.step('organization security, and pages still to come', async () => {
+    await page.goto(`/org/${slug}/security`)
+    await expect(page.getByLabel('Require two-factor sign-in')).toBeVisible()
+    await expect(page.getByText('Members may sign in with a password.')).toBeVisible()
+    for (const path of ['apps', 'integrations']) {
+      await page.goto(`/org/${slug}/${path}`)
+      await expect(page.getByText('Coming soon', { exact: true })).toBeVisible()
+      await expect(page.getByText(/part of Stage/)).toHaveCount(0)
+    }
+  })
+
   await test.step('the SSO settings page loads', async () => {
     await page.goto(`/org/${slug}/sso`)
     // With Dex running (make sso), sso.spec.ts tests it properly.

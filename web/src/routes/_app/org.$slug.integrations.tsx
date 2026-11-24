@@ -8,10 +8,6 @@ export const Route = createFileRoute('/_app/org/$slug/integrations')({
 
 function IntegrationsPage() {
   return (
-    <ComingSoon
-      title="Integrations"
-      stage={5}
-      description="Organization-level integrations. Arrives in Stage 5."
-    />
+    <ComingSoon title="Integrations" soon description="Organization-level integrations (such as GitHub) are coming soon." />
   )
 }

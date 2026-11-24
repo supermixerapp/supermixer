@@ -27,7 +27,7 @@ import {
 import type { Icon } from '@/components/icon'
 
 /** The implementation stage Supermixer is currently at. */
-export const CURRENT_STAGE = 4
+export const CURRENT_STAGE = 5
 
 export interface NavRoute {
   key: string
@@ -76,6 +76,8 @@ export interface ProductMenuItem {
   path: string
   stage: number
   badge?: string
+  /** Not built yet, nor scheduled: its page says "Coming soon". */
+  soon?: boolean
 }
 
 export interface ProductMenuGroup {
@@ -279,7 +281,7 @@ export const orgSettingsMenu: ProductMenu = {
         { label: 'Security', path: 'security', stage: 5 },
         { label: 'SSO', path: 'sso', stage: 5 },
         { label: 'Webhooks', path: 'webhooks', stage: 5 },
-        { label: 'OAuth Apps', path: 'apps', stage: 5 },
+        { label: 'OAuth Apps', path: 'apps', stage: 5, soon: true },
         { label: 'Audit Logs', path: 'audit', stage: 1 },
       ],
     },

@@ -44,19 +44,39 @@ export function PageHeader({
   )
 }
 
-/** Placeholder for pages scheduled in a later implementation stage. */
-export function ComingSoon({ title, stage, description }: { title: string; stage: number; description?: string }) {
+/**
+ * Placeholder for a page not built yet: the stage of the Supermixer plan
+ * that brings it, or "Coming soon" for one not scheduled.
+ */
+export function ComingSoon({
+  title,
+  stage,
+  soon,
+  description,
+}: {
+  title: string
+  stage?: number
+  soon?: boolean
+  description?: string
+}) {
+  const later = soon || stage === undefined
   return (
     <PageContainer size="small" className="flex flex-1 items-center justify-center py-16">
       <div className="flex w-full flex-col items-center gap-4 rounded-panel border border-dashed border-strong px-8 py-12 text-center">
         <ConstructionIcon size={32} className="text-foreground-lighter" />
         <div className="flex flex-col items-center gap-2">
           <h2 className="heading-section">{title}</h2>
-          <Badge variant={stage <= CURRENT_STAGE ? 'success' : 'default'}>Stage {stage}</Badge>
+          {later ? (
+            <Badge>Coming soon</Badge>
+          ) : (
+            <Badge variant={stage <= CURRENT_STAGE ? 'success' : 'default'}>Stage {stage}</Badge>
+          )}
         </div>
         <p className="max-w-md text-sm text-foreground-light">
           {description ??
-            `This page is part of Stage ${stage} of the Supermixer plan. Supermixer is currently at Stage ${CURRENT_STAGE}.`}
+            (later
+              ? 'This page is coming soon.'
+              : `This page is part of Stage ${stage} of the Supermixer plan. Supermixer is currently at Stage ${CURRENT_STAGE}.`)}
         </p>
       </div>
     </PageContainer>

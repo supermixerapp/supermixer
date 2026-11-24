@@ -18,5 +18,5 @@ function OrgPlaceholder() {
   const { _splat } = Route.useParams()
   const item = orgSettingsMenu.groups.flatMap((g) => g.items).find((i) => i.path === _splat?.replace(/\/+$/, ''))
   if (!item) return <NotFoundContent />
-  return <ComingSoon title={`Organization Settings: ${item.label}`} stage={item.stage} />
+  return <ComingSoon title={`Organization Settings: ${item.label}`} stage={item.stage} soon={item.soon} />
 }
