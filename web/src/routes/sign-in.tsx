@@ -135,12 +135,14 @@ function SignInPage() {
           Sign in
         </Button>
       </form>
-      <p className="mt-8 text-center text-sm text-foreground-lighter">
-        Accounts are created by an instance admin or through an invitation link. On a new install, sign in as the
-        bootstrap admin from the server&apos;s <code className="font-mono text-xs">.env.toml</code> (
-        <code className="font-mono text-xs">admin</code> unless it says otherwise), with its password from there or,
-        if none is set, the one-time password in the server&apos;s log.
-      </p>
+      <div className="mt-8 flex flex-col gap-2 text-center text-sm text-foreground-lighter">
+        <p>No account yet? Ask your Supermixer admin, or use the invitation link you were sent.</p>
+        <p>
+          Setting up Supermixer for the first time? Sign in as <strong className="text-foreground-light">admin</strong>.
+          The password is printed in the server&apos;s log when Supermixer first starts. If a username or password was
+          set in <code className="font-mono text-xs">.env.toml</code>, use those instead.
+        </p>
+      </div>
     </AuthLayout>
   )
 }
