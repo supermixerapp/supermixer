@@ -147,6 +147,8 @@ type client struct {
 	t    *testing.T
 	env  *testEnv
 	http *http.Client
+	// bearer, if set, is sent as Authorization: Bearer (an access token).
+	bearer string
 }
 
 func (e *testEnv) client(t *testing.T) *client {
@@ -163,6 +165,9 @@ func (c *client) do(method, path string, body any, out any) int {
 	}
 	req, _ := http.NewRequest(method, c.env.server.URL+"/api/v1"+path, r)
 	req.Header.Set("Content-Type", "application/json")
+	if c.bearer != "" {
+		req.Header.Set("Authorization", "Bearer "+c.bearer)
+	}
 	u, _ := url.Parse(c.env.server.URL)
 	for _, ck := range c.http.Jar.Cookies(u) {
 		if ck.Name == csrfCookie {

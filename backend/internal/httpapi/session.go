@@ -26,7 +26,11 @@ const (
 type principal struct {
 	User    db.User
 	Session db.Session
-	Token   string
+	// Token is the session cookie's value (for CSRF).
+	Token string
+	// AccessToken is set when the request came with a personal access
+	// token instead of a session.
+	AccessToken *db.AccessToken
 }
 
 // requestInfo carries what handlers need from the HTTP request, since
@@ -78,6 +82,33 @@ func publicRoute(method, path string) bool {
 	return false
 }
 
+// bearerToken returns a personal access token from Authorization: Bearer
+// sbp_… (the scheme in any case, RFC 7235).
+func bearerToken(r *http.Request) (string, bool) {
+	scheme, tok, ok := strings.Cut(strings.TrimSpace(r.Header.Get("Authorization")), " ")
+	tok = strings.TrimSpace(tok)
+	if !ok || !strings.EqualFold(scheme, "Bearer") || !strings.HasPrefix(tok, auth.AccessTokenPrefix) {
+		return "", false
+	}
+	return tok, true
+}
+
+// tokenRoute reports whether an access token may make a request: anything
+// its owner could, except changing how the account is secured, so a leaked
+// token can't take the account over.
+func tokenRoute(method, path string) bool {
+	p := strings.TrimPrefix(path, "/api/v1")
+	switch {
+	case strings.HasPrefix(p, "/auth/"):
+		return false
+	case p == "/profile":
+		return method == http.MethodGet
+	case strings.HasPrefix(p, "/profile/"):
+		return p == "/profile/permissions"
+	}
+	return true
+}
+
 // passwordChangeRoute reports whether a request is allowed while the user
 // must choose a new password: what the change screen needs.
 func passwordChangeRoute(method, path string) bool {
@@ -107,7 +138,31 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 			info.IP = host
 		}
 
-		if c, err := r.Cookie(sessionCookie); err == nil && c.Value != "" {
+		// A personal access token, for scripts: Authorization: Bearer sbp_…
+		// It needs no CSRF token (browsers never send it on their own).
+		// Other Authorization headers (a reverse proxy's Basic auth) are
+		// left alone.
+		if tok, ok := bearerToken(r); ok {
+			row, err := h.deps.Store.Queries.GetActiveAccessToken(r.Context(), auth.HashToken(tok))
+			switch {
+			case errors.Is(err, pgx.ErrNoRows):
+				writeError(w, http.StatusUnauthorized, "the access token is wrong, expired or revoked")
+				return
+			case err != nil:
+				h.deps.Logger.ErrorContext(r.Context(), "loading access token", "err", err)
+				writeError(w, http.StatusInternalServerError, "internal server error")
+				return
+			}
+			t := row.AccessToken
+			info.Principal = &principal{User: row.User, AccessToken: &t}
+			if t.LastUsedAt == nil || time.Since(*t.LastUsedAt) > time.Minute {
+				_ = h.deps.Store.Queries.TouchAccessToken(r.Context(), db.TouchAccessTokenParams{ID: t.ID, LastUsedIp: info.IP})
+			}
+			if !tokenRoute(r.Method, r.URL.Path) {
+				writeError(w, http.StatusForbidden, "access tokens can't change account security (password, two-factor sign-in, sessions, tokens); sign in to Supermixer for that")
+				return
+			}
+		} else if c, err := r.Cookie(sessionCookie); err == nil && c.Value != "" {
 			row, err := h.deps.Store.Queries.GetActiveSession(r.Context(), auth.HashToken(c.Value))
 			switch {
 			case err == nil:
@@ -122,7 +177,7 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 			}
 		}
 
-		if info.Principal != nil && !safeMethod(r.Method) {
+		if info.Principal != nil && info.Principal.AccessToken == nil && !safeMethod(r.Method) && !strings.HasPrefix(r.URL.Path, "/v1/") {
 			if !h.csrf.Valid(info.Principal.Token, r.Header.Get(csrfHeader)) {
 				writeError(w, http.StatusForbidden, "missing or invalid CSRF token; reload the page and try again")
 				return
@@ -130,6 +185,10 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 		}
 
 		if info.Principal == nil && !publicRoute(r.Method, r.URL.Path) {
+			if strings.HasPrefix(r.URL.Path, "/v1/") {
+				writeError(w, http.StatusUnauthorized, "use a personal access token: Authorization: Bearer sbp_… (Account › Access Tokens)")
+				return
+			}
 			writeError(w, http.StatusUnauthorized, "sign in to continue")
 			return
 		}

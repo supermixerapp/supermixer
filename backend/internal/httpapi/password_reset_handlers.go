@@ -171,7 +171,11 @@ func (h *handlers) CompletePasswordReset(ctx context.Context, req api.CompletePa
 		if err := q.DeletePasswordResets(ctx, u.ID); err != nil {
 			return err
 		}
-		// Whoever knew the old password is signed out too.
+		// Whoever knew the old password is signed out too, and their
+		// tokens stop working.
+		if err := q.DeleteUserAccessTokens(ctx, u.ID); err != nil {
+			return err
+		}
 		return q.DeleteUserSessions(ctx, u.ID)
 	})
 	if err != nil {

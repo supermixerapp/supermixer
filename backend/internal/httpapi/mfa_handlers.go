@@ -302,7 +302,10 @@ func (h *handlers) EnableMfa(ctx context.Context, req api.EnableMfaRequestObject
 		}
 		// Sessions opened with the password alone (perhaps someone else's,
 		// with a leaked password) would otherwise count as two-factor ones
-		// from now on.
+		// from now on; so would tokens made with them.
+		if err := q.DeleteUserAccessTokens(ctx, u.ID); err != nil {
+			return err
+		}
 		return q.DeleteOtherUserSessions(ctx, db.DeleteOtherUserSessionsParams{UserID: u.ID, ID: p.Session.ID})
 	})
 	if err != nil {
@@ -310,7 +313,7 @@ func (h *handlers) EnableMfa(ctx context.Context, req api.EnableMfaRequestObject
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.mfa_enabled", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"other_sessions_signed_out": true}})
-	h.notify(ctx, u, "Two-factor sign-in was turned on", "Two-factor sign-in was turned on, and your other sessions were signed out,")
+	h.notify(ctx, u, "Two-factor sign-in was turned on", "Two-factor sign-in was turned on, your other sessions were signed out and your access tokens revoked,")
 	return api.EnableMfa200JSONResponse{Codes: codes}, nil
 }
 
@@ -393,6 +396,9 @@ func (h *handlers) ResetUserMfa(ctx context.Context, req api.ResetUserMfaRequest
 			return err
 		}
 		// Whoever has their device shouldn't stay signed in either.
+		if err := q.DeleteUserAccessTokens(ctx, target.ID); err != nil {
+			return err
+		}
 		return q.DeleteUserSessions(ctx, target.ID)
 	})
 	if err != nil {

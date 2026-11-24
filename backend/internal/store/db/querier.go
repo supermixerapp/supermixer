@@ -24,7 +24,9 @@ type Querier interface {
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRecoveryCodesLeft(ctx context.Context, userID uuid.UUID) (int32, error)
+	CountUserAccessTokens(ctx context.Context, userID uuid.UUID) (int32, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CreateAccessToken(ctx context.Context, arg CreateAccessTokenParams) (AccessToken, error)
 	CreateBackup(ctx context.Context, arg CreateBackupParams) (Backup, error)
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
@@ -33,6 +35,7 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteAccessToken(ctx context.Context, arg DeleteAccessTokenParams) (AccessToken, error)
 	DeleteBackup(ctx context.Context, id uuid.UUID) error
 	DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error
 	DeleteExpiredSessions(ctx context.Context) error
@@ -47,6 +50,7 @@ type Querier interface {
 	DeleteRecoveryCodes(ctx context.Context, userID uuid.UUID) error
 	DeleteSession(ctx context.Context, id uuid.UUID) error
 	DeleteSnippet(ctx context.Context, id uuid.UUID) error
+	DeleteUserAccessTokens(ctx context.Context, userID uuid.UUID) error
 	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
 	DisableMFA(ctx context.Context, id uuid.UUID) error
@@ -56,6 +60,8 @@ type Querier interface {
 	// this server or another) cut them short. Returns them to remove their files.
 	FailStaleBackups(ctx context.Context, before time.Time) ([]FailStaleBackupsRow, error)
 	FinishBackup(ctx context.Context, arg FinishBackupParams) (Backup, error)
+	// A token that works: not expired, and its owner not disabled.
+	GetActiveAccessToken(ctx context.Context, tokenHash []byte) (GetActiveAccessTokenRow, error)
 	// The session for a token, if it is unexpired and its user is enabled.
 	GetActiveSession(ctx context.Context, tokenHash []byte) (GetActiveSessionRow, error)
 	GetBackup(ctx context.Context, arg GetBackupParams) (Backup, error)
@@ -77,6 +83,7 @@ type Querier interface {
 	// failing stack isn't retried every minute).
 	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
 	LatestDBSnapshotData(ctx context.Context, projectID uuid.UUID) ([]byte, error)
+	ListAccessTokens(ctx context.Context, userID uuid.UUID) ([]AccessToken, error)
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
 	ListBackupLeftovers(ctx context.Context, bucket string) ([]BackupLeftover, error)
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
@@ -103,6 +110,8 @@ type Querier interface {
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	// Serializes changes to one user's tokens.
+	LockUser(ctx context.Context, id uuid.UUID) error
 	MarkBackupUploadFailed(ctx context.Context, arg MarkBackupUploadFailedParams) error
 	MarkBackupUploaded(ctx context.Context, arg MarkBackupUploadedParams) (Backup, error)
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
@@ -132,6 +141,7 @@ type Querier interface {
 	SetTOTPPending(ctx context.Context, arg SetTOTPPendingParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
+	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
 	TouchSession(ctx context.Context, id uuid.UUID) error
 	// A running operation's heartbeat, so other servers don't think it's stuck.
 	TouchStack(ctx context.Context, id uuid.UUID) error

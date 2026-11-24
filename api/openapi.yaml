@@ -7,9 +7,15 @@ info:
     self-hosted Supabase. Resource paths follow the shape of the Supabase
     Management API (https://api.supabase.com/api/v1) where a concept exists in both.
 
-    Authentication is a session cookie set by `POST /auth/sign-in`. Requests
-    that change state must send the `X-CSRF-Token` header, whose value is in
-    the `sm_csrf` cookie.
+    Authentication is either:
+
+    - a personal access token (Account › Access Tokens) in
+      `Authorization: Bearer sbp_…`, for scripts and CI. It acts as its
+      owner, but can't change how the account is secured (password,
+      two-factor sign-in, sessions, tokens); or
+    - the session cookie set by `POST /auth/sign-in`. Requests that change
+      state must then send the `X-CSRF-Token` header, whose value is in the
+      `sm_csrf` cookie.
 servers:
   - url: /api/v1
 tags:
@@ -306,6 +312,46 @@ paths:
         - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         "204": { description: Session revoked. }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/access-tokens:
+    get:
+      operationId: listAccessTokens
+      tags: [Profile]
+      summary: Your personal access tokens
+      responses:
+        "200":
+          description: Tokens, newest first (without their values).
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AccessToken" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createAccessToken
+      tags: [Profile]
+      summary: Create a personal access token; its value is shown only now
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/AccessTokenCreate" }
+      responses:
+        "201":
+          description: Created.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AccessTokenCreated" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/access-tokens/{token_id}:
+    delete:
+      operationId: deleteAccessToken
+      tags: [Profile]
+      summary: Revoke a personal access token
+      parameters:
+        - { name: token_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Revoked. }
         default: { $ref: "#/components/responses/Error" }
   /profile/permissions:
     get:
@@ -2188,6 +2234,30 @@ components:
       properties:
         password: { type: string }
         require_password_change: { type: boolean, default: true, description: "They choose their own password at next sign-in (not for your own account)." }
+    AccessToken:
+      type: object
+      required: [id, name, prefix, created_at, expires_at]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        prefix: { type: string, description: "The token's start, like sbp_1a2b3c, to tell tokens apart." }
+        created_at: { type: string, format: date-time }
+        expires_at: { type: string, format: date-time }
+        last_used_at: { type: string, format: date-time, nullable: true }
+        last_used_ip: { type: string, nullable: true }
+    AccessTokenCreate:
+      type: object
+      required: [name, expires_in_days]
+      properties:
+        name: { type: string, description: "What it's for, like \"GitHub Actions deploys\"." }
+        expires_in_days: { type: integer, minimum: 1, maximum: 365 }
+    AccessTokenCreated:
+      allOf:
+        - { $ref: "#/components/schemas/AccessToken" }
+        - type: object
+          required: [token]
+          properties:
+            token: { type: string, description: The token (sbp_…); shown only now. }
     PasswordResetInfo:
       type: object
       required: [username, mfa_required, expires_at]

@@ -183,14 +183,16 @@ func (h *handlers) gateway() http.Handler {
 		// The session middleware checks CSRF on unsafe methods only. A write
 		// route acts even on GET (an Edge Function call), and SameSite=Lax
 		// cookies ride along on another site's top-level GET, so check here.
-		if rt.write && !rt.websocket && safeMethod(r.Method) {
+		// Access tokens aren't sent by browsers on their own: no CSRF.
+		viaToken := reqInfo(r.Context()).Principal != nil && reqInfo(r.Context()).Principal.AccessToken != nil
+		if rt.write && !rt.websocket && safeMethod(r.Method) && !viaToken {
 			info := reqInfo(r.Context())
 			if info.Principal == nil || !h.csrf.Valid(info.Principal.Token, r.Header.Get(csrfHeader)) {
 				writeError(w, http.StatusForbidden, "missing or invalid CSRF token; reload the page and try again")
 				return
 			}
 		}
-		if rt.websocket {
+		if rt.websocket && !viaToken {
 			// Double-submit, like the X-CSRF-Token header: another site can
 			// open a socket with our cookies but can't read sm_csrf.
 			info := reqInfo(r.Context())

@@ -274,6 +274,18 @@ func (ns NullStackStatus) Value() (driver.Value, error) {
 	return string(ns.StackStatus), nil
 }
 
+type AccessToken struct {
+	ID         uuid.UUID  `json:"id"`
+	UserID     uuid.UUID  `json:"user_id"`
+	Name       string     `json:"name"`
+	TokenHash  []byte     `json:"token_hash"`
+	Prefix     string     `json:"prefix"`
+	CreatedAt  time.Time  `json:"created_at"`
+	ExpiresAt  time.Time  `json:"expires_at"`
+	LastUsedAt *time.Time `json:"last_used_at"`
+	LastUsedIp string     `json:"last_used_ip"`
+}
+
 type AuditLog struct {
 	ID             int64      `json:"id"`
 	OrganizationID *uuid.UUID `json:"organization_id"`

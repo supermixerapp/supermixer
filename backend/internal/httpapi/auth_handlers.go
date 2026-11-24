@@ -229,13 +229,17 @@ func (h *handlers) ChangePassword(ctx context.Context, req api.ChangePasswordReq
 		if err := q.SetUserPassword(ctx, db.SetUserPasswordParams{ID: p.User.ID, PasswordHash: hash, DefaultPassword: false}); err != nil {
 			return err
 		}
+		// Whoever may have had the old password loses their tokens too.
+		if err := q.DeleteUserAccessTokens(ctx, p.User.ID); err != nil {
+			return err
+		}
 		return q.DeleteOtherUserSessions(ctx, db.DeleteOtherUserSessionsParams{UserID: p.User.ID, ID: p.Session.ID})
 	})
 	if err != nil {
 		return nil, err
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.password_changed", TargetType: "user", TargetID: p.User.ID.String(), TargetName: p.User.Username})
-	h.notify(ctx, p.User, "Your Supermixer password was changed", "Your password was changed")
+	h.notify(ctx, p.User, "Your Supermixer password was changed", "Your password was changed, your other sessions were signed out and your access tokens revoked,")
 	return api.ChangePassword204Response{}, nil
 }
 

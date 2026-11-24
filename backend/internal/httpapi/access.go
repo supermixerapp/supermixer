@@ -203,8 +203,18 @@ func (h *handlers) audit(ctx context.Context, q *db.Queries, e auditEntry) {
 		params.ActorID = &id
 		params.ActorUsername = info.Principal.User.Username
 	}
-	if e.Metadata != nil {
-		if raw, err := json.Marshal(e.Metadata); err == nil {
+	meta := e.Metadata
+	if info.Principal != nil && info.Principal.AccessToken != nil {
+		// Done with an access token: say which.
+		meta = map[string]any{}
+		for k, v := range e.Metadata {
+			meta[k] = v
+		}
+		t := info.Principal.AccessToken
+		meta["access_token"] = t.Name + " (" + t.Prefix + "…)"
+	}
+	if meta != nil {
+		if raw, err := json.Marshal(meta); err == nil {
 			params.Metadata = raw
 		}
 	}

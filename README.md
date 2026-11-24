@@ -72,6 +72,19 @@ from = "Supermixer <supermixer@example.com>"
 
 For development, `make mail` runs [Mailpit](https://mailpit.axllent.org), which keeps everything it's sent: set `smtp_host = "localhost"`, `smtp_port = 1025`, `security = "none"` and read the mail at http://localhost:8025.
 
+## API and access tokens
+
+Scripts and CI use personal access tokens (**Account › Access Tokens**), sent as `Authorization: Bearer sbp_…`. A token acts as its owner, with the same roles in each organization, but can't change the account's password, two-factor sign-in, sessions or tokens; its uses are in the audit logs with its name.
+
+- **Supermixer's API**, `/api/v1`: everything the app does. Its OpenAPI description is at `/api/v1/openapi.json`.
+- **A Supabase-style Management API**, `/v1`: a subset of api.supabase.com/v1's paths and responses (organizations, projects, health, API keys, SQL, Edge Functions, function secrets, pause and restore, backups), for scripts written for Supabase's.
+
+```sh
+curl -X POST https://supermixer.example.com/v1/projects/<ref>/database/query \
+  -H "Authorization: Bearer $SUPERMIXER_TOKEN" -H "Content-Type: application/json" \
+  -d '{"query": "select count(*) from auth.users"}'
+```
+
 ## Creating stacks
 
 Besides connecting to Supabase stacks that already run, Supermixer can create them: **New project › Create a new stack**. It runs Supabase's official compose files (bundled at a pinned commit, see `backend/internal/provision/template/VERSION`) with the `docker compose` CLI, generates every secret, gives each stack its own ports, and can pause, restart and delete them from **Settings › Infrastructure**.

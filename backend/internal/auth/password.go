@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"crypto/subtle"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -152,4 +153,18 @@ func NewToken() (token string, hash []byte, err error) {
 func HashToken(token string) []byte {
 	sum := sha256.Sum256([]byte(token))
 	return sum[:]
+}
+
+// AccessTokenPrefix starts personal access tokens, as Supabase's do.
+const AccessTokenPrefix = "sbp_"
+
+// NewAccessToken returns a personal access token (sbp_ and 40 hex digits,
+// 160 random bits), its hash for storage, and the start to show for it.
+func NewAccessToken() (token string, hash []byte, shown string, err error) {
+	raw := make([]byte, 20)
+	if _, err := rand.Read(raw); err != nil {
+		return "", nil, "", err
+	}
+	token = AccessTokenPrefix + hex.EncodeToString(raw)
+	return token, HashToken(token), token[:len(AccessTokenPrefix)+6], nil
 }

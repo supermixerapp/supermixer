@@ -26,6 +26,17 @@ func toUser(u db.User) api.User {
 	}
 }
 
+// notOwnWithToken refuses an admin action on the admin's own account when
+// it comes with an access token: the token's limits (tokenRoute) would
+// otherwise be side-stepped through the admin API (setting your own
+// password or email, signing out your sessions).
+func notOwnWithToken(me *principal, target [16]byte) error {
+	if me.AccessToken != nil && me.User.ID == target {
+		return newError(http.StatusForbidden, "access tokens can't change your own account; sign in to Supermixer for that")
+	}
+	return nil
+}
+
 func requireInstanceAdmin(ctx context.Context) (*principal, error) {
 	p, err := currentUser(ctx)
 	if err != nil {
@@ -129,6 +140,9 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 	if err != nil {
 		return nil, err
 	}
+	if err := notOwnWithToken(me, req.UserId); err != nil {
+		return nil, err
+	}
 	b := req.Body
 	var updated db.User
 	err = h.deps.Store.InTx(ctx, func(q *db.Queries) error {
@@ -189,6 +203,11 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 			if err := adviseRotationForUser(ctx, q, u, "disabled"); err != nil {
 				return err
 			}
+			// Deleted, not just hidden: enabling the account again
+			// mustn't bring back tokens someone else may have made.
+			if err := q.DeleteUserAccessTokens(ctx, u.ID); err != nil {
+				return err
+			}
 			return q.DeleteUserSessions(ctx, u.ID)
 		}
 		return nil
@@ -205,6 +224,9 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 func (h *handlers) ResetUserPassword(ctx context.Context, req api.ResetUserPasswordRequestObject) (api.ResetUserPasswordResponseObject, error) {
 	me, err := requireInstanceAdmin(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := notOwnWithToken(me, req.UserId); err != nil {
 		return nil, err
 	}
 	target, err := h.loadUser(ctx, h.deps.Store.Queries, req.UserId)
@@ -228,6 +250,10 @@ func (h *handlers) ResetUserPassword(ctx context.Context, req api.ResetUserPassw
 		if target.ID == me.User.ID {
 			// Keep the admin's own current session.
 			return q.DeleteOtherUserSessions(ctx, db.DeleteOtherUserSessionsParams{UserID: target.ID, ID: me.Session.ID})
+		}
+		// Someone else may have had the account: their tokens stop too.
+		if err := q.DeleteUserAccessTokens(ctx, target.ID); err != nil {
+			return err
 		}
 		return q.DeleteUserSessions(ctx, target.ID)
 	})
@@ -255,6 +281,9 @@ func (h *handlers) RevokeUserSessions(ctx context.Context, req api.RevokeUserSes
 	if err != nil {
 		return nil, err
 	}
+	if err := notOwnWithToken(me, req.UserId); err != nil {
+		return nil, err
+	}
 	q := h.deps.Store.Queries
 	target, err := h.loadUser(ctx, q, req.UserId)
 	if err != nil {
@@ -262,7 +291,8 @@ func (h *handlers) RevokeUserSessions(ctx context.Context, req api.RevokeUserSes
 	}
 	if target.ID == me.User.ID { // keep the session this request came from
 		err = q.DeleteOtherUserSessions(ctx, db.DeleteOtherUserSessionsParams{UserID: target.ID, ID: me.Session.ID})
-	} else {
+	} else if err = q.DeleteUserAccessTokens(ctx, target.ID); err == nil {
+		// Signed out everywhere includes scripts using their tokens.
 		err = q.DeleteUserSessions(ctx, target.ID)
 	}
 	if err != nil {

@@ -132,9 +132,23 @@ func New(deps Deps) http.Handler {
 		},
 	})
 
+	// The Supabase-style Management API (a subset), for access tokens.
+	r.Mount("/v1", h.managementAPI())
+
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Use(h.sessionMiddleware)
 		r.Handle("/projects/{ref}/gateway/*", h.gateway())
+		// This API's OpenAPI description, for docs and client generators.
+		r.Get("/openapi.json", func(w http.ResponseWriter, _ *http.Request) {
+			spec, err := api.GetSwagger()
+			if err != nil {
+				writeError(w, http.StatusInternalServerError, "internal server error")
+				return
+			}
+			spec.Servers = nil
+			w.Header().Set("Content-Type", "application/json")
+			_ = json.NewEncoder(w).Encode(spec)
+		})
 		api.HandlerFromMux(strict, r)
 		r.NotFound(func(w http.ResponseWriter, _ *http.Request) {
 			writeError(w, http.StatusNotFound, "not found")
