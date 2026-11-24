@@ -91,6 +91,9 @@ services:
 
 volumes:
   db-data:
+    # Restores start a new database in a fresh volume (DB_DATA_VOLUME), so a
+    # failed one can go back to the old; the default is Compose's usual name.
+    name: ${COMPOSE_PROJECT_NAME}_${DB_DATA_VOLUME:-db-data}
   studio-snippets:
   storage-files:
 `

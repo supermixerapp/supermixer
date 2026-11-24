@@ -121,6 +121,14 @@ type Provisioning struct {
 	PoolerPorts string `toml:"pooler_ports"`
 	// StartTimeout bounds creating or starting a stack, image pulls included.
 	StartTimeout time.Duration `toml:"start_timeout"`
+	// BackupsDir holds the stacks' database backups, one folder per stack.
+	// Only Supermixer writes it (dumps stream out of the db container).
+	BackupsDir string `toml:"backups_dir"`
+	// BackupInterval is how often each running stack is backed up; 0 turns
+	// scheduled backups off (manual ones still work).
+	BackupInterval time.Duration `toml:"backup_interval"`
+	// BackupKeep is how many scheduled backups to keep per stack.
+	BackupKeep int `toml:"backup_keep"`
 }
 
 // PortRange is an inclusive range of host ports.
@@ -154,6 +162,7 @@ func Default() Config {
 		Provisioning: Provisioning{
 			StacksDir: "/var/lib/supermixer/stacks", Docker: "docker", PublicHost: "localhost",
 			APIPorts: "8200-8299", DBPorts: "54400-54499", PoolerPorts: "64400-64499", StartTimeout: 20 * time.Minute,
+			BackupsDir: "/var/lib/supermixer/backups", BackupInterval: 24 * time.Hour, BackupKeep: 7,
 		},
 	}
 }
@@ -395,6 +404,15 @@ func (c *Config) validate() error {
 		}
 		if pv.StartTimeout < time.Minute {
 			fail("provisioning.start_timeout must be at least 1m, got %s", pv.StartTimeout)
+		}
+		if !filepath.IsAbs(pv.BackupsDir) {
+			fail("provisioning.backups_dir must be an absolute path, got %q", pv.BackupsDir)
+		}
+		if pv.BackupInterval != 0 && pv.BackupInterval < time.Hour {
+			fail("provisioning.backup_interval must be 0 (off) or at least 1h, got %s", pv.BackupInterval)
+		}
+		if pv.BackupKeep < 1 || pv.BackupKeep > 1000 {
+			fail("provisioning.backup_keep must be between 1 and 1000, got %d", pv.BackupKeep)
 		}
 		ranges := map[string]PortRange{}
 		for name, raw := range map[string]string{"api_ports": pv.APIPorts, "db_ports": pv.DBPorts, "pooler_ports": pv.PoolerPorts} {

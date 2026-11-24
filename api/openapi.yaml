@@ -687,6 +687,112 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/backups:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listBackups
+      tags: [Backups]
+      summary: Database backups of a stack Supermixer created, newest first
+      responses:
+        "200":
+          description: Backups, and the schedule.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/BackupList" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createBackup
+      tags: [Backups]
+      summary: Back the database up now
+      description: Runs in the background; poll the list. Needs project settings access.
+      responses:
+        "202":
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/backups/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    delete:
+      operationId: deleteBackup
+      tags: [Backups]
+      summary: Delete a backup and its files
+      responses:
+        "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/backups/{id}/files/{file}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      - name: file
+        in: path
+        required: true
+        schema: { type: string, enum: [roles.sql, schema.sql, data.sql] }
+    get:
+      operationId: downloadBackupFile
+      tags: [Backups]
+      summary: Download one of a backup's dumps
+      description: |
+        The data dump holds every row, Auth's users included, so this needs project settings
+        access and is recorded in the audit log. Restore elsewhere as Supabase documents:
+        psql --single-transaction -v ON_ERROR_STOP=1 -f roles.sql -f schema.sql -f data.sql.
+      responses:
+        "200":
+          description: The SQL.
+          headers:
+            Content-Disposition: { schema: { type: string } }
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/backups/{id}/restore:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: restoreBackup
+      tags: [Backups]
+      summary: Restore a backup into this project
+      description: |
+        Takes a backup of the current database first, then starts a fresh database and replays the
+        backup into it. The project is offline meanwhile, and changes since the backup are lost. If the
+        restore fails, the project goes back to its previous database. Runs in the background.
+      responses:
+        "202":
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/backups/{id}/restore-to-new:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: restoreBackupToNewProject
+      tags: [Backups]
+      summary: Create a new project from a backup
+      description: A new stack in the same organization, with its own keys, started and then restored from the backup.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+      responses:
+        "202":
+          description: Creating.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Project" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/auth-config:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1239,7 +1345,7 @@ components:
         template: { type: string, description: The supabase/supabase commit the stack was made from. }
         operation:
           type: string
-          enum: [starting, stopping, restarting, deleting, updating]
+          enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring]
           nullable: true
           description: What Supermixer is doing to the stack right now.
     EdgeFunction:
@@ -1276,6 +1382,29 @@ components:
       properties:
         function: { $ref: "#/components/schemas/EdgeFunction" }
         restarted: { type: boolean, description: Whether the functions service was recreated; false while the stack isn't running. }
+    Backup:
+      type: object
+      required: [id, kind, status, error, size_bytes, template, postgres_version, started_at]
+      properties:
+        id: { type: string, format: uuid }
+        kind: { type: string, enum: [scheduled, manual, pre_restore] }
+        status: { type: string, enum: [running, completed, failed] }
+        error: { type: string }
+        size_bytes: { type: integer, format: int64, description: Compressed. }
+        template: { type: string }
+        postgres_version: { type: string }
+        created_by: { type: string, nullable: true, description: Username, for manual backups. }
+        started_at: { type: string, format: date-time }
+        finished_at: { type: string, format: date-time, nullable: true }
+    BackupList:
+      type: object
+      required: [backups, interval_hours, keep]
+      properties:
+        backups:
+          type: array
+          items: { $ref: "#/components/schemas/Backup" }
+        interval_hours: { type: number, description: How often scheduled backups run; 0 when they're off. }
+        keep: { type: integer, description: Scheduled backups kept. }
     AuthConfig:
       type: object
       required: [values, secrets_set, callback_url]

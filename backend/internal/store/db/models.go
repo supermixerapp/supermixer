@@ -12,6 +12,92 @@ import (
 	"github.com/google/uuid"
 )
 
+type BackupKind string
+
+const (
+	BackupKindScheduled  BackupKind = "scheduled"
+	BackupKindManual     BackupKind = "manual"
+	BackupKindPreRestore BackupKind = "pre_restore"
+)
+
+func (e *BackupKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = BackupKind(s)
+	case string:
+		*e = BackupKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for BackupKind: %T", src)
+	}
+	return nil
+}
+
+type NullBackupKind struct {
+	BackupKind BackupKind `json:"backup_kind"`
+	Valid      bool       `json:"valid"` // Valid is true if BackupKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullBackupKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.BackupKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.BackupKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullBackupKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.BackupKind), nil
+}
+
+type BackupStatus string
+
+const (
+	BackupStatusRunning   BackupStatus = "running"
+	BackupStatusCompleted BackupStatus = "completed"
+	BackupStatusFailed    BackupStatus = "failed"
+)
+
+func (e *BackupStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = BackupStatus(s)
+	case string:
+		*e = BackupStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for BackupStatus: %T", src)
+	}
+	return nil
+}
+
+type NullBackupStatus struct {
+	BackupStatus BackupStatus `json:"backup_status"`
+	Valid        bool         `json:"valid"` // Valid is true if BackupStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullBackupStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.BackupStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.BackupStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullBackupStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.BackupStatus), nil
+}
+
 type OrgRole string
 
 const (
@@ -201,6 +287,20 @@ type AuditLog struct {
 	Ip             string     `json:"ip"`
 	UserAgent      string     `json:"user_agent"`
 	CreatedAt      time.Time  `json:"created_at"`
+}
+
+type Backup struct {
+	ID              uuid.UUID    `json:"id"`
+	ProjectID       uuid.UUID    `json:"project_id"`
+	Kind            BackupKind   `json:"kind"`
+	Status          BackupStatus `json:"status"`
+	Error           string       `json:"error"`
+	SizeBytes       int64        `json:"size_bytes"`
+	Template        string       `json:"template"`
+	PostgresVersion string       `json:"postgres_version"`
+	CreatedBy       *uuid.UUID   `json:"created_by"`
+	StartedAt       time.Time    `json:"started_at"`
+	FinishedAt      *time.Time   `json:"finished_at"`
 }
 
 type InstanceSetting struct {

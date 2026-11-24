@@ -76,6 +76,7 @@ func New(deps Deps) http.Handler {
 	if deps.Store != nil {
 		if deps.Background != nil {
 			go h.watchStacks(deps.Background)
+			go h.backupLoop(deps.Background)
 		} else {
 			h.recoverStacks(context.Background(), time.Now().Add(-stackStale))
 		}

@@ -8,6 +8,10 @@ packages/ui, packages/config or apps/studio. Supabase is a trademark of
 Supabase, Inc.; Supermixer is not affiliated with or endorsed by Supabase.
 
 This product bundles:
+  - The Supabase CLI's database dump scripts
+    (backend/internal/provision/dumpscripts, from supabase/cli's
+    apps/cli/src/command-internal/pg-dump.scripts.ts), Copyright Supabase,
+    MIT License
   - Supabase's self-hosting files (backend/internal/provision/template, from
     supabase/supabase's docker/ folder at the commit in template/VERSION),
     Copyright Supabase, Apache License 2.0

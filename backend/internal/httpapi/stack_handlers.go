@@ -99,22 +99,35 @@ func (h *handlers) CreateStack(ctx context.Context, req api.CreateStackRequestOb
 	if err != nil {
 		return nil, err
 	}
-	name, err := validProjectName(req.Body.Name)
+	out, err := h.createStack(ctx, a, req.Body.Name, nil, nil)
 	if err != nil {
 		return nil, err
 	}
+	return api.CreateStack202JSONResponse(out), nil
+}
+
+// createStack creates a project and starts its stack in the background.
+// stage, if given, adds files to the stack's folder before it's committed
+// (a backup to restore, which upStack then replays).
+func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string, auditMeta map[string]any,
+	stage func(dir string) error) (api.Project, error) {
+	pv := h.deps.Config.Provisioning
+	name, err := validProjectName(rawName)
+	if err != nil {
+		return api.Project{}, err
+	}
 	ports, err := h.allocatePorts(ctx, pv)
 	if err != nil {
-		return nil, err
+		return api.Project{}, err
 	}
 	now := time.Now()
 	secrets, err := provision.GenerateSecrets(now)
 	if err != nil {
-		return nil, err
+		return api.Project{}, err
 	}
 	apiKeys, err := provision.GenerateAPIKeys(secrets.JWTSecret, now)
 	if err != nil {
-		return nil, err
+		return api.Project{}, err
 	}
 
 	var project db.Project
@@ -146,9 +159,12 @@ func (h *handlers) CreateStack(ctx context.Context, req api.CreateStackRequestOb
 		if err != nil {
 			return err
 		}
+		meta := map[string]any{"api_url": project.ApiUrl, "managed": true, "template": project.StackTemplate}
+		for k, v := range auditMeta {
+			meta[k] = v
+		}
 		h.audit(ctx, q, auditEntry{OrgID: &a.Org.ID, ProjectID: &project.ID, Action: "project.created", TargetType: "project",
-			TargetID: project.Ref, TargetName: project.Name,
-			Metadata: map[string]any{"api_url": project.ApiUrl, "managed": true, "template": project.StackTemplate}})
+			TargetID: project.Ref, TargetName: project.Name, Metadata: meta})
 
 		// The files are written before the row is committed, so a stack
 		// never exists without them ("Try again" only needs compose up).
@@ -164,25 +180,29 @@ func (h *handlers) CreateStack(ctx context.Context, req api.CreateStackRequestOb
 			return newError(http.StatusInternalServerError, "writing the stack's files: %v", err)
 		}
 		written = true
+		if stage != nil {
+			if err := stage(layout.Dir); err != nil {
+				return err
+			}
+		}
 		return nil
 	})
 	if err != nil && written {
 		_ = os.RemoveAll(layout.Dir) // nothing has run from it yet
 	}
 	if isUniqueViolation(err) {
-		return nil, conflict("another stack took one of those ports at the same moment; try again")
+		return api.Project{}, conflict("another stack took one of those ports at the same moment; try again")
 	}
 	if err != nil {
-		return nil, err
+		return api.Project{}, err
 	}
 
-	h.runStack(ctx, project, api.StackOperationStarting, db.StackStatusRunning, h.upStack(project.Ref))
-
-	out, err := h.toProject(project, a.Org.Slug, a.Org.Name, rbac.EffectiveProjectRole(a.Role, nil))
-	if err != nil {
-		return nil, err
+	timeout := h.deps.Config.Provisioning.StartTimeout
+	if stage != nil {
+		timeout = h.restoreTimeout()
 	}
-	return api.CreateStack202JSONResponse(out), nil
+	h.runStackFor(ctx, project, api.StackOperationStarting, db.StackStatusRunning, timeout, h.upStack(project.Ref))
+	return h.toProject(project, a.Org.Slug, a.Org.Name, rbac.EffectiveProjectRole(a.Role, nil))
 }
 
 func uniqueRef(ctx context.Context, q *db.Queries) (string, error) {
@@ -295,16 +315,61 @@ const (
 
 // upStack starts a stack: its files brought up to this version, compose up,
 // then the functions' database login made sure of.
+// upStack starts a stack. It also finishes what a restore left: an in-place
+// restore that was interrupted goes back to the previous database, and a
+// project created from a backup restores it (again, if it failed before).
 func (h *handlers) upStack(ref string) func(ctx context.Context, log io.Writer) error {
 	return func(ctx context.Context, log io.Writer) error {
-		if err := provision.PrepareStack(h.stackLayout(ref).Dir); err != nil {
-			return fmt.Errorf("updating the stack's files: %w", err)
-		}
-		if err := h.compose(ref).Up(ctx, log); err != nil {
+		dir := h.stackLayout(ref).Dir
+		env, err := provision.ReadEnv(dir)
+		if err != nil {
 			return err
 		}
-		return h.ensureFunctionsRole(ctx, ref, log)
+		var undone *recoveredError
+		if prev := env[provision.RestoringFrom]; prev != "" {
+			fresh := provision.DataVolume(env)
+			fmt.Fprintf(log, "\na restore didn't finish; going back to the previous database (%s)\n", prev)
+			if err := provision.UpdateEnv(dir, map[string]string{"DB_DATA_VOLUME": prev, provision.RestoringFrom: ""}); err != nil {
+				return err
+			}
+			defer func() {
+				if fresh != prev {
+					if err := h.compose(ref).RemoveVolume(context.WithoutCancel(ctx), log, fresh); err != nil {
+						fmt.Fprintf(log, "\nthe unfinished restore's volume is left over: %v\n", err)
+					}
+				}
+			}()
+			undone = &recoveredError{errors.New("a restore didn't finish, so the project is back on the database it had before")}
+		}
+		if err := h.bringUp(ctx, ref, log); err != nil {
+			return err
+		}
+		if pending := provision.PendingRestore(dir); dirExists(pending) {
+			if err := h.restorePending(ctx, ref, pending, log); err != nil {
+				return fmt.Errorf("restoring the backup this project was created from: %w", err)
+			}
+		}
+		if undone != nil {
+			return undone
+		}
+		return nil
 	}
+}
+
+// bringUp starts the stack's files as they are.
+func (h *handlers) bringUp(ctx context.Context, ref string, log io.Writer) error {
+	if err := provision.PrepareStack(h.stackLayout(ref).Dir); err != nil {
+		return fmt.Errorf("updating the stack's files: %w", err)
+	}
+	if err := h.compose(ref).Up(ctx, log); err != nil {
+		return err
+	}
+	return h.ensureFunctionsRole(ctx, ref, log)
+}
+
+func dirExists(path string) bool {
+	fi, err := os.Stat(path)
+	return err == nil && fi.IsDir()
 }
 
 func (h *handlers) ensureFunctionsRole(ctx context.Context, ref string, log io.Writer) error {
@@ -322,23 +387,34 @@ func (h *handlers) ensureFunctionsRole(ctx context.Context, ref string, log io.W
 // ok on success, failed (with the error) otherwise. The job keeps reqCtx's
 // values (who asked, from where, for audit entries) but not its deadline.
 func (h *handlers) runStack(reqCtx context.Context, p db.Project, op api.StackOperation, ok db.StackStatus, fn func(ctx context.Context, log io.Writer) error) bool {
+	return h.runStackFor(reqCtx, p, op, ok, h.deps.Config.Provisioning.StartTimeout, fn)
+}
+
+// restoreTimeout bounds a restore: a backup, a start, the replay and a restart.
+func (h *handlers) restoreTimeout() time.Duration { return 2 * h.deps.Config.Provisioning.StartTimeout }
+
+// runStackFor is runStack with a time limit of its own.
+func (h *handlers) runStackFor(reqCtx context.Context, p db.Project, op api.StackOperation, ok db.StackStatus, timeout time.Duration, fn func(ctx context.Context, log io.Writer) error) bool {
 	if !h.stacks.begin(p.Ref, op) {
 		return false
 	}
 	go func() {
 		defer h.stacks.end(p.Ref)
-		pv := h.deps.Config.Provisioning
-		ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), pv.StartTimeout)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), timeout)
 		defer cancel()
+		// The heartbeat lasts as long as the job, past its time limit too
+		// (undoing a restore that ran out of time still needs a while).
+		beat, stopBeat := context.WithCancel(context.WithoutCancel(reqCtx))
+		defer stopBeat()
 		go func() {
 			t := time.NewTicker(stackHeartbeat)
 			defer t.Stop()
 			for {
 				select {
-				case <-ctx.Done():
+				case <-beat.Done():
 					return
 				case <-t.C:
-					_ = h.deps.Store.Queries.TouchStack(ctx, p.ID)
+					_ = h.deps.Store.Queries.TouchStack(beat, p.ID)
 				}
 			}
 		}()
@@ -347,14 +423,19 @@ func (h *handlers) runStack(reqCtx context.Context, p db.Project, op api.StackOp
 		fmt.Fprintf(log, "\n== %s: %s ==\n", time.Now().UTC().Format(time.RFC3339), op)
 		err := fn(ctx, log)
 		status, msg := ok, ""
-		if err != nil {
+		var recovered *recoveredError
+		if errors.As(err, &recovered) {
+			msg = recovered.Error() // the stack is fine; say what didn't happen
+			fmt.Fprintf(log, "\n%s didn't complete: %v\n", op, err)
+			h.deps.Logger.Warn("stack operation recovered", "ref", p.Ref, "operation", op, "err", err)
+		} else if err != nil {
 			status, msg = db.StackStatusFailed, err.Error()
 			fmt.Fprintf(log, "\n%s failed: %v\n", op, err)
 			h.deps.Logger.Warn("stack operation failed", "ref", p.Ref, "operation", op, "err", err)
 		} else {
 			fmt.Fprintf(log, "\n%s done\n", op)
 		}
-		cancel() // stops the heartbeat
+		stopBeat()
 		h.health.forget(p.Ref)
 		if op == api.StackOperationDeleting && err == nil {
 			return // the project row is gone
@@ -367,6 +448,45 @@ func (h *handlers) runStack(reqCtx context.Context, p db.Project, op api.StackOp
 	}()
 	return true
 }
+
+// recoverRestores finds running stacks a restore in place left on a new
+// database (Supermixer stopped during it) and puts them back on the old one.
+func (h *handlers) recoverRestores(ctx context.Context, before time.Time) {
+	if !h.deps.Config.Provisioning.Enabled {
+		return
+	}
+	rows, err := h.deps.Store.Queries.ListStacksWithStatus(ctx, db.ListStacksWithStatusParams{
+		Statuses: []string{string(db.StackStatusRunning)}, Before: before,
+	})
+	if err != nil {
+		h.deps.Logger.Error("checking interrupted restores", "err", err)
+		return
+	}
+	for _, p := range rows {
+		if h.stacks.current(p.Ref) != nil {
+			continue
+		}
+		env, err := provision.ReadEnv(h.stackLayout(p.Ref).Dir)
+		if err != nil || env[provision.RestoringFrom] == "" {
+			continue
+		}
+		h.deps.Logger.Warn("undoing an interrupted restore", "ref", p.Ref)
+		start := h.upStack(p.Ref)
+		h.runStack(ctx, p, api.StackOperationRestoring, db.StackStatusRunning, func(ctx context.Context, log io.Writer) error {
+			if err := h.compose(p.Ref).Stop(ctx, log); err != nil {
+				return err
+			}
+			return start(ctx, log)
+		})
+	}
+}
+
+// recoveredError is an operation that failed but left the stack as it was
+// (a restore that went back to the previous database): its status stays.
+type recoveredError struct{ err error }
+
+func (e *recoveredError) Error() string { return e.err.Error() }
+func (e *recoveredError) Unwrap() error { return e.err }
 
 // stackLog appends to the stack's supermixer.log once its folder exists.
 type stackLog struct {
@@ -414,6 +534,7 @@ func (h *handlers) watchStacks(ctx context.Context) {
 // operation, on this server or another, touches it every stackHeartbeat).
 // They can then be started (or deleted) again.
 func (h *handlers) recoverStacks(ctx context.Context, before time.Time) {
+	h.recoverRestores(ctx, before)
 	rows, err := h.deps.Store.Queries.ListStacksWithStatus(ctx, db.ListStacksWithStatusParams{
 		Statuses: []string{string(db.StackStatusProvisioning), string(db.StackStatusDeleting)}, Before: before,
 	})
@@ -438,9 +559,17 @@ func (h *handlers) recoverStacks(ctx context.Context, before time.Time) {
 }
 
 func (h *handlers) GetStack(ctx context.Context, req api.GetStackRequestObject) (api.GetStackResponseObject, error) {
+	// An operation that ends between reading the row and reading the
+	// operation would show the old status with no operation; read again.
+	running := h.stacks.current(req.Ref) != nil
 	a, err := h.loadProject(ctx, req.Ref, rbac.ProjectRead, "view this project")
 	if err != nil {
 		return nil, err
+	}
+	if running && h.stacks.current(req.Ref) == nil {
+		if a, err = h.loadProject(ctx, req.Ref, rbac.ProjectRead, "view this project"); err != nil {
+			return nil, err
+		}
 	}
 	out, err := h.stackDetail(ctx, a.Project())
 	if err != nil {
@@ -593,15 +722,26 @@ func (h *handlers) deleteManaged(ctx context.Context, p db.Project) error {
 			if err := c.Down(ctx, log); err != nil {
 				return err
 			}
+			// Database volumes left by restores, which down doesn't know.
+			if err := c.RemoveProjectVolumes(ctx, log); err != nil {
+				return err
+			}
 			if err := provision.RemoveStackDir(ctx, h.deps.Config.Provisioning.Docker, layout.Dir, log); err != nil {
 				return err
 			}
 		}
-		return h.deps.Store.InTx(ctx, func(q *db.Queries) error {
+		if err := h.deps.Store.InTx(ctx, func(q *db.Queries) error {
 			h.audit(ctx, q, auditEntry{OrgID: &p.OrganizationID, Action: "project.deleted", TargetType: "project",
 				TargetID: p.Ref, TargetName: p.Name, Metadata: map[string]any{"managed": true}})
-			return q.DeleteProject(ctx, p.ID)
-		})
+			return q.DeleteProject(ctx, p.ID) // its backups' rows go with it
+		}); err != nil {
+			return err
+		}
+		// And their files, as on Supabase.
+		if err := os.RemoveAll(filepath.Join(h.deps.Config.Provisioning.BackupsDir, p.Ref)); err != nil {
+			h.deps.Logger.Warn("removing a deleted project's backups", "ref", p.Ref, "err", err)
+		}
+		return nil
 	})
 	if !started {
 		// Another operation slipped in; put the status back.

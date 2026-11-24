@@ -258,6 +258,15 @@ func (c Compose) Recreate(ctx context.Context, log io.Writer, service string) er
 	return c.Run(ctx, log, "up", "--detach", "--wait", "--no-deps", "--force-recreate", service)
 }
 
+// RestartAndWait restarts every service, then waits until they're healthy
+// (restart alone returns as soon as they're started).
+func (c Compose) RestartAndWait(ctx context.Context, log io.Writer) error {
+	if err := c.Restart(ctx, log); err != nil {
+		return err
+	}
+	return c.Up(ctx, log)
+}
+
 // Ensure starts a service if it isn't running (new in the overlay, say),
 // leaving it alone if it is.
 func (c Compose) Ensure(ctx context.Context, log io.Writer, service string) error {

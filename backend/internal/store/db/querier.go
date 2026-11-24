@@ -17,12 +17,14 @@ type Querier interface {
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountUsers(ctx context.Context) (int64, error)
+	CreateBackup(ctx context.Context, arg CreateBackupParams) (Backup, error)
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
 	CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error)
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	DeleteBackup(ctx context.Context, id uuid.UUID) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
 	DeleteMemberProjectRoles(ctx context.Context, arg DeleteMemberProjectRolesParams) error
@@ -34,8 +36,13 @@ type Querier interface {
 	DeleteSnippet(ctx context.Context, id uuid.UUID) error
 	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	// Backups still running after the longest a backup may take: a restart (of
+	// this server or another) cut them short. Returns them to remove their files.
+	FailStaleBackups(ctx context.Context, before time.Time) ([]FailStaleBackupsRow, error)
+	FinishBackup(ctx context.Context, arg FinishBackupParams) (Backup, error)
 	// The session for a token, if it is unexpired and its user is enabled.
 	GetActiveSession(ctx context.Context, tokenHash []byte) (GetActiveSessionRow, error)
+	GetBackup(ctx context.Context, arg GetBackupParams) (Backup, error)
 	GetInstalledAt(ctx context.Context) (time.Time, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash []byte) (GetInvitationByTokenHashRow, error)
 	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (OrgRole, error)
@@ -46,7 +53,11 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	// When the stack's last scheduled backup started (failed ones count, so a
+	// failing stack isn't retried every minute).
+	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
+	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
 	ListOrganizationProjectRoles(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationProjectRolesRow, error)
@@ -54,6 +65,7 @@ type Querier interface {
 	ListPendingInvitations(ctx context.Context, organizationID uuid.UUID) ([]ListPendingInvitationsRow, error)
 	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
 	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
+	ListRunningStacksForBackup(ctx context.Context) ([]Project, error)
 	ListSnippets(ctx context.Context, arg ListSnippetsParams) ([]ListSnippetsRow, error)
 	ListStackPorts(ctx context.Context) ([]ListStackPortsRow, error)
 	// Stacks in one of these statuses whose status hasn't changed (or been
@@ -65,6 +77,8 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]User, error)
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
 	MoveProject(ctx context.Context, arg MoveProjectParams) error
+	// Scheduled backups with this status beyond the newest keep, to remove.
+	OldScheduledBackups(ctx context.Context, arg OldScheduledBackupsParams) ([]Backup, error)
 	OrganizationSlugExists(ctx context.Context, slug string) (bool, error)
 	ProjectRefExists(ctx context.Context, ref string) (bool, error)
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error

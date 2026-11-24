@@ -23,6 +23,14 @@ if [ "$1" = "compose" ]; then
   fi
   case "$cmd" in
     ps) echo '{"Service":"db","Name":"x-db-1","State":"running","Health":"healthy","Status":"Up 1 minute (healthy)"}' ;;
+    exec)
+      # Stand in for the db container: its version, a dump, or a restore reading SQL.
+      case "$*" in
+        *server_version*) echo "${FAKE_PG_VERSION-17.6}" ;;
+        *" bash -s"*) cat > /dev/null; echo "-- a dump by fake-docker.sh"; echo "SELECT 1;" ;;
+        *" psql "*"-f -"*) cat > "${FAKE_DOCKER_STDIN:-/dev/null}" ;;
+        *) cat > /dev/null ;;
+      esac ;;
     *) echo "Container x $cmd ok" ;;
   esac
   exit 0
