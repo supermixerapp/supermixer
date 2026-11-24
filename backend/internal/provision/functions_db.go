@@ -52,6 +52,12 @@ func PrepareStack(dir string) error {
 	if err := RefreshOverlay(dir); err != nil {
 		return err
 	}
+	return PrepareEnv(dir)
+}
+
+// PrepareEnv adds the .env settings Supermixer needs that a stack created
+// before they existed lacks.
+func PrepareEnv(dir string) error {
 	env, err := ReadEnv(dir)
 	if err != nil {
 		return err

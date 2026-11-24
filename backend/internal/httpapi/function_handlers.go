@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -501,42 +502,71 @@ func (h *handlers) GetFunctionSettings(ctx context.Context, req api.GetFunctionS
 	}
 	return api.GetFunctionSettings200JSONResponse{
 		DatabaseAccess: api.FunctionSettingsDatabaseAccess(provision.FunctionsDBAccessOf(env)),
+		AdminAccess:    provision.FunctionsAdminAccessOf(env),
 	}, nil
 }
 
 func (h *handlers) SetFunctionSettings(ctx context.Context, req api.SetFunctionSettingsRequestObject) (api.SetFunctionSettingsResponseObject, error) {
-	// Giving functions the postgres login widens what every deployer's code
-	// can do, so it takes project settings access, not deploy access.
-	p, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectUpdate, "change how functions reach the database")
+	// What functions can reach changes what every deployer's code can do,
+	// so it takes project settings access, not deploy access.
+	p, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectUpdate, "change what functions can reach")
 	if err != nil {
 		return nil, err
 	}
-	access := provision.DBAccess(req.Body.DatabaseAccess)
-	if access != provision.DBAccessServiceRole && access != provision.DBAccessPostgres {
-		return nil, badRequest("database_access is service_role or postgres")
+	b := req.Body
+	if b.DatabaseAccess == nil && b.AdminAccess == nil {
+		return nil, badRequest("give database_access, admin_access or both")
 	}
-	var before provision.DBAccess
-	restarted, err := h.changeFunctions(ctx, p, "changing the functions' database access to "+string(access), func() error {
-		if err := provision.PrepareStack(dir); err != nil {
+	if b.DatabaseAccess != nil {
+		if a := provision.DBAccess(*b.DatabaseAccess); a != provision.DBAccessServiceRole && a != provision.DBAccessPostgres {
+			return nil, badRequest("database_access is service_role or postgres")
+		}
+	}
+	var before, after map[string]string
+	restarted, err := h.changeFunctions(ctx, p, "changing what functions can reach", func() error {
+		// Older stacks get the functions' database login settings first.
+		if err := provision.PrepareEnv(dir); err != nil {
 			return err
 		}
 		env, err := provision.ReadEnv(dir)
 		if err != nil {
 			return err
 		}
-		before = provision.FunctionsDBAccessOf(env)
-		return provision.UpdateEnv(dir, map[string]string{"FUNCTIONS_DB_LOGIN": provision.FunctionsDBLogin(access, env)})
+		before = env
+		values := map[string]string{}
+		if b.DatabaseAccess != nil {
+			values["FUNCTIONS_DB_LOGIN"] = provision.FunctionsDBLogin(provision.DBAccess(*b.DatabaseAccess), env)
+		}
+		if b.AdminAccess != nil {
+			values["FUNCTIONS_ADMIN_ACCESS"] = strconv.FormatBool(*b.AdminAccess)
+		}
+		if err := provision.UpdateEnv(dir, values); err != nil {
+			return err
+		}
+		// Rewrites the overlay, and the router's patch that admin access needs.
+		if err := provision.RefreshOverlay(dir); err != nil {
+			_ = provision.UpdateEnv(dir, map[string]string{
+				"FUNCTIONS_DB_LOGIN": env["FUNCTIONS_DB_LOGIN"], "FUNCTIONS_ADMIN_ACCESS": env["FUNCTIONS_ADMIN_ACCESS"]})
+			return conflict("%v", err)
+		}
+		after, err = provision.ReadEnv(dir)
+		return err
 	})
 	if err != nil && !isStatus(err, http.StatusBadGateway) {
 		return nil, err
 	}
+	meta := map[string]any{
+		"database_access": string(provision.FunctionsDBAccessOf(after)), "was": string(provision.FunctionsDBAccessOf(before)),
+		"admin_access": provision.FunctionsAdminAccessOf(after), "admin_access_was": provision.FunctionsAdminAccessOf(before),
+	}
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.function_settings_updated",
-		TargetType: "project", TargetID: p.Ref, TargetName: p.Name,
-		Metadata: map[string]any{"database_access": string(access), "was": string(before)}})
+		TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: meta})
 	if err != nil {
 		return nil, err
 	}
 	return api.SetFunctionSettings200JSONResponse{
-		DatabaseAccess: api.SetFunctionSettings200JSONResponseBodyDatabaseAccess(access), Restarted: restarted,
+		DatabaseAccess: api.SetFunctionSettings200JSONResponseBodyDatabaseAccess(provision.FunctionsDBAccessOf(after)),
+		AdminAccess:    provision.FunctionsAdminAccessOf(after),
+		Restarted:      restarted,
 	}, nil
 }

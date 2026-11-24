@@ -6,6 +6,7 @@ package provision
 import (
 	"embed"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -65,6 +66,8 @@ services:
       # Not the postgres login: functions_user, which acts as service_role
       # (see functions_db.go), unless the project chose otherwise.
       SUPABASE_DB_URL: postgresql://${FUNCTIONS_DB_LOGIN}@${POSTGRES_HOST}:${POSTGRES_PORT}/${POSTGRES_DB}
+      # Read by the router (hideJWTSecret): false withholds the admin keys and the database URL.
+      SUPERMIXER_FUNCTIONS_ADMIN_ACCESS: ${FUNCTIONS_ADMIN_ACCESS:-true}
   auth:
     env_file:
       - ./auth.env
@@ -304,19 +307,73 @@ func StackImage(dir string) (string, error) { return serviceImage(dir, "db") }
 
 // The edge runtime's router hands every function its own environment. Only
 // the router needs JWT_SECRET (to check tokens); a function with it could
-// sign a token for anyone, so it's left out.
+// sign a token for anyone, so it's left out. Without
+// admin access (FUNCTIONS_ADMIN_ACCESS=false, Edge Functions › Secrets),
+// functions don't get the service-role key, the secret keys or the database
+// URL either, so they act as whoever calls them.
 const (
-	workerEnvLine   = "const envVarsObj = { ...Deno.env.toObject(), SUPABASE_FUNCTION_SLUG: service_name }"
-	workerEnvHidden = "// Supermixer: functions don't get JWT_SECRET; only this router uses it.\n" +
+	workerEnvLine = "const envVarsObj = { ...Deno.env.toObject(), SUPABASE_FUNCTION_SLUG: service_name }"
+	// workerEnvHiddenV1 is what stacks created before the admin access setting have.
+	workerEnvHiddenV1 = "// Supermixer: functions don't get JWT_SECRET; only this router uses it.\n" +
 		"  const { JWT_SECRET: _routerOnly, ...workerEnv } = Deno.env.toObject()\n" +
+		"  const envVarsObj = { ...workerEnv, SUPABASE_FUNCTION_SLUG: service_name }"
+	workerEnvHidden = "// Supermixer: functions don't get JWT_SECRET; only this router uses it. Without\n" +
+		"  // admin access (Supermixer: Edge Functions › Secrets) they act as their caller.\n" +
+		"  const { JWT_SECRET: _routerOnly, SUPERMIXER_FUNCTIONS_ADMIN_ACCESS: adminAccess, ...workerEnv } = Deno.env.toObject()\n" +
+		"  if (adminAccess === 'false') {\n" +
+		"    delete workerEnv.SUPABASE_SERVICE_ROLE_KEY\n" +
+		"    delete workerEnv.SUPABASE_SECRET_KEYS\n" +
+		"    delete workerEnv.SUPABASE_DB_URL\n" +
+		"  }\n" +
 		"  const envVarsObj = { ...workerEnv, SUPABASE_FUNCTION_SLUG: service_name }"
 )
 
+// hideJWTSecret patches the router (volumes/functions/main/index.ts): from
+// the template's, or from the patch older stacks have.
 func hideJWTSecret(router string) (string, error) {
-	if strings.Count(router, workerEnvLine) != 1 {
-		return "", fmt.Errorf("volumes/functions/main/index.ts: can't find where functions get their environment; update hideJWTSecret for this template")
+	switch {
+	case strings.Contains(router, workerEnvHidden):
+		return router, nil
+	case strings.Count(router, workerEnvHiddenV1) == 1:
+		return strings.Replace(router, workerEnvHiddenV1, workerEnvHidden, 1), nil
+	case strings.Count(router, workerEnvLine) == 1:
+		return strings.Replace(router, workerEnvLine, workerEnvHidden, 1), nil
 	}
-	return strings.Replace(router, workerEnvLine, workerEnvHidden, 1), nil
+	return "", fmt.Errorf("volumes/functions/main/index.ts: can't find where functions get their environment; update hideJWTSecret for this template")
+}
+
+// routerFile is the edge runtime's router, in a stack's folder.
+const routerFile = "volumes/functions/main/index.ts"
+
+// ensureRouterPatch brings a stack's router up to the current patch (stacks
+// created before the admin access setting). A router changed by hand is
+// left alone, unless admin access is off, which needs the patch.
+func ensureRouterPatch(stackDir string, adminAccess bool) error {
+	path := filepath.Join(stackDir, filepath.FromSlash(routerFile))
+	b, err := os.ReadFile(path)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) && adminAccess {
+			return nil
+		}
+		return fmt.Errorf("reading the functions router: %w", err)
+	}
+	patched, err := hideJWTSecret(string(b))
+	if err != nil {
+		if adminAccess {
+			return nil
+		}
+		return fmt.Errorf("can't turn off the functions' admin access: %w", err)
+	}
+	if patched == string(b) {
+		return nil
+	}
+	return writeFileAtomic(path, []byte(patched), 0o644)
+}
+
+// FunctionsAdminAccessOf reports whether a stack's functions get the
+// service-role key, the secret keys and the database URL (the default).
+func FunctionsAdminAccessOf(env map[string]string) bool {
+	return env["FUNCTIONS_ADMIN_ACCESS"] != "false"
 }
 
 const authTemplatesService = "auth-templates"

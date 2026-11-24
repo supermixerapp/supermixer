@@ -521,8 +521,18 @@ func TestFunctionsDontGetTheJWTSecret(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(out, workerEnvLine) || !strings.Contains(out, "const { JWT_SECRET: _routerOnly, ...workerEnv } = Deno.env.toObject()") {
+	if strings.Contains(out, workerEnvLine) ||
+		!strings.Contains(out, "const { JWT_SECRET: _routerOnly, SUPERMIXER_FUNCTIONS_ADMIN_ACCESS: adminAccess, ...workerEnv } = Deno.env.toObject()") ||
+		!strings.Contains(out, "delete workerEnv.SUPABASE_SERVICE_ROLE_KEY") || !strings.Contains(out, "delete workerEnv.SUPABASE_DB_URL") {
 		t.Errorf("router not patched")
+	}
+	// Patching again changes nothing; an older stack's patch is brought up to date.
+	if again, err := hideJWTSecret(out); err != nil || again != out {
+		t.Errorf("patching twice: %v", err)
+	}
+	older := strings.Replace(string(router), workerEnvLine, workerEnvHiddenV1, 1)
+	if up, err := hideJWTSecret(older); err != nil || up != out {
+		t.Errorf("upgrading an older patch: %v", err)
 	}
 	// The router itself still reads it.
 	if !strings.Contains(out, "const JWT_SECRET = Deno.env.get('JWT_SECRET')") {
@@ -851,5 +861,38 @@ func TestOverlayWithoutStudioInCompose(t *testing.T) {
 	o, _ := os.ReadFile(filepath.Join(dir, overlayName))
 	if bundled == "" || !strings.Contains(string(o), "image: "+bundled) {
 		t.Errorf("overlay doesn't use the bundled Studio image %q", bundled)
+	}
+}
+
+// A stack's router is brought up to date when its overlay is refreshed; one
+// changed by hand is left alone unless admin access is off, which needs it.
+func TestEnsureRouterPatch(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, filepath.FromSlash(routerFile))
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	router, _ := fs.ReadFile(templateFS, "template/volumes/functions/main/index.ts")
+	older := strings.Replace(string(router), workerEnvLine, workerEnvHiddenV1, 1)
+	if err := os.WriteFile(path, []byte(older), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureRouterPatch(dir, true); err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); !strings.Contains(string(b), workerEnvHidden) {
+		t.Error("older patch not upgraded")
+	}
+	if err := os.WriteFile(path, []byte("Deno.serve(() => new Response('mine'))"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := ensureRouterPatch(dir, true); err != nil {
+		t.Errorf("a router changed by hand, admin access on: %v", err)
+	}
+	if err := ensureRouterPatch(dir, false); err == nil {
+		t.Error("admin access off with a router it can't patch")
+	}
+	if b, _ := os.ReadFile(path); string(b) != "Deno.serve(() => new Response('mine'))" {
+		t.Error("a router changed by hand was rewritten")
 	}
 }

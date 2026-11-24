@@ -158,10 +158,11 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 	// How functions reach the database: Owners and Administrators choose.
 	var settings struct {
 		DatabaseAccess string `json:"database_access"`
+		AdminAccess    bool   `json:"admin_access"`
 		Restarted      bool
 	}
 	admin.must(200, "GET", base+"/function-settings", nil, &settings)
-	if settings.DatabaseAccess != "service_role" {
+	if settings.DatabaseAccess != "service_role" || !settings.AdminAccess {
 		t.Fatalf("settings = %+v", settings)
 	}
 	dev.must(403, "PUT", base+"/function-settings", map[string]string{"database_access": "postgres"}, nil)
@@ -176,6 +177,33 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 		t.Error("FUNCTIONS_DB_LOGIN isn't postgres's")
 	}
 	admin.must(200, "PUT", base+"/function-settings", map[string]string{"database_access": "service_role"}, nil)
+
+	// Without admin access, the router withholds the admin keys and the database URL.
+	admin.must(400, "PUT", base+"/function-settings", map[string]any{}, nil)
+	dev.must(403, "PUT", base+"/function-settings", map[string]any{"admin_access": false}, nil)
+	admin.must(200, "PUT", base+"/function-settings", map[string]any{"admin_access": false}, &settings)
+	if settings.AdminAccess || settings.DatabaseAccess != "service_role" || !settings.Restarted {
+		t.Fatalf("admin access off = %+v", settings)
+	}
+	created, _ = provision.ReadEnv(filepath.Join(stacks, ref))
+	overlay, _ = os.ReadFile(filepath.Join(stacks, ref, "supermixer.yml"))
+	router, _ := os.ReadFile(filepath.Join(stacks, ref, "volumes/functions/main/index.ts"))
+	if created["FUNCTIONS_ADMIN_ACCESS"] != "false" || !strings.Contains(string(overlay), "SUPERMIXER_FUNCTIONS_ADMIN_ACCESS: ${FUNCTIONS_ADMIN_ACCESS:-true}") ||
+		!strings.Contains(string(router), "delete workerEnv.SUPABASE_SERVICE_ROLE_KEY") {
+		t.Error("admin access off isn't wired through")
+	}
+	// A router changed by hand can't be patched: the setting isn't changed.
+	if err := os.WriteFile(filepath.Join(stacks, ref, "volumes/functions/main/index.ts"), []byte("Deno.serve(() => new Response('mine'))"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	admin.must(200, "PUT", base+"/function-settings", map[string]any{"admin_access": true}, &settings)
+	admin.must(409, "PUT", base+"/function-settings", map[string]any{"admin_access": false}, nil)
+	if e, _ := provision.ReadEnv(filepath.Join(stacks, ref)); e["FUNCTIONS_ADMIN_ACCESS"] != "true" {
+		t.Errorf("after a refused change, FUNCTIONS_ADMIN_ACCESS = %q", e["FUNCTIONS_ADMIN_ACCESS"])
+	}
+	if err := os.WriteFile(filepath.Join(stacks, ref, "volumes/functions/main/index.ts"), router, 0o644); err != nil {
+		t.Fatal(err)
+	}
 
 	// Paused: saved, applied at the next start.
 	admin.must(202, "POST", base+"/stack/stop", nil, nil)
@@ -205,7 +233,7 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 	for _, e := range audit.Entries {
 		got[e.Action]++
 	}
-	if got["project.function_settings_updated"] != 2 {
+	if got["project.function_settings_updated"] != 4 {
 		t.Errorf("settings changes audited %d times", got["project.function_settings_updated"])
 	}
 	if got["project.function_deployed"] != 4 || got["project.function_deleted"] != 1 || got["project.function_secrets_set"] != 1 || got["project.function_secrets_deleted"] != 1 {

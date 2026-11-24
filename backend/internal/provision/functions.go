@@ -533,6 +533,13 @@ func RefreshOverlay(stackDir string) error {
 	if err := ensureDrainsConfig(stackDir); err != nil {
 		return err
 	}
+	env, err := ReadEnv(stackDir)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) { // a stack being written has none yet
+		return err
+	}
+	if err := ensureRouterPatch(stackDir, FunctionsAdminAccessOf(env)); err != nil {
+		return err
+	}
 	o, err := renderOverlay(stackDir)
 	if err != nil {
 		return err

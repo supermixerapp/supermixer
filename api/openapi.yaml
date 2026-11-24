@@ -1116,13 +1116,13 @@ paths:
     put:
       operationId: setFunctionSettings
       tags: [Edge Functions]
-      summary: Change how Edge Functions reach the database, then restart the functions service
+      summary: Change what Edge Functions can reach, then restart the functions service
       description: Needs project settings access (Owners and Administrators). Recorded in the audit log.
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/FunctionSettings" }
+            schema: { $ref: "#/components/schemas/FunctionSettingsUpdate" }
       responses:
         "200":
           description: Saved.
@@ -1854,7 +1854,7 @@ components:
         restarted: { type: boolean, description: "After a change, whether the auth service was recreated." }
     FunctionSettings:
       type: object
-      required: [database_access]
+      required: [database_access, admin_access]
       properties:
         database_access:
           type: string
@@ -1863,6 +1863,18 @@ components:
             The login in SUPABASE_DB_URL. service_role: functions_user, whose sessions act as
             service_role (the same access as the service-role key). postgres: the stack's postgres
             login, which can also create roles and change Auth's and Realtime's tables.
+        admin_access:
+          type: boolean
+          description: |
+            Whether functions get SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEYS and SUPABASE_DB_URL
+            (the default). Without them a function acts as its caller, with the caller's token and
+            the publishable or anon key: deployed code can't bypass Row Level Security, but
+            functions that use admin APIs or the database URL stop working.
+    FunctionSettingsUpdate:
+      type: object
+      properties:
+        database_access: { type: string, enum: [service_role, postgres] }
+        admin_access: { type: boolean }
     FunctionSecret:
       type: object
       required: [name, digest]
