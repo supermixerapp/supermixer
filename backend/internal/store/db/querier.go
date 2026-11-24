@@ -18,7 +18,9 @@ type Querier interface {
 	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
 	AddRecoveryCode(ctx context.Context, arg AddRecoveryCodeParams) error
 	AddRotationAdvisory(ctx context.Context, arg AddRotationAdvisoryParams) error
+	AddWebhookDelivery(ctx context.Context, arg AddWebhookDeliveryParams) error
 	AdvanceAuditDrain(ctx context.Context, arg AdvanceAuditDrainParams) error
+	AdvanceWebhook(ctx context.Context, arg AdvanceWebhookParams) error
 	AuditDrainFailed(ctx context.Context, arg AuditDrainFailedParams) error
 	AuditDrainLag(ctx context.Context, arg AuditDrainLagParams) (int64, error)
 	// Entries after the position, from transactions that have all finished.
@@ -42,6 +44,8 @@ type Querier interface {
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
+	// Starts after the organization's entries already there.
+	CreateWebhook(ctx context.Context, arg CreateWebhookParams) (OrgWebhook, error)
 	DeleteAccessToken(ctx context.Context, arg DeleteAccessTokenParams) (AccessToken, error)
 	DeleteBackup(ctx context.Context, id uuid.UUID) error
 	DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error
@@ -61,6 +65,7 @@ type Querier interface {
 	DeleteUserAccessTokens(ctx context.Context, userID uuid.UUID) error
 	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	DeleteWebhook(ctx context.Context, arg DeleteWebhookParams) (OrgWebhook, error)
 	DisableMFA(ctx context.Context, id uuid.UUID) error
 	// Confirms the pending secret, remembering the step its first code used.
 	EnableTOTP(ctx context.Context, arg EnableTOTPParams) (User, error)
@@ -90,6 +95,7 @@ type Querier interface {
 	GetUserByEmail(ctx context.Context, lower string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
+	GetWebhook(ctx context.Context, arg GetWebhookParams) (OrgWebhook, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
 	InstanceCounts(ctx context.Context) (InstanceCountsRow, error)
 	LastCompletedBackups(ctx context.Context) ([]LastCompletedBackupsRow, error)
@@ -104,6 +110,7 @@ type Querier interface {
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListDBSnapshots(ctx context.Context, projectID uuid.UUID) ([]ListDBSnapshotsRow, error)
 	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
+	ListEnabledWebhooks(ctx context.Context) ([]ListEnabledWebhooksRow, error)
 	// Entries outside any organization (accounts, sign-ins, instance settings).
 	ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAuditLogsParams) ([]AuditLog, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
@@ -116,6 +123,8 @@ type Querier interface {
 	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
 	ListRotationAdvisories(ctx context.Context, projectID uuid.UUID) ([]RotationAdvisory, error)
 	ListRunningStacksForBackup(ctx context.Context) ([]Project, error)
+	// Organizations people signing in through a provider join.
+	ListSSOJoinOrganizations(ctx context.Context, ssoProvider *string) ([]Organization, error)
 	ListSnippets(ctx context.Context, arg ListSnippetsParams) ([]ListSnippetsRow, error)
 	ListStackPorts(ctx context.Context) ([]ListStackPortsRow, error)
 	// Stacks in one of these statuses whose status hasn't changed (or been
@@ -128,6 +137,8 @@ type Querier interface {
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	ListWebhookDeliveries(ctx context.Context, webhookID uuid.UUID) ([]OrgWebhookDelivery, error)
+	ListWebhooks(ctx context.Context, organizationID uuid.UUID) ([]OrgWebhook, error)
 	// Serializes changes to one user's tokens.
 	LockUser(ctx context.Context, id uuid.UUID) error
 	MarkBackupUploadFailed(ctx context.Context, arg MarkBackupUploadFailedParams) error
@@ -145,12 +156,14 @@ type Querier interface {
 	// stay until the project goes, so deploys can't push a baseline out.
 	PruneDBSnapshots(ctx context.Context, projectID uuid.UUID) error
 	PruneUsedChallenges(ctx context.Context) error
+	PruneWebhookDeliveries(ctx context.Context, webhookID uuid.UUID) error
 	// The same password, hashed again (normalized); only if it hasn't changed since.
 	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
 	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
+	SetOrganizationSSO(ctx context.Context, arg SetOrganizationSSOParams) (Organization, error)
 	SetPasswordChangeRequired(ctx context.Context, arg SetPasswordChangeRequiredParams) (User, error)
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
 	SetProjectStack(ctx context.Context, arg SetProjectStackParams) (Project, error)
@@ -161,6 +174,7 @@ type Querier interface {
 	SetTOTPPending(ctx context.Context, arg SetTOTPPendingParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
+	SetWebhookSecret(ctx context.Context, arg SetWebhookSecretParams) error
 	StacksByStatus(ctx context.Context) ([]StacksByStatusRow, error)
 	TouchAccessToken(ctx context.Context, arg TouchAccessTokenParams) error
 	// Keeps the last address the provider vouched for.
@@ -174,6 +188,7 @@ type Querier interface {
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateSnippet(ctx context.Context, arg UpdateSnippetParams) (SqlSnippet, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) (OrgWebhook, error)
 	// Backups both here and in this bucket, to remove here when keep_local is
 	// off (not those in another bucket, which Supermixer can no longer read).
 	UploadedLocalBackups(ctx context.Context, bucket string) ([]UploadedLocalBackupsRow, error)
@@ -186,6 +201,10 @@ type Querier interface {
 	// When each user was last active, from their sessions.
 	UserLastSeen(ctx context.Context) ([]UserLastSeenRow, error)
 	UsernameTaken(ctx context.Context, username string) (bool, error)
+	// The organization's entries after the position, from finished transactions.
+	WebhookEntriesAfter(ctx context.Context, arg WebhookEntriesAfterParams) ([]WebhookEntriesAfterRow, error)
+	WebhookFailed(ctx context.Context, arg WebhookFailedParams) error
+	WebhookSucceeded(ctx context.Context, id uuid.UUID) error
 }
 
 var _ Querier = (*Queries)(nil)

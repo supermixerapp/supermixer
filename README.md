@@ -94,6 +94,14 @@ create_users = true                 # make accounts for new people; otherwise th
 
 Accounts are never matched by email address: people connect a provider to their account under **Account › Security**, or, with `create_users`, get an account when they first sign in. Accounts with two-factor sign-in still enter their code. For local testing, `make sso` runs [Dex](https://dexidp.io); see `deploy/dev-sso/dex.yaml`.
 
+Each organization's Owners can then, under **Organization Settings › SSO**:
+- **Require** one of these providers: the organization's pages, projects and API refuse sessions that didn't sign in through it, and access tokens made from them. To avoid locking yourself out, you have to be signed in with the provider to turn this on.
+- **Let people join by signing in**: someone who signs in through the provider becomes a member, with the role chosen, if their email (as the provider vouches for it) is in the listed domains, or always if none are listed.
+
+## Webhooks
+
+Under **Organization Settings › Webhooks**, Owners can send the organization's events (what its audit log records: projects created or deleted, members joining, settings changed, ...) to URLs. Each event is one JSON POST, in order. Each request carries `X-Supermixer-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>">`, made with the webhook's secret, and `X-Supermixer-Delivery`, which stays the same on retries. A receiver that fails is retried with backoff, holding later events back. The page has a test event button and each webhook's last 100 deliveries. Webhooks may only reach public addresses unless `[webhooks] allow_private_addresses = true`.
+
 ## API and access tokens
 
 Scripts and CI use personal access tokens (**Account › Access Tokens**), sent as `Authorization: Bearer sbp_…`. A token acts as its owner, with the same roles in each organization, but can't change the account's password, two-factor sign-in, sessions or tokens; its uses are in the audit logs with its name.

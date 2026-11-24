@@ -74,6 +74,8 @@ func (h *handlers) CreateAccessToken(ctx context.Context, req api.CreateAccessTo
 		}
 		t, err = q.CreateAccessToken(ctx, db.CreateAccessTokenParams{
 			UserID: p.User.ID, Name: name, TokenHash: hash, Prefix: shown, ExpiresAt: time.Now().AddDate(0, 0, days),
+			// As the session that made it signed in (organizations requiring SSO).
+			SsoProvider: p.Session.SsoProvider,
 		})
 		return err
 	})

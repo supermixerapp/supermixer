@@ -88,7 +88,8 @@ func (q *Queries) DeleteProject(ctx context.Context, id uuid.UUID) error {
 }
 
 const getProjectByRef = `-- name: GetProjectByRef :one
-SELECT p.id, p.ref, p.organization_id, p.name, p.api_url, p.studio_url, p.db_host, p.db_port, p.db_name, p.db_user, p.db_sslmode, p.secrets, p.created_by, p.created_at, p.updated_at, p.managed, p.stack_status, p.stack_error, p.stack_status_at, p.stack_template, p.stack_api_port, p.stack_db_port, p.stack_pooler_port, o.slug AS organization_slug, o.name AS organization_name, o.mfa_required AS organization_mfa_required
+SELECT p.id, p.ref, p.organization_id, p.name, p.api_url, p.studio_url, p.db_host, p.db_port, p.db_name, p.db_user, p.db_sslmode, p.secrets, p.created_by, p.created_at, p.updated_at, p.managed, p.stack_status, p.stack_error, p.stack_status_at, p.stack_template, p.stack_api_port, p.stack_db_port, p.stack_pooler_port, o.slug AS organization_slug, o.name AS organization_name, o.mfa_required AS organization_mfa_required,
+       o.sso_provider AS organization_sso_provider, o.sso_required AS organization_sso_required
 FROM projects p
 JOIN organizations o ON o.id = p.organization_id
 WHERE p.ref = $1
@@ -99,6 +100,8 @@ type GetProjectByRefRow struct {
 	OrganizationSlug        string  `json:"organization_slug"`
 	OrganizationName        string  `json:"organization_name"`
 	OrganizationMfaRequired bool    `json:"organization_mfa_required"`
+	OrganizationSsoProvider *string `json:"organization_sso_provider"`
+	OrganizationSsoRequired bool    `json:"organization_sso_required"`
 }
 
 func (q *Queries) GetProjectByRef(ctx context.Context, ref string) (GetProjectByRefRow, error) {
@@ -131,6 +134,8 @@ func (q *Queries) GetProjectByRef(ctx context.Context, ref string) (GetProjectBy
 		&i.OrganizationSlug,
 		&i.OrganizationName,
 		&i.OrganizationMfaRequired,
+		&i.OrganizationSsoProvider,
+		&i.OrganizationSsoRequired,
 	)
 	return i, err
 }

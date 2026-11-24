@@ -44,6 +44,16 @@ type Config struct {
 	SSO            SSO            `toml:"sso"`
 	Metrics        Metrics        `toml:"metrics"`
 	Audit          Audit          `toml:"audit"`
+	Webhooks       Webhooks       `toml:"webhooks"`
+}
+
+// Webhooks are organizations' outgoing webhooks (Organization Settings ›
+// Webhooks).
+type Webhooks struct {
+	// AllowPrivateAddresses lets webhooks reach loopback, private and
+	// link-local addresses. Off, organization owners can't use webhooks to
+	// probe the network Supermixer runs in.
+	AllowPrivateAddresses bool `toml:"allow_private_addresses"`
 }
 
 // Metrics serves Prometheus metrics on their own address.

@@ -33,6 +33,15 @@ type principal struct {
 	AccessToken *db.AccessToken
 }
 
+// signedInWith is the single sign-on provider the session started with (or
+// the session that made the access token); "" for a password.
+func (p *principal) signedInWith() string {
+	if p.AccessToken != nil {
+		return p.AccessToken.SsoProvider
+	}
+	return p.Session.SsoProvider
+}
+
 // requestInfo carries what handlers need from the HTTP request, since
 // strict handlers only see a context.
 type requestInfo struct {
@@ -230,7 +239,9 @@ func clearedCookies() []*http.Cookie {
 }
 
 // startSession creates a session row and returns the cookies to set.
-func (h *handlers) startSession(ctx context.Context, q *db.Queries, userID uuid.UUID) ([]*http.Cookie, error) {
+// startSession signs a user in; sso is the single sign-on provider they
+// came through ("" for a password).
+func (h *handlers) startSession(ctx context.Context, q *db.Queries, userID uuid.UUID, sso string) ([]*http.Cookie, error) {
 	token, hash, err := auth.NewToken()
 	if err != nil {
 		return nil, err
@@ -238,7 +249,7 @@ func (h *handlers) startSession(ctx context.Context, q *db.Queries, userID uuid.
 	info := reqInfo(ctx)
 	expires := time.Now().Add(h.deps.Config.Security.SessionTTL)
 	if _, err := q.CreateSession(ctx, db.CreateSessionParams{
-		UserID: userID, TokenHash: hash, Ip: info.IP, UserAgent: info.UserAgent, ExpiresAt: expires,
+		UserID: userID, TokenHash: hash, Ip: info.IP, UserAgent: info.UserAgent, ExpiresAt: expires, SsoProvider: sso,
 	}); err != nil {
 		return nil, err
 	}

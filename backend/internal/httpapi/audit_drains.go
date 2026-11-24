@@ -75,27 +75,14 @@ func toDrainEntry(r db.AuditLogsAfterRow) drainEntry {
 // drainLoop runs every configured drain until ctx ends.
 func (h *handlers) drainLoop(ctx context.Context) {
 	var wg sync.WaitGroup
-	var wake []chan struct{}
 	for _, d := range h.deps.Config.Audit.Drains {
-		c := make(chan struct{}, 1)
-		wake = append(wake, c)
+		wake, stop := h.auditWritten.subscribe()
 		wg.Add(1)
-		go func(d config.AuditDrain) { defer wg.Done(); h.runDrain(ctx, d, c) }(d)
-	}
-	// A new entry wakes every drain.
-	for len(wake) > 0 {
-		select {
-		case <-ctx.Done():
-			wg.Wait()
-			return
-		case <-h.auditNudge:
-			for _, c := range wake {
-				select {
-				case c <- struct{}{}:
-				default:
-				}
-			}
-		}
+		go func(d config.AuditDrain) {
+			defer wg.Done()
+			defer stop()
+			h.runDrain(ctx, d, wake)
+		}(d)
 	}
 	wg.Wait()
 }

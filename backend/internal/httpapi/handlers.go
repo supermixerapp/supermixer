@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -34,8 +35,11 @@ type handlers struct {
 	pending *sync.WaitGroup
 	// sso are the single sign-on providers, by id.
 	sso map[string]*ssoProvider
-	// auditNudge wakes the audit drains when an entry is written.
-	auditNudge chan struct{}
+	// auditWritten wakes the audit drains and webhooks when an entry is
+	// written on this instance (others poll).
+	auditWritten wakeup
+	// webhookHTTP POSTs organizations' webhooks.
+	webhookHTTP *http.Client
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)

@@ -23,7 +23,7 @@ func (q *Queries) CountOrganizationProjects(ctx context.Context, organizationID 
 }
 
 const createOrganization = `-- name: CreateOrganization :one
-INSERT INTO organizations (slug, name) VALUES ($1, $2) RETURNING id, slug, name, created_at, updated_at, mfa_required
+INSERT INTO organizations (slug, name) VALUES ($1, $2) RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains
 `
 
 type CreateOrganizationParams struct {
@@ -41,6 +41,10 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MfaRequired,
+		&i.SsoProvider,
+		&i.SsoRequired,
+		&i.SsoJoinRole,
+		&i.SsoJoinDomains,
 	)
 	return i, err
 }
@@ -55,7 +59,7 @@ func (q *Queries) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 }
 
 const getOrganizationByID = `-- name: GetOrganizationByID :one
-SELECT id, slug, name, created_at, updated_at, mfa_required FROM organizations WHERE id = $1
+SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains FROM organizations WHERE id = $1
 `
 
 func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error) {
@@ -68,12 +72,16 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MfaRequired,
+		&i.SsoProvider,
+		&i.SsoRequired,
+		&i.SsoJoinRole,
+		&i.SsoJoinDomains,
 	)
 	return i, err
 }
 
 const getOrganizationBySlug = `-- name: GetOrganizationBySlug :one
-SELECT id, slug, name, created_at, updated_at, mfa_required FROM organizations WHERE slug = $1
+SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains FROM organizations WHERE slug = $1
 `
 
 func (q *Queries) GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error) {
@@ -86,12 +94,16 @@ func (q *Queries) GetOrganizationBySlug(ctx context.Context, slug string) (Organ
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MfaRequired,
+		&i.SsoProvider,
+		&i.SsoRequired,
+		&i.SsoJoinRole,
+		&i.SsoJoinDomains,
 	)
 	return i, err
 }
 
 const listOrganizationsForUser = `-- name: ListOrganizationsForUser :many
-SELECT o.id, o.slug, o.name, o.created_at, o.updated_at, o.mfa_required, m.role,
+SELECT o.id, o.slug, o.name, o.created_at, o.updated_at, o.mfa_required, o.sso_provider, o.sso_required, o.sso_join_role, o.sso_join_domains, m.role,
        (SELECT count(*) FROM projects p WHERE p.organization_id = o.id)::int AS project_count
 FROM organizations o
 JOIN org_members m ON m.organization_id = o.id
@@ -121,8 +133,48 @@ func (q *Queries) ListOrganizationsForUser(ctx context.Context, userID uuid.UUID
 			&i.Organization.CreatedAt,
 			&i.Organization.UpdatedAt,
 			&i.Organization.MfaRequired,
+			&i.Organization.SsoProvider,
+			&i.Organization.SsoRequired,
+			&i.Organization.SsoJoinRole,
+			&i.Organization.SsoJoinDomains,
 			&i.Role,
 			&i.ProjectCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listSSOJoinOrganizations = `-- name: ListSSOJoinOrganizations :many
+SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains FROM organizations WHERE sso_provider = $1 AND sso_join_role IS NOT NULL ORDER BY created_at
+`
+
+// Organizations people signing in through a provider join.
+func (q *Queries) ListSSOJoinOrganizations(ctx context.Context, ssoProvider *string) ([]Organization, error) {
+	rows, err := q.db.Query(ctx, listSSOJoinOrganizations, ssoProvider)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Organization
+	for rows.Next() {
+		var i Organization
+		if err := rows.Scan(
+			&i.ID,
+			&i.Slug,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.MfaRequired,
+			&i.SsoProvider,
+			&i.SsoRequired,
+			&i.SsoJoinRole,
+			&i.SsoJoinDomains,
 		); err != nil {
 			return nil, err
 		}
@@ -145,8 +197,47 @@ func (q *Queries) OrganizationSlugExists(ctx context.Context, slug string) (bool
 	return exists, err
 }
 
+const setOrganizationSSO = `-- name: SetOrganizationSSO :one
+UPDATE organizations SET sso_provider = $1, sso_required = $2,
+    sso_join_role = $3, sso_join_domains = $4::text[], updated_at = now()
+WHERE id = $5
+RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains
+`
+
+type SetOrganizationSSOParams struct {
+	SsoProvider    *string     `json:"sso_provider"`
+	SsoRequired    bool        `json:"sso_required"`
+	SsoJoinRole    NullOrgRole `json:"sso_join_role"`
+	SsoJoinDomains []string    `json:"sso_join_domains"`
+	ID             uuid.UUID   `json:"id"`
+}
+
+func (q *Queries) SetOrganizationSSO(ctx context.Context, arg SetOrganizationSSOParams) (Organization, error) {
+	row := q.db.QueryRow(ctx, setOrganizationSSO,
+		arg.SsoProvider,
+		arg.SsoRequired,
+		arg.SsoJoinRole,
+		arg.SsoJoinDomains,
+		arg.ID,
+	)
+	var i Organization
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.MfaRequired,
+		&i.SsoProvider,
+		&i.SsoRequired,
+		&i.SsoJoinRole,
+		&i.SsoJoinDomains,
+	)
+	return i, err
+}
+
 const updateOrganization = `-- name: UpdateOrganization :one
-UPDATE organizations SET name = $2, mfa_required = $3, updated_at = now() WHERE id = $1 RETURNING id, slug, name, created_at, updated_at, mfa_required
+UPDATE organizations SET name = $2, mfa_required = $3, updated_at = now() WHERE id = $1 RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains
 `
 
 type UpdateOrganizationParams struct {
@@ -165,6 +256,10 @@ func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganization
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.MfaRequired,
+		&i.SsoProvider,
+		&i.SsoRequired,
+		&i.SsoJoinRole,
+		&i.SsoJoinDomains,
 	)
 	return i, err
 }

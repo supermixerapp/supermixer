@@ -24,16 +24,17 @@ func (q *Queries) CountUserAccessTokens(ctx context.Context, userID uuid.UUID) (
 }
 
 const createAccessToken = `-- name: CreateAccessToken :one
-INSERT INTO access_tokens (user_id, name, token_hash, prefix, expires_at) VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, name, token_hash, prefix, created_at, expires_at, last_used_at, last_used_ip
+INSERT INTO access_tokens (user_id, name, token_hash, prefix, expires_at, sso_provider) VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, user_id, name, token_hash, prefix, created_at, expires_at, last_used_at, last_used_ip, sso_provider
 `
 
 type CreateAccessTokenParams struct {
-	UserID    uuid.UUID `json:"user_id"`
-	Name      string    `json:"name"`
-	TokenHash []byte    `json:"token_hash"`
-	Prefix    string    `json:"prefix"`
-	ExpiresAt time.Time `json:"expires_at"`
+	UserID      uuid.UUID `json:"user_id"`
+	Name        string    `json:"name"`
+	TokenHash   []byte    `json:"token_hash"`
+	Prefix      string    `json:"prefix"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	SsoProvider string    `json:"sso_provider"`
 }
 
 func (q *Queries) CreateAccessToken(ctx context.Context, arg CreateAccessTokenParams) (AccessToken, error) {
@@ -43,6 +44,7 @@ func (q *Queries) CreateAccessToken(ctx context.Context, arg CreateAccessTokenPa
 		arg.TokenHash,
 		arg.Prefix,
 		arg.ExpiresAt,
+		arg.SsoProvider,
 	)
 	var i AccessToken
 	err := row.Scan(
@@ -55,12 +57,13 @@ func (q *Queries) CreateAccessToken(ctx context.Context, arg CreateAccessTokenPa
 		&i.ExpiresAt,
 		&i.LastUsedAt,
 		&i.LastUsedIp,
+		&i.SsoProvider,
 	)
 	return i, err
 }
 
 const deleteAccessToken = `-- name: DeleteAccessToken :one
-DELETE FROM access_tokens WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name, token_hash, prefix, created_at, expires_at, last_used_at, last_used_ip
+DELETE FROM access_tokens WHERE id = $1 AND user_id = $2 RETURNING id, user_id, name, token_hash, prefix, created_at, expires_at, last_used_at, last_used_ip, sso_provider
 `
 
 type DeleteAccessTokenParams struct {
@@ -81,6 +84,7 @@ func (q *Queries) DeleteAccessToken(ctx context.Context, arg DeleteAccessTokenPa
 		&i.ExpiresAt,
 		&i.LastUsedAt,
 		&i.LastUsedIp,
+		&i.SsoProvider,
 	)
 	return i, err
 }
@@ -95,7 +99,7 @@ func (q *Queries) DeleteUserAccessTokens(ctx context.Context, userID uuid.UUID) 
 }
 
 const getActiveAccessToken = `-- name: GetActiveAccessToken :one
-SELECT t.id, t.user_id, t.name, t.token_hash, t.prefix, t.created_at, t.expires_at, t.last_used_at, t.last_used_ip, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password
+SELECT t.id, t.user_id, t.name, t.token_hash, t.prefix, t.created_at, t.expires_at, t.last_used_at, t.last_used_ip, t.sso_provider, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password
 FROM access_tokens t
 JOIN users u ON u.id = t.user_id
 WHERE t.token_hash = $1 AND t.expires_at > now() AND u.disabled_at IS NULL
@@ -120,6 +124,7 @@ func (q *Queries) GetActiveAccessToken(ctx context.Context, tokenHash []byte) (G
 		&i.AccessToken.ExpiresAt,
 		&i.AccessToken.LastUsedAt,
 		&i.AccessToken.LastUsedIp,
+		&i.AccessToken.SsoProvider,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.Email,
@@ -142,7 +147,7 @@ func (q *Queries) GetActiveAccessToken(ctx context.Context, tokenHash []byte) (G
 }
 
 const listAccessTokens = `-- name: ListAccessTokens :many
-SELECT id, user_id, name, token_hash, prefix, created_at, expires_at, last_used_at, last_used_ip FROM access_tokens WHERE user_id = $1 ORDER BY created_at DESC
+SELECT id, user_id, name, token_hash, prefix, created_at, expires_at, last_used_at, last_used_ip, sso_provider FROM access_tokens WHERE user_id = $1 ORDER BY created_at DESC
 `
 
 func (q *Queries) ListAccessTokens(ctx context.Context, userID uuid.UUID) ([]AccessToken, error) {
@@ -164,6 +169,7 @@ func (q *Queries) ListAccessTokens(ctx context.Context, userID uuid.UUID) ([]Acc
 			&i.ExpiresAt,
 			&i.LastUsedAt,
 			&i.LastUsedIp,
+			&i.SsoProvider,
 		); err != nil {
 			return nil, err
 		}

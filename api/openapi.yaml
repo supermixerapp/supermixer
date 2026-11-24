@@ -20,6 +20,7 @@ servers:
   - url: /api/v1
 tags:
   - name: System
+  - name: Webhooks
   - name: Auth
   - name: Profile
   - name: Users
@@ -654,6 +655,151 @@ paths:
         default: { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------ Invitations
+  /organizations/{slug}/sso:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: getOrganizationSso
+      tags: [Organizations]
+      summary: The organization's single sign-on settings (Owners)
+      responses:
+        "200":
+          description: Settings, and the instance's providers to choose from.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationSso" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: updateOrganizationSso
+      tags: [Organizations]
+      summary: Change the organization's single sign-on settings (Owners)
+      description: |
+        Requiring the provider needs you to be signed in through it now, so you don't lock yourself out. People
+        joining through it (join_role) are added when they sign in with it, if their email address (as the provider
+        vouches for it) is in join_domains, or always when join_domains is empty.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationSsoUpdate" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationSso" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/webhooks:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: listWebhooks
+      tags: [Webhooks]
+      summary: The organization's webhooks (Owners)
+      responses:
+        "200":
+          description: Webhooks.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Webhook" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createWebhook
+      tags: [Webhooks]
+      summary: Add a webhook (Owners)
+      description: |
+        The organization's audit log entries are POSTed to the URL one at a time, in order, as JSON, from when it's
+        added. Each request has `X-Supermixer-Event` (the action), `X-Supermixer-Delivery` (the entry's id, the same
+        on retries) and `X-Supermixer-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>" with the secret>`.
+        Answer 2xx; anything else is retried with backoff, holding back later events.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookCreate" }
+      responses:
+        "201":
+          description: Added. The signing secret is only returned here (and when rotated).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookCreated" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/webhooks/{webhook_id}:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+      - { name: webhook_id, in: path, required: true, schema: { type: string, format: uuid } }
+    patch:
+      operationId: updateWebhook
+      tags: [Webhooks]
+      summary: Change a webhook, or turn it off and on (Owners)
+      description: Turning a webhook back on starts with new events; what happened while it was off isn't sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/WebhookUpdate" }
+      responses:
+        "200":
+          description: Changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Webhook" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteWebhook
+      tags: [Webhooks]
+      responses:
+        "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/webhooks/{webhook_id}/secret:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+      - { name: webhook_id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: rotateWebhookSecret
+      tags: [Webhooks]
+      summary: Replace the signing secret; the old one stops working at once
+      responses:
+        "200":
+          description: The new secret, only shown here.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookSecret" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/webhooks/{webhook_id}/test:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+      - { name: webhook_id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: testWebhook
+      tags: [Webhooks]
+      summary: Send a webhook.test event now and say how it went
+      responses:
+        "200":
+          description: The attempt (also in the deliveries list).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/WebhookDelivery" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/webhooks/{webhook_id}/deliveries:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+      - { name: webhook_id, in: path, required: true, schema: { type: string, format: uuid } }
+    get:
+      operationId: listWebhookDeliveries
+      tags: [Webhooks]
+      summary: The newest 100 attempts
+      responses:
+        "200":
+          description: Attempts, newest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/WebhookDelivery" }
+        default: { $ref: "#/components/responses/Error" }
   /organizations/{slug}/invitations:
     parameters:
       - { $ref: "#/components/parameters/Slug" }
@@ -1877,7 +2023,7 @@ components:
         message: { type: string }
         code:
           type: string
-          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on."
+          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't."
     OrgRole:
       type: string
       enum: [owner, administrator, developer, read_only, no_access]
@@ -2522,11 +2668,18 @@ components:
 
     Organization:
       type: object
-      required: [id, slug, name, role, permissions, project_count, mfa_required, created_at]
+      required: [id, slug, name, role, permissions, project_count, mfa_required, sso_satisfied, created_at]
       properties:
         id: { type: string, format: uuid }
         slug: { type: string }
         name: { type: string }
+        sso_required_provider:
+          type: string
+          nullable: true
+          description: "Members must sign in through this single sign-on provider (its id); null if not required."
+        sso_satisfied:
+          type: boolean
+          description: "Whether your sign-in meets the organization's single sign-on rule; until it does you can see its name and leave it, nothing else."
         mfa_required:
           type: boolean
           description: "Members must use two-factor sign-in; until they turn it on they can see the organization's name and leave it, nothing else."
@@ -2539,6 +2692,90 @@ components:
       required: [name]
       properties:
         name: { type: string }
+    OrganizationSso:
+      type: object
+      required: [provider, required, join_role, join_domains, providers, signed_in_with]
+      properties:
+        provider: { type: string, nullable: true, description: "The instance provider (sso.providers id) the organization uses." }
+        provider_missing: { type: boolean, description: "The provider is no longer set up on this instance, so nothing about it is enforced." }
+        required: { type: boolean, description: Members must sign in through the provider. }
+        join_role:
+          nullable: true
+          description: People signing in through the provider join with this role; null if they don't join by themselves.
+          allOf: [{ $ref: "#/components/schemas/OrgRole" }]
+        join_domains: { type: array, items: { type: string }, description: "Only these email domains join; empty for anyone the provider signs in." }
+        providers:
+          type: array
+          description: The instance's providers.
+          items:
+            type: object
+            required: [id, name]
+            properties:
+              id: { type: string }
+              name: { type: string }
+        signed_in_with: { type: string, nullable: true, description: The provider your current session came through, if any. }
+    OrganizationSsoUpdate:
+      type: object
+      required: [provider, required, join_role, join_domains]
+      properties:
+        provider: { type: string, nullable: true }
+        required: { type: boolean }
+        join_role:
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/OrgRole" }]
+        join_domains: { type: array, items: { type: string } }
+    Webhook:
+      type: object
+      required: [id, url, description, events, enabled, created_at, last_error]
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string }
+        description: { type: string }
+        events:
+          type: array
+          description: 'Action prefixes sent ("project.", "member."), or ["*"] for every event.'
+          items: { type: string }
+        enabled: { type: boolean }
+        created_at: { type: string, format: date-time }
+        last_success_at: { type: string, format: date-time, nullable: true }
+        last_error: { type: string, description: "Why the last attempt failed; empty once one succeeds." }
+        failing_since: { type: string, format: date-time, nullable: true }
+    WebhookCreate:
+      type: object
+      required: [url, events]
+      properties:
+        url: { type: string }
+        description: { type: string }
+        events: { type: array, items: { type: string } }
+    WebhookUpdate:
+      type: object
+      properties:
+        url: { type: string }
+        description: { type: string }
+        events: { type: array, items: { type: string } }
+        enabled: { type: boolean }
+    WebhookCreated:
+      type: object
+      required: [webhook, secret]
+      properties:
+        webhook: { $ref: "#/components/schemas/Webhook" }
+        secret: { type: string, description: "whsec_…, for checking X-Supermixer-Signature." }
+    WebhookSecret:
+      type: object
+      required: [secret]
+      properties:
+        secret: { type: string }
+    WebhookDelivery:
+      type: object
+      required: [id, event_id, event, status, error, duration_ms, created_at]
+      properties:
+        id: { type: integer, format: int64 }
+        event_id: { type: integer, format: int64, description: The audit log entry; 0 for a test. }
+        event: { type: string }
+        status: { type: integer, description: The HTTP status; 0 if there was no answer. }
+        error: { type: string }
+        duration_ms: { type: integer }
+        created_at: { type: string, format: date-time }
     OrganizationUpdate:
       type: object
       properties:

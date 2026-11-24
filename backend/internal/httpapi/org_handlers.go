@@ -30,12 +30,21 @@ func validOrgName(s string) (string, error) {
 	return s, nil
 }
 
-func toOrganization(o db.Organization, role rbac.Role, projectCount int) api.Organization {
-	return api.Organization{
+// toOrganization is an organization as p sees it, including whether p's
+// sign-in satisfies its single sign-on rule.
+func (h *handlers) toOrganization(o db.Organization, role rbac.Role, projectCount int, p *principal) api.Organization {
+	out := api.Organization{
 		Id: o.ID, Slug: o.Slug, Name: o.Name, Role: api.OrgRole(role),
 		Permissions: permStrings(rbac.OrgPermissions(role)), ProjectCount: projectCount, MfaRequired: o.MfaRequired,
 		CreatedAt: o.CreatedAt,
 	}
+	if o.SsoRequired && o.SsoProvider != nil && h.sso[*o.SsoProvider] != nil {
+		out.SsoRequiredProvider = o.SsoProvider
+		out.SsoSatisfied = p.signedInWith() == *o.SsoProvider
+	} else {
+		out.SsoSatisfied = true
+	}
+	return out
 }
 
 func (h *handlers) ListOrganizations(ctx context.Context, _ api.ListOrganizationsRequestObject) (api.ListOrganizationsResponseObject, error) {
@@ -53,7 +62,7 @@ func (h *handlers) ListOrganizations(ctx context.Context, _ api.ListOrganization
 	}
 	out := make(api.ListOrganizations200JSONResponse, 0, len(orgs))
 	for _, o := range orgs {
-		out = append(out, toOrganization(o.Organization, rbac.Role(o.Role), counts[o.Organization.ID]))
+		out = append(out, h.toOrganization(o.Organization, rbac.Role(o.Role), counts[o.Organization.ID], p))
 	}
 	return out, nil
 }
@@ -93,7 +102,7 @@ func (h *handlers) CreateOrganization(ctx context.Context, req api.CreateOrganiz
 	if err != nil {
 		return nil, err
 	}
-	return api.CreateOrganization201JSONResponse(toOrganization(org, rbac.Owner, 0)), nil
+	return api.CreateOrganization201JSONResponse(h.toOrganization(org, rbac.Owner, 0, p)), nil
 }
 
 func (h *handlers) projectCount(ctx context.Context, a *orgAccess) (int, error) {
@@ -121,7 +130,7 @@ func (h *handlers) GetOrganization(ctx context.Context, req api.GetOrganizationR
 	if err != nil {
 		return nil, err
 	}
-	return api.GetOrganization200JSONResponse(toOrganization(a.Org, a.Role, n)), nil
+	return api.GetOrganization200JSONResponse(h.toOrganization(a.Org, a.Role, n, a.User)), nil
 }
 
 func (h *handlers) UpdateOrganization(ctx context.Context, req api.UpdateOrganizationRequestObject) (api.UpdateOrganizationResponseObject, error) {
@@ -163,7 +172,7 @@ func (h *handlers) UpdateOrganization(ctx context.Context, req api.UpdateOrganiz
 	if err != nil {
 		return nil, err
 	}
-	return api.UpdateOrganization200JSONResponse(toOrganization(org, a.Role, n)), nil
+	return api.UpdateOrganization200JSONResponse(h.toOrganization(org, a.Role, n, a.User)), nil
 }
 
 func (h *handlers) DeleteOrganization(ctx context.Context, req api.DeleteOrganizationRequestObject) (api.DeleteOrganizationResponseObject, error) {
@@ -683,7 +692,7 @@ func (h *handlers) AcceptInvitation(ctx context.Context, req api.AcceptInvitatio
 	if err != nil {
 		return nil, err
 	}
-	return api.AcceptInvitation200JSONResponse(toOrganization(a.Org, a.Role, n)), nil
+	return api.AcceptInvitation200JSONResponse(h.toOrganization(a.Org, a.Role, n, a.User)), nil
 }
 
 func (h *handlers) SignUpWithInvitation(ctx context.Context, req api.SignUpWithInvitationRequestObject) (api.SignUpWithInvitationResponseObject, error) {
@@ -709,7 +718,7 @@ func (h *handlers) SignUpWithInvitation(ctx context.Context, req api.SignUpWithI
 		if err := h.joinOrganization(ctx, q, row, user.ID, user.Username); err != nil {
 			return err
 		}
-		cookies, err = h.startSession(ctx, q, user.ID)
+		cookies, err = h.startSession(ctx, q, user.ID, "")
 		return err
 	})
 	if err != nil {

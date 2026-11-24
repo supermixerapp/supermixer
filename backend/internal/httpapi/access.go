@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -49,6 +50,11 @@ func (h *handlers) loadOrgMFA(ctx context.Context, slug string, perm rbac.Permis
 	a := &orgAccess{Org: org, Role: rbac.Role(role), User: p}
 	if needMFA && org.MfaRequired && !hasMFA(p.User) {
 		return nil, mfaRequired(org.Name)
+	}
+	if needMFA {
+		if err := h.ssoGate(org.Name, org.SsoProvider, org.SsoRequired, p); err != nil {
+			return nil, err
+		}
 	}
 	if perm != "" && !rbac.OrgCan(a.Role, perm) {
 		return nil, forbidden(action)
@@ -96,6 +102,9 @@ func (h *handlers) loadProject(ctx context.Context, ref string, perm rbac.Permis
 	if row.OrganizationMfaRequired && !hasMFA(p.User) {
 		return nil, mfaRequired(row.OrganizationName)
 	}
+	if err := h.ssoGate(row.OrganizationName, row.OrganizationSsoProvider, row.OrganizationSsoRequired, p); err != nil {
+		return nil, err
+	}
 	a := &projectAccess{Row: row, OrgRole: rbac.Role(orgRole), Role: eff, User: p}
 	if perm != "" && !rbac.ProjectCan(eff, perm) {
 		return nil, forbidden(action)
@@ -140,6 +149,9 @@ func (h *handlers) visibleProjects(ctx context.Context, userID uuid.UUID) ([]db.
 		// Projects of organizations that require two-factor sign-in stay
 		// hidden until the user has it.
 		if o.Organization.MfaRequired && !hasMFA(user.User) {
+			continue
+		}
+		if h.ssoGate(o.Organization.Name, o.Organization.SsoProvider, o.Organization.SsoRequired, user) != nil {
 			continue
 		}
 		orgRoles[o.Organization.ID] = rbac.Role(o.Role)
@@ -224,11 +236,24 @@ func (h *handlers) audit(ctx context.Context, q *db.Queries, e auditEntry) {
 	if err := q.InsertAuditLog(ctx, params); err != nil {
 		h.deps.Logger.ErrorContext(ctx, "writing audit log", "action", e.Action, "err", err)
 	}
-	// Wake the drains (on this instance; others poll).
-	select {
-	case h.auditNudge <- struct{}{}:
-	default:
-	}
+	// Wake the drains and webhooks (on this instance; others poll).
+	h.auditWritten.notify()
 }
 
 func ptr[T any](v T) *T { return &v }
+
+// ssoGate refuses an organization that requires signing in through its
+// single sign-on provider to a session (or access token) that didn't. A
+// provider no longer set up isn't enforced, since nobody could sign in with
+// it (Organization Settings › SSO says so).
+func (h *handlers) ssoGate(orgName string, provider *string, required bool, p *principal) error {
+	if !required || provider == nil {
+		return nil
+	}
+	sp := h.sso[*provider]
+	if sp == nil || p.signedInWith() == *provider {
+		return nil
+	}
+	return &apiError{status: http.StatusForbidden, code: "sso_required",
+		message: "“" + orgName + "” requires signing in with " + sp.cfg.Name}
+}

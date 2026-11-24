@@ -91,11 +91,11 @@ func New(deps Deps) http.Handler {
 		stacks:  &stackJobs{},
 		uploads: newUploader(),
 		// Emails people can ask Supermixer to send to others.
-		inviteMail: auth.NewLimiter(30, time.Hour), // per inviter
-		resetMail:  auth.NewLimiter(5, time.Hour),  // per account
-		pending:    deps.Pending,
-		sso:        newSSOProviders(deps.Config.SSO),
-		auditNudge: make(chan struct{}, 1),
+		inviteMail:  auth.NewLimiter(30, time.Hour), // per inviter
+		resetMail:   auth.NewLimiter(5, time.Hour),  // per account
+		pending:     deps.Pending,
+		sso:         newSSOProviders(deps.Config.SSO),
+		webhookHTTP: webhookClient(deps.Config.Webhooks.AllowPrivateAddresses),
 	}
 	if h.pending == nil {
 		h.pending = &sync.WaitGroup{}
@@ -264,6 +264,7 @@ func (h *handlers) backgroundWork(ctx context.Context) {
 		run(h.uploadLoop)
 	}
 	run(h.drainLoop)
+	run(h.webhookLoop)
 	wg.Wait()
 }
 

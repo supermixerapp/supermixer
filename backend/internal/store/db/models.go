@@ -275,15 +275,16 @@ func (ns NullStackStatus) Value() (driver.Value, error) {
 }
 
 type AccessToken struct {
-	ID         uuid.UUID  `json:"id"`
-	UserID     uuid.UUID  `json:"user_id"`
-	Name       string     `json:"name"`
-	TokenHash  []byte     `json:"token_hash"`
-	Prefix     string     `json:"prefix"`
-	CreatedAt  time.Time  `json:"created_at"`
-	ExpiresAt  time.Time  `json:"expires_at"`
-	LastUsedAt *time.Time `json:"last_used_at"`
-	LastUsedIp string     `json:"last_used_ip"`
+	ID          uuid.UUID  `json:"id"`
+	UserID      uuid.UUID  `json:"user_id"`
+	Name        string     `json:"name"`
+	TokenHash   []byte     `json:"token_hash"`
+	Prefix      string     `json:"prefix"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   time.Time  `json:"expires_at"`
+	LastUsedAt  *time.Time `json:"last_used_at"`
+	LastUsedIp  string     `json:"last_used_ip"`
+	SsoProvider string     `json:"sso_provider"`
 }
 
 type AuditDrain struct {
@@ -387,13 +388,45 @@ type OrgMember struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type OrgWebhook struct {
+	ID             uuid.UUID  `json:"id"`
+	OrganizationID uuid.UUID  `json:"organization_id"`
+	Url            string     `json:"url"`
+	Description    string     `json:"description"`
+	Events         []string   `json:"events"`
+	Secret         []byte     `json:"secret"`
+	Enabled        bool       `json:"enabled"`
+	CreatedBy      *uuid.UUID `json:"created_by"`
+	CreatedAt      time.Time  `json:"created_at"`
+	LastTxid       int64      `json:"last_txid"`
+	LastID         int64      `json:"last_id"`
+	LastSuccessAt  *time.Time `json:"last_success_at"`
+	LastError      string     `json:"last_error"`
+	FailingSince   *time.Time `json:"failing_since"`
+}
+
+type OrgWebhookDelivery struct {
+	ID         int64     `json:"id"`
+	WebhookID  uuid.UUID `json:"webhook_id"`
+	EventID    int64     `json:"event_id"`
+	Event      string    `json:"event"`
+	Status     int32     `json:"status"`
+	Error      string    `json:"error"`
+	DurationMs int32     `json:"duration_ms"`
+	CreatedAt  time.Time `json:"created_at"`
+}
+
 type Organization struct {
-	ID          uuid.UUID `json:"id"`
-	Slug        string    `json:"slug"`
-	Name        string    `json:"name"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	MfaRequired bool      `json:"mfa_required"`
+	ID             uuid.UUID   `json:"id"`
+	Slug           string      `json:"slug"`
+	Name           string      `json:"name"`
+	CreatedAt      time.Time   `json:"created_at"`
+	UpdatedAt      time.Time   `json:"updated_at"`
+	MfaRequired    bool        `json:"mfa_required"`
+	SsoProvider    *string     `json:"sso_provider"`
+	SsoRequired    bool        `json:"sso_required"`
+	SsoJoinRole    NullOrgRole `json:"sso_join_role"`
+	SsoJoinDomains []string    `json:"sso_join_domains"`
 }
 
 type PasswordReset struct {
@@ -447,14 +480,15 @@ type RotationAdvisory struct {
 }
 
 type Session struct {
-	ID         uuid.UUID `json:"id"`
-	UserID     uuid.UUID `json:"user_id"`
-	TokenHash  []byte    `json:"token_hash"`
-	Ip         string    `json:"ip"`
-	UserAgent  string    `json:"user_agent"`
-	CreatedAt  time.Time `json:"created_at"`
-	LastSeenAt time.Time `json:"last_seen_at"`
-	ExpiresAt  time.Time `json:"expires_at"`
+	ID          uuid.UUID `json:"id"`
+	UserID      uuid.UUID `json:"user_id"`
+	TokenHash   []byte    `json:"token_hash"`
+	Ip          string    `json:"ip"`
+	UserAgent   string    `json:"user_agent"`
+	CreatedAt   time.Time `json:"created_at"`
+	LastSeenAt  time.Time `json:"last_seen_at"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	SsoProvider string    `json:"sso_provider"`
 }
 
 type SqlSnippet struct {

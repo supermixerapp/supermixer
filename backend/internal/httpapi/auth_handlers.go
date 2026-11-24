@@ -152,14 +152,14 @@ func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api
 
 	// Two-factor sign-in: no session until a code from the app.
 	if hasMFA(user) {
-		c, err := h.newMFAChallenge(user)
+		c, err := h.newMFAChallenge(user, "", "")
 		if err != nil {
 			return nil, err
 		}
 		return signInResponse{withCookies{status: http.StatusAccepted, body: c}}, nil
 	}
 
-	cookies, err := h.startSession(ctx, h.deps.Store.Queries, user.ID)
+	cookies, err := h.startSession(ctx, h.deps.Store.Queries, user.ID, "")
 	if err != nil {
 		return nil, err
 	}

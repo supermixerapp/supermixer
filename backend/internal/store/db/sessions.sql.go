@@ -13,17 +13,18 @@ import (
 )
 
 const createSession = `-- name: CreateSession :one
-INSERT INTO sessions (user_id, token_hash, ip, user_agent, expires_at)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, token_hash, ip, user_agent, created_at, last_seen_at, expires_at
+INSERT INTO sessions (user_id, token_hash, ip, user_agent, expires_at, sso_provider)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, user_id, token_hash, ip, user_agent, created_at, last_seen_at, expires_at, sso_provider
 `
 
 type CreateSessionParams struct {
-	UserID    uuid.UUID `json:"user_id"`
-	TokenHash []byte    `json:"token_hash"`
-	Ip        string    `json:"ip"`
-	UserAgent string    `json:"user_agent"`
-	ExpiresAt time.Time `json:"expires_at"`
+	UserID      uuid.UUID `json:"user_id"`
+	TokenHash   []byte    `json:"token_hash"`
+	Ip          string    `json:"ip"`
+	UserAgent   string    `json:"user_agent"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	SsoProvider string    `json:"sso_provider"`
 }
 
 func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error) {
@@ -33,6 +34,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		arg.Ip,
 		arg.UserAgent,
 		arg.ExpiresAt,
+		arg.SsoProvider,
 	)
 	var i Session
 	err := row.Scan(
@@ -44,6 +46,7 @@ func (q *Queries) CreateSession(ctx context.Context, arg CreateSessionParams) (S
 		&i.CreatedAt,
 		&i.LastSeenAt,
 		&i.ExpiresAt,
+		&i.SsoProvider,
 	)
 	return i, err
 }
@@ -107,7 +110,7 @@ func (q *Queries) DeleteUserSessions(ctx context.Context, userID uuid.UUID) erro
 }
 
 const getActiveSession = `-- name: GetActiveSession :one
-SELECT s.id, s.user_id, s.token_hash, s.ip, s.user_agent, s.created_at, s.last_seen_at, s.expires_at, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password
+SELECT s.id, s.user_id, s.token_hash, s.ip, s.user_agent, s.created_at, s.last_seen_at, s.expires_at, s.sso_provider, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password
 FROM sessions s
 JOIN users u ON u.id = s.user_id
 WHERE s.token_hash = $1 AND s.expires_at > now() AND u.disabled_at IS NULL
@@ -131,6 +134,7 @@ func (q *Queries) GetActiveSession(ctx context.Context, tokenHash []byte) (GetAc
 		&i.Session.CreatedAt,
 		&i.Session.LastSeenAt,
 		&i.Session.ExpiresAt,
+		&i.Session.SsoProvider,
 		&i.User.ID,
 		&i.User.Username,
 		&i.User.Email,
@@ -153,7 +157,7 @@ func (q *Queries) GetActiveSession(ctx context.Context, tokenHash []byte) (GetAc
 }
 
 const listUserSessions = `-- name: ListUserSessions :many
-SELECT id, user_id, token_hash, ip, user_agent, created_at, last_seen_at, expires_at FROM sessions WHERE user_id = $1 AND expires_at > now() ORDER BY last_seen_at DESC
+SELECT id, user_id, token_hash, ip, user_agent, created_at, last_seen_at, expires_at, sso_provider FROM sessions WHERE user_id = $1 AND expires_at > now() ORDER BY last_seen_at DESC
 `
 
 func (q *Queries) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error) {
@@ -174,6 +178,7 @@ func (q *Queries) ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Ses
 			&i.CreatedAt,
 			&i.LastSeenAt,
 			&i.ExpiresAt,
+			&i.SsoProvider,
 		); err != nil {
 			return nil, err
 		}

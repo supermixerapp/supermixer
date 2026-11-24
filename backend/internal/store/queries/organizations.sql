@@ -26,3 +26,14 @@ DELETE FROM organizations WHERE id = $1;
 
 -- name: CountOrganizationProjects :one
 SELECT count(*) FROM projects WHERE organization_id = $1;
+
+-- name: SetOrganizationSSO :one
+UPDATE organizations SET sso_provider = sqlc.narg(sso_provider), sso_required = @sso_required,
+    sso_join_role = sqlc.narg(sso_join_role), sso_join_domains = @sso_join_domains::text[], updated_at = now()
+WHERE id = @id
+RETURNING *;
+
+-- name: ListSSOJoinOrganizations :many
+-- Organizations people signing in through a provider join.
+SELECT * FROM organizations WHERE sso_provider = $1 AND sso_join_role IS NOT NULL ORDER BY created_at;
+

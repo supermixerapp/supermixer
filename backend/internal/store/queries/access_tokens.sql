@@ -1,5 +1,5 @@
 -- name: CreateAccessToken :one
-INSERT INTO access_tokens (user_id, name, token_hash, prefix, expires_at) VALUES ($1, $2, $3, $4, $5)
+INSERT INTO access_tokens (user_id, name, token_hash, prefix, expires_at, sso_provider) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: ListAccessTokens :many

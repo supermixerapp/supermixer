@@ -373,7 +373,7 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 	}
 	// The account's own two-factor sign-in still applies.
 	if hasMFA(u) {
-		c, err := h.newMFAChallenge(u)
+		c, err := h.newMFAChallenge(u, p.cfg.ID, email)
 		if err != nil {
 			h.ssoFail(w, r, "", "Something went wrong; try again")
 			return
@@ -389,13 +389,14 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 		http.Redirect(w, r, h.joinURL("/sign-in", url.Values{"mfa": {"1"}, "redirect": {st.Redirect}}), http.StatusFound)
 		return
 	}
-	cookies, err := h.startSession(ctx, q, u.ID)
+	cookies, err := h.startSession(ctx, q, u.ID, p.cfg.ID)
 	if err != nil {
 		h.ssoFail(w, r, "", "Something went wrong; try again")
 		return
 	}
 	h.deps.Metrics.SignIn("sso", true)
 	reqInfo(ctx).Principal = &principal{User: u}
+	h.ssoAutoJoin(ctx, u, p.cfg.ID, email)
 	h.audit(ctx, nil, auditEntry{Action: "user.signed_in", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"sso": p.cfg.ID}})
 	http.SetCookie(w, &http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true})

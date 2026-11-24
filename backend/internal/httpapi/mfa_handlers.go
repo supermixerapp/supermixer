@@ -38,6 +38,10 @@ type mfaChallenge struct {
 	// Password is a fingerprint of the password hash: a challenge stops
 	// working when the password changes.
 	Password []byte `json:"p"`
+	// SSO is the provider when single sign-on came first, and Email the
+	// address it vouched for (for joining organizations).
+	SSO   string `json:"s,omitempty"`
+	Email string `json:"m,omitempty"`
 }
 
 var challengeAD = []byte("supermixer mfa challenge")
@@ -58,9 +62,10 @@ func mfaRequired(org string) error {
 		message: "“" + org + "” requires two-factor sign-in; turn it on under Account › Security to continue"}
 }
 
-func (h *handlers) newMFAChallenge(u db.User) (api.MfaChallenge, error) {
+func (h *handlers) newMFAChallenge(u db.User, sso, email string) (api.MfaChallenge, error) {
 	exp := time.Now().Add(mfaChallengeTTL).UTC().Truncate(time.Second)
-	sealed, err := h.deps.Box.SealJSON(mfaChallenge{ID: uuid.New(), UserID: u.ID, Expires: exp.Unix(), Password: passwordFingerprint(u.PasswordHash)}, challengeAD)
+	sealed, err := h.deps.Box.SealJSON(mfaChallenge{ID: uuid.New(), UserID: u.ID, Expires: exp.Unix(),
+		Password: passwordFingerprint(u.PasswordHash), SSO: sso, Email: email}, challengeAD)
 	if err != nil {
 		return api.MfaChallenge{}, err
 	}
@@ -181,13 +186,16 @@ func (h *handlers) VerifyMfa(ctx context.Context, req api.VerifyMfaRequestObject
 	}
 	h.limiter.Reset(ipKey)
 	h.deps.Metrics.SignIn("mfa", true)
-	cookies, err := h.startSession(ctx, q, u.ID)
+	cookies, err := h.startSession(ctx, q, u.ID, c.SSO)
 	if err != nil {
 		return nil, err
 	}
 	reqInfo(ctx).Principal = &principal{User: u}
 	h.audit(ctx, nil, auditEntry{Action: "user.signed_in", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"mfa": method}})
+	if c.SSO != "" { // single sign-on came first
+		h.ssoAutoJoin(ctx, u, c.SSO, c.Email)
+	}
 	cookies = append(cookies, &http.Cookie{Name: mfaCookie, Value: "", Path: "/api/v1/auth/mfa", MaxAge: -1, HttpOnly: true})
 	return verifyMfaResponse{withCookies{status: http.StatusOK, body: toProfile(u), cookies: cookies}}, nil
 }
