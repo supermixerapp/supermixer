@@ -120,6 +120,9 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 	if err != nil {
 		return api.Project{}, err
 	}
+	if err := checkNetworkRoom(ctx, pv.Docker); err != nil {
+		return api.Project{}, err
+	}
 	now := time.Now()
 	secrets, err := provision.GenerateSecrets(now)
 	if err != nil {
@@ -275,6 +278,21 @@ func managedConnection(pv config.Provisioning, ref string, p provision.Ports, s 
 
 // allocatePorts picks free ports: not held by another stack in the database,
 // not published by any running container, and (best effort) not listened on.
+// checkNetworkRoom refuses a new stack, before anything is created, when
+// Docker has no room for its network (see provision.ErrNoNetworkRoom).
+func checkNetworkRoom(ctx context.Context, docker string) error {
+	dctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+	defer cancel()
+	err := provision.CheckNetworkRoom(dctx, docker)
+	if errors.Is(err, provision.ErrNoNetworkRoom) {
+		return &apiError{status: http.StatusServiceUnavailable, code: "docker_networks_full",
+			message: "This server has no room for another stack: " + provision.ErrNoNetworkRoom.Error()}
+	} else if err != nil {
+		return newError(http.StatusBadGateway, "can't reach Docker: %v", err)
+	}
+	return nil
+}
+
 func (h *handlers) allocatePorts(ctx context.Context, pv config.Provisioning) (provision.Ports, error) {
 	ranges := make([]provision.PortRange, 3)
 	for i, raw := range []string{pv.APIPorts, pv.DBPorts, pv.PoolerPorts} {

@@ -1,11 +1,20 @@
 #!/bin/sh
 # Stands in for the docker CLI in tests. Records each call in $FAKE_DOCKER_LOG;
 # fails `compose <cmd>` when $FAKE_DOCKER_FAIL is <cmd> (or, once, when the
-# file $FAKE_DOCKER_FAIL_ONCE holds it).
+# file $FAKE_DOCKER_FAIL_ONCE holds it), and `network create` when
+# $FAKE_DOCKER_NETWORKS_FULL is set.
 echo "$*" >> "${FAKE_DOCKER_LOG:-/dev/null}"
 if [ "$1" = "ps" ]; then
   # Something outside Supermixer already publishes 8200.
   echo "0.0.0.0:8200->8000/tcp"
+  exit 0
+fi
+# $FAKE_DOCKER_NETWORKS_FULL: Docker's address pools are used up.
+if [ "$1" = "network" ]; then
+  if [ "$2" = "create" ] && [ -n "${FAKE_DOCKER_NETWORKS_FULL:-}" ]; then
+    echo "Error response from daemon: could not find an available, non-overlapping IPv4 address pool among the defaults to assign to the network" >&2
+    exit 1
+  fi
   exit 0
 fi
 if [ "$1" = "compose" ]; then

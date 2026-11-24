@@ -53,6 +53,9 @@ func (c Compose) RunInput(ctx context.Context, log io.Writer, stdin io.Reader, s
 		if ctx.Err() != nil {
 			return fmt.Errorf("docker compose %s: %w", sub[0], ctx.Err())
 		}
+		if PoolExhausted(tail.String()) {
+			return fmt.Errorf("docker compose %s failed: %w", sub[0], ErrNoNetworkRoom)
+		}
 		return fmt.Errorf("docker compose %s failed: %v\n%s", sub[0], err, tail.String())
 	}
 	return nil

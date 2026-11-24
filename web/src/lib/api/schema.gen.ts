@@ -1941,7 +1941,7 @@ export interface components {
         };
         Error: {
             message: string;
-            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own). */
+            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own); docker_networks_full (503), Docker on this server has no room for another stack's network. */
             code?: string;
         };
         /** @enum {string} */

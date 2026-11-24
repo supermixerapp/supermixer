@@ -198,6 +198,40 @@ func TestCreatedStacks(t *testing.T) {
 	}
 }
 
+func TestCreatingStacksNeedsNetworkRoom(t *testing.T) {
+	calls := filepath.Join(t.TempDir(), "docker.log")
+	t.Setenv("FAKE_DOCKER_LOG", calls)
+	t.Setenv("FAKE_DOCKER_NETWORKS_FULL", "1")
+	fake, _ := filepath.Abs("testdata/fake-docker.sh")
+	env := newTestEnvWith(t, func(c *config.Config) {
+		c.Provisioning.Enabled = true
+		c.Provisioning.StacksDir = t.TempDir()
+		c.Provisioning.Docker = fake
+		c.Provisioning.PublicHost = "stacks.example"
+	})
+	admin := env.client(t)
+	admin.signIn("admin", adminPassword)
+	admin.must(201, "POST", "/organizations", map[string]string{"name": "Full"}, nil)
+
+	var refused struct{ Code, Message string }
+	if s := admin.do("POST", "/organizations/full/projects/new-stack", map[string]string{"name": "No room"}, &refused); s != 503 ||
+		refused.Code != "docker_networks_full" || !strings.Contains(refused.Message, "default-address-pools") {
+		t.Fatalf("with Docker's pools used up: %d %+v", s, refused)
+	}
+	// Nothing was created: no project, and compose never ran.
+	var projects []struct{ Name string }
+	admin.must(200, "GET", "/projects", nil, &projects)
+	if len(projects) != 0 {
+		t.Fatalf("projects = %+v", projects)
+	}
+	if log, _ := os.ReadFile(calls); strings.Contains(string(log), "compose") {
+		t.Fatalf("compose ran:\n%s", log)
+	}
+
+	t.Setenv("FAKE_DOCKER_NETWORKS_FULL", "")
+	admin.must(202, "POST", "/organizations/full/projects/new-stack", map[string]string{"name": "Room now"}, nil)
+}
+
 func TestCreatingStacksNeedsProvisioning(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
