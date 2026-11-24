@@ -62,6 +62,25 @@ func (l *Limiter) Fail(key string) {
 	w.count++
 }
 
+// Attempt counts an attempt for key, unless key has used up its window,
+// in one step: parallel requests can't all pass a check before any is
+// counted. Callers Reset the key when the attempt succeeds.
+func (l *Limiter) Attempt(key string) (bool, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now := l.now()
+	w, ok := l.hits[key]
+	if !ok || now.Sub(w.start) >= l.window {
+		l.hits[key] = &window{start: now, count: 1}
+		return true, 0
+	}
+	if w.count >= l.max {
+		return false, l.window - now.Sub(w.start)
+	}
+	w.count++
+	return true, 0
+}
+
 // Reset clears key after a successful sign-in.
 func (l *Limiter) Reset(key string) {
 	l.mu.Lock()

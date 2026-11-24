@@ -18,8 +18,8 @@ JOIN org_members m ON m.organization_id = o.id
 WHERE m.user_id = $1
 ORDER BY o.name;
 
--- name: UpdateOrganizationName :one
-UPDATE organizations SET name = $2, updated_at = now() WHERE id = $1 RETURNING *;
+-- name: UpdateOrganization :one
+UPDATE organizations SET name = $2, mfa_required = $3, updated_at = now() WHERE id = $1 RETURNING *;
 
 -- name: DeleteOrganization :exec
 DELETE FROM organizations WHERE id = $1;

@@ -77,6 +77,31 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Profile" }
+        "202":
+          description: The password is right and the account has two-factor sign-in; finish with POST /auth/mfa. No session yet.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MfaChallenge" }
+        "401": { $ref: "#/components/responses/Error" }
+        "429": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+  /auth/mfa:
+    post:
+      operationId: verifyMfa
+      tags: [Auth]
+      summary: Finish signing in with a code from the authenticator app, or a recovery code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MfaVerify" }
+      responses:
+        "200":
+          description: Signed in; session cookies are set.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
         "401": { $ref: "#/components/responses/Error" }
         "429": { $ref: "#/components/responses/Error" }
         default: { $ref: "#/components/responses/Error" }
@@ -129,6 +154,83 @@ paths:
             schema: { $ref: "#/components/schemas/PasswordChange" }
       responses:
         "204": { description: Password changed. }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/mfa:
+    get:
+      operationId: getMfaStatus
+      tags: [Profile]
+      summary: Whether two-factor sign-in is on, and how many recovery codes are left
+      responses:
+        "200":
+          description: Status.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MfaStatus" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/mfa/setup:
+    post:
+      operationId: setupMfa
+      tags: [Profile]
+      summary: Start setting up an authenticator app (needs your password)
+      description: Returns a new secret to add to the app; POST /profile/mfa/enable with a code from it turns two-factor sign-in on.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/PasswordConfirm" }
+      responses:
+        "200":
+          description: The secret, as text, an otpauth URI and a QR code.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MfaSetup" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/mfa/enable:
+    post:
+      operationId: enableMfa
+      tags: [Profile]
+      summary: Confirm the app with a code and turn two-factor sign-in on
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MfaCode" }
+      responses:
+        "200":
+          description: On; the recovery codes, shown only now.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecoveryCodes" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/mfa/disable:
+    post:
+      operationId: disableMfa
+      tags: [Profile]
+      summary: Turn two-factor sign-in off (needs your password and a code or recovery code)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MfaDisable" }
+      responses:
+        "204": { description: Off. }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/mfa/recovery-codes:
+    post:
+      operationId: regenerateRecoveryCodes
+      tags: [Profile]
+      summary: Replace your recovery codes (needs a code from the app)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/MfaCode" }
+      responses:
+        "200":
+          description: The new codes, shown only now; the old ones stop working.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/RecoveryCodes" }
         default: { $ref: "#/components/responses/Error" }
   /profile/sessions:
     get:
@@ -223,6 +325,16 @@ paths:
         - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
       responses:
         "204": { description: Signed out. }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/users/{user_id}/mfa:
+    delete:
+      operationId: resetUserMfa
+      tags: [Users]
+      summary: Turn off someone's two-factor sign-in (a lost device) and sign them out everywhere
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Turned off. }
         default: { $ref: "#/components/responses/Error" }
   /admin/overview:
     get:
@@ -1602,7 +1714,7 @@ components:
         message: { type: string }
         code:
           type: string
-          description: "Set for errors a client handles specially: password_change_required (403) means the account must choose a new password first."
+          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on."
     OrgRole:
       type: string
       enum: [owner, administrator, developer, read_only, no_access]
@@ -1966,7 +2078,7 @@ components:
         password: { type: string }
     Profile:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -1979,6 +2091,7 @@ components:
         password_change_required:
           type: boolean
           description: "Must choose a new password before anything else; until then the API only allows the profile, changing the password and signing out."
+        mfa_enabled: { type: boolean, description: Signs in with a code from an authenticator app as well as the password. }
         theme:
           allOf: [{ $ref: "#/components/schemas/ThemePreference" }]
           nullable: true
@@ -2005,15 +2118,64 @@ components:
       properties:
         password: { type: string }
         require_password_change: { type: boolean, default: true, description: "They choose their own password at next sign-in (not for your own account)." }
+    MfaChallenge:
+      type: object
+      required: [mfa_required, challenge, expires_at]
+      properties:
+        mfa_required: { type: boolean, enum: [true] }
+        challenge: { type: string, description: Pass to POST /auth/mfa with the code. }
+        expires_at: { type: string, format: date-time }
+    MfaVerify:
+      type: object
+      required: [challenge, code]
+      properties:
+        challenge: { type: string }
+        code: { type: string, description: The 6-digit code from the app, or a recovery code. }
+    MfaStatus:
+      type: object
+      required: [enabled, recovery_codes_left]
+      properties:
+        enabled: { type: boolean }
+        enabled_at: { type: string, format: date-time, nullable: true }
+        recovery_codes_left: { type: integer }
+    PasswordConfirm:
+      type: object
+      required: [password]
+      properties:
+        password: { type: string }
+    MfaSetup:
+      type: object
+      required: [secret, uri, qr_svg]
+      properties:
+        secret: { type: string, description: "To type into the app, in groups of four." }
+        uri: { type: string, description: The otpauth:// URI. }
+        qr_svg: { type: string, description: The URI as a QR code (SVG). }
+    MfaCode:
+      type: object
+      required: [code]
+      properties:
+        code: { type: string }
+    MfaDisable:
+      type: object
+      required: [password, code]
+      properties:
+        password: { type: string }
+        code: { type: string, description: A code from the app, or a recovery code. }
+    RecoveryCodes:
+      type: object
+      required: [codes]
+      properties:
+        codes: { type: array, items: { type: string }, description: "Single-use; each signs in once in place of a code." }
     AdminOverview:
       type: object
-      required: [version, users, active_users, instance_admins, password_change_required, organizations, projects, managed_projects, provisioning, backups]
+      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups]
       properties:
         version: { type: string }
         users: { type: integer }
         active_users: { type: integer }
         instance_admins: { type: integer, description: Active ones. }
         password_change_required: { type: integer, description: Active accounts that must still choose a new password. }
+        mfa_enabled: { type: integer, description: Active accounts with two-factor sign-in. }
         organizations: { type: integer }
         projects: { type: integer }
         managed_projects: { type: integer, description: Projects whose stacks Supermixer created. }
@@ -2063,7 +2225,7 @@ components:
 
     User:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, disabled, sessions, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, disabled, sessions, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -2072,6 +2234,7 @@ components:
         is_instance_admin: { type: boolean }
         default_password: { type: boolean }
         password_change_required: { type: boolean }
+        mfa_enabled: { type: boolean }
         disabled: { type: boolean }
         sessions: { type: integer, description: Signed-in sessions. }
         last_seen_at: { type: string, format: date-time, nullable: true }
@@ -2097,11 +2260,14 @@ components:
 
     Organization:
       type: object
-      required: [id, slug, name, role, permissions, project_count, created_at]
+      required: [id, slug, name, role, permissions, project_count, mfa_required, created_at]
       properties:
         id: { type: string, format: uuid }
         slug: { type: string }
         name: { type: string }
+        mfa_required:
+          type: boolean
+          description: "Members must use two-factor sign-in; until they turn it on they can see the organization's name and leave it, nothing else."
         role: { $ref: "#/components/schemas/OrgRole" }
         permissions: { type: array, items: { type: string } }
         project_count: { type: integer }
@@ -2113,9 +2279,9 @@ components:
         name: { type: string }
     OrganizationUpdate:
       type: object
-      required: [name]
       properties:
         name: { type: string }
+        mfa_required: { type: boolean, description: Only someone who uses two-factor sign-in can turn this on. }
 
     MemberProjectRole:
       type: object
@@ -2126,10 +2292,11 @@ components:
         role: { $ref: "#/components/schemas/ProjectRole" }
     Member:
       type: object
-      required: [user_id, username, display_name, role, project_roles, joined_at]
+      required: [user_id, username, display_name, role, project_roles, mfa_enabled, joined_at]
       properties:
         user_id: { type: string, format: uuid }
         username: { type: string }
+        mfa_enabled: { type: boolean }
         display_name: { type: string }
         email: { type: string, nullable: true }
         role: { $ref: "#/components/schemas/OrgRole" }

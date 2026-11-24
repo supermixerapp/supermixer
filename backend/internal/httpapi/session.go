@@ -66,7 +66,7 @@ func publicRoute(method, path string) bool {
 	switch {
 	case method == http.MethodGet && (p == "/health" || p == "/ui-config"):
 		return true
-	case method == http.MethodPost && (p == "/auth/sign-in" || p == "/auth/sign-out"):
+	case method == http.MethodPost && (p == "/auth/sign-in" || p == "/auth/mfa" || p == "/auth/sign-out"):
 		return true
 	case strings.HasPrefix(p, "/invitations/"):
 		rest := strings.Split(strings.TrimPrefix(p, "/invitations/"), "/")

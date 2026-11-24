@@ -13,6 +13,8 @@ import (
 type apiError struct {
 	status  int
 	message string
+	// code, if set, tells clients what to do (see the Error schema).
+	code string
 }
 
 func (e *apiError) Error() string { return e.message }
@@ -41,11 +43,11 @@ func isUniqueViolation(err error) bool {
 	return errors.As(err, &pgErr) && pgErr.Code == "23505"
 }
 
-// errorStatus maps an error to a status and client-safe message.
-func errorStatus(err error) (int, string, bool) {
+// errorStatus maps an error to a status, error code and client-safe message.
+func errorStatus(err error) (int, string, string, bool) {
 	var ae *apiError
 	if errors.As(err, &ae) {
-		return ae.status, ae.message, true
+		return ae.status, ae.code, ae.message, true
 	}
-	return http.StatusInternalServerError, "internal server error", false
+	return http.StatusInternalServerError, "", "internal server error", false
 }

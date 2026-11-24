@@ -103,11 +103,11 @@ func New(deps Deps) http.Handler {
 			writeError(w, http.StatusBadRequest, err.Error())
 		},
 		ResponseErrorHandlerFunc: func(w http.ResponseWriter, r *http.Request, err error) {
-			status, msg, expected := errorStatus(err)
+			status, code, msg, expected := errorStatus(err)
 			if !expected {
 				deps.Logger.ErrorContext(r.Context(), "api handler failed", "path", r.URL.Path, "err", err)
 			}
-			writeError(w, status, msg)
+			writeErrorCode(w, status, code, msg)
 		},
 	})
 

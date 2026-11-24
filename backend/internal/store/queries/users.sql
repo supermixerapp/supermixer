@@ -33,6 +33,7 @@ SELECT (SELECT count(*) FROM users)::int AS users,
        (SELECT count(*) FROM users WHERE disabled_at IS NULL)::int AS active_users,
        (SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL)::int AS instance_admins,
        (SELECT count(*) FROM users WHERE password_change_required AND disabled_at IS NULL)::int AS password_change_required,
+       (SELECT count(*) FROM users WHERE mfa_enabled_at IS NOT NULL AND disabled_at IS NULL)::int AS mfa_enabled,
        (SELECT count(*) FROM organizations)::int AS organizations,
        (SELECT count(*) FROM projects)::int AS projects,
        (SELECT count(*) FROM projects WHERE managed)::int AS managed_projects;

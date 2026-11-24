@@ -37,7 +37,7 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password, password_change_required)
 VALUES ($1, $2, $3, $4, $5, $6, $7)
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at
 `
 
 type CreateUserParams struct {
@@ -74,12 +74,16 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Theme,
 		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required FROM users WHERE id = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -98,12 +102,16 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.UpdatedAt,
 		&i.Theme,
 		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required FROM users WHERE username = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -122,6 +130,10 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.UpdatedAt,
 		&i.Theme,
 		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
 	)
 	return i, err
 }
@@ -131,6 +143,7 @@ SELECT (SELECT count(*) FROM users)::int AS users,
        (SELECT count(*) FROM users WHERE disabled_at IS NULL)::int AS active_users,
        (SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL)::int AS instance_admins,
        (SELECT count(*) FROM users WHERE password_change_required AND disabled_at IS NULL)::int AS password_change_required,
+       (SELECT count(*) FROM users WHERE mfa_enabled_at IS NOT NULL AND disabled_at IS NULL)::int AS mfa_enabled,
        (SELECT count(*) FROM organizations)::int AS organizations,
        (SELECT count(*) FROM projects)::int AS projects,
        (SELECT count(*) FROM projects WHERE managed)::int AS managed_projects
@@ -141,6 +154,7 @@ type InstanceCountsRow struct {
 	ActiveUsers            int32 `json:"active_users"`
 	InstanceAdmins         int32 `json:"instance_admins"`
 	PasswordChangeRequired int32 `json:"password_change_required"`
+	MfaEnabled             int32 `json:"mfa_enabled"`
 	Organizations          int32 `json:"organizations"`
 	Projects               int32 `json:"projects"`
 	ManagedProjects        int32 `json:"managed_projects"`
@@ -154,6 +168,7 @@ func (q *Queries) InstanceCounts(ctx context.Context) (InstanceCountsRow, error)
 		&i.ActiveUsers,
 		&i.InstanceAdmins,
 		&i.PasswordChangeRequired,
+		&i.MfaEnabled,
 		&i.Organizations,
 		&i.Projects,
 		&i.ManagedProjects,
@@ -186,7 +201,7 @@ func (q *Queries) ListDefaultPasswordUsers(ctx context.Context) ([]string, error
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required FROM users ORDER BY username
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at FROM users ORDER BY username
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -211,6 +226,10 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.UpdatedAt,
 			&i.Theme,
 			&i.PasswordChangeRequired,
+			&i.TotpSecret,
+			&i.TotpPending,
+			&i.TotpLastStep,
+			&i.MfaEnabledAt,
 		); err != nil {
 			return nil, err
 		}
@@ -224,7 +243,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 
 const setPasswordChangeRequired = `-- name: SetPasswordChangeRequired :one
 UPDATE users SET password_change_required = $2, updated_at = now() WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at
 `
 
 type SetPasswordChangeRequiredParams struct {
@@ -248,6 +267,10 @@ func (q *Queries) SetPasswordChangeRequired(ctx context.Context, arg SetPassword
 		&i.UpdatedAt,
 		&i.Theme,
 		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
 	)
 	return i, err
 }
@@ -275,7 +298,7 @@ func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams
 
 const setUserTheme = `-- name: SetUserTheme :one
 UPDATE users SET theme = $2, updated_at = now() WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at
 `
 
 type SetUserThemeParams struct {
@@ -299,6 +322,10 @@ func (q *Queries) SetUserTheme(ctx context.Context, arg SetUserThemeParams) (Use
 		&i.UpdatedAt,
 		&i.Theme,
 		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
 	)
 	return i, err
 }
@@ -307,7 +334,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET display_name = $2, email = $3, is_instance_admin = $4, disabled_at = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at
 `
 
 type UpdateUserParams struct {
@@ -340,6 +367,10 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.UpdatedAt,
 		&i.Theme,
 		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
 	)
 	return i, err
 }

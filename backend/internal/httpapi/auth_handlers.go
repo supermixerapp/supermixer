@@ -62,6 +62,7 @@ func toProfile(u db.User) api.Profile {
 		IsInstanceAdmin:        u.IsInstanceAdmin,
 		DefaultPassword:        u.DefaultPassword,
 		PasswordChangeRequired: u.PasswordChangeRequired,
+		MfaEnabled:             hasMFA(u),
 		CreatedAt:              u.CreatedAt,
 	}
 	if u.Theme != nil {
@@ -108,16 +109,12 @@ func (r invitationSignUpResponse) VisitSignUpWithInvitationResponse(w http.Respo
 func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api.SignInResponseObject, error) {
 	username := strings.ToLower(strings.TrimSpace(req.Body.Username))
 	ipKey, userKey := "ip:"+reqInfo(ctx).IP, "user:"+username
-	for _, key := range []string{ipKey, userKey} {
-		if blocked, wait := h.limiter.Blocked(key); blocked {
-			mins := int(math.Ceil(wait.Minutes()))
-			return nil, newError(http.StatusTooManyRequests, "Too many sign-in attempts. Try again in %d minute%s.", mins, plural(mins))
-		}
+	// Counted before checking, and cleared on success.
+	if err := h.attempt("sign-in attempts", ipKey, userKey); err != nil {
+		return nil, err
 	}
 
 	fail := func() (api.SignInResponseObject, error) {
-		h.limiter.Fail(ipKey)
-		h.limiter.Fail(userKey)
 		return nil, newError(http.StatusUnauthorized, "Invalid username or password")
 	}
 
@@ -133,6 +130,15 @@ func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api
 	}
 	h.limiter.Reset(ipKey)
 	h.limiter.Reset(userKey)
+
+	// Two-factor sign-in: no session until a code from the app.
+	if hasMFA(user) {
+		c, err := h.newMFAChallenge(user)
+		if err != nil {
+			return nil, err
+		}
+		return signInResponse{withCookies{status: http.StatusAccepted, body: c}}, nil
+	}
 
 	cookies, err := h.startSession(ctx, h.deps.Store.Queries, user.ID)
 	if err != nil {
@@ -314,4 +320,17 @@ func describeRole(r rbac.Role) string {
 		return n
 	}
 	return fmt.Sprint(r)
+}
+
+// attempt counts an attempt against each key (see auth.Limiter.Attempt),
+// and refuses once one has used up its window. Callers reset the keys when
+// the attempt succeeds.
+func (h *handlers) attempt(what string, keys ...string) error {
+	for _, k := range keys {
+		if ok, wait := h.limiter.Attempt(k); !ok {
+			mins := int(math.Ceil(wait.Minutes()))
+			return newError(http.StatusTooManyRequests, "Too many %s. Try again in %d minute%s.", what, mins, plural(mins))
+		}
+	}
+	return nil
 }

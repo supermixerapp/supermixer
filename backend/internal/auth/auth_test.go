@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"bytes"
+	"strings"
 	"testing"
 	"time"
 )
@@ -75,5 +77,55 @@ func TestLimiter(t *testing.T) {
 	l.Reset("user")
 	if blocked, _ := l.Blocked("user"); blocked {
 		t.Fatal("reset did not clear")
+	}
+}
+
+// RFC 6238 Appendix B's SHA-1 vectors, truncated to 6 digits.
+func TestTOTP(t *testing.T) {
+	secret := []byte("12345678901234567890")
+	for unix, want := range map[int64]string{59: "287082", 1111111109: "081804", 1234567890: "005924", 2000000000: "279037"} {
+		if got := TOTPCode(secret, unix/30); got != want {
+			t.Errorf("t=%d: %s, want %s", unix, got, want)
+		}
+	}
+	now := time.Unix(1234567890, 0)
+	if step, ok := VerifyTOTP(secret, "005 924", now); !ok || step != 1234567890/30 {
+		t.Error("current code refused")
+	}
+	if _, ok := VerifyTOTP(secret, TOTPCode(secret, 1234567890/30-1), now); !ok {
+		t.Error("previous step's code refused")
+	}
+	if _, ok := VerifyTOTP(secret, TOTPCode(secret, 1234567890/30-2), now); ok {
+		t.Error("code from a minute ago accepted")
+	}
+	uri := TOTPURI(secret, "Supermixer", "alice@example.com")
+	if uri != "otpauth://totp/Supermixer:alice@example.com?algorithm=SHA1&digits=6&issuer=Supermixer&period=30&secret=GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ" {
+		t.Error(uri)
+	}
+	if svg, err := QRSVG(uri); err != nil || !strings.HasPrefix(svg, "<svg") {
+		t.Fatal(err)
+	}
+	codes, _ := NewRecoveryCodes(10)
+	if len(codes[0]) != 11 || codes[0][5] != '-' || !bytes.Equal(HashRecoveryCode(strings.ToUpper(codes[0])), HashRecoveryCode(codes[0])) {
+		t.Error(codes[0])
+	}
+	if !LooksLikeTOTP("123 456") || LooksLikeTOTP(codes[0]) {
+		t.Error("LooksLikeTOTP")
+	}
+}
+
+func TestLimiterAttempt(t *testing.T) {
+	l := NewLimiter(3, time.Minute)
+	for i := 0; i < 3; i++ {
+		if ok, _ := l.Attempt("k"); !ok {
+			t.Fatalf("attempt %d refused", i+1)
+		}
+	}
+	if ok, wait := l.Attempt("k"); ok || wait <= 0 {
+		t.Fatal("fourth attempt allowed")
+	}
+	l.Reset("k")
+	if ok, _ := l.Attempt("k"); !ok {
+		t.Fatal("refused after reset")
 	}
 }

@@ -22,6 +22,13 @@ type orgAccess struct {
 // loadOrg finds an organization the caller belongs to and checks perm.
 // Non-members get 404, so organization names do not leak.
 func (h *handlers) loadOrg(ctx context.Context, slug string, perm rbac.Permission, action string) (*orgAccess, error) {
+	return h.loadOrgMFA(ctx, slug, perm, action, true)
+}
+
+// loadOrgMFA is loadOrg; with needMFA false, a member of an organization
+// that requires two-factor sign-in gets through without it (to see its
+// name, accept an invitation or leave).
+func (h *handlers) loadOrgMFA(ctx context.Context, slug string, perm rbac.Permission, action string, needMFA bool) (*orgAccess, error) {
 	p, err := currentUser(ctx)
 	if err != nil {
 		return nil, err
@@ -40,6 +47,9 @@ func (h *handlers) loadOrg(ctx context.Context, slug string, perm rbac.Permissio
 		return nil, err
 	}
 	a := &orgAccess{Org: org, Role: rbac.Role(role), User: p}
+	if needMFA && org.MfaRequired && !hasMFA(p.User) {
+		return nil, mfaRequired(org.Name)
+	}
 	if perm != "" && !rbac.OrgCan(a.Role, perm) {
 		return nil, forbidden(action)
 	}
@@ -83,6 +93,9 @@ func (h *handlers) loadProject(ctx context.Context, ref string, perm rbac.Permis
 	if !rbac.ProjectCan(eff, rbac.ProjectRead) {
 		return nil, notFound("project")
 	}
+	if row.OrganizationMfaRequired && !hasMFA(p.User) {
+		return nil, mfaRequired(row.OrganizationName)
+	}
 	a := &projectAccess{Row: row, OrgRole: rbac.Role(orgRole), Role: eff, User: p}
 	if perm != "" && !rbac.ProjectCan(eff, perm) {
 		return nil, forbidden(action)
@@ -119,7 +132,16 @@ func (h *handlers) visibleProjects(ctx context.Context, userID uuid.UUID) ([]db.
 	}
 	orgRoles := make(map[uuid.UUID]rbac.Role, len(orgs))
 	ids := make([]uuid.UUID, 0, len(orgs))
+	user, err := currentUser(ctx)
+	if err != nil {
+		return nil, nil, err
+	}
 	for _, o := range orgs {
+		// Projects of organizations that require two-factor sign-in stay
+		// hidden until the user has it.
+		if o.Organization.MfaRequired && !hasMFA(user.User) {
+			continue
+		}
 		orgRoles[o.Organization.ID] = rbac.Role(o.Role)
 		ids = append(ids, o.Organization.ID)
 	}

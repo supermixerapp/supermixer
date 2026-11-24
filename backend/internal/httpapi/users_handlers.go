@@ -20,8 +20,8 @@ func toUser(u db.User) api.User {
 	return api.User{
 		Id: u.ID, Username: u.Username, Email: u.Email, DisplayName: u.DisplayName,
 		IsInstanceAdmin: u.IsInstanceAdmin, DefaultPassword: u.DefaultPassword,
-		PasswordChangeRequired: u.PasswordChangeRequired,
-		Disabled:               u.DisabledAt != nil, CreatedAt: u.CreatedAt,
+		PasswordChangeRequired: u.PasswordChangeRequired, MfaEnabled: hasMFA(u),
+		Disabled: u.DisabledAt != nil, CreatedAt: u.CreatedAt,
 	}
 }
 
@@ -279,7 +279,7 @@ func (h *handlers) GetAdminOverview(ctx context.Context, _ api.GetAdminOverviewR
 	pv := h.deps.Config.Provisioning
 	out := api.GetAdminOverview200JSONResponse{
 		Version: version.Version, Users: int(c.Users), ActiveUsers: int(c.ActiveUsers), InstanceAdmins: int(c.InstanceAdmins),
-		PasswordChangeRequired: int(c.PasswordChangeRequired), Organizations: int(c.Organizations),
+		PasswordChangeRequired: int(c.PasswordChangeRequired), MfaEnabled: int(c.MfaEnabled), Organizations: int(c.Organizations),
 		Projects: int(c.Projects), ManagedProjects: int(c.ManagedProjects),
 	}
 	out.Provisioning.Enabled, out.Provisioning.StacksDir, out.Provisioning.PublicHost = pv.Enabled, pv.StacksDir, pv.PublicHost

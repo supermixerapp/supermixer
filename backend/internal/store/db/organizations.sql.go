@@ -23,7 +23,7 @@ func (q *Queries) CountOrganizationProjects(ctx context.Context, organizationID 
 }
 
 const createOrganization = `-- name: CreateOrganization :one
-INSERT INTO organizations (slug, name) VALUES ($1, $2) RETURNING id, slug, name, created_at, updated_at
+INSERT INTO organizations (slug, name) VALUES ($1, $2) RETURNING id, slug, name, created_at, updated_at, mfa_required
 `
 
 type CreateOrganizationParams struct {
@@ -40,6 +40,7 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MfaRequired,
 	)
 	return i, err
 }
@@ -54,7 +55,7 @@ func (q *Queries) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 }
 
 const getOrganizationByID = `-- name: GetOrganizationByID :one
-SELECT id, slug, name, created_at, updated_at FROM organizations WHERE id = $1
+SELECT id, slug, name, created_at, updated_at, mfa_required FROM organizations WHERE id = $1
 `
 
 func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error) {
@@ -66,12 +67,13 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MfaRequired,
 	)
 	return i, err
 }
 
 const getOrganizationBySlug = `-- name: GetOrganizationBySlug :one
-SELECT id, slug, name, created_at, updated_at FROM organizations WHERE slug = $1
+SELECT id, slug, name, created_at, updated_at, mfa_required FROM organizations WHERE slug = $1
 `
 
 func (q *Queries) GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error) {
@@ -83,12 +85,13 @@ func (q *Queries) GetOrganizationBySlug(ctx context.Context, slug string) (Organ
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MfaRequired,
 	)
 	return i, err
 }
 
 const listOrganizationsForUser = `-- name: ListOrganizationsForUser :many
-SELECT o.id, o.slug, o.name, o.created_at, o.updated_at, m.role,
+SELECT o.id, o.slug, o.name, o.created_at, o.updated_at, o.mfa_required, m.role,
        (SELECT count(*) FROM projects p WHERE p.organization_id = o.id)::int AS project_count
 FROM organizations o
 JOIN org_members m ON m.organization_id = o.id
@@ -117,6 +120,7 @@ func (q *Queries) ListOrganizationsForUser(ctx context.Context, userID uuid.UUID
 			&i.Organization.Name,
 			&i.Organization.CreatedAt,
 			&i.Organization.UpdatedAt,
+			&i.Organization.MfaRequired,
 			&i.Role,
 			&i.ProjectCount,
 		); err != nil {
@@ -141,17 +145,18 @@ func (q *Queries) OrganizationSlugExists(ctx context.Context, slug string) (bool
 	return exists, err
 }
 
-const updateOrganizationName = `-- name: UpdateOrganizationName :one
-UPDATE organizations SET name = $2, updated_at = now() WHERE id = $1 RETURNING id, slug, name, created_at, updated_at
+const updateOrganization = `-- name: UpdateOrganization :one
+UPDATE organizations SET name = $2, mfa_required = $3, updated_at = now() WHERE id = $1 RETURNING id, slug, name, created_at, updated_at, mfa_required
 `
 
-type UpdateOrganizationNameParams struct {
-	ID   uuid.UUID `json:"id"`
-	Name string    `json:"name"`
+type UpdateOrganizationParams struct {
+	ID          uuid.UUID `json:"id"`
+	Name        string    `json:"name"`
+	MfaRequired bool      `json:"mfa_required"`
 }
 
-func (q *Queries) UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (Organization, error) {
-	row := q.db.QueryRow(ctx, updateOrganizationName, arg.ID, arg.Name)
+func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error) {
+	row := q.db.QueryRow(ctx, updateOrganization, arg.ID, arg.Name, arg.MfaRequired)
 	var i Organization
 	err := row.Scan(
 		&i.ID,
@@ -159,6 +164,7 @@ func (q *Queries) UpdateOrganizationName(ctx context.Context, arg UpdateOrganiza
 		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.MfaRequired,
 	)
 	return i, err
 }

@@ -15,12 +15,15 @@ type Querier interface {
 	AddBackupLeftover(ctx context.Context, arg AddBackupLeftoverParams) error
 	AddDBSnapshot(ctx context.Context, arg AddDBSnapshotParams) (AddDBSnapshotRow, error)
 	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
+	AddRecoveryCode(ctx context.Context, arg AddRecoveryCodeParams) error
 	AddRotationAdvisory(ctx context.Context, arg AddRotationAdvisoryParams) error
+	ChallengeUsed(ctx context.Context, id uuid.UUID) (bool, error)
 	// Those recorded before a time (a rotation's start: later ones may concern its new keys).
 	ClearRotationAdvisories(ctx context.Context, arg ClearRotationAdvisoriesParams) (int64, error)
 	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountRecoveryCodesLeft(ctx context.Context, userID uuid.UUID) (int32, error)
 	CountUsers(ctx context.Context) (int64, error)
 	CreateBackup(ctx context.Context, arg CreateBackupParams) (Backup, error)
 	CreateInvitation(ctx context.Context, arg CreateInvitationParams) (Invitation, error)
@@ -38,10 +41,14 @@ type Querier interface {
 	DeleteOtherUserSessions(ctx context.Context, arg DeleteOtherUserSessionsParams) error
 	DeleteProject(ctx context.Context, id uuid.UUID) error
 	DeleteProjectRoles(ctx context.Context, projectID uuid.UUID) error
+	DeleteRecoveryCodes(ctx context.Context, userID uuid.UUID) error
 	DeleteSession(ctx context.Context, id uuid.UUID) error
 	DeleteSnippet(ctx context.Context, id uuid.UUID) error
 	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	DisableMFA(ctx context.Context, id uuid.UUID) error
+	// Confirms the pending secret, remembering the step its first code used.
+	EnableTOTP(ctx context.Context, arg EnableTOTPParams) (User, error)
 	// Backups still running after the longest a backup may take: a restart (of
 	// this server or another) cut them short. Returns them to remove their files.
 	FailStaleBackups(ctx context.Context, before time.Time) ([]FailStaleBackupsRow, error)
@@ -105,6 +112,7 @@ type Querier interface {
 	// Keeps a project's newest 20 snapshots taken before deploys. Manual ones
 	// stay until the project goes, so deploys can't push a baseline out.
 	PruneDBSnapshots(ctx context.Context, projectID uuid.UUID) error
+	PruneUsedChallenges(ctx context.Context) error
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
@@ -116,6 +124,7 @@ type Querier interface {
 	SetStackStatus(ctx context.Context, arg SetStackStatusParams) (Project, error)
 	// After an upgrade: the template the stack's files now come from.
 	SetStackTemplate(ctx context.Context, arg SetStackTemplateParams) error
+	SetTOTPPending(ctx context.Context, arg SetTOTPPendingParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
 	TouchSession(ctx context.Context, id uuid.UUID) error
@@ -123,13 +132,18 @@ type Querier interface {
 	TouchStack(ctx context.Context, id uuid.UUID) error
 	UnsetSnippetFavorite(ctx context.Context, arg UnsetSnippetFavoriteParams) error
 	UpdateMemberRole(ctx context.Context, arg UpdateMemberRoleParams) error
-	UpdateOrganizationName(ctx context.Context, arg UpdateOrganizationNameParams) (Organization, error)
+	UpdateOrganization(ctx context.Context, arg UpdateOrganizationParams) (Organization, error)
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateSnippet(ctx context.Context, arg UpdateSnippetParams) (SqlSnippet, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
 	// Backups both here and in this bucket, to remove here when keep_local is
 	// off (not those in another bucket, which Supermixer can no longer read).
 	UploadedLocalBackups(ctx context.Context, bucket string) ([]UploadedLocalBackupsRow, error)
+	// Records a sign-in challenge as used; no row if it already was.
+	UseChallenge(ctx context.Context, arg UseChallengeParams) (uuid.UUID, error)
+	UseRecoveryCode(ctx context.Context, arg UseRecoveryCodeParams) (uuid.UUID, error)
+	// Accepts a code's step only once, and only after the last one accepted.
+	UseTOTPStep(ctx context.Context, arg UseTOTPStepParams) (uuid.UUID, error)
 	// When each user was last active, from their sessions.
 	UserLastSeen(ctx context.Context) ([]UserLastSeenRow, error)
 }

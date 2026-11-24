@@ -8,7 +8,7 @@ RETURNING *;
 SELECT EXISTS (SELECT 1 FROM projects WHERE ref = $1);
 
 -- name: GetProjectByRef :one
-SELECT sqlc.embed(p), o.slug AS organization_slug, o.name AS organization_name
+SELECT sqlc.embed(p), o.slug AS organization_slug, o.name AS organization_name, o.mfa_required AS organization_mfa_required
 FROM projects p
 JOIN organizations o ON o.id = p.organization_id
 WHERE p.ref = $1;

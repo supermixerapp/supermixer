@@ -233,8 +233,8 @@ func (h *handlers) gateway() http.Handler {
 			}
 		}
 		if err != nil {
-			status, msg, _ := errorStatus(err)
-			writeError(w, status, msg)
+			status, code, msg, _ := errorStatus(err)
+			writeErrorCode(w, status, code, msg)
 			return
 		}
 		r.Body = http.MaxBytesReader(w, r.Body, 1<<30)

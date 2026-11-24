@@ -347,6 +347,17 @@ type Invitation struct {
 	AcceptedBy     *uuid.UUID `json:"accepted_by"`
 }
 
+type MfaRecoveryCode struct {
+	UserID   uuid.UUID  `json:"user_id"`
+	CodeHash []byte     `json:"code_hash"`
+	UsedAt   *time.Time `json:"used_at"`
+}
+
+type MfaUsedChallenge struct {
+	ID        uuid.UUID `json:"id"`
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 type OrgMember struct {
 	OrganizationID uuid.UUID `json:"organization_id"`
 	UserID         uuid.UUID `json:"user_id"`
@@ -355,11 +366,12 @@ type OrgMember struct {
 }
 
 type Organization struct {
-	ID        uuid.UUID `json:"id"`
-	Slug      string    `json:"slug"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
+	ID          uuid.UUID `json:"id"`
+	Slug        string    `json:"slug"`
+	Name        string    `json:"name"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	MfaRequired bool      `json:"mfa_required"`
 }
 
 type Project struct {
@@ -442,4 +454,8 @@ type User struct {
 	UpdatedAt              time.Time  `json:"updated_at"`
 	Theme                  *string    `json:"theme"`
 	PasswordChangeRequired bool       `json:"password_change_required"`
+	TotpSecret             []byte     `json:"totp_secret"`
+	TotpPending            []byte     `json:"totp_pending"`
+	TotpLastStep           *int64     `json:"totp_last_step"`
+	MfaEnabledAt           *time.Time `json:"mfa_enabled_at"`
 }

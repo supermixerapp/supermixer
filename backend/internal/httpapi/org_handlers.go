@@ -33,7 +33,8 @@ func validOrgName(s string) (string, error) {
 func toOrganization(o db.Organization, role rbac.Role, projectCount int) api.Organization {
 	return api.Organization{
 		Id: o.ID, Slug: o.Slug, Name: o.Name, Role: api.OrgRole(role),
-		Permissions: permStrings(rbac.OrgPermissions(role)), ProjectCount: projectCount, CreatedAt: o.CreatedAt,
+		Permissions: permStrings(rbac.OrgPermissions(role)), ProjectCount: projectCount, MfaRequired: o.MfaRequired,
+		CreatedAt: o.CreatedAt,
 	}
 }
 
@@ -110,7 +111,9 @@ func (h *handlers) projectCount(ctx context.Context, a *orgAccess) (int, error) 
 }
 
 func (h *handlers) GetOrganization(ctx context.Context, req api.GetOrganizationRequestObject) (api.GetOrganizationResponseObject, error) {
-	a, err := h.loadOrg(ctx, req.Slug, rbac.OrgRead, "view this organization")
+	// Without required two-factor sign-in, members still see the name and
+	// mfa_required, so the app can say what to do.
+	a, err := h.loadOrgMFA(ctx, req.Slug, rbac.OrgRead, "view this organization", false)
 	if err != nil {
 		return nil, err
 	}
@@ -126,16 +129,36 @@ func (h *handlers) UpdateOrganization(ctx context.Context, req api.UpdateOrganiz
 	if err != nil {
 		return nil, err
 	}
-	name, err := validOrgName(req.Body.Name)
+	b := req.Body
+	if b.Name == nil && b.MfaRequired == nil {
+		return nil, badRequest("give name or mfa_required")
+	}
+	name, mfa := a.Org.Name, a.Org.MfaRequired
+	if b.Name != nil {
+		if name, err = validOrgName(*b.Name); err != nil {
+			return nil, err
+		}
+	}
+	if b.MfaRequired != nil {
+		// Requiring it without having it would lock the requester out.
+		if *b.MfaRequired && !a.Org.MfaRequired && !hasMFA(a.User.User) {
+			return nil, badRequest("turn on two-factor sign-in for your own account (Account › Security) before requiring it")
+		}
+		mfa = *b.MfaRequired
+	}
+	org, err := h.deps.Store.Queries.UpdateOrganization(ctx, db.UpdateOrganizationParams{ID: a.Org.ID, Name: name, MfaRequired: mfa})
 	if err != nil {
 		return nil, err
 	}
-	org, err := h.deps.Store.Queries.UpdateOrganizationName(ctx, db.UpdateOrganizationNameParams{ID: a.Org.ID, Name: name})
-	if err != nil {
-		return nil, err
+	meta := map[string]any{}
+	if org.Name != a.Org.Name {
+		meta["previous_name"] = a.Org.Name
+	}
+	if org.MfaRequired != a.Org.MfaRequired {
+		meta["mfa_required"] = org.MfaRequired
 	}
 	h.audit(ctx, nil, auditEntry{OrgID: &org.ID, Action: "organization.updated", TargetType: "organization", TargetID: org.Slug, TargetName: org.Name,
-		Metadata: map[string]any{"previous_name": a.Org.Name}})
+		Metadata: meta})
 	n, err := h.projectCount(ctx, a)
 	if err != nil {
 		return nil, err
@@ -189,7 +212,7 @@ func (h *handlers) memberList(ctx context.Context, orgID uuid.UUID) ([]api.Membe
 		}
 		out = append(out, api.Member{
 			UserId: r.User.ID, Username: r.User.Username, DisplayName: r.User.DisplayName, Email: r.User.Email,
-			Role: api.OrgRole(r.Role), ProjectRoles: pr, JoinedAt: r.JoinedAt,
+			Role: api.OrgRole(r.Role), ProjectRoles: pr, MfaEnabled: hasMFA(r.User), JoinedAt: r.JoinedAt,
 		})
 	}
 	return out, nil
@@ -329,11 +352,17 @@ func (h *handlers) UpdateMember(ctx context.Context, req api.UpdateMemberRequest
 }
 
 func (h *handlers) RemoveMember(ctx context.Context, req api.RemoveMemberRequestObject) (api.RemoveMemberResponseObject, error) {
-	a, err := h.loadOrg(ctx, req.Slug, rbac.OrgRead, "")
+	// Anyone can leave, also without the two-factor sign-in the
+	// organization requires; removing someone else needs it.
+	me, err := currentUser(ctx)
 	if err != nil {
 		return nil, err
 	}
-	self := req.UserId == a.User.User.ID
+	self := req.UserId == me.User.ID
+	a, err := h.loadOrgMFA(ctx, req.Slug, rbac.OrgRead, "", !self)
+	if err != nil {
+		return nil, err
+	}
 	err = h.deps.Store.InTx(ctx, func(q *db.Queries) error {
 		cur, err := q.GetMemberRole(ctx, db.GetMemberRoleParams{OrganizationID: a.Org.ID, UserID: req.UserId})
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -609,7 +638,7 @@ func (h *handlers) AcceptInvitation(ctx context.Context, req api.AcceptInvitatio
 	}); err != nil {
 		return nil, err
 	}
-	a, err := h.loadOrg(ctx, row.OrganizationSlug, rbac.OrgRead, "")
+	a, err := h.loadOrgMFA(ctx, row.OrganizationSlug, rbac.OrgRead, "", false)
 	if err != nil {
 		return nil, err
 	}
