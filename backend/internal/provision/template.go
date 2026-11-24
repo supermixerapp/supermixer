@@ -44,7 +44,8 @@ const overlayName = "supermixer.yml"
 //     (Docker Desktop's) don't support.
 //
 // It also gives the functions service the stack's Edge Function secrets, the
-// auth service its settings (auth.env), Vector the log drains' config, and
+// auth service its settings (auth.env), Storage its upload limit and image
+// transformations (from .env), Vector the log drains' config, and
 // adds auth-templates: a tiny file
 // server for custom email templates, since Auth only fetches them over HTTP.
 // It runs on the stack's own Studio image (already pulled; it has Node).
@@ -89,6 +90,10 @@ services:
   storage:
     volumes:
       - storage-files:/var/lib/storage
+    environment:
+      # Storage › Settings (storageconfig.go); the template's values otherwise.
+      FILE_SIZE_LIMIT: ${STORAGE_FILE_SIZE_LIMIT:-52428800}
+      ENABLE_IMAGE_TRANSFORMATION: ${STORAGE_IMAGE_TRANSFORMATION:-true}
   imgproxy:
     volumes:
       - storage-files:/var/lib/storage

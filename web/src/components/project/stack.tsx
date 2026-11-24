@@ -29,6 +29,37 @@ export const stackQuery = (ref: string) => ({
     stackBusy(q.state.data) ? 2000 : 15000,
 })
 
+/**
+ * Calls onDone when the stack finishes rotating keys: one seen running, or
+ * one this page started (await the returned function when the request
+ * succeeds). A rotation on a paused stack can finish before the next poll,
+ * so the second case waits for stack data fetched after the request was
+ * accepted: a check already under way may predate it, so it's cancelled.
+ * onDone must be stable (useCallback).
+ */
+export function useKeyRotationDone(ref: string, onDone: () => void, enabled = true) {
+  const queryClient = useQueryClient()
+  const stack = useQuery({ ...stackQuery(ref), enabled })
+  const started = useRef(0)
+  const last = useRef(stack.data?.operation)
+  const operation = stack.data?.operation
+  const { dataUpdatedAt } = stack
+  useEffect(() => {
+    const ours = started.current !== 0 && dataUpdatedAt > started.current && !operation
+    if (ours || (last.current === 'rotating_keys' && !operation)) {
+      started.current = 0
+      onDone()
+    }
+    last.current = operation
+  }, [operation, dataUpdatedAt, onDone])
+  return async () => {
+    const { queryKey } = stackQuery(ref)
+    await queryClient.cancelQueries({ queryKey })
+    started.current = Date.now()
+    await queryClient.invalidateQueries({ queryKey })
+  }
+}
+
 const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
   starting: 'Starting…',
   stopping: 'Stopping…',

@@ -3,7 +3,6 @@ package httpapi
 import (
 	"context"
 	"errors"
-	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -85,12 +84,11 @@ func adviseRotationForUser(ctx context.Context, q *db.Queries, user db.User, rea
 	return nil
 }
 
-// rotationClears reports whether a rotation answers the advisories: the
-// keys that give full access (the secret key, and the JWT secret behind
-// the service_role key) are new.
-func rotationClears(which []provision.Rotation) bool {
-	return slices.Contains(which, provision.RotateSecretKey) && slices.Contains(which, provision.RotateJWTSecret)
-}
+// answeringRotations are the keys that give full access, so must be new to
+// answer the advisories: the secret key, the JWT secret behind the
+// service_role key, and Storage's S3 keys (which pass every bucket's
+// policies). Rotated together or one by one; each rotation after the advice.
+var answeringRotations = []string{string(provision.RotateSecretKey), string(provision.RotateJWTSecret), string(provision.RotateS3Keys)}
 
 func (h *handlers) ListRotationAdvisories(ctx context.Context, req api.ListRotationAdvisoriesRequestObject) (api.ListRotationAdvisoriesResponseObject, error) {
 	a, err := h.loadProject(ctx, req.Ref, rbac.ProjectSecretsRead, "view this project's keys")

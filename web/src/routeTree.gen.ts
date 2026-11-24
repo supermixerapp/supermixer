@@ -97,6 +97,8 @@ import { Route as AppProjectRefSettingsLogDrainsRouteImport } from './routes/_ap
 import { Route as AppProjectRefSqlIndexRouteImport } from './routes/_app/project.$ref.sql.index'
 import { Route as AppProjectRefSqlIdRouteImport } from './routes/_app/project.$ref.sql.$id'
 import { Route as AppProjectRefStoragePoliciesRouteImport } from './routes/_app/project.$ref.storage.policies'
+import { Route as AppProjectRefStorageS3RouteImport } from './routes/_app/project.$ref.storage.s3'
+import { Route as AppProjectRefStorageSettingsRouteImport } from './routes/_app/project.$ref.storage.settings'
 import { Route as AppProjectRefIntegrationsData_apiDocsRouteImport } from './routes/_app/project.$ref.integrations.data_api.docs'
 import { Route as AppProjectRefStorageBucketsIndexRouteImport } from './routes/_app/project.$ref.storage.buckets.index'
 import { Route as AppProjectRefStorageBucketsBucketRouteImport } from './routes/_app/project.$ref.storage.buckets.$bucket'
@@ -589,6 +591,17 @@ const AppProjectRefStoragePoliciesRoute =
     path: '/storage/policies',
     getParentRoute: () => AppProjectRefRoute,
   } as any)
+const AppProjectRefStorageS3Route = AppProjectRefStorageS3RouteImport.update({
+  id: '/storage/s3',
+  path: '/storage/s3',
+  getParentRoute: () => AppProjectRefRoute,
+} as any)
+const AppProjectRefStorageSettingsRoute =
+  AppProjectRefStorageSettingsRouteImport.update({
+    id: '/storage/settings',
+    path: '/storage/settings',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefIntegrationsData_apiDocsRoute =
   AppProjectRefIntegrationsData_apiDocsRouteImport.update({
     id: '/integrations/data_api/docs',
@@ -691,6 +704,8 @@ export interface FileRoutesByFullPath {
   '/project/$ref/settings/log-drains': typeof AppProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
+  '/project/$ref/storage/s3': typeof AppProjectRefStorageS3Route
+  '/project/$ref/storage/settings': typeof AppProjectRefStorageSettingsRoute
   '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/functions/': typeof AppProjectRefFunctionsIndexRoute
   '/project/$ref/integrations/': typeof AppProjectRefIntegrationsIndexRoute
@@ -779,6 +794,8 @@ export interface FileRoutesByTo {
   '/project/$ref/settings/log-drains': typeof AppProjectRefSettingsLogDrainsRoute
   '/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
+  '/project/$ref/storage/s3': typeof AppProjectRefStorageS3Route
+  '/project/$ref/storage/settings': typeof AppProjectRefStorageSettingsRoute
   '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/functions': typeof AppProjectRefFunctionsIndexRoute
   '/project/$ref/integrations': typeof AppProjectRefIntegrationsIndexRoute
@@ -873,6 +890,8 @@ export interface FileRoutesById {
   '/_app/project/$ref/settings/log-drains': typeof AppProjectRefSettingsLogDrainsRoute
   '/_app/project/$ref/sql/$id': typeof AppProjectRefSqlIdRoute
   '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
+  '/_app/project/$ref/storage/s3': typeof AppProjectRefStorageS3Route
+  '/_app/project/$ref/storage/settings': typeof AppProjectRefStorageSettingsRoute
   '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/_app/project/$ref/functions/': typeof AppProjectRefFunctionsIndexRoute
   '/_app/project/$ref/integrations/': typeof AppProjectRefIntegrationsIndexRoute
@@ -967,6 +986,8 @@ export interface FileRouteTypes {
     | '/project/$ref/settings/log-drains'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
+    | '/project/$ref/storage/s3'
+    | '/project/$ref/storage/settings'
     | '/project/$ref/editor/'
     | '/project/$ref/functions/'
     | '/project/$ref/integrations/'
@@ -1055,6 +1076,8 @@ export interface FileRouteTypes {
     | '/project/$ref/settings/log-drains'
     | '/project/$ref/sql/$id'
     | '/project/$ref/storage/policies'
+    | '/project/$ref/storage/s3'
+    | '/project/$ref/storage/settings'
     | '/project/$ref/editor'
     | '/project/$ref/functions'
     | '/project/$ref/integrations'
@@ -1148,6 +1171,8 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/settings/log-drains'
     | '/_app/project/$ref/sql/$id'
     | '/_app/project/$ref/storage/policies'
+    | '/_app/project/$ref/storage/s3'
+    | '/_app/project/$ref/storage/settings'
     | '/_app/project/$ref/editor/'
     | '/_app/project/$ref/functions/'
     | '/_app/project/$ref/integrations/'
@@ -1785,6 +1810,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectRefStoragePoliciesRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
+    '/_app/project/$ref/storage/s3': {
+      id: '/_app/project/$ref/storage/s3'
+      path: '/storage/s3'
+      fullPath: '/project/$ref/storage/s3'
+      preLoaderRoute: typeof AppProjectRefStorageS3RouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/storage/settings': {
+      id: '/_app/project/$ref/storage/settings'
+      path: '/storage/settings'
+      fullPath: '/project/$ref/storage/settings'
+      preLoaderRoute: typeof AppProjectRefStorageSettingsRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
     '/_app/project/$ref/integrations/data_api/docs': {
       id: '/_app/project/$ref/integrations/data_api/docs'
       path: '/integrations/data_api/docs'
@@ -1918,6 +1957,8 @@ interface AppProjectRefRouteChildren {
   AppProjectRefSettingsJwtRoute: typeof AppProjectRefSettingsJwtRoute
   AppProjectRefSettingsLogDrainsRoute: typeof AppProjectRefSettingsLogDrainsRoute
   AppProjectRefStoragePoliciesRoute: typeof AppProjectRefStoragePoliciesRoute
+  AppProjectRefStorageS3Route: typeof AppProjectRefStorageS3Route
+  AppProjectRefStorageSettingsRoute: typeof AppProjectRefStorageSettingsRoute
   AppProjectRefFunctionsIndexRoute: typeof AppProjectRefFunctionsIndexRoute
   AppProjectRefIntegrationsIndexRoute: typeof AppProjectRefIntegrationsIndexRoute
   AppProjectRefObservabilityIndexRoute: typeof AppProjectRefObservabilityIndexRoute
@@ -1987,6 +2028,8 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefSettingsJwtRoute: AppProjectRefSettingsJwtRoute,
   AppProjectRefSettingsLogDrainsRoute: AppProjectRefSettingsLogDrainsRoute,
   AppProjectRefStoragePoliciesRoute: AppProjectRefStoragePoliciesRoute,
+  AppProjectRefStorageS3Route: AppProjectRefStorageS3Route,
+  AppProjectRefStorageSettingsRoute: AppProjectRefStorageSettingsRoute,
   AppProjectRefFunctionsIndexRoute: AppProjectRefFunctionsIndexRoute,
   AppProjectRefIntegrationsIndexRoute: AppProjectRefIntegrationsIndexRoute,
   AppProjectRefObservabilityIndexRoute: AppProjectRefObservabilityIndexRoute,

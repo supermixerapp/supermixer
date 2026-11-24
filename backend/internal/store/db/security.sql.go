@@ -69,6 +69,31 @@ func (q *Queries) AddRotationAdvisory(ctx context.Context, arg AddRotationAdviso
 	return err
 }
 
+const clearAnsweredRotationAdvisories = `-- name: ClearAnsweredRotationAdvisories :execrows
+DELETE FROM rotation_advisories
+WHERE rotation_advisories.project_id = $1
+  AND created_at < (
+    SELECT min(k.started_at) FROM key_rotations k
+    WHERE k.project_id = $1 AND k.key = ANY($2::text[])
+    HAVING count(*) = cardinality($2::text[])
+  )
+`
+
+type ClearAnsweredRotationAdvisoriesParams struct {
+	ProjectID uuid.UUID `json:"project_id"`
+	Required  []string  `json:"required"`
+}
+
+// Advice older than the last rotation of every required key (none if one
+// of them was never rotated).
+func (q *Queries) ClearAnsweredRotationAdvisories(ctx context.Context, arg ClearAnsweredRotationAdvisoriesParams) (int64, error) {
+	result, err := q.db.Exec(ctx, clearAnsweredRotationAdvisories, arg.ProjectID, arg.Required)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const clearRotationAdvisories = `-- name: ClearRotationAdvisories :execrows
 DELETE FROM rotation_advisories WHERE project_id = $1 AND created_at < $2::timestamptz
 `
@@ -203,5 +228,22 @@ DELETE FROM db_snapshots d WHERE d.project_id = $1 AND d.reason = 'function_depl
 // stay until the project goes, so deploys can't push a baseline out.
 func (q *Queries) PruneDBSnapshots(ctx context.Context, projectID uuid.UUID) error {
 	_, err := q.db.Exec(ctx, pruneDBSnapshots, projectID)
+	return err
+}
+
+const recordKeyRotations = `-- name: RecordKeyRotations :exec
+INSERT INTO key_rotations (project_id, key, started_at)
+SELECT $1, unnest($2::text[]), $3::timestamptz
+ON CONFLICT (project_id, key) DO UPDATE SET started_at = excluded.started_at
+`
+
+type RecordKeyRotationsParams struct {
+	ProjectID uuid.UUID `json:"project_id"`
+	Keys      []string  `json:"keys"`
+	StartedAt time.Time `json:"started_at"`
+}
+
+func (q *Queries) RecordKeyRotations(ctx context.Context, arg RecordKeyRotationsParams) error {
+	_, err := q.db.Exec(ctx, recordKeyRotations, arg.ProjectID, arg.Keys, arg.StartedAt)
 	return err
 }

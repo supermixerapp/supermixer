@@ -74,7 +74,7 @@ export function RotationAdvice({ project, linkToKeys = false }: { project: Schem
       </ul>
       They could read this project’s keys, or deploy Edge Functions that can, so they may still have them.{' '}
       {managed
-        ? 'Rotate at least the secret key and the legacy JWT secret; this notice goes once you do.'
+        ? 'Rotate at least the secret key, the legacy JWT secret and the Storage S3 access keys, together or one by one; this notice goes once all three are new.'
         : 'Rotate the keys where the stack runs, update this project’s connection here, then dismiss this.'}{' '}
       Also check the project for anything they may have left behind: Advisors › Changes compares the database with a
       snapshot from before.

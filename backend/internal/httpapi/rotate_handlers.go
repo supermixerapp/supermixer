@@ -89,11 +89,16 @@ func (h *handlers) rotateKeys(ctx context.Context, p db.Project, which []provisi
 	if _, err := h.saveConnection(context.WithoutCancel(ctx), p, conn); err != nil {
 		return fmt.Errorf("rotated the stack's keys, but couldn't save Supermixer's copy: %w", err)
 	}
-	if rotationClears(which) {
-		if _, err := h.deps.Store.Queries.ClearRotationAdvisories(context.WithoutCancel(ctx),
-			db.ClearRotationAdvisoriesParams{ProjectID: p.ID, Before: started}); err != nil {
-			fmt.Fprintf(log, "\ncouldn't clear the advice to rotate: %v\n", err)
-		}
+	keys := make([]string, len(which))
+	for i, r := range which {
+		keys[i] = string(r)
+	}
+	q := h.deps.Store.Queries
+	if err := q.RecordKeyRotations(context.WithoutCancel(ctx), db.RecordKeyRotationsParams{ProjectID: p.ID, Keys: keys, StartedAt: started}); err != nil {
+		fmt.Fprintf(log, "\ncouldn't record the rotation: %v\n", err)
+	} else if _, err := q.ClearAnsweredRotationAdvisories(context.WithoutCancel(ctx),
+		db.ClearAnsweredRotationAdvisoriesParams{ProjectID: p.ID, Required: answeringRotations}); err != nil {
+		fmt.Fprintf(log, "\ncouldn't clear the advice to rotate: %v\n", err)
 	}
 	if !running {
 		fmt.Fprintf(log, "the stack is paused; it starts with the new keys\n")

@@ -275,6 +275,14 @@ test('the first admin sets up an organization, a project and a Read-only member'
     }
   })
 
+  await test.step('Storage settings and S3 explain a stack Supermixer connects to', async () => {
+    await page.goto(`/project/${ref}/storage/settings`)
+    await expect(page.getByText('so its Storage settings are set where it runs')).toBeVisible()
+    await page.goto(`/project/${ref}/storage/s3`)
+    await expect(page.getByText('http://localhost:8100/storage/v1/s3').first()).toBeVisible()
+    await expect(page.getByText('so its S3 keys are where it runs')).toBeVisible()
+  })
+
   await test.step('the SSO settings page loads', async () => {
     await page.goto(`/org/${slug}/sso`)
     // With Dex running (make sso), sso.spec.ts tests it properly.

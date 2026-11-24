@@ -1325,13 +1325,64 @@ paths:
                   minItems: 1
                   items:
                     type: string
-                    enum: [secret_key, publishable_key, signing_key, jwt_secret, functions_db_password]
+                    enum: [secret_key, publishable_key, signing_key, jwt_secret, functions_db_password, s3_keys]
       responses:
         "202":
           description: Started.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/storage/config:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getStorageConfig
+      tags: [Projects]
+      summary: A created stack's Storage settings
+      description: Stacks Supermixer connects to set these where they run (409).
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageConfig" }
+        default: { $ref: "#/components/responses/Error" }
+    patch:
+      operationId: updateStorageConfig
+      tags: [Projects]
+      summary: Change a created stack's Storage settings; Storage restarts if it's running
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StorageConfigUpdate" }
+      responses:
+        "200":
+          description: Saved (and applied, if the stack runs).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageConfig" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/storage/s3:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getStorageS3
+      tags: [Projects]
+      summary: How to reach Storage with S3 clients
+      description: |
+        Storage speaks the S3 protocol at <API URL>/storage/v1/s3. For stacks Supermixer created, the region and
+        access key pair come from the stack's .env; the secret only with reveal=true, for roles that may see secret
+        keys. New keys: POST /projects/{ref}/stack/rotate-keys with s3_keys.
+      parameters:
+        - { name: reveal, in: query, required: false, schema: { type: boolean, default: false } }
+      responses:
+        "200":
+          description: The connection details.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StorageS3" }
         default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/log-drains:
     parameters:
@@ -2212,6 +2263,37 @@ components:
           type: array
           items: { type: string }
           description: Files that can't be shown as text.
+    StorageConfig:
+      type: object
+      required: [file_size_limit, image_transformation]
+      properties:
+        file_size_limit: { type: integer, format: int64, description: "The largest upload, in bytes, for every bucket (a bucket's own limit can only be lower)." }
+        image_transformation: { type: boolean, description: Resizing images on the fly (render/image URLs). }
+        restarted: { type: boolean, description: "After a change: whether Storage restarted to apply it (not if the stack is paused, or nothing changed)." }
+        problems:
+          type: array
+          items: { $ref: "#/components/schemas/StorageProblem" }
+          description: Values in the stack's .env Supermixer can't read (edited by hand). Storage gets them as they are; the setting shows its default, and saving it replaces the value.
+    StorageProblem:
+      type: object
+      required: [setting, message]
+      properties:
+        setting: { type: string, enum: [file_size_limit, image_transformation] }
+        message: { type: string }
+    StorageConfigUpdate:
+      type: object
+      properties:
+        file_size_limit: { type: integer, format: int64 }
+        image_transformation: { type: boolean }
+    StorageS3:
+      type: object
+      required: [endpoint, managed]
+      properties:
+        endpoint: { type: string }
+        managed: { type: boolean, description: "Supermixer created the stack, so it knows (and can replace) the keys." }
+        region: { type: string, nullable: true }
+        access_key_id: { type: string, nullable: true }
+        secret_access_key: { type: string, nullable: true, description: Only with reveal=true. }
     LogDrain:
       type: object
       required: [id, name, type, enabled, url, headers, gzip, datadog_site, api_key_set]

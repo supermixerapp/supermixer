@@ -72,7 +72,8 @@ func TestRotationAdvisories(t *testing.T) {
 		}
 	}
 
-	// Rotating only the publishable key doesn't answer it; the secret key and JWT secret do.
+	// Rotating only the publishable key doesn't answer it, nor only some of
+	// the secret key, JWT secret and S3 keys; all three do, one by one too.
 	rotate := func(keys ...string) {
 		admin.must(202, "POST", "/projects/"+p.Ref+"/stack/rotate-keys", map[string]any{"keys": keys}, nil)
 		waitStack(t, admin, p.Ref)
@@ -81,7 +82,11 @@ func TestRotationAdvisories(t *testing.T) {
 	if len(list()) != 3 {
 		t.Fatal("a partial rotation cleared the advice")
 	}
-	rotate("secret_key", "jwt_secret")
+	rotate("s3_keys") // from Storage › S3 Connection
+	if len(list()) != 3 {
+		t.Fatal("rotating only the S3 keys cleared the advice")
+	}
+	rotate("secret_key", "jwt_secret") // later, from API Keys: now all three are new
 	if l := list(); len(l) != 0 {
 		t.Fatalf("after rotating: %+v", l)
 	}

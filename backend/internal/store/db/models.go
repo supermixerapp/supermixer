@@ -370,6 +370,12 @@ type Invitation struct {
 	AcceptedBy     *uuid.UUID `json:"accepted_by"`
 }
 
+type KeyRotation struct {
+	ProjectID uuid.UUID `json:"project_id"`
+	Key       string    `json:"key"`
+	StartedAt time.Time `json:"started_at"`
+}
+
 type MfaRecoveryCode struct {
 	UserID   uuid.UUID  `json:"user_id"`
 	CodeHash []byte     `json:"code_hash"`

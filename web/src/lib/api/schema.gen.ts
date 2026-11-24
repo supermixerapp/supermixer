@@ -1247,6 +1247,53 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/storage/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * A created stack's Storage settings
+         * @description Stacks Supermixer connects to set these where they run (409).
+         */
+        get: operations["getStorageConfig"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Change a created stack's Storage settings; Storage restarts if it's running */
+        patch: operations["updateStorageConfig"];
+        trace?: never;
+    };
+    "/projects/{ref}/storage/s3": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * How to reach Storage with S3 clients
+         * @description Storage speaks the S3 protocol at <API URL>/storage/v1/s3. For stacks Supermixer created, the region and
+         *     access key pair come from the stack's .env; the secret only with reveal=true, for roles that may see secret
+         *     keys. New keys: POST /projects/{ref}/stack/rotate-keys with s3_keys.
+         */
+        get: operations["getStorageS3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/log-drains": {
         parameters: {
             query?: never;
@@ -1963,6 +2010,38 @@ export interface components {
             files: components["schemas"]["EdgeFunctionFile"][];
             /** @description Files that can't be shown as text. */
             other_files: string[];
+        };
+        StorageConfig: {
+            /**
+             * Format: int64
+             * @description The largest upload, in bytes, for every bucket (a bucket's own limit can only be lower).
+             */
+            file_size_limit: number;
+            /** @description Resizing images on the fly (render/image URLs). */
+            image_transformation: boolean;
+            /** @description After a change: whether Storage restarted to apply it (not if the stack is paused, or nothing changed). */
+            restarted?: boolean;
+            /** @description Values in the stack's .env Supermixer can't read (edited by hand). Storage gets them as they are; the setting shows its default, and saving it replaces the value. */
+            problems?: components["schemas"]["StorageProblem"][];
+        };
+        StorageProblem: {
+            /** @enum {string} */
+            setting: "file_size_limit" | "image_transformation";
+            message: string;
+        };
+        StorageConfigUpdate: {
+            /** Format: int64 */
+            file_size_limit?: number;
+            image_transformation?: boolean;
+        };
+        StorageS3: {
+            endpoint: string;
+            /** @description Supermixer created the stack, so it knows (and can replace) the keys. */
+            managed: boolean;
+            region?: string | null;
+            access_key_id?: string | null;
+            /** @description Only with reveal=true. */
+            secret_access_key?: string | null;
         };
         LogDrain: {
             id: string;
@@ -4765,7 +4844,7 @@ export interface operations {
         requestBody: {
             content: {
                 "application/json": {
-                    keys: ("secret_key" | "publishable_key" | "signing_key" | "jwt_secret" | "functions_db_password")[];
+                    keys: ("secret_key" | "publishable_key" | "signing_key" | "jwt_secret" | "functions_db_password" | "s3_keys")[];
                 };
             };
         };
@@ -4777,6 +4856,81 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getStorageConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageConfig"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    updateStorageConfig: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["StorageConfigUpdate"];
+            };
+        };
+        responses: {
+            /** @description Saved (and applied, if the stack runs). */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageConfig"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getStorageS3: {
+        parameters: {
+            query?: {
+                reveal?: boolean;
+            };
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The connection details. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StorageS3"];
                 };
             };
             default: components["responses"]["Error"];

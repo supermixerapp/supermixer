@@ -26,6 +26,9 @@ type Querier interface {
 	// Entries after the position, from transactions that have all finished.
 	AuditLogsAfter(ctx context.Context, arg AuditLogsAfterParams) ([]AuditLogsAfterRow, error)
 	ChallengeUsed(ctx context.Context, id uuid.UUID) (bool, error)
+	// Advice older than the last rotation of every required key (none if one
+	// of them was never rotated).
+	ClearAnsweredRotationAdvisories(ctx context.Context, arg ClearAnsweredRotationAdvisoriesParams) (int64, error)
 	// Those recorded before a time (a rotation's start: later ones may concern its new keys).
 	ClearRotationAdvisories(ctx context.Context, arg ClearRotationAdvisoriesParams) (int64, error)
 	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
@@ -157,6 +160,7 @@ type Querier interface {
 	PruneDBSnapshots(ctx context.Context, projectID uuid.UUID) error
 	PruneUsedChallenges(ctx context.Context) error
 	PruneWebhookDeliveries(ctx context.Context, webhookID uuid.UUID) error
+	RecordKeyRotations(ctx context.Context, arg RecordKeyRotationsParams) error
 	// The same password, hashed again (normalized); only if it hasn't changed since.
 	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error

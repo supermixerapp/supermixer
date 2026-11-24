@@ -30,10 +30,12 @@ const (
 	RotateJWTSecret Rotation = "jwt_secret"
 	// RotateFunctionsDBPassword replaces the Edge Functions' database login's password.
 	RotateFunctionsDBPassword Rotation = "functions_db_password"
+	// RotateS3Keys replaces Storage's S3 access key pair (Storage › S3 Connection).
+	RotateS3Keys Rotation = "s3_keys"
 )
 
 // Rotations are the stack secrets that can be replaced.
-var Rotations = []Rotation{RotateSecretKey, RotatePublishableKey, RotateSigningKey, RotateJWTSecret, RotateFunctionsDBPassword}
+var Rotations = []Rotation{RotateSecretKey, RotatePublishableKey, RotateSigningKey, RotateJWTSecret, RotateFunctionsDBPassword, RotateS3Keys}
 
 // Rotate makes new values for a stack's .env, given its current one.
 func Rotate(env map[string]string, which []Rotation, now time.Time) (map[string]string, error) {
@@ -146,6 +148,17 @@ func Rotate(env map[string]string, which []Rotation, now time.Time) (map[string]
 			return nil, err
 		}
 		out["FUNCTIONS_DB_PASSWORD"] = hex.EncodeToString(b)
+	}
+	if has(RotateS3Keys) {
+		id, err := random(16)
+		if err != nil {
+			return nil, err
+		}
+		secret, err := random(32)
+		if err != nil {
+			return nil, err
+		}
+		out["S3_PROTOCOL_ACCESS_KEY_ID"], out["S3_PROTOCOL_ACCESS_KEY_SECRET"] = hex.EncodeToString(id), hex.EncodeToString(secret)
 	}
 	return out, nil
 }
