@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import { BlockedButton } from '@/components/blocked-button'
 import { AddIcon, DatabaseIcon, GridViewIcon, SearchIcon, ViewListIcon } from '@/components/icons'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { PermissionButton } from '@/components/permission-button'
@@ -13,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip
 import type { Schemas } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
 import { can, useProjects, useSelectedOrganization } from '@/lib/api/hooks'
-import { projectHealthQuery } from '@/lib/api/queries'
+import { organizationLimitsQuery, projectHealthQuery } from '@/lib/api/queries'
 
 import { HealthBadge } from '@/components/health-badge'
 import { StackBadge, stackBusy, stackQuery, stackUp, useStackGone } from '@/components/project/stack'
@@ -85,8 +86,21 @@ function ProjectsPage() {
   const inOrg = (projects ?? []).filter((p) => p.organization_slug === slug)
   const visible = inOrg.filter((p) => p.name.toLowerCase().includes(search.toLowerCase()))
   const canCreate = can(org, 'projects:create')
+  // The organization's project limit (the lower of its own and the instance's).
+  const limits = useQuery(organizationLimitsQuery(slug)).data
+  const limit = limits?.project_limit ?? null
+  const used = limits?.project_count ?? 0
+  const full = limit !== null && used >= limit
 
-  const newProject = (
+  const newProject = canCreate && full ? (
+    <BlockedButton
+      reason={`${org?.name ?? 'This organization'} has reached its limit of ${limit} ${limit === 1 ? 'project' : 'projects'}. Remove one, or raise the limit under Organization Settings › General.`}
+      variant="primary"
+      icon={<AddIcon />}
+    >
+      New project
+    </BlockedButton>
+  ) : (
     <PermissionButton
       allowed={canCreate}
       action="add projects"
@@ -117,6 +131,11 @@ function ProjectsPage() {
             />
           </div>
           <div className="flex items-center gap-2">
+            {limit !== null && (
+              <span className="text-xs text-foreground-lighter tabular-nums">
+                {used} of {limit} {limit === 1 ? 'project' : 'projects'}
+              </span>
+            )}
             <ViewToggle view={view} onChange={setView} />
             {newProject}
           </div>

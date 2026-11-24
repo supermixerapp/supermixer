@@ -16,6 +16,7 @@ func TestOrgMatrix(t *testing.T) {
 		AuditRead:        {Owner, Administrator},
 		OrgProjectsRead:  {Owner, Administrator, Developer, ReadOnly},
 		ProjectsTransfer: {Owner},
+		OrgLimitsUpdate:  {Owner, Administrator},
 	}
 	for perm, allowed := range want {
 		for _, role := range OrgRoles {

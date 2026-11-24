@@ -163,6 +163,31 @@ test('the first admin sets up an organization, a project and a Read-only member'
   })
 
   let invite = ''
+  await test.step('resource limits: one project per organization blocks New project', async () => {
+    await page.goto('/admin/limits')
+    await page.getByRole('switch', { name: 'Limit projects per organization' }).click()
+    await page.locator('#max-projects').fill('1')
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText('Resource limits saved')).toBeVisible()
+
+    await page.goto(`/org/${slug}`)
+    await expect(page.getByText('1 of 1 project', { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'New project' })).toBeDisabled()
+    await page.goto(`/org/${slug}/general`)
+    await expect(page.getByText('1 of 1 project used')).toBeVisible()
+    // An organization can't go above the instance's limit.
+    await page.getByRole('switch', { name: 'Limit project limit' }).click()
+    await page.locator('#org-max-projects').fill('2')
+    await expect(page.getByText('Enter a whole number from 1 to 1')).toBeVisible()
+
+    await page.goto('/admin/limits')
+    await page.getByRole('switch', { name: 'Limit projects per organization' }).click()
+    await page.getByRole('button', { name: 'Save', exact: true }).click()
+    await expect(page.getByText('Resource limits saved')).toBeVisible()
+    await page.goto(`/org/${slug}`)
+    await expect(page.getByRole('button', { name: 'New project' })).toBeEnabled()
+  })
+
   await test.step('invite a Read-only member', async () => {
     await page.goto(`/org/${slug}/team`)
     await page.getByRole('button', { name: 'Invite members' }).click()

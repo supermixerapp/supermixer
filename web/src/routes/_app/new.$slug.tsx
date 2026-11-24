@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, notFound, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, notFound, useNavigate } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { HealthBadge } from '@/components/health-badge'
@@ -23,7 +23,7 @@ import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
 import { can } from '@/lib/api/hooks'
-import { organizationsQuery, uiConfigQuery } from '@/lib/api/queries'
+import { organizationLimitsQuery, organizationsQuery, uiConfigQuery } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
 
 import { NotFound } from '../__root'
@@ -47,6 +47,9 @@ function NewProjectPage() {
   const [conn, setConn] = useState<ConnectionValue>(emptyConnection)
   const [importing, setImporting] = useState(false)
   const allowed = can(org, 'projects:create')
+  const limits = useQuery(organizationLimitsQuery(org.slug)).data
+  const limit = limits?.project_limit ?? null
+  const full = limit !== null && (limits?.project_count ?? 0) >= limit
   const ui = useQuery(uiConfigQuery)
   const provisioning = ui.data?.provisioning.enabled ?? false
   const [mode, setMode] = useState<'create' | 'connect'>('create')
@@ -90,6 +93,17 @@ function NewProjectPage() {
           {!allowed ? (
             <Alert variant="warning" title="You need additional permissions to add projects">
               Only Owners and Administrators of {org.name} can register projects.
+            </Alert>
+          ) : full ? (
+            <Alert
+              variant="warning"
+              title={`${org.name} has reached its limit of ${limit} ${limit === 1 ? 'project' : 'projects'}`}
+            >
+              Remove a project first, or raise the limit under{' '}
+              <Link to="/org/$slug/general" params={{ slug: org.slug }} className="text-link">
+                Organization Settings › General
+              </Link>{' '}
+              (up to the instance&apos;s limit, which instance admins set).
             </Alert>
           ) : (
             <div className="flex flex-col gap-6">

@@ -205,6 +205,7 @@ export function CommandMenu() {
                   <NavItem entry={{ label: 'Instance overview', icon: ManageAccountsIcon, to: '/admin' }} onSelect={go} />
                   <NavItem entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }} onSelect={go} />
                   <NavItem entry={{ label: 'Global notice', icon: ManageAccountsIcon, to: '/admin/notice' }} onSelect={go} />
+                  <NavItem entry={{ label: 'Resource limits', icon: ManageAccountsIcon, to: '/admin/limits' }} onSelect={go} />
                   <NavItem entry={{ label: 'Instance audit log', icon: ManageAccountsIcon, to: '/admin/audit' }} onSelect={go} />
                 </>
               )}

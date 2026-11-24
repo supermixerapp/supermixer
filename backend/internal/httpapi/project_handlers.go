@@ -247,6 +247,9 @@ func (h *handlers) CreateProject(ctx context.Context, req api.CreateProjectReque
 		if err != nil {
 			return err
 		}
+		if err := checkProjectLimit(ctx, q, a.Org.ID, a.Org.Name); err != nil {
+			return err
+		}
 		project, err = q.CreateProject(ctx, db.CreateProjectParams{
 			Ref: ref, OrganizationID: a.Org.ID, Name: name, ApiUrl: conn.APIURL, StudioUrl: studio,
 			DbHost: conn.Database.Host, DbPort: int32(conn.Database.Port), DbName: conn.Database.Name,
@@ -369,6 +372,9 @@ func (h *handlers) TransferProject(ctx context.Context, req api.TransferProjectR
 				return err
 			}
 			could[m.User.ID] = access[p.ID]
+		}
+		if err := checkProjectLimit(ctx, q, target.Org.ID, target.Org.Name); err != nil {
+			return err
 		}
 		if err := q.MoveProject(ctx, db.MoveProjectParams{ID: p.ID, OrganizationID: target.Org.ID}); err != nil {
 			return err

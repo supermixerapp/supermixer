@@ -143,6 +143,9 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 		if err != nil {
 			return err
 		}
+		if err := checkProjectLimit(ctx, q, a.Org.ID, a.Org.Name); err != nil {
+			return err
+		}
 		created, err := q.CreateProject(ctx, db.CreateProjectParams{
 			Ref: ref, OrganizationID: a.Org.ID, Name: name, ApiUrl: conn.APIURL, StudioUrl: publicURL(pv, ports.API),
 			DbHost: conn.Database.Host, DbPort: int32(conn.Database.Port), DbName: conn.Database.Name,

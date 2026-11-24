@@ -11,6 +11,7 @@ const LINKS = [
   { label: 'Overview', to: '/admin' },
   { label: 'Users', to: '/admin/users' },
   { label: 'Global notice', to: '/admin/notice' },
+  { label: 'Resource limits', to: '/admin/limits' },
   { label: 'Audit log', to: '/admin/audit' },
 ]
 

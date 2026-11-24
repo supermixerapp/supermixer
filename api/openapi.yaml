@@ -514,6 +514,47 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/NoticeState" }
         default: { $ref: "#/components/responses/Error" }
+  /admin/limits:
+    get:
+      operationId: getResourceLimits
+      tags: [Users]
+      summary: The instance's resource limits, and the most anyone uses now; instance admins only
+      responses:
+        "200":
+          description: The limits.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResourceLimits" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setResourceLimits
+      tags: [Users]
+      summary: Set the instance's resource limits (null is unlimited); instance admins only
+      description: Lowering a limit keeps what already exists; it stops new organizations or projects past it.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/ResourceLimitsUpdate" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ResourceLimits" }
+        default: { $ref: "#/components/responses/Error" }
+  /profile/limits:
+    get:
+      operationId: getMyLimits
+      tags: [Profile]
+      summary: How many organizations you've created, and how many you may
+      responses:
+        "200":
+          description: Your limits.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MyLimits" }
+        default: { $ref: "#/components/responses/Error" }
   /admin/notice:
     put:
       operationId: setNotice
@@ -693,6 +734,36 @@ paths:
         default: { $ref: "#/components/responses/Error" }
 
   # ------------------------------------------------------------ Invitations
+  /organizations/{slug}/limits:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: getOrganizationLimits
+      tags: [Organizations]
+      summary: The organization's project limit, the instance's, and how many projects it has
+      responses:
+        "200":
+          description: The limits.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationLimits" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setOrganizationLimits
+      tags: [Organizations]
+      summary: Set the organization's own project limit, up to the instance's (Owners and Administrators)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/OrganizationLimitsUpdate" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationLimits" }
+        default: { $ref: "#/components/responses/Error" }
   /organizations/{slug}/sso:
     parameters:
       - { $ref: "#/components/parameters/Slug" }
@@ -2112,7 +2183,7 @@ components:
         message: { type: string }
         code:
           type: string
-          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't."
+          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own)."
     OrgRole:
       type: string
       enum: [owner, administrator, developer, read_only, no_access]
@@ -2301,6 +2372,48 @@ components:
           type: array
           items: { type: string }
           description: Files that can't be shown as text.
+    ResourceLimits:
+      type: object
+      required: [max_organizations_per_user, max_projects_per_organization, most_organizations_by_one_person, most_projects_in_one_organization]
+      properties:
+        max_organizations_per_user:
+          type: integer
+          nullable: true
+          description: The most organizations one person may create (instance admins aren't held to it); null if unlimited.
+        max_projects_per_organization:
+          type: integer
+          nullable: true
+          description: The most projects any organization may have; null if unlimited.
+        most_organizations_by_one_person: { type: integer, description: The most organizations anyone has created now. }
+        most_projects_in_one_organization: { type: integer, description: The most projects any organization has now. }
+    ResourceLimitsUpdate:
+      type: object
+      required: [max_organizations_per_user, max_projects_per_organization]
+      properties:
+        max_organizations_per_user: { type: integer, nullable: true, minimum: 1, maximum: 100000 }
+        max_projects_per_organization: { type: integer, nullable: true, minimum: 1, maximum: 100000 }
+    MyLimits:
+      type: object
+      required: [organizations_created]
+      properties:
+        organizations_created: { type: integer }
+        max_organizations:
+          type: integer
+          nullable: true
+          description: The most you may create; null if unlimited (or you're an instance admin).
+    OrganizationLimits:
+      type: object
+      required: [project_count]
+      properties:
+        max_projects: { type: integer, nullable: true, description: "The organization's own limit; null if it set none." }
+        instance_max_projects: { type: integer, nullable: true, description: "The instance's limit per organization; null if unlimited." }
+        project_limit: { type: integer, nullable: true, description: "The lower of the two; null if unlimited." }
+        project_count: { type: integer }
+    OrganizationLimitsUpdate:
+      type: object
+      required: [max_projects]
+      properties:
+        max_projects: { type: integer, nullable: true, minimum: 1, maximum: 100000, description: "null removes the organization's own limit (the instance's still applies)." }
     NoticeType:
       type: string
       enum: [info, warning, critical]
@@ -2827,6 +2940,10 @@ components:
         role: { $ref: "#/components/schemas/OrgRole" }
         permissions: { type: array, items: { type: string } }
         project_count: { type: integer }
+        project_limit:
+          type: integer
+          nullable: true
+          description: "The most projects it may have: the lower of its own limit and the instance's; null if unlimited."
         created_at: { type: string, format: date-time }
     OrganizationCreate:
       type: object

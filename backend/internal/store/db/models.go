@@ -433,6 +433,8 @@ type Organization struct {
 	SsoRequired    bool        `json:"sso_required"`
 	SsoJoinRole    NullOrgRole `json:"sso_join_role"`
 	SsoJoinDomains []string    `json:"sso_join_domains"`
+	CreatedBy      *uuid.UUID  `json:"created_by"`
+	MaxProjects    *int32      `json:"max_projects"`
 }
 
 type PasswordReset struct {

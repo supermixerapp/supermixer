@@ -33,6 +33,7 @@ type Querier interface {
 	ClearRotationAdvisories(ctx context.Context, arg ClearRotationAdvisoriesParams) (int64, error)
 	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
+	CountOrganizationsCreatedBy(ctx context.Context, createdBy *uuid.UUID) (int64, error)
 	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountRecoveryCodesLeft(ctx context.Context, userID uuid.UUID) (int32, error)
 	CountUserAccessTokens(ctx context.Context, userID uuid.UUID) (int32, error)
@@ -144,11 +145,20 @@ type Querier interface {
 	ListUsers(ctx context.Context) ([]User, error)
 	ListWebhookDeliveries(ctx context.Context, webhookID uuid.UUID) ([]OrgWebhookDelivery, error)
 	ListWebhooks(ctx context.Context, organizationID uuid.UUID) ([]OrgWebhook, error)
+	// Serializes project additions to an organization (see LockUserForLimits),
+	// returning its own project limit as it stands.
+	LockOrganizationForLimits(ctx context.Context, id uuid.UUID) (*int32, error)
 	// Serializes changes to one user's tokens.
 	LockUser(ctx context.Context, id uuid.UUID) error
+	// Resource limits.
+	// Serializes a person's organization creations, so two at once can't both
+	// pass the per-person limit.
+	LockUserForLimits(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	MarkBackupUploadFailed(ctx context.Context, arg MarkBackupUploadFailedParams) error
 	MarkBackupUploaded(ctx context.Context, arg MarkBackupUploadedParams) (Backup, error)
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
+	MostOrganizationsCreatedByOnePerson(ctx context.Context) (int64, error)
+	MostProjectsInOneOrganization(ctx context.Context) (int64, error)
 	MoveProject(ctx context.Context, arg MoveProjectParams) error
 	// Scheduled backups with this status beyond the newest keep, to remove.
 	OldScheduledBackups(ctx context.Context, arg OldScheduledBackupsParams) ([]Backup, error)
@@ -170,6 +180,7 @@ type Querier interface {
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
 	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
 	SetInstanceSetting(ctx context.Context, arg SetInstanceSettingParams) error
+	SetOrganizationMaxProjects(ctx context.Context, arg SetOrganizationMaxProjectsParams) error
 	SetOrganizationSSO(ctx context.Context, arg SetOrganizationSSOParams) (Organization, error)
 	SetPasswordChangeRequired(ctx context.Context, arg SetPasswordChangeRequiredParams) (User, error)
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error

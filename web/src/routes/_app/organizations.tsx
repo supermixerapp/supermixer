@@ -1,6 +1,8 @@
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { useState } from 'react'
 
+import { BlockedButton } from '@/components/blocked-button'
 import { AddIcon, ProjectsIcon, SearchIcon } from '@/components/icons'
 import { AppShell } from '@/components/layout/app-shell'
 import { NewOrganizationDialog } from '@/components/organization/new-organization-dialog'
@@ -11,6 +13,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useOrganizations, useProfile } from '@/lib/api/hooks'
+import { myLimitsQuery } from '@/lib/api/queries'
 import { roleLabel } from '@/lib/roles'
 
 export const Route = createFileRoute('/_app/organizations')({
@@ -22,6 +25,11 @@ function OrganizationsPage() {
   const { data: me } = useProfile()
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
+  // How many organizations this person may create (instance admins: no limit).
+  const mine = useQuery(myLimitsQuery).data
+  const max = mine?.max_organizations ?? null
+  const full = max !== null && (mine?.organizations_created ?? 0) >= max
+  const fullReason = `You've created ${max} ${max === 1 ? 'organization' : 'organizations'}, the most this instance allows. Delete one, or ask an instance admin to raise the limit.`
   const visible = (orgs ?? []).filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
@@ -43,9 +51,15 @@ function OrganizationsPage() {
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
-            <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-              New organization
-            </Button>
+            {full ? (
+              <BlockedButton reason={fullReason} variant="primary" icon={<AddIcon />}>
+                New organization
+              </BlockedButton>
+            ) : (
+              <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
+                New organization
+              </Button>
+            )}
           </div>
           {isPending ? (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -60,9 +74,15 @@ function OrganizationsPage() {
                 Create one to start registering your self-hosted Supabase projects, or ask a teammate for an invitation
                 link.
               </p>
-              <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)} className="mt-2">
-                New organization
-              </Button>
+              {full ? (
+                <BlockedButton reason={fullReason} variant="primary" icon={<AddIcon />} className="mt-2">
+                  New organization
+                </BlockedButton>
+              ) : (
+                <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)} className="mt-2">
+                  New organization
+                </Button>
+              )}
             </Card>
           ) : (
             <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">

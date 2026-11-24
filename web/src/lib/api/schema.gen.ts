@@ -501,6 +501,44 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The instance's resource limits, and the most anyone uses now; instance admins only */
+        get: operations["getResourceLimits"];
+        /**
+         * Set the instance's resource limits (null is unlimited); instance admins only
+         * @description Lowering a limit keeps what already exists; it stops new organizations or projects past it.
+         */
+        put: operations["setResourceLimits"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** How many organizations you've created, and how many you may */
+        get: operations["getMyLimits"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/notice": {
         parameters: {
             query?: never;
@@ -643,6 +681,26 @@ export interface paths {
         head?: never;
         /** Change a member's organization role and project-scoped roles */
         patch: operations["updateMember"];
+        trace?: never;
+    };
+    "/organizations/{slug}/limits": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        /** The organization's project limit, the instance's, and how many projects it has */
+        get: operations["getOrganizationLimits"];
+        /** Set the organization's own project limit, up to the instance's (Owners and Administrators) */
+        put: operations["setOrganizationLimits"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/organizations/{slug}/sso": {
@@ -1883,7 +1941,7 @@ export interface components {
         };
         Error: {
             message: string;
-            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't. */
+            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own). */
             code?: string;
         };
         /** @enum {string} */
@@ -2048,6 +2106,38 @@ export interface components {
             files: components["schemas"]["EdgeFunctionFile"][];
             /** @description Files that can't be shown as text. */
             other_files: string[];
+        };
+        ResourceLimits: {
+            /** @description The most organizations one person may create (instance admins aren't held to it); null if unlimited. */
+            max_organizations_per_user: number | null;
+            /** @description The most projects any organization may have; null if unlimited. */
+            max_projects_per_organization: number | null;
+            /** @description The most organizations anyone has created now. */
+            most_organizations_by_one_person: number;
+            /** @description The most projects any organization has now. */
+            most_projects_in_one_organization: number;
+        };
+        ResourceLimitsUpdate: {
+            max_organizations_per_user: number | null;
+            max_projects_per_organization: number | null;
+        };
+        MyLimits: {
+            organizations_created: number;
+            /** @description The most you may create; null if unlimited (or you're an instance admin). */
+            max_organizations?: number | null;
+        };
+        OrganizationLimits: {
+            /** @description The organization's own limit; null if it set none. */
+            max_projects?: number | null;
+            /** @description The instance's limit per organization; null if unlimited. */
+            instance_max_projects?: number | null;
+            /** @description The lower of the two; null if unlimited. */
+            project_limit?: number | null;
+            project_count: number;
+        };
+        OrganizationLimitsUpdate: {
+            /** @description null removes the organization's own limit (the instance's still applies). */
+            max_projects: number | null;
         };
         /** @enum {string} */
         NoticeType: "info" | "warning" | "critical";
@@ -2534,6 +2624,8 @@ export interface components {
             role: components["schemas"]["OrgRole"];
             permissions: string[];
             project_count: number;
+            /** @description The most projects it may have: the lower of its own limit and the instance's; null if unlimited. */
+            project_limit?: number | null;
             /** Format: date-time */
             created_at: string;
         };
@@ -3667,6 +3759,73 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    getResourceLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The limits. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceLimits"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setResourceLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResourceLimitsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResourceLimits"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getMyLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Your limits. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MyLimits"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     setNotice: {
         parameters: {
             query?: never;
@@ -3969,6 +4128,56 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Member"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getOrganizationLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The limits. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationLimits"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setOrganizationLimits: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["OrganizationLimitsUpdate"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationLimits"];
                 };
             };
             default: components["responses"]["Error"];

@@ -22,17 +22,29 @@ func (q *Queries) CountOrganizationProjects(ctx context.Context, organizationID 
 	return count, err
 }
 
+const countOrganizationsCreatedBy = `-- name: CountOrganizationsCreatedBy :one
+SELECT count(*) FROM organizations WHERE created_by = $1
+`
+
+func (q *Queries) CountOrganizationsCreatedBy(ctx context.Context, createdBy *uuid.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countOrganizationsCreatedBy, createdBy)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createOrganization = `-- name: CreateOrganization :one
-INSERT INTO organizations (slug, name) VALUES ($1, $2) RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains
+INSERT INTO organizations (slug, name, created_by) VALUES ($1, $2, $3) RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains, created_by, max_projects
 `
 
 type CreateOrganizationParams struct {
-	Slug string `json:"slug"`
-	Name string `json:"name"`
+	Slug      string     `json:"slug"`
+	Name      string     `json:"name"`
+	CreatedBy *uuid.UUID `json:"created_by"`
 }
 
 func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganizationParams) (Organization, error) {
-	row := q.db.QueryRow(ctx, createOrganization, arg.Slug, arg.Name)
+	row := q.db.QueryRow(ctx, createOrganization, arg.Slug, arg.Name, arg.CreatedBy)
 	var i Organization
 	err := row.Scan(
 		&i.ID,
@@ -45,6 +57,8 @@ func (q *Queries) CreateOrganization(ctx context.Context, arg CreateOrganization
 		&i.SsoRequired,
 		&i.SsoJoinRole,
 		&i.SsoJoinDomains,
+		&i.CreatedBy,
+		&i.MaxProjects,
 	)
 	return i, err
 }
@@ -59,7 +73,7 @@ func (q *Queries) DeleteOrganization(ctx context.Context, id uuid.UUID) error {
 }
 
 const getOrganizationByID = `-- name: GetOrganizationByID :one
-SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains FROM organizations WHERE id = $1
+SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains, created_by, max_projects FROM organizations WHERE id = $1
 `
 
 func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organization, error) {
@@ -76,12 +90,14 @@ func (q *Queries) GetOrganizationByID(ctx context.Context, id uuid.UUID) (Organi
 		&i.SsoRequired,
 		&i.SsoJoinRole,
 		&i.SsoJoinDomains,
+		&i.CreatedBy,
+		&i.MaxProjects,
 	)
 	return i, err
 }
 
 const getOrganizationBySlug = `-- name: GetOrganizationBySlug :one
-SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains FROM organizations WHERE slug = $1
+SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains, created_by, max_projects FROM organizations WHERE slug = $1
 `
 
 func (q *Queries) GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error) {
@@ -98,12 +114,14 @@ func (q *Queries) GetOrganizationBySlug(ctx context.Context, slug string) (Organ
 		&i.SsoRequired,
 		&i.SsoJoinRole,
 		&i.SsoJoinDomains,
+		&i.CreatedBy,
+		&i.MaxProjects,
 	)
 	return i, err
 }
 
 const listOrganizationsForUser = `-- name: ListOrganizationsForUser :many
-SELECT o.id, o.slug, o.name, o.created_at, o.updated_at, o.mfa_required, o.sso_provider, o.sso_required, o.sso_join_role, o.sso_join_domains, m.role,
+SELECT o.id, o.slug, o.name, o.created_at, o.updated_at, o.mfa_required, o.sso_provider, o.sso_required, o.sso_join_role, o.sso_join_domains, o.created_by, o.max_projects, m.role,
        (SELECT count(*) FROM projects p WHERE p.organization_id = o.id)::int AS project_count
 FROM organizations o
 JOIN org_members m ON m.organization_id = o.id
@@ -137,6 +155,8 @@ func (q *Queries) ListOrganizationsForUser(ctx context.Context, userID uuid.UUID
 			&i.Organization.SsoRequired,
 			&i.Organization.SsoJoinRole,
 			&i.Organization.SsoJoinDomains,
+			&i.Organization.CreatedBy,
+			&i.Organization.MaxProjects,
 			&i.Role,
 			&i.ProjectCount,
 		); err != nil {
@@ -151,7 +171,7 @@ func (q *Queries) ListOrganizationsForUser(ctx context.Context, userID uuid.UUID
 }
 
 const listSSOJoinOrganizations = `-- name: ListSSOJoinOrganizations :many
-SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains FROM organizations WHERE sso_provider = $1 AND sso_join_role IS NOT NULL ORDER BY created_at
+SELECT id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains, created_by, max_projects FROM organizations WHERE sso_provider = $1 AND sso_join_role IS NOT NULL ORDER BY created_at
 `
 
 // Organizations people signing in through a provider join.
@@ -175,6 +195,8 @@ func (q *Queries) ListSSOJoinOrganizations(ctx context.Context, ssoProvider *str
 			&i.SsoRequired,
 			&i.SsoJoinRole,
 			&i.SsoJoinDomains,
+			&i.CreatedBy,
+			&i.MaxProjects,
 		); err != nil {
 			return nil, err
 		}
@@ -184,6 +206,59 @@ func (q *Queries) ListSSOJoinOrganizations(ctx context.Context, ssoProvider *str
 		return nil, err
 	}
 	return items, nil
+}
+
+const lockOrganizationForLimits = `-- name: LockOrganizationForLimits :one
+SELECT max_projects FROM organizations WHERE id = $1 FOR UPDATE
+`
+
+// Serializes project additions to an organization (see LockUserForLimits),
+// returning its own project limit as it stands.
+func (q *Queries) LockOrganizationForLimits(ctx context.Context, id uuid.UUID) (*int32, error) {
+	row := q.db.QueryRow(ctx, lockOrganizationForLimits, id)
+	var max_projects *int32
+	err := row.Scan(&max_projects)
+	return max_projects, err
+}
+
+const lockUserForLimits = `-- name: LockUserForLimits :one
+
+SELECT id FROM users WHERE id = $1 FOR UPDATE
+`
+
+// Resource limits.
+// Serializes a person's organization creations, so two at once can't both
+// pass the per-person limit.
+func (q *Queries) LockUserForLimits(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRow(ctx, lockUserForLimits, id)
+	err := row.Scan(&id)
+	return id, err
+}
+
+const mostOrganizationsCreatedByOnePerson = `-- name: MostOrganizationsCreatedByOnePerson :one
+SELECT coalesce(max(n), 0)::bigint FROM (
+    SELECT count(*) AS n FROM organizations WHERE created_by IS NOT NULL GROUP BY created_by
+) t
+`
+
+func (q *Queries) MostOrganizationsCreatedByOnePerson(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, mostOrganizationsCreatedByOnePerson)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
+const mostProjectsInOneOrganization = `-- name: MostProjectsInOneOrganization :one
+SELECT coalesce(max(n), 0)::bigint FROM (
+    SELECT count(*) AS n FROM projects GROUP BY organization_id
+) t
+`
+
+func (q *Queries) MostProjectsInOneOrganization(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, mostProjectsInOneOrganization)
+	var column_1 int64
+	err := row.Scan(&column_1)
+	return column_1, err
 }
 
 const organizationSlugExists = `-- name: OrganizationSlugExists :one
@@ -197,11 +272,25 @@ func (q *Queries) OrganizationSlugExists(ctx context.Context, slug string) (bool
 	return exists, err
 }
 
+const setOrganizationMaxProjects = `-- name: SetOrganizationMaxProjects :exec
+UPDATE organizations SET max_projects = $2, updated_at = now() WHERE id = $1
+`
+
+type SetOrganizationMaxProjectsParams struct {
+	ID          uuid.UUID `json:"id"`
+	MaxProjects *int32    `json:"max_projects"`
+}
+
+func (q *Queries) SetOrganizationMaxProjects(ctx context.Context, arg SetOrganizationMaxProjectsParams) error {
+	_, err := q.db.Exec(ctx, setOrganizationMaxProjects, arg.ID, arg.MaxProjects)
+	return err
+}
+
 const setOrganizationSSO = `-- name: SetOrganizationSSO :one
 UPDATE organizations SET sso_provider = $1, sso_required = $2,
     sso_join_role = $3, sso_join_domains = $4::text[], updated_at = now()
 WHERE id = $5
-RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains
+RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains, created_by, max_projects
 `
 
 type SetOrganizationSSOParams struct {
@@ -232,12 +321,14 @@ func (q *Queries) SetOrganizationSSO(ctx context.Context, arg SetOrganizationSSO
 		&i.SsoRequired,
 		&i.SsoJoinRole,
 		&i.SsoJoinDomains,
+		&i.CreatedBy,
+		&i.MaxProjects,
 	)
 	return i, err
 }
 
 const updateOrganization = `-- name: UpdateOrganization :one
-UPDATE organizations SET name = $2, mfa_required = $3, updated_at = now() WHERE id = $1 RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains
+UPDATE organizations SET name = $2, mfa_required = $3, updated_at = now() WHERE id = $1 RETURNING id, slug, name, created_at, updated_at, mfa_required, sso_provider, sso_required, sso_join_role, sso_join_domains, created_by, max_projects
 `
 
 type UpdateOrganizationParams struct {
@@ -260,6 +351,8 @@ func (q *Queries) UpdateOrganization(ctx context.Context, arg UpdateOrganization
 		&i.SsoRequired,
 		&i.SsoJoinRole,
 		&i.SsoJoinDomains,
+		&i.CreatedBy,
+		&i.MaxProjects,
 	)
 	return i, err
 }

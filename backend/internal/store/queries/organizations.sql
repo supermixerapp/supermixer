@@ -1,5 +1,5 @@
 -- name: CreateOrganization :one
-INSERT INTO organizations (slug, name) VALUES ($1, $2) RETURNING *;
+INSERT INTO organizations (slug, name, created_by) VALUES ($1, $2, $3) RETURNING *;
 
 -- name: OrganizationSlugExists :one
 SELECT EXISTS (SELECT 1 FROM organizations WHERE slug = $1);
@@ -37,3 +37,31 @@ RETURNING *;
 -- Organizations people signing in through a provider join.
 SELECT * FROM organizations WHERE sso_provider = $1 AND sso_join_role IS NOT NULL ORDER BY created_at;
 
+
+-- Resource limits.
+
+-- name: LockUserForLimits :one
+-- Serializes a person's organization creations, so two at once can't both
+-- pass the per-person limit.
+SELECT id FROM users WHERE id = $1 FOR UPDATE;
+
+-- name: CountOrganizationsCreatedBy :one
+SELECT count(*) FROM organizations WHERE created_by = $1;
+
+-- name: LockOrganizationForLimits :one
+-- Serializes project additions to an organization (see LockUserForLimits),
+-- returning its own project limit as it stands.
+SELECT max_projects FROM organizations WHERE id = $1 FOR UPDATE;
+
+-- name: SetOrganizationMaxProjects :exec
+UPDATE organizations SET max_projects = $2, updated_at = now() WHERE id = $1;
+
+-- name: MostOrganizationsCreatedByOnePerson :one
+SELECT coalesce(max(n), 0)::bigint FROM (
+    SELECT count(*) AS n FROM organizations WHERE created_by IS NOT NULL GROUP BY created_by
+) t;
+
+-- name: MostProjectsInOneOrganization :one
+SELECT coalesce(max(n), 0)::bigint FROM (
+    SELECT count(*) AS n FROM projects GROUP BY organization_id
+) t;

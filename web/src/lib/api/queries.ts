@@ -42,6 +42,25 @@ export const organizationsQuery = queryOptions({
   staleTime: 30_000,
 })
 
+// Under ['organizations'], so adding or removing an organization or project
+// (which refreshes that) refreshes these too.
+export const organizationLimitsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: ['organizations', slug, 'limits'],
+    queryFn: () => unwrap(api.GET('/organizations/{slug}/limits', { params: { path: { slug } } })),
+  })
+
+/** How many organizations you've created, and may. */
+export const myLimitsQuery = queryOptions({
+  queryKey: ['organizations', '@my-limits'],
+  queryFn: () => unwrap(api.GET('/profile/limits')),
+})
+
+export const resourceLimitsQuery = queryOptions({
+  queryKey: ['admin', 'limits'],
+  queryFn: () => unwrap(api.GET('/admin/limits')),
+})
+
 export const projectsQuery = queryOptions({
   queryKey: ['projects'],
   queryFn: () => unwrap(api.GET('/projects')),

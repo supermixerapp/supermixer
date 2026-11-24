@@ -50,6 +50,9 @@ const (
 	AuditRead        Permission = "audit:read"
 	OrgProjectsRead  Permission = "org:projects:read" // see every project in the org
 	ProjectsTransfer Permission = "projects:transfer"
+	// OrgLimitsUpdate sets the organization's own resource limits, within
+	// the instance's.
+	OrgLimitsUpdate Permission = "org:limits:update"
 )
 
 // Project permissions.
@@ -68,9 +71,9 @@ const (
 
 var orgMatrix = map[Role][]Permission{
 	Owner: {OrgRead, OrgUpdate, OrgDelete, MembersRead, MembersInvite, MembersUpdate, MembersRemove,
-		ProjectsCreate, AuditRead, OrgProjectsRead, ProjectsTransfer},
+		ProjectsCreate, AuditRead, OrgProjectsRead, ProjectsTransfer, OrgLimitsUpdate},
 	Administrator: {OrgRead, MembersRead, MembersInvite, MembersUpdate, MembersRemove,
-		ProjectsCreate, AuditRead, OrgProjectsRead},
+		ProjectsCreate, AuditRead, OrgProjectsRead, OrgLimitsUpdate},
 	Developer: {OrgRead, MembersRead, OrgProjectsRead},
 	ReadOnly:  {OrgRead, MembersRead, OrgProjectsRead},
 	// No-access members can see that the organization exists (it is listed for
