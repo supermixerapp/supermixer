@@ -1,5 +1,7 @@
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 
+import { ChoosePassword } from '@/components/auth/choose-password'
 import { ThemeSync } from '@/components/layout/theme-sync'
 
 import { isApiError } from '@/lib/api/client'
@@ -21,10 +23,11 @@ export const Route = createFileRoute('/_app')({
 })
 
 function AppLayout() {
+  const { data: me } = useQuery(profileQuery)
   return (
     <>
       <ThemeSync />
-      <Outlet />
+      {me?.password_change_required ? <ChoosePassword username={me.username} /> : <Outlet />}
     </>
   )
 }

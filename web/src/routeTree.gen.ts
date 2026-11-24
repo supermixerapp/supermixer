@@ -17,6 +17,8 @@ import { Route as AppDesignSystemRouteImport } from './routes/_app/design-system
 import { Route as AppOrganizationsRouteImport } from './routes/_app/organizations'
 import { Route as AppAccountAppearanceRouteImport } from './routes/_app/account.appearance'
 import { Route as AppAccountMeRouteImport } from './routes/_app/account.me'
+import { Route as AppAdminIndexRouteImport } from './routes/_app/admin.index'
+import { Route as AppAdminAuditRouteImport } from './routes/_app/admin.audit'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
 import { Route as AppNewSlugRouteImport } from './routes/_app/new.$slug'
 import { Route as AppOrgSlugRouteImport } from './routes/_app/org.$slug'
@@ -128,6 +130,16 @@ const AppAccountAppearanceRoute = AppAccountAppearanceRouteImport.update({
 const AppAccountMeRoute = AppAccountMeRouteImport.update({
   id: '/account/me',
   path: '/account/me',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
+  id: '/admin/',
+  path: '/admin/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminAuditRoute = AppAdminAuditRouteImport.update({
+  id: '/admin/audit',
+  path: '/admin/audit',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
@@ -556,10 +568,12 @@ export interface FileRoutesByFullPath {
   '/organizations': typeof AppOrganizationsRoute
   '/account/appearance': typeof AppAccountAppearanceRoute
   '/account/me': typeof AppAccountMeRoute
+  '/admin/audit': typeof AppAdminAuditRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/org/$slug': typeof AppOrgSlugRouteWithChildren
   '/project/$ref': typeof AppProjectRefRouteWithChildren
+  '/admin/': typeof AppAdminIndexRoute
   '/org/$slug/$': typeof AppOrgSlugSplatRoute
   '/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/org/$slug/general': typeof AppOrgSlugGeneralRoute
@@ -638,8 +652,10 @@ export interface FileRoutesByTo {
   '/organizations': typeof AppOrganizationsRoute
   '/account/appearance': typeof AppAccountAppearanceRoute
   '/account/me': typeof AppAccountMeRoute
+  '/admin/audit': typeof AppAdminAuditRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
+  '/admin': typeof AppAdminIndexRoute
   '/org/$slug/$': typeof AppOrgSlugSplatRoute
   '/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/org/$slug/general': typeof AppOrgSlugGeneralRoute
@@ -718,10 +734,12 @@ export interface FileRoutesById {
   '/_app/organizations': typeof AppOrganizationsRoute
   '/_app/account/appearance': typeof AppAccountAppearanceRoute
   '/_app/account/me': typeof AppAccountMeRoute
+  '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/new/$slug': typeof AppNewSlugRoute
   '/_app/org/$slug': typeof AppOrgSlugRouteWithChildren
   '/_app/project/$ref': typeof AppProjectRefRouteWithChildren
+  '/_app/admin/': typeof AppAdminIndexRoute
   '/_app/org/$slug/$': typeof AppOrgSlugSplatRoute
   '/_app/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/_app/org/$slug/general': typeof AppOrgSlugGeneralRoute
@@ -802,10 +820,12 @@ export interface FileRouteTypes {
     | '/organizations'
     | '/account/appearance'
     | '/account/me'
+    | '/admin/audit'
     | '/admin/users'
     | '/new/$slug'
     | '/org/$slug'
     | '/project/$ref'
+    | '/admin/'
     | '/org/$slug/$'
     | '/org/$slug/audit'
     | '/org/$slug/general'
@@ -884,8 +904,10 @@ export interface FileRouteTypes {
     | '/organizations'
     | '/account/appearance'
     | '/account/me'
+    | '/admin/audit'
     | '/admin/users'
     | '/new/$slug'
+    | '/admin'
     | '/org/$slug/$'
     | '/org/$slug/audit'
     | '/org/$slug/general'
@@ -963,10 +985,12 @@ export interface FileRouteTypes {
     | '/_app/organizations'
     | '/_app/account/appearance'
     | '/_app/account/me'
+    | '/_app/admin/audit'
     | '/_app/admin/users'
     | '/_app/new/$slug'
     | '/_app/org/$slug'
     | '/_app/project/$ref'
+    | '/_app/admin/'
     | '/_app/org/$slug/$'
     | '/_app/org/$slug/audit'
     | '/_app/org/$slug/general'
@@ -1101,6 +1125,20 @@ declare module '@tanstack/react-router' {
       path: '/account/me'
       fullPath: '/account/me'
       preLoaderRoute: typeof AppAccountMeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/': {
+      id: '/_app/admin/'
+      path: '/admin'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AppAdminIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/audit': {
+      id: '/_app/admin/audit'
+      path: '/admin/audit'
+      fullPath: '/admin/audit'
+      preLoaderRoute: typeof AppAdminAuditRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/users': {
@@ -1808,10 +1846,12 @@ interface AppRouteChildren {
   AppOrganizationsRoute: typeof AppOrganizationsRoute
   AppAccountAppearanceRoute: typeof AppAccountAppearanceRoute
   AppAccountMeRoute: typeof AppAccountMeRoute
+  AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppNewSlugRoute: typeof AppNewSlugRoute
   AppOrgSlugRoute: typeof AppOrgSlugRouteWithChildren
   AppProjectRefRoute: typeof AppProjectRefRouteWithChildren
+  AppAdminIndexRoute: typeof AppAdminIndexRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -1819,10 +1859,12 @@ const AppRouteChildren: AppRouteChildren = {
   AppOrganizationsRoute: AppOrganizationsRoute,
   AppAccountAppearanceRoute: AppAccountAppearanceRoute,
   AppAccountMeRoute: AppAccountMeRoute,
+  AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppNewSlugRoute: AppNewSlugRoute,
   AppOrgSlugRoute: AppOrgSlugRouteWithChildren,
   AppProjectRefRoute: AppProjectRefRouteWithChildren,
+  AppAdminIndexRoute: AppAdminIndexRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -80,8 +80,8 @@ function SignInPage() {
         </Button>
       </form>
       <p className="mt-8 text-center text-sm text-foreground-lighter">
-        Accounts are created by an instance admin or through an invitation link. On a new install, sign in with the
-        bootstrap admin account from the server&apos;s <code className="font-mono text-xs">.env.toml</code>.
+        Accounts are created by an instance admin or through an invitation link. On a new install, sign in as{' '}
+        <code className="font-mono text-xs">admin</code> with the one-time password in the server&apos;s log.
       </p>
     </AuthLayout>
   )

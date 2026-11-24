@@ -62,9 +62,9 @@ export function UserDropdown() {
           </DropdownMenuItem>
           {me?.is_instance_admin && (
             <DropdownMenuItem asChild>
-              <Link to="/admin/users">
+              <Link to="/admin">
                 <ManageAccountsIcon size={14} className="text-foreground-lighter" />
-                Users
+                Instance admin
               </Link>
             </DropdownMenuItem>
           )}

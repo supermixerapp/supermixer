@@ -191,10 +191,11 @@ export function CommandMenu() {
                 onSelect={go}
               />
               {me?.is_instance_admin && (
-                <NavItem
-                  entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }}
-                  onSelect={go}
-                />
+                <>
+                  <NavItem entry={{ label: 'Instance overview', icon: ManageAccountsIcon, to: '/admin' }} onSelect={go} />
+                  <NavItem entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }} onSelect={go} />
+                  <NavItem entry={{ label: 'Instance audit log', icon: ManageAccountsIcon, to: '/admin/audit' }} onSelect={go} />
+                </>
               )}
               <NavItem
                 entry={{ label: 'Design system', icon: PaletteIcon, to: '/design-system' }}

@@ -187,6 +187,57 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/admin/users/{user_id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Sign the user out everywhere */
+        delete: operations["revokeUserSessions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The instance at a glance, for instance admins */
+        get: operations["getAdminOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Audit entries outside any organization (accounts and sign-ins), for instance admins */
+        get: operations["listInstanceAuditLogs"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/{user_id}/password": {
         parameters: {
             query?: never;
@@ -1657,6 +1708,8 @@ export interface components {
             is_instance_admin: boolean;
             /** @description Still using the well-known bootstrap password. */
             default_password: boolean;
+            /** @description Must choose a new password before anything else; until then the API only allows the profile, changing the password and signing out. */
+            password_change_required: boolean;
             /** @description The theme the user chose; null if they haven't, and the instance default applies. */
             theme?: components["schemas"]["ThemePreference"] | null;
             /** Format: date-time */
@@ -1675,6 +1728,36 @@ export interface components {
         };
         PasswordReset: {
             password: string;
+            /**
+             * @description They choose their own password at next sign-in (not for your own account).
+             * @default true
+             */
+            require_password_change: boolean;
+        };
+        AdminOverview: {
+            version: string;
+            users: number;
+            active_users: number;
+            /** @description Active ones. */
+            instance_admins: number;
+            /** @description Active accounts that must still choose a new password. */
+            password_change_required: number;
+            organizations: number;
+            projects: number;
+            /** @description Projects whose stacks Supermixer created. */
+            managed_projects: number;
+            provisioning: {
+                enabled: boolean;
+                stacks_dir: string;
+                public_host: string;
+            };
+            backups: {
+                dir: string;
+                interval_hours: number;
+                keep: number;
+                /** @description s3://bucket/prefix, if backups are copied to a bucket. */
+                s3?: string | null;
+            };
         };
         Session: {
             /** Format: uuid */
@@ -1708,7 +1791,12 @@ export interface components {
             display_name: string;
             is_instance_admin: boolean;
             default_password: boolean;
+            password_change_required: boolean;
             disabled: boolean;
+            /** @description Signed-in sessions. */
+            sessions: number;
+            /** Format: date-time */
+            last_seen_at?: string | null;
             /** Format: date-time */
             created_at: string;
         };
@@ -1719,12 +1807,19 @@ export interface components {
             display_name?: string;
             /** @default false */
             is_instance_admin: boolean;
+            /**
+             * @description They choose their own password at first sign-in.
+             * @default true
+             */
+            require_password_change: boolean;
         };
         UserUpdate: {
             email?: string | null;
             display_name?: string;
             is_instance_admin?: boolean;
             disabled?: boolean;
+            /** @description They must choose a new password at their next request. */
+            password_change_required?: boolean;
         };
         Organization: {
             /** Format: uuid */
@@ -2322,6 +2417,75 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["User"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    revokeUserSessions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Signed out. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getAdminOverview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Counts and settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AdminOverview"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listInstanceAuditLogs: {
+        parameters: {
+            query?: {
+                /** @description Action prefix, e.g. user. */
+                action?: string;
+                /** @description Cursor from next_before */
+                before?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Entries, newest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogPage"];
                 };
             };
             default: components["responses"]["Error"];

@@ -163,7 +163,7 @@ function PasswordSection() {
               <FormField label="Current password" htmlFor="pw-current" layout="horizontal">
                 <Input id="pw-current" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
               </FormField>
-              <FormField label="New password" htmlFor="pw-new" layout="horizontal" description="At least 8 characters">
+              <FormField label="New password" htmlFor="pw-new" layout="horizontal" description="At least 8 characters, and not a common password or your username">
                 <Input id="pw-new" type="password" autoComplete="new-password" required minLength={8} value={next} onChange={(e) => setNext(e.target.value)} />
               </FormField>
               <FormField label="Confirm new password" htmlFor="pw-confirm" layout="horizontal" error={mismatch ? 'Passwords do not match' : undefined}>

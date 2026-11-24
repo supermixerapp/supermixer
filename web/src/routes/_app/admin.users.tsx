@@ -3,8 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { AddIcon, SettingsIcon } from '@/components/icons'
-import { AppShell } from '@/components/layout/app-shell'
-import { PageContainer, PageHeader } from '@/components/layout/page'
+import { AdminLayout } from '@/components/layout/admin-layout'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -35,6 +34,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { usersQuery } from '@/lib/api/queries'
+import { relativeTime } from '@/lib/auth-users'
 
 export const Route = createFileRoute('/_app/admin/users')({
   component: UsersPage,
@@ -58,26 +58,27 @@ function UsersPage() {
     },
     onError: (e) => toast.error(e.message),
   })
+  const signOut = useMutation({
+    mutationFn: (user: User) =>
+      unwrap(api.DELETE('/admin/users/{user_id}/sessions', { params: { path: { user_id: user.id } } })),
+    onSuccess: (_, u) => {
+      toast.success(u.id === me?.id ? 'Signed out of your other sessions' : `Signed ${u.username} out everywhere`)
+      void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
+    },
+    onError: (e) => toast.error(e.message),
+  })
 
   return (
-    <AppShell title="Users">
-      <div className="overflow-y-auto">
-        <PageHeader
-          title="Users"
-          description="Everyone who can sign in to this Supermixer instance. Organization access is managed on each organization's Team page."
-          size="large"
-          actions={
-            me?.is_instance_admin && (
-              <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-                Add user
-              </Button>
-            )
-          }
-        />
-        <PageContainer size="large" className="flex flex-col gap-4 pb-16">
-          {!me?.is_instance_admin ? (
-            <Alert variant="warning" title="Only instance admins can manage users" />
-          ) : (
+    <AdminLayout
+      title="Users"
+      description="Everyone who can sign in to this Supermixer instance. Organization access is managed on each organization's Team page."
+      actions={
+        <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
+          Add user
+        </Button>
+      }
+    >
+      {me && (
             <Card>
               {users.isPending ? (
                 <div className="flex flex-col gap-2 p-4">
@@ -91,7 +92,7 @@ function UsersPage() {
                       <TableHead>User</TableHead>
                       <TableHead>Email</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead>Created</TableHead>
+                      <TableHead>Last active</TableHead>
                       <TableHead className="w-12" />
                     </TableRow>
                   </TableHeader>
@@ -109,17 +110,41 @@ function UsersPage() {
                           <span className="flex flex-wrap gap-1">
                             {u.disabled ? <Badge variant="destructive">Disabled</Badge> : <Badge variant="success">Active</Badge>}
                             {u.is_instance_admin && <Badge>Instance admin</Badge>}
+                            {u.password_change_required && <Badge variant="warning">Must change password</Badge>}
                             {u.default_password && <Badge variant="warning">Default password</Badge>}
                           </span>
                         </TableCell>
-                        <TableCell className="text-foreground-light">{new Date(u.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-foreground-light">
+                          {u.last_seen_at ? (
+                            <span className="flex flex-col">
+                              <span>{relativeTime(u.last_seen_at)}</span>
+                              <span className="text-xs text-foreground-lighter">
+                                {u.sessions} {u.sessions === 1 ? 'session' : 'sessions'}
+                              </span>
+                            </span>
+                          ) : (
+                            <span className="text-foreground-lighter">Not signed in</span>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="text" icon={<SettingsIcon />} aria-label={`Manage ${u.username}`} />
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
+                            <DropdownMenuContent align="end" className="w-60">
                               <DropdownMenuItem onSelect={() => setResetting(u)}>Reset password</DropdownMenuItem>
+                              <DropdownMenuItem
+                                disabled={u.id === me.id}
+                                onSelect={() =>
+                                  update.mutate({ user: u, body: { password_change_required: !u.password_change_required } })
+                                }
+                              >
+                                {u.password_change_required ? 'Don’t require a new password' : 'Require a new password'}
+                              </DropdownMenuItem>
+                              <DropdownMenuItem disabled={u.sessions === 0} onSelect={() => signOut.mutate(u)}>
+                                {u.id === me.id ? 'Sign out other sessions' : 'Sign out everywhere'}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 disabled={u.id === me.id}
                                 onSelect={() => update.mutate({ user: u, body: { is_instance_admin: !u.is_instance_admin } })}
@@ -142,18 +167,16 @@ function UsersPage() {
                 </Table>
               )}
             </Card>
-          )}
-        </PageContainer>
-      </div>
+      )}
       <CreateUserDialog open={creating} onOpenChange={setCreating} />
-      {resetting && <ResetPasswordDialog user={resetting} onClose={() => setResetting(null)} />}
-    </AppShell>
+      {resetting && <ResetPasswordDialog user={resetting} self={resetting.id === me?.id} onClose={() => setResetting(null)} />}
+    </AdminLayout>
   )
 }
 
 function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (o: boolean) => void }) {
   const queryClient = useQueryClient()
-  const blank = { username: '', display_name: '', email: '', password: '', is_instance_admin: false }
+  const blank = { username: '', display_name: '', email: '', password: '', is_instance_admin: false, require_password_change: true }
   const [form, setForm] = useState(blank)
   const create = useMutation({
     mutationFn: () => unwrap(api.POST('/admin/users', { body: { ...form, email: form.email || null } })),
@@ -174,7 +197,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
         <form onSubmit={submit}>
           <DialogHeader>
             <DialogTitle>Add a user</DialogTitle>
-            <DialogDescription>They can sign in right away. Share the password with them securely.</DialogDescription>
+            <DialogDescription>They can sign in right away. Share the password with them securely; by default it only lets them choose their own.</DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
             <FormField label="Username" htmlFor="nu-username" description="3–40 characters: letters, digits, . _ -">
@@ -188,7 +211,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                 <Input id="nu-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </FormField>
             </div>
-            <FormField label="Password" htmlFor="nu-password" description="At least 8 characters">
+            <FormField label="Password" htmlFor="nu-password" description="At least 8 characters, and not a common password or their username">
               <Input
                 id="nu-password"
                 type="password"
@@ -207,6 +230,14 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
               />
               <Label htmlFor="nu-admin">Instance admin (can manage users)</Label>
             </div>
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="nu-change"
+                checked={form.require_password_change}
+                onCheckedChange={(v) => setForm({ ...form, require_password_change: v === true })}
+              />
+              <Label htmlFor="nu-change">Ask them to choose their own password when they first sign in</Label>
+            </div>
             {create.error && <Alert variant="destructive" title={create.error.message} />}
           </DialogSection>
           <DialogFooter>
@@ -223,13 +254,21 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   )
 }
 
-function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => void }) {
+function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient()
   const [password, setPassword] = useState('')
+  const [requireChange, setRequireChange] = useState(true)
   const reset = useMutation({
     mutationFn: () =>
-      unwrap(api.POST('/admin/users/{user_id}/password', { params: { path: { user_id: user.id } }, body: { password } })),
+      unwrap(
+        api.POST('/admin/users/{user_id}/password', {
+          params: { path: { user_id: user.id } },
+          body: { password, require_password_change: !self && requireChange },
+        })
+      ),
     onSuccess: () => {
       toast.success(`Password reset for ${user.username}; they were signed out everywhere`)
+      void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
       onClose()
     },
   })
@@ -247,7 +286,7 @@ function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => voi
             <DialogDescription>They will be signed out of every session.</DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
-            <FormField label="New password" htmlFor="rp-password" description="At least 8 characters">
+            <FormField label="New password" htmlFor="rp-password" description="At least 8 characters, and not a common password or their username">
               <Input
                 id="rp-password"
                 type="password"
@@ -259,6 +298,12 @@ function ResetPasswordDialog({ user, onClose }: { user: User; onClose: () => voi
                 onChange={(e) => setPassword(e.target.value)}
               />
             </FormField>
+            {!self && (
+              <div className="flex items-center gap-2">
+                <Checkbox id="rp-change" checked={requireChange} onCheckedChange={(v) => setRequireChange(v === true)} />
+                <Label htmlFor="rp-change">Ask them to choose their own password when they next sign in</Label>
+              </div>
+            )}
             {reset.error && <Alert variant="destructive" title={reset.error.message} />}
           </DialogSection>
           <DialogFooter>
