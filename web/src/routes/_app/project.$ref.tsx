@@ -1,5 +1,6 @@
-import { createFileRoute, notFound, Outlet, useLocation } from '@tanstack/react-router'
+import { createFileRoute, ErrorComponent, notFound, Outlet, useLocation } from '@tanstack/react-router'
 
+import { MfaRequired } from '@/components/auth/mfa-required'
 import { AppShell } from '@/components/layout/app-shell'
 import { ProductMenu, WithProductMenu } from '@/components/layout/product-menu'
 import { Sidebar, type SidebarLink } from '@/components/layout/sidebar'
@@ -20,6 +21,17 @@ export const Route = createFileRoute('/_app/project/$ref')({
   },
   component: ProjectLayout,
   notFoundComponent: NotFound,
+  // The project's organization requires two-factor sign-in.
+  errorComponent: ({ error }) => {
+    if (isApiError(error, 403) && error.code === 'mfa_required') {
+      return (
+        <AppShell>
+          <MfaRequired />
+        </AppShell>
+      )
+    }
+    return <ErrorComponent error={error} />
+  },
 })
 
 function ProjectLayout() {

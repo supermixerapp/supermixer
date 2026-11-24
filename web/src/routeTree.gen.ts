@@ -17,6 +17,7 @@ import { Route as AppDesignSystemRouteImport } from './routes/_app/design-system
 import { Route as AppOrganizationsRouteImport } from './routes/_app/organizations'
 import { Route as AppAccountAppearanceRouteImport } from './routes/_app/account.appearance'
 import { Route as AppAccountMeRouteImport } from './routes/_app/account.me'
+import { Route as AppAccountSecurityRouteImport } from './routes/_app/account.security'
 import { Route as AppAdminIndexRouteImport } from './routes/_app/admin.index'
 import { Route as AppAdminAuditRouteImport } from './routes/_app/admin.audit'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
@@ -130,6 +131,11 @@ const AppAccountAppearanceRoute = AppAccountAppearanceRouteImport.update({
 const AppAccountMeRoute = AppAccountMeRouteImport.update({
   id: '/account/me',
   path: '/account/me',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAccountSecurityRoute = AppAccountSecurityRouteImport.update({
+  id: '/account/security',
+  path: '/account/security',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminIndexRoute = AppAdminIndexRouteImport.update({
@@ -568,6 +574,7 @@ export interface FileRoutesByFullPath {
   '/organizations': typeof AppOrganizationsRoute
   '/account/appearance': typeof AppAccountAppearanceRoute
   '/account/me': typeof AppAccountMeRoute
+  '/account/security': typeof AppAccountSecurityRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
@@ -652,6 +659,7 @@ export interface FileRoutesByTo {
   '/organizations': typeof AppOrganizationsRoute
   '/account/appearance': typeof AppAccountAppearanceRoute
   '/account/me': typeof AppAccountMeRoute
+  '/account/security': typeof AppAccountSecurityRoute
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
@@ -734,6 +742,7 @@ export interface FileRoutesById {
   '/_app/organizations': typeof AppOrganizationsRoute
   '/_app/account/appearance': typeof AppAccountAppearanceRoute
   '/_app/account/me': typeof AppAccountMeRoute
+  '/_app/account/security': typeof AppAccountSecurityRoute
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/new/$slug': typeof AppNewSlugRoute
@@ -820,6 +829,7 @@ export interface FileRouteTypes {
     | '/organizations'
     | '/account/appearance'
     | '/account/me'
+    | '/account/security'
     | '/admin/audit'
     | '/admin/users'
     | '/new/$slug'
@@ -904,6 +914,7 @@ export interface FileRouteTypes {
     | '/organizations'
     | '/account/appearance'
     | '/account/me'
+    | '/account/security'
     | '/admin/audit'
     | '/admin/users'
     | '/new/$slug'
@@ -985,6 +996,7 @@ export interface FileRouteTypes {
     | '/_app/organizations'
     | '/_app/account/appearance'
     | '/_app/account/me'
+    | '/_app/account/security'
     | '/_app/admin/audit'
     | '/_app/admin/users'
     | '/_app/new/$slug'
@@ -1125,6 +1137,13 @@ declare module '@tanstack/react-router' {
       path: '/account/me'
       fullPath: '/account/me'
       preLoaderRoute: typeof AppAccountMeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/account/security': {
+      id: '/_app/account/security'
+      path: '/account/security'
+      fullPath: '/account/security'
+      preLoaderRoute: typeof AppAccountSecurityRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/': {
@@ -1846,6 +1865,7 @@ interface AppRouteChildren {
   AppOrganizationsRoute: typeof AppOrganizationsRoute
   AppAccountAppearanceRoute: typeof AppAccountAppearanceRoute
   AppAccountMeRoute: typeof AppAccountMeRoute
+  AppAccountSecurityRoute: typeof AppAccountSecurityRoute
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppNewSlugRoute: typeof AppNewSlugRoute
@@ -1859,6 +1879,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppOrganizationsRoute: AppOrganizationsRoute,
   AppAccountAppearanceRoute: AppAccountAppearanceRoute,
   AppAccountMeRoute: AppAccountMeRoute,
+  AppAccountSecurityRoute: AppAccountSecurityRoute,
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppNewSlugRoute: AppNewSlugRoute,

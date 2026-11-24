@@ -1,8 +1,11 @@
+import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, notFound, Outlet, useLocation } from '@tanstack/react-router'
 
+import { MfaRequired } from '@/components/auth/mfa-required'
 import { AppShell } from '@/components/layout/app-shell'
 import { ProductMenu, WithProductMenu } from '@/components/layout/product-menu'
 import { Sidebar, type SidebarLink } from '@/components/layout/sidebar'
+import { useProfile } from '@/lib/api/hooks'
 import { organizationsQuery } from '@/lib/api/queries'
 import { orgNav, orgSettingsMenu } from '@/lib/navigation'
 
@@ -25,6 +28,16 @@ function OrgLayout() {
   const base = `/org/${slug}`
   const sub = pathname.slice(base.length).replace(/^\/+|\/+$/g, '')
   const inSettings = settingsPaths.includes(sub.split('/')[0])
+  const { data: me } = useProfile()
+  const org = useQuery(organizationsQuery).data?.find((o) => o.slug === slug)
+
+  if (org?.mfa_required && me && !me.mfa_enabled) {
+    return (
+      <AppShell>
+        <MfaRequired orgName={org.name} orgSlug={org.slug} />
+      </AppShell>
+    )
+  }
 
   const links: SidebarLink[] = orgNav.map((r) => {
     const to = r.path ? `${base}/${r.path}` : base

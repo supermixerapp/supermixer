@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
-import { useOrganizations } from '@/lib/api/hooks'
+import { useOrganizations, useProfile } from '@/lib/api/hooks'
 import { roleLabel } from '@/lib/roles'
 
 export const Route = createFileRoute('/_app/organizations')({
@@ -19,6 +19,7 @@ export const Route = createFileRoute('/_app/organizations')({
 
 function OrganizationsPage() {
   const { data: orgs, isPending } = useOrganizations()
+  const { data: me } = useProfile()
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState(false)
   const visible = (orgs ?? []).filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
@@ -78,9 +79,13 @@ function OrganizationsPage() {
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm text-foreground">{org.name}</span>
-                      <span className="text-xs text-foreground-lighter">
-                        {org.project_count} {org.project_count === 1 ? 'project' : 'projects'}
-                      </span>
+                      {org.mfa_required && !me?.mfa_enabled ? (
+                        <span className="text-xs text-warning-600">Requires two-factor sign-in</span>
+                      ) : (
+                        <span className="text-xs text-foreground-lighter">
+                          {org.project_count} {org.project_count === 1 ? 'project' : 'projects'}
+                        </span>
+                      )}
                     </div>
                     <Badge>{roleLabel(org.role)}</Badge>
                   </Card>

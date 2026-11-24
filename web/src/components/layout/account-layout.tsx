@@ -7,6 +7,7 @@ import { ProductMenu, WithProductMenu } from '@/components/layout/product-menu'
 
 const LINKS = [
   { label: 'Preferences', to: '/account/me' },
+  { label: 'Security', to: '/account/security' },
   { label: 'Appearance', to: '/account/appearance' },
 ]
 

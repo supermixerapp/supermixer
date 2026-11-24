@@ -9,6 +9,7 @@ import {
   DarkModeIcon,
   LightModeIcon,
   ManageAccountsIcon,
+  VerifiedUserIcon,
   PaletteIcon,
   SearchIcon,
   SystemThemeIcon,
@@ -187,6 +188,10 @@ export function CommandMenu() {
               />
               <NavItem
                 entry={{ label: 'Preferences', icon: TuneIcon, to: '/account/me' }}
+                onSelect={go}
+              />
+              <NavItem
+                entry={{ label: 'Security (two-factor sign-in)', icon: VerifiedUserIcon, to: '/account/security' }}
                 onSelect={go}
               />
               <NavItem

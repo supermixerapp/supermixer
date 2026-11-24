@@ -38,9 +38,10 @@ function OverviewPage() {
               They can’t do anything else until they do. See <Link to="/admin/users" className="text-link">Users</Link>.
             </Alert>
           )}
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
             <Stat label="Users" value={o.active_users} detail={`${o.users - o.active_users} disabled`} />
             <Stat label="Instance admins" value={o.instance_admins} />
+            <Stat label="Two-factor sign-in" value={o.mfa_enabled} detail={`of ${o.active_users} active users`} />
             <Stat label="Organizations" value={o.organizations} />
             <Stat label="Projects" value={o.projects} detail={`${o.managed_projects} created by Supermixer`} />
           </div>

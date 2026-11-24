@@ -154,6 +154,15 @@ function TeamPage() {
                             <span className="flex items-center gap-2 truncate text-foreground">
                               {m.display_name || m.username}
                               {m.user_id === me?.id && <Badge>You</Badge>}
+                              {m.mfa_enabled ? (
+                                <Badge variant="success" title="Signs in with an authenticator app">2FA</Badge>
+                              ) : (
+                                org?.mfa_required && (
+                                  <Badge variant="warning" title="Can't open this organization until they turn on two-factor sign-in">
+                                    No 2FA
+                                  </Badge>
+                                )
+                              )}
                             </span>
                             <span className="truncate text-xs text-foreground-lighter">
                               {m.username}

@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Finish signing in with a code from the authenticator app, or a recovery code */
+        post: operations["verifyMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/sign-out": {
         parameters: {
             query?: never;
@@ -100,6 +117,94 @@ export interface paths {
         put?: never;
         /** Change your password; other sessions are signed out */
         post: operations["changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether two-factor sign-in is on, and how many recovery codes are left */
+        get: operations["getMfaStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/mfa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Start setting up an authenticator app (needs your password)
+         * @description Returns a new secret to add to the app; POST /profile/mfa/enable with a code from it turns two-factor sign-in on.
+         */
+        post: operations["setupMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/mfa/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm the app with a code and turn two-factor sign-in on */
+        post: operations["enableMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/mfa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Turn two-factor sign-in off (needs your password and a code or recovery code) */
+        post: operations["disableMfa"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/profile/mfa/recovery-codes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Replace your recovery codes (needs a code from the app) */
+        post: operations["regenerateRecoveryCodes"];
         delete?: never;
         options?: never;
         head?: never;
@@ -199,6 +304,23 @@ export interface paths {
         post?: never;
         /** Sign the user out everywhere */
         delete: operations["revokeUserSessions"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/users/{user_id}/mfa": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Turn off someone's two-factor sign-in (a lost device) and sign them out everywhere */
+        delete: operations["resetUserMfa"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1387,7 +1509,7 @@ export interface components {
         };
         Error: {
             message: string;
-            /** @description Set for errors a client handles specially: password_change_required (403) means the account must choose a new password first. */
+            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on. */
             code?: string;
         };
         /** @enum {string} */
@@ -1712,6 +1834,8 @@ export interface components {
             default_password: boolean;
             /** @description Must choose a new password before anything else; until then the API only allows the profile, changing the password and signing out. */
             password_change_required: boolean;
+            /** @description Signs in with a code from an authenticator app as well as the password. */
+            mfa_enabled: boolean;
             /** @description The theme the user chose; null if they haven't, and the instance default applies. */
             theme?: components["schemas"]["ThemePreference"] | null;
             /** Format: date-time */
@@ -1736,6 +1860,48 @@ export interface components {
              */
             require_password_change: boolean;
         };
+        MfaChallenge: {
+            /** @enum {boolean} */
+            mfa_required: true;
+            /** @description Pass to POST /auth/mfa with the code. */
+            challenge: string;
+            /** Format: date-time */
+            expires_at: string;
+        };
+        MfaVerify: {
+            challenge: string;
+            /** @description The 6-digit code from the app */
+            code: string;
+        };
+        MfaStatus: {
+            enabled: boolean;
+            /** Format: date-time */
+            enabled_at?: string | null;
+            recovery_codes_left: number;
+        };
+        PasswordConfirm: {
+            password: string;
+        };
+        MfaSetup: {
+            /** @description To type into the app, in groups of four. */
+            secret: string;
+            /** @description The otpauth:// URI. */
+            uri: string;
+            /** @description The URI as a QR code (SVG). */
+            qr_svg: string;
+        };
+        MfaCode: {
+            code: string;
+        };
+        MfaDisable: {
+            password: string;
+            /** @description A code from the app */
+            code: string;
+        };
+        RecoveryCodes: {
+            /** @description Single-use; each signs in once in place of a code. */
+            codes: string[];
+        };
         AdminOverview: {
             version: string;
             users: number;
@@ -1744,6 +1910,8 @@ export interface components {
             instance_admins: number;
             /** @description Active accounts that must still choose a new password. */
             password_change_required: number;
+            /** @description Active accounts with two-factor sign-in. */
+            mfa_enabled: number;
             organizations: number;
             projects: number;
             /** @description Projects whose stacks Supermixer created. */
@@ -1794,6 +1962,7 @@ export interface components {
             is_instance_admin: boolean;
             default_password: boolean;
             password_change_required: boolean;
+            mfa_enabled: boolean;
             disabled: boolean;
             /** @description Signed-in sessions. */
             sessions: number;
@@ -1828,6 +1997,8 @@ export interface components {
             id: string;
             slug: string;
             name: string;
+            /** @description Members must use two-factor sign-in; until they turn it on they can see the organization's name and leave it, nothing else. */
+            mfa_required: boolean;
             role: components["schemas"]["OrgRole"];
             permissions: string[];
             project_count: number;
@@ -1838,7 +2009,9 @@ export interface components {
             name: string;
         };
         OrganizationUpdate: {
-            name: string;
+            name?: string;
+            /** @description Only someone who uses two-factor sign-in can turn this on. */
+            mfa_required?: boolean;
         };
         MemberProjectRole: {
             ref: string;
@@ -1849,6 +2022,7 @@ export interface components {
             /** Format: uuid */
             user_id: string;
             username: string;
+            mfa_enabled: boolean;
             display_name: string;
             email?: string | null;
             role: components["schemas"]["OrgRole"];
@@ -2195,6 +2369,42 @@ export interface operations {
                     "application/json": components["schemas"]["Profile"];
                 };
             };
+            /** @description The password is right and the account has two-factor sign-in; finish with POST /auth/mfa. No session yet. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaChallenge"];
+                };
+            };
+            401: components["responses"]["Error"];
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    verifyMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaVerify"];
+            };
+        };
+        responses: {
+            /** @description Signed in; session cookies are set. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
             401: components["responses"]["Error"];
             429: components["responses"]["Error"];
             default: components["responses"]["Error"];
@@ -2284,6 +2494,125 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getMfaStatus: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Status. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaStatus"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setupMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PasswordConfirm"];
+            };
+        };
+        responses: {
+            /** @description The secret, as text, an otpauth URI and a QR code. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MfaSetup"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    enableMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaCode"];
+            };
+        };
+        responses: {
+            /** @description On; the recovery codes, shown only now. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    disableMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaDisable"];
+            };
+        };
+        responses: {
+            /** @description Off. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    regenerateRecoveryCodes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MfaCode"];
+            };
+        };
+        responses: {
+            /** @description The new codes, shown only now; the old ones stop working. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecoveryCodes"];
+                };
             };
             default: components["responses"]["Error"];
         };
@@ -2436,6 +2765,27 @@ export interface operations {
         requestBody?: never;
         responses: {
             /** @description Signed out. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    resetUserMfa: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Turned off. */
             204: {
                 headers: {
                     [name: string]: unknown;

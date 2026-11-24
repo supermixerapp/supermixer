@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { AddIcon, SettingsIcon } from '@/components/icons'
+import { ConfirmDialog } from '@/components/confirm-dialog'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -48,6 +49,17 @@ function UsersPage() {
   const queryClient = useQueryClient()
   const [creating, setCreating] = useState(false)
   const [resetting, setResetting] = useState<User | null>(null)
+  const [resettingMfa, setResettingMfa] = useState<User | null>(null)
+  const resetMfa = useMutation({
+    mutationFn: (user: User) =>
+      unwrap(api.DELETE('/admin/users/{user_id}/mfa', { params: { path: { user_id: user.id } } })),
+    onSuccess: (_, u) => {
+      setResettingMfa(null)
+      toast.success(`Turned off two-factor sign-in for ${u.username}; they were signed out everywhere`)
+      void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
+    },
+    onError: (e) => toast.error(e.message),
+  })
 
   const update = useMutation({
     mutationFn: ({ user, body }: { user: User; body: Schemas['UserUpdate'] }) =>
@@ -110,6 +122,7 @@ function UsersPage() {
                           <span className="flex flex-wrap gap-1">
                             {u.disabled ? <Badge variant="destructive">Disabled</Badge> : <Badge variant="success">Active</Badge>}
                             {u.is_instance_admin && <Badge>Instance admin</Badge>}
+                            {u.mfa_enabled && <Badge variant="success">2FA</Badge>}
                             {u.password_change_required && <Badge variant="warning">Must change password</Badge>}
                             {u.default_password && <Badge variant="warning">Default password</Badge>}
                           </span>
@@ -141,6 +154,9 @@ function UsersPage() {
                               >
                                 {u.password_change_required ? 'Don’t require a new password' : 'Require a new password'}
                               </DropdownMenuItem>
+                              {u.mfa_enabled && u.id !== me.id && (
+                                <DropdownMenuItem onSelect={() => setResettingMfa(u)}>Reset two-factor sign-in</DropdownMenuItem>
+                              )}
                               <DropdownMenuItem
                                 disabled={u.id === me.id ? u.sessions <= 1 : u.sessions === 0}
                                 onSelect={() => signOut.mutate(u)}
@@ -172,6 +188,16 @@ function UsersPage() {
             </Card>
       )}
       <CreateUserDialog open={creating} onOpenChange={setCreating} />
+      <ConfirmDialog
+        open={resettingMfa !== null}
+        onOpenChange={(o) => !o && setResettingMfa(null)}
+        variant="warning"
+        title={`Reset two-factor sign-in for ${resettingMfa?.username}?`}
+        description="For someone who lost their authenticator app and recovery codes. Their password alone will sign them in until they set it up again, and they're signed out everywhere now. Check it's really them asking first."
+        confirmLabel="Reset"
+        loading={resetMfa.isPending}
+        onConfirm={() => resettingMfa && resetMfa.mutate(resettingMfa)}
+      />
       {resetting && <ResetPasswordDialog user={resetting} self={resetting.id === me?.id} onClose={() => setResetting(null)} />}
     </AdminLayout>
   )

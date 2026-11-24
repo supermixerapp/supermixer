@@ -64,6 +64,7 @@ import FolderOpenIconSvg from '@material-design-icons/svg/two-tone/folder_open.s
 import FileIconSvg from '@material-design-icons/svg/two-tone/insert_drive_file.svg?react'
 import ImageIconSvg from '@material-design-icons/svg/two-tone/image.svg?react'
 import LockIconSvg from '@material-design-icons/svg/two-tone/lock.svg?react'
+import VerifiedUserIconSvg from '@material-design-icons/svg/two-tone/verified_user.svg?react'
 import LockOpenIconSvg from '@material-design-icons/svg/two-tone/lock_open.svg?react'
 import PublicIconSvg from '@material-design-icons/svg/two-tone/public.svg?react'
 import KeyIconSvg from '@material-design-icons/svg/two-tone/key.svg?react'
@@ -197,6 +198,8 @@ export const FolderOpenIcon = createIcon(FolderOpenIconSvg, 'folder_open')
 export const FileIcon = createIcon(FileIconSvg, 'insert_drive_file')
 export const ImageIcon = createIcon(ImageIconSvg, 'image')
 export const LockIcon = createIcon(LockIconSvg, 'lock')
+/** Two-factor sign-in, account security (`verified_user`) */
+export const VerifiedUserIcon = createIcon(VerifiedUserIconSvg, 'verified_user')
 export const LockOpenIcon = createIcon(LockOpenIconSvg, 'lock_open')
 export const PublicIcon = createIcon(PublicIconSvg, 'public')
 export const KeyIcon = createIcon(KeyIconSvg, 'key')

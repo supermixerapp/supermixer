@@ -24,6 +24,12 @@ function onAuthError(error: unknown) {
   if (isApiError(error, 403) && error.code === 'password_change_required') {
     void queryClient.invalidateQueries({ queryKey: profileQuery.queryKey })
   }
+  // An organization started requiring two-factor sign-in, or this account
+  // turned it off elsewhere: refetching brings up the notice in its place.
+  if (isApiError(error, 403) && error.code === 'mfa_required') {
+    void queryClient.invalidateQueries({ queryKey: profileQuery.queryKey })
+    void queryClient.invalidateQueries({ queryKey: ['organizations'], exact: true })
+  }
 }
 
 const queryClient: QueryClient = new QueryClient({
