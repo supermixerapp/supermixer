@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supermixer.fullname" . }}
+  labels: {{- include "supermixer.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels: {{- include "supermixer.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "supermixer.selectorLabels" . | nindent 8 }}
+      annotations:
+        # Restart when the settings change.
+        checksum/config: {{ .Values.config | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65532
+        runAsGroup: 65532
+        seccompProfile: { type: RuntimeDefault }
+      # Long enough for emails being sent to finish (15s shutdown).
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: supermixer
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          args: ["--config", "/etc/supermixer/.env.toml"]
+          {{- with .Values.env }}
+          env: {{- toYaml . | nindent 12 }}
+          {{- end }}
+          ports:
+            - name: http
+              containerPort: 8080
+            {{- if .Values.metrics.enabled }}
+            - name: metrics
+              containerPort: {{ .Values.metrics.port }}
+            {{- end }}
+          # Ready while the database answers; alive while it listens (a
+          # database outage shouldn't restart every replica).
+          readinessProbe:
+            httpGet: { path: /api/v1/health, port: http }
+            periodSeconds: 10
+            timeoutSeconds: 5
+          livenessProbe:
+            tcpSocket: { port: http }
+            periodSeconds: 20
+          startupProbe:
+            httpGet: { path: /api/v1/health, port: http }
+            periodSeconds: 5
+            failureThreshold: 60   # migrations run at start
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: { drop: [ALL] }
+          resources: {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/supermixer
+              readOnly: true
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: config
+          secret:
+            secretName: {{ include "supermixer.secretName" . }}
+        - name: tmp
+          emptyDir: {}
+      {{- with .Values.nodeSelector }}
+      nodeSelector: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.topologySpreadConstraints }}
+      topologySpreadConstraints:
+        {{- range . }}
+        - {{ toYaml . | nindent 10 | trim }}
+          labelSelector:
+            matchLabels: {{- include "supermixer.selectorLabels" $ | nindent 14 }}
+        {{- end }}
+      {{- end }}

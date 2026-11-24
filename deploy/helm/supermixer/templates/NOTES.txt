@@ -1,0 +1,14 @@
+Supermixer is starting with {{ .Values.replicaCount }} replica(s); one does the background work.
+
+{{- if .Values.ingress.enabled }}
+Open https://{{ .Values.ingress.host }}
+{{- else }}
+  kubectl port-forward svc/{{ include "supermixer.fullname" . }} 8080:{{ .Values.service.port }}
+and open http://localhost:8080 (set server.public_url to match).
+{{- end }}
+
+The first sign-in is the bootstrap admin: see the log of the first replica to start
+  kubectl logs -l app.kubernetes.io/instance={{ .Release.Name }} | grep -i password
+
+Creating Supabase stacks (provisioning) runs `docker compose` and isn't supported
+here: register existing stacks instead.

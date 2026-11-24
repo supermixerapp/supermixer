@@ -26,7 +26,8 @@ RUN apk add --no-cache ca-certificates docker-cli docker-cli-compose \
  && adduser -D -H -u 65532 nonroot
 COPY --from=backend /out/supermixer /usr/local/bin/supermixer
 USER 65532:65532
-EXPOSE 8080
+# 8080: the app; 9100: Prometheus metrics, if [metrics] listen = ":9100".
+EXPOSE 8080 9100
 # Reads /etc/supermixer/.env.toml if it is mounted; any setting can also come
 # from SUPERMIXER_* environment variables (see .env.example.toml).
 WORKDIR /etc/supermixer

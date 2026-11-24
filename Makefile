@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs
+.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs image helm-lint
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -87,6 +87,14 @@ build: ## Build a single binary with the web UI embedded (bin/supermixer)
 		-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
 		-o ../bin/supermixer ./cmd/supermixer
 	@echo "built bin/supermixer ($(VERSION))"
+
+image: ## Build the container image, tagged with the version; IMAGE=registry/name to name it for a registry
+	docker build --build-arg VERSION=$(VERSION) -t $(or $(IMAGE),supermixer):$(VERSION) .
+
+helm-lint: ## Lint and render the Helm chart (deploy/helm/supermixer), using Helm in a container
+	docker run --rm -v "$(CURDIR)/deploy/helm:/apps" -w /apps alpine/helm:3.16.3 lint supermixer
+	docker run --rm -v "$(CURDIR)/deploy/helm:/apps" -w /apps alpine/helm:3.16.3 template sm supermixer \
+		--set ingress.enabled=true --set metrics.serviceMonitor.enabled=true >/dev/null
 
 test: ## Run Go and web tests (integration tests skip if Postgres isn't running)
 	cd backend && go test ./...

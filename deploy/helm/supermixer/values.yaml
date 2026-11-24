@@ -1,0 +1,79 @@
+# Supermixer on Kubernetes. Supermixer keeps its state in PostgreSQL, so
+# replicas are interchangeable: run two or more behind the Service, and one
+# of them at a time does the background work (backups, audit log drains,
+# watching stacks), chosen with a Postgres advisory lock.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/example/supermixer   # where you push the image built from the Dockerfile
+  tag: ""                                  # default: the chart's appVersion
+  pullPolicy: IfNotPresent
+imagePullSecrets: []
+
+# Supermixer's settings, as the .env.toml file (see .env.example.toml). It
+# holds secrets (the database URL, security.encryption_key), so it's stored
+# in a Secret. Every replica must have the same encryption_key.
+config: |
+  [server]
+  listen = ":8080"
+  public_url = "https://supermixer.example.com"
+
+  [database]
+  url = "postgres://supermixer:CHANGE-ME@postgres:5432/supermixer"
+
+  [security]
+  encryption_key = ""   # openssl rand -base64 32
+
+  [metrics]
+  listen = ":9100"
+
+# Or use a Secret you manage (key: .env.toml) instead of `config`.
+existingSecret: ""
+
+# More settings as SUPERMIXER_* environment variables, which override the
+# file (e.g. from your own Secrets).
+env: []
+#  - name: SUPERMIXER_DATABASE_URL
+#    valueFrom: { secretKeyRef: { name: supermixer-db, key: url } }
+
+service:
+  type: ClusterIP
+  port: 80
+
+metrics:
+  # Serve /metrics on this port: [metrics] listen must match (":9100").
+  enabled: true
+  port: 9100
+  serviceMonitor:
+    # Needs the Prometheus Operator's CRDs.
+    enabled: false
+    interval: 30s
+    labels: {}
+
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  host: supermixer.example.com
+  tls: []
+  #  - secretName: supermixer-tls
+  #    hosts: [supermixer.example.com]
+
+podDisruptionBudget:
+  enabled: true
+  minAvailable: 1
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { memory: 512Mi }
+
+podAnnotations: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+# Spread replicas over nodes when possible.
+topologySpreadConstraints:
+  - maxSkew: 1
+    topologyKey: kubernetes.io/hostname
+    whenUnsatisfiable: ScheduleAnyway
