@@ -10,8 +10,8 @@
 #   client_secret = "dev-only-secret"
 #   create_users = true
 #
-# and sign in as ada@example.test with the password "password" (Dex's
-# documented example user). For development only.
+# and sign in as ada@example.test (or bea@example.test) with the password
+# "password" (Dex's documented example user). For development only.
 issuer: http://localhost:5556/dex
 storage:
   type: memory
@@ -30,6 +30,8 @@ staticClients:
       - http://localhost:5173/api/v1/auth/sso/dex/callback
       - http://localhost:5174/api/v1/auth/sso/dex/callback
       - http://127.0.0.1:5175/api/v1/auth/sso/dex/callback
+      # make e2e
+      - http://127.0.0.1:5176/api/v1/auth/sso/dex/callback
 enablePasswordDB: true
 staticPasswords:
   - email: ada@example.test
@@ -37,3 +39,9 @@ staticPasswords:
     hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
     username: ada
     userID: 08a8684b-db88-4b73-90a9-3cd1661f5466
+  # A second person, for organizations people join by signing in (make e2e).
+  - email: bea@example.test
+    # bcrypt of "password"
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    username: bea
+    userID: 5c1e4f0a-7d2b-4b8e-9a63-2f1d0c9e8b71

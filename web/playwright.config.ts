@@ -22,6 +22,14 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  // Screenshots are named by test file, name and platform only.
+  snapshotPathTemplate: '{testDir}/{testFileName}-snapshots/{arg}-{platform}{ext}',
+  // The walk-through signs in the first admin and chooses their password;
+  // the others run after it.
+  projects: [
+    { name: 'walkthrough', testMatch: 'walkthrough.spec.ts' },
+    { name: 'after', testIgnore: 'walkthrough.spec.ts', dependencies: ['walkthrough'] },
+  ],
   webServer: [
     {
       command: `go run ./cmd/supermixer --config ${config}`,

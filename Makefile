@@ -103,7 +103,7 @@ test: ## Run Go and web tests (integration tests skip if Postgres isn't running)
 
 e2e: db ## End-to-end test in Chrome, on its own Supermixer (:8091), web app (:5176) and database; `make stack` for the project steps
 	web/e2e/setup.sh
-	cd web && SUPERMIXER_E2E_CONFIG=$(CURDIR)/web/e2e/.tmp/e2e.toml pnpm exec playwright test
+	cd web && SUPERMIXER_E2E_CONFIG=$(CURDIR)/web/e2e/.tmp/e2e.toml pnpm exec playwright test $(ARGS)
 
 test-integration: db ## Start Postgres, then run all Go tests including integration
 	cd backend && go test -count=1 ./...

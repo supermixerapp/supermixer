@@ -23,9 +23,27 @@ url = "postgres://supermixer:supermixer@localhost:5433/supermixer_e2e?sslmode=di
 [security]
 encryption_key = "$key"
 
+[webhooks]
+# The test's webhook receiver listens on 127.0.0.1.
+allow_private_addresses = true
+
 [bootstrap_admin]
 username = "admin"
 # Throwaway, for this test database only; the test replaces it on first sign-in.
 password = "e2e-first-admin-password"
 TOML
+# Single sign-on through Dex (make sso), when it's running.
+if curl -sf -o /dev/null --max-time 3 http://localhost:5556/dex/.well-known/openid-configuration; then
+  cat >> web/e2e/.tmp/e2e.toml <<'TOML'
+
+[[sso.providers]]
+id = "dex"
+name = "Dex"
+issuer = "http://localhost:5556/dex"
+client_id = "supermixer"
+client_secret = "dev-only-secret"
+create_users = true
+TOML
+  echo "e2e: Dex is running, so single sign-on is set up and tested"
+fi
 echo "e2e: fresh database supermixer_e2e, settings in web/e2e/.tmp/e2e.toml"

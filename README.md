@@ -34,7 +34,7 @@ Then use **New project** in Supermixer. **Fill from Supabase .env** fills the fo
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
-| `make e2e` | End-to-end walk-through in your installed Chrome (Playwright): first sign-in, an organization, registering the dev stack (`make stack` first), a Read-only member who can't see keys or change settings, and the audit log. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched; a failure leaves a trace in `web/test-results/` |
+| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), a Read-only member who can't see keys or change settings, the audit log, a webhook receiving signed events, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
 | `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
