@@ -69,5 +69,7 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     css: false,
+    // e2e/ is Playwright's (make e2e), not Vitest's.
+    exclude: ['**/node_modules/**', 'e2e/**'],
   },
 })

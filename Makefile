@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs image helm-lint
+.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs image helm-lint e2e
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -100,6 +100,10 @@ test: ## Run Go and web tests (integration tests skip if Postgres isn't running)
 	cd backend && go test ./...
 	cd web && pnpm test
 	python3 -m unittest discover -s deploy/dev-stacks -p 'test_*.py'
+
+e2e: db ## End-to-end test in Chrome, on its own Supermixer (:8091), web app (:5176) and database; `make stack` for the project steps
+	web/e2e/setup.sh
+	cd web && SUPERMIXER_E2E_CONFIG=$(CURDIR)/web/e2e/.tmp/e2e.toml pnpm exec playwright test
 
 test-integration: db ## Start Postgres, then run all Go tests including integration
 	cd backend && go test -count=1 ./...

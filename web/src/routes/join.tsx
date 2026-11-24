@@ -45,7 +45,8 @@ function JoinPage() {
         <>
           <div className="mb-8 flex flex-col gap-3">
             <h1 className="text-2xl">Join {invitation.data.organization_name}</h1>
-            <p className="text-sm text-foreground-light">
+            {/* A div: the badge is a div, which a <p> can't hold. */}
+            <div className="text-sm text-foreground-light">
               {invitation.data.invited_by ? (
                 <>
                   <span className="text-foreground">{invitation.data.invited_by}</span> invited you to join as{' '}
@@ -56,7 +57,7 @@ function JoinPage() {
               <Badge variant="success" className="align-middle">
                 {roleLabel(invitation.data.role)}
               </Badge>
-            </p>
+            </div>
           </div>
           {!invitation.data.valid ? (
             <Alert variant="warning" title="This invitation can no longer be used">

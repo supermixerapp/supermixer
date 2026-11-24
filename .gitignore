@@ -27,3 +27,8 @@ coverage/
 
 # Python bytecode (deploy/dev-stacks tests)
 __pycache__/
+
+# End-to-end tests (make e2e)
+/web/e2e/.tmp/
+/web/test-results/
+/web/playwright-report/
