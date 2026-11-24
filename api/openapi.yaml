@@ -687,6 +687,132 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/functions/{name}/versions:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: listFunctionVersions
+      tags: [Edge Functions]
+      summary: A function's kept versions, newest first
+      description: The last 10 deploys of a function, kept even after it's deleted, with each file's SHA-256.
+      responses:
+        "200":
+          description: The versions.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/FunctionVersion" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/functions/{name}/versions/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getFunctionVersion
+      tags: [Edge Functions]
+      summary: A kept version and its files
+      responses:
+        "200":
+          description: The version.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/FunctionVersionDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/functions/{name}/versions/{id}/restore:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: name, in: path, required: true, schema: { type: string } }
+      - { name: id, in: path, required: true, schema: { type: string } }
+    post:
+      operationId: restoreFunctionVersion
+      tags: [Edge Functions]
+      summary: Deploy a kept version again
+      responses:
+        "200":
+          description: Restored.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/rotation-advisories:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listRotationAdvisories
+      tags: [Projects]
+      summary: People who could read this project's keys and lost that access
+      description: |
+        They may still have the keys, so the project's keys should be rotated. The list is cleared
+        by rotating the secret key and the JWT secret together (stacks Supermixer created), or by
+        dismissing it.
+      responses:
+        "200":
+          description: The advisories, oldest first.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/RotationAdvisory" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: dismissRotationAdvisories
+      tags: [Projects]
+      summary: Dismiss the advisories (after rotating the keys where the stack runs)
+      responses:
+        "204": { description: Dismissed. }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/advisors/snapshots:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listDBSnapshots
+      tags: [Advisors]
+      summary: Snapshots of the database's objects, newest first
+      description: |
+        Fingerprints of the objects that could keep someone in: roles, SECURITY DEFINER functions,
+        triggers, event triggers, cron jobs and Auth users' passwords and roles. Taken before each
+        function deploy and on demand; the newest 20 are kept.
+      responses:
+        "200":
+          description: The snapshots.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/DBSnapshot" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createDBSnapshot
+      tags: [Advisors]
+      summary: Take a snapshot now, to compare with later
+      responses:
+        "201":
+          description: Taken.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DBSnapshot" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/advisors/changes:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - name: since
+        in: query
+        description: The snapshot to compare with; the newest if left out.
+        schema: { type: string, format: uuid }
+    get:
+      operationId: getDBChanges
+      tags: [Advisors]
+      summary: What changed in the database since a snapshot
+      responses:
+        "200":
+          description: The changes.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DBChanges" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/stack/upgrade:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1508,9 +1634,10 @@ components:
         content: { type: string }
     EdgeFunctionDetail:
       type: object
-      required: [function, files, other_files]
+      required: [function, files, other_files, sha256]
       properties:
         function: { $ref: "#/components/schemas/EdgeFunction" }
+        sha256: { type: string, description: "The deployed files' hash, as a version's (FunctionVersion.sha256)." }
         files:
           type: array
           items: { $ref: "#/components/schemas/EdgeFunctionFile" }
@@ -1524,6 +1651,95 @@ components:
       properties:
         function: { $ref: "#/components/schemas/EdgeFunction" }
         restarted: { type: boolean, description: Whether the functions service was recreated; false while the stack isn't running. }
+        version: { $ref: "#/components/schemas/FunctionVersion" }
+    DBSnapshot:
+      type: object
+      required: [id, taken_at, reason, detail, taken_by]
+      properties:
+        id: { type: string, format: uuid }
+        taken_at: { type: string, format: date-time }
+        reason: { type: string, enum: [manual, function_deploy] }
+        detail: { type: string, description: "For function_deploy, the function's name." }
+        taken_by: { type: string }
+    DBChange:
+      type: object
+      required: [key]
+      properties:
+        key: { type: string }
+        label: { type: string, description: "For Auth users, their email or phone now." }
+        before: { description: The fingerprint in the snapshot. }
+        after: { description: The fingerprint now. }
+    DBChanges:
+      type: object
+      required: [since, checked_at, superuser, categories]
+      properties:
+        since: { $ref: "#/components/schemas/DBSnapshot" }
+        checked_at: { type: string, format: date-time }
+        superuser:
+          type: boolean
+          description: "Whether the database was read as a superuser: role passwords and every role's cron jobs are covered then."
+        categories:
+          type: array
+          items:
+            type: object
+            required: [name, label, added, removed, changed]
+            properties:
+              name: { type: string }
+              label: { type: string }
+              skipped: { type: string, description: Why it couldn't be compared. }
+              added:
+                type: array
+                items: { $ref: "#/components/schemas/DBChange" }
+              removed:
+                type: array
+                items: { $ref: "#/components/schemas/DBChange" }
+              changed:
+                type: array
+                items: { $ref: "#/components/schemas/DBChange" }
+    RotationAdvisory:
+      type: object
+      required: [username, reason, created_at]
+      properties:
+        username: { type: string }
+        reason: { type: string, enum: [removed, left, role_changed, disabled, transferred] }
+        created_at: { type: string, format: date-time }
+    FunctionVersion:
+      type: object
+      required: [id, kind, created_at, sha256, files, size]
+      properties:
+        id: { type: string }
+        kind:
+          type: string
+          enum: [deployed, restored, found]
+          description: "found: the function as Supermixer found it before changing it, deployed before versions were kept or changed outside Supermixer."
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, description: "Who deployed or restored it." }
+        restored_from: { type: string, description: The version a restored one copies. }
+        sha256: { type: string, description: "The whole function's hash: SHA-256 of its files' paths and hashes." }
+        size: { type: integer, format: int64 }
+        files:
+          type: array
+          items:
+            type: object
+            required: [path, sha256, size]
+            properties:
+              path: { type: string }
+              sha256: { type: string }
+              size: { type: integer, format: int64 }
+              link: { type: string, description: "A symbolic link's target (its hash is of the target)." }
+              unreadable: { type: boolean, description: "A file Supermixer couldn't read (one a container's user wrote): listed, but not hashed or kept." }
+    FunctionVersionDetail:
+      type: object
+      required: [version, files, other_files]
+      properties:
+        version: { $ref: "#/components/schemas/FunctionVersion" }
+        files:
+          type: array
+          items: { $ref: "#/components/schemas/EdgeFunctionFile" }
+        other_files:
+          type: array
+          items: { type: string }
+          description: Files that can't be shown as text.
     LogDrain:
       type: object
       required: [id, name, type, enabled, url, headers, gzip, datadog_site, api_key_set]
@@ -2002,6 +2218,10 @@ components:
         postgres_version: { type: string }
         auth_version: { type: string }
         checked_at: { type: string, format: date-time }
+        example_secrets:
+          type: array
+          items: { type: string }
+          description: "From a connection test: the credentials given that are Supabase's public example values."
     LogSource:
       type: string
       enum: [api_gateway, auth, postgres, postgrest, pooler, storage, realtime, functions]

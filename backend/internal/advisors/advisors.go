@@ -30,7 +30,44 @@ func mustWrap(src string) string {
 	}
 	head := src[:i+len(setupEnd)]
 	query := strings.TrimSpace(src[i+len(setupEnd):])
-	return head + "\nselect name, title, level, facing, to_json(categories) as categories, description, detail, remediation, metadata, cache_key\nfrom (\n" + query + "\n) lints"
+	return head + "\nselect name, title, level, facing, to_json(categories) as categories, description, detail, remediation, metadata, cache_key\nfrom (\n" + query + "\n) lints\nunion all\n" + supermixerSQL
+}
+
+// supermixerSQL is Supermixer's own database check, in splinter's shape:
+// the JWT secret kept as a database setting, where any SQL can read it
+// (current_setting) and so mint tokens for any role. Older self-hosted
+// templates set it; Supabase's current one doesn't need it.
+const supermixerSQL = `select 'jwt_secret_in_database'::text as name,
+  'JWT secret stored as a database setting'::text as title,
+  'WARN'::text as level, 'EXTERNAL'::text as facing,
+  to_json(array['SECURITY']::text[]) as categories,
+  'The setting ` + "`" + `app.settings.jwt_secret` + "`" + ` holds the JWT secret. Any SQL that runs in the database, including functions called through the Data API, can read it with ` + "`" + `current_setting()` + "`" + ` and sign tokens for any role, service_role included.'::text as description,
+  'The database setting ` + "`" + `app.settings.jwt_secret` + "`" + ` is set.'::text as detail,
+  'Check that none of your own SQL reads ` + "`" + `app.settings.jwt_secret` + "`" + `, then run ` + "`" + `ALTER DATABASE postgres RESET "app.settings.jwt_secret";` + "`" + ` and rotate the JWT secret, since it may have been read.'::text as remediation,
+  jsonb_build_object('name', 'app.settings.jwt_secret', 'type', 'setting') as metadata,
+  'jwt_secret_in_database'::text as cache_key
+where coalesce(current_setting('app.settings.jwt_secret', true), '') <> ''`
+
+// ExampleSecretsLint reports credentials of a stack that are public example
+// values (provision.ExampleSecrets); nil when there are none.
+func ExampleSecretsLint(found []string) *Lint {
+	if len(found) == 0 {
+		return nil
+	}
+	meta, _ := json.Marshal(map[string]any{"name": strings.Join(found, ", "), "type": "credentials"})
+	return &Lint{
+		Name: "example_secrets", Title: "Stack uses Supabase's example secrets", Level: "ERROR", Facing: "EXTERNAL",
+		Categories: []string{"SECURITY"},
+		Description: "Self-hosted Supabase's example secrets are public. With the example JWT secret anyone can sign a " +
+			"service_role token and bypass Row Level Security; with the example database password anyone who reaches " +
+			"the database can log in.",
+		Detail: "These credentials Supermixer has for the stack are Supabase's published examples: " + strings.Join(found, ", ") + ".",
+		Remediation: "Generate new secrets (see Supabase's self-hosting guide: Securing your services), update the stack's `.env` " +
+			"and restart it, then update this project's connection in Supermixer. Change the other example values in the " +
+			"stack's `.env` too (`DASHBOARD_PASSWORD`, `SECRET_KEY_BASE`, `VAULT_ENC_KEY`, `PG_META_CRYPTO_KEY`, the Logflare tokens): " +
+			"Supermixer can't check those from outside.",
+		Metadata: meta, CacheKey: "example_secrets",
+	}
 }
 
 // Lint is one finding.

@@ -317,6 +317,16 @@ type BackupLeftover struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
+type DbSnapshot struct {
+	ID        uuid.UUID `json:"id"`
+	ProjectID uuid.UUID `json:"project_id"`
+	TakenAt   time.Time `json:"taken_at"`
+	Reason    string    `json:"reason"`
+	Detail    string    `json:"detail"`
+	TakenBy   string    `json:"taken_by"`
+	Data      []byte    `json:"data"`
+}
+
 type InstanceSetting struct {
 	Key       string    `json:"key"`
 	Value     []byte    `json:"value"`
@@ -382,6 +392,14 @@ type ProjectMemberRole struct {
 	ProjectID uuid.UUID   `json:"project_id"`
 	UserID    uuid.UUID   `json:"user_id"`
 	Role      ProjectRole `json:"role"`
+}
+
+type RotationAdvisory struct {
+	ID        uuid.UUID `json:"id"`
+	ProjectID uuid.UUID `json:"project_id"`
+	Username  string    `json:"username"`
+	Reason    string    `json:"reason"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type Session struct {

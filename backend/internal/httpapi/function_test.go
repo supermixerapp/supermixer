@@ -224,3 +224,122 @@ func TestEdgeFunctionsNeedACreatedStack(t *testing.T) {
 	admin.must(409, "GET", "/projects/"+ref+"/functions", nil, nil)
 	admin.must(409, "PUT", "/projects/"+ref+"/function-secrets", map[string]any{"secrets": []map[string]string{{"name": "A", "value": "b"}}}, nil)
 }
+
+// Each deploy is kept, with hashes in the audit log, and can be restored.
+func TestFunctionVersionsAPI(t *testing.T) {
+	stacks := t.TempDir()
+	fake, _ := filepath.Abs("testdata/fake-docker.sh")
+	env := newTestEnvWith(t, func(c *config.Config) {
+		c.Provisioning.Enabled = true
+		c.Provisioning.StacksDir = stacks
+		c.Provisioning.Docker = fake
+		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8226-8227", "54426-54427", "64426-64427"
+	})
+	admin := env.client(t)
+	admin.signIn("admin", "admin")
+	admin.must(201, "POST", "/organizations", map[string]string{"name": "Ver"}, nil)
+	var p struct{ Ref string }
+	admin.must(202, "POST", "/organizations/ver/projects/new-stack", map[string]string{"name": "Ver"}, &p)
+	waitStack(t, admin, p.Ref)
+	base := "/projects/" + p.Ref + "/functions/greet"
+	type version struct {
+		ID, Kind, SHA256 string
+		CreatedBy        string `json:"created_by"`
+		RestoredFrom     string `json:"restored_from"`
+		Files            []struct{ Path, SHA256 string }
+	}
+	deploy := func(body string) version {
+		var out struct{ Version version }
+		admin.must(200, "PUT", base, map[string]any{"files": []map[string]string{{"path": "index.ts", "content": body}}}, &out)
+		return out.Version
+	}
+	v1 := deploy("one")
+	if v1.Kind != "deployed" || v1.CreatedBy != "admin" || len(v1.Files) != 1 || v1.Files[0].Path != "index.ts" {
+		t.Fatalf("v1 = %+v", v1)
+	}
+	// Changed outside Supermixer: kept as found before the next deploy.
+	if err := os.WriteFile(filepath.Join(stacks, p.Ref, "volumes/functions/greet/index.ts"), []byte("by hand"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	v2 := deploy("two")
+	var list []version
+	admin.must(200, "GET", base+"/versions", nil, &list)
+	if len(list) != 3 || list[0].ID != v2.ID || list[1].Kind != "found" || list[2].ID != v1.ID {
+		t.Fatalf("versions = %+v", list)
+	}
+	var detail struct {
+		Files []struct{ Path, Content string }
+	}
+	admin.must(200, "GET", base+"/versions/"+list[1].ID, nil, &detail)
+	if len(detail.Files) != 1 || detail.Files[0].Content != "by hand" {
+		t.Fatalf("found version = %+v", detail)
+	}
+	admin.must(404, "GET", base+"/versions/nope", nil, nil)
+
+	// Delete, then restore: the function is back with v1's files.
+	admin.must(200, "DELETE", base, nil, nil)
+	var restored struct {
+		Version  version
+		Function struct{ Name string }
+	}
+	admin.must(200, "POST", base+"/versions/"+v1.ID+"/restore", nil, &restored)
+	if restored.Version.Kind != "restored" || restored.Version.RestoredFrom != v1.ID || restored.Version.SHA256 != v1.SHA256 ||
+		restored.Function.Name != "greet" {
+		t.Fatalf("restored = %+v", restored)
+	}
+	if b, _ := os.ReadFile(filepath.Join(stacks, p.Ref, "volumes/functions/greet/index.ts")); string(b) != "one" {
+		t.Fatalf("restored content = %q", b)
+	}
+
+	// If the version can't be kept, the deploy still takes effect and is audited.
+	history := filepath.Join(stacks, p.Ref, "functions-history", "greet")
+	if err := os.Chmod(history, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	if os.Geteuid() != 0 {
+		var failed struct{ Message string }
+		admin.must(500, "PUT", base, map[string]any{"files": []map[string]string{{"path": "index.ts", "content": "three"}}}, &failed)
+		if !strings.Contains(failed.Message, "deployed, but keeping this version failed") {
+			t.Errorf("message = %q", failed.Message)
+		}
+		if b, _ := os.ReadFile(filepath.Join(stacks, p.Ref, "volumes/functions/greet/index.ts")); string(b) != "three" {
+			t.Errorf("content = %q", b)
+		}
+	}
+	if err := os.Chmod(history, 0o700); err != nil {
+		t.Fatal(err)
+	}
+
+	// Read-only members see versions but can't restore.
+	ro := joinAs(t, env, admin, "ver", "verro", "read_only")
+	ro.must(200, "GET", base+"/versions", nil, nil)
+	ro.must(403, "POST", base+"/versions/"+v1.ID+"/restore", nil, nil)
+
+	// The audit log has each deploy's hashes.
+	var audit struct {
+		Entries []struct {
+			Action   string
+			Metadata map[string]any
+		}
+	}
+	admin.must(200, "GET", "/organizations/ver/audit-logs", nil, &audit)
+	seen := map[string]bool{}
+	for _, e := range audit.Entries {
+		seen[e.Action] = true
+		if e.Action == "project.function_deployed" || e.Action == "project.function_restored" || e.Action == "project.function_deleted" {
+			hashes, _ := e.Metadata["file_hashes"].([]any)
+			if e.Metadata["version_error"] != nil {
+				if e.Metadata["sha256"] == nil {
+					t.Errorf("%s without a version has no hash: %v", e.Action, e.Metadata)
+				}
+				continue
+			}
+			if e.Metadata["sha256"] == "" || e.Metadata["version"] == nil || len(hashes) != 1 || e.Metadata["files"] != float64(1) {
+				t.Errorf("%s metadata = %v", e.Action, e.Metadata)
+			}
+		}
+	}
+	if !seen["project.function_restored"] || !seen["project.function_deleted"] {
+		t.Errorf("audit = %v", seen)
+	}
+}

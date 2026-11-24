@@ -9,10 +9,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 
 	"supermixer/internal/api"
 	"supermixer/internal/naming"
+	"supermixer/internal/provision"
 	"supermixer/internal/rbac"
 	"supermixer/internal/stack"
 	"supermixer/internal/store/db"
@@ -206,7 +208,11 @@ func (h *handlers) TestConnection(ctx context.Context, req api.TestConnectionReq
 	if err != nil {
 		return nil, err
 	}
-	return api.TestConnection200JSONResponse(toHealthReport(h.checker.Check(ctx, conn))), nil
+	out := toHealthReport(h.checker.Check(ctx, conn))
+	if found := provision.ExampleSecrets(conn.Keys.JWTSecret, conn.Keys.Anon, conn.Keys.ServiceRole, conn.Database.Password); len(found) > 0 {
+		out.ExampleSecrets = &found
+	}
+	return api.TestConnection200JSONResponse(out), nil
 }
 
 func (h *handlers) CreateProject(ctx context.Context, req api.CreateProjectRequestObject) (api.CreateProjectResponseObject, error) {
@@ -347,12 +353,43 @@ func (h *handlers) TransferProject(ctx context.Context, req api.TransferProjectR
 		return nil, badRequest("the project is already in %s", target.Org.Name)
 	}
 	err = h.deps.Store.InTx(ctx, func(q *db.Queries) error {
+		// Members of the old organization who could read the keys and won't
+		// in the new one keep what they read: its admins are told to rotate.
+		members, err := q.ListMembers(ctx, p.OrganizationID)
+		if err != nil {
+			return err
+		}
+		could := map[uuid.UUID]bool{}
+		for _, m := range members {
+			if m.User.DisabledAt != nil {
+				continue // advised when it was disabled
+			}
+			access, err := keyAccess(ctx, q, p.OrganizationID, m.User.ID)
+			if err != nil {
+				return err
+			}
+			could[m.User.ID] = access[p.ID]
+		}
 		if err := q.MoveProject(ctx, db.MoveProjectParams{ID: p.ID, OrganizationID: target.Org.ID}); err != nil {
 			return err
 		}
 		// Project-scoped roles belonged to members of the old organization.
 		if err := q.DeleteProjectRoles(ctx, p.ID); err != nil {
 			return err
+		}
+		for _, m := range members {
+			if !could[m.User.ID] {
+				continue
+			}
+			access, err := keyAccess(ctx, q, target.Org.ID, m.User.ID)
+			if err != nil {
+				return err
+			}
+			if !access[p.ID] {
+				if err := q.AddRotationAdvisory(ctx, db.AddRotationAdvisoryParams{ProjectID: p.ID, Username: m.User.Username, Reason: "transferred"}); err != nil {
+					return err
+				}
+			}
 		}
 		meta := map[string]any{"from": a.Row.OrganizationSlug, "to": target.Org.Slug}
 		h.audit(ctx, q, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.transferred_out", TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: meta})

@@ -395,3 +395,15 @@ func (c Compose) RemoveProjectVolumes(ctx context.Context, log io.Writer) error 
 	}
 	return errors.Join(errs...)
 }
+
+// QueryJSON runs read-only SQL that returns one JSON value in the stack's
+// db container, as supabase_admin (which sees every role's objects), and
+// returns that value.
+func (c Compose) QueryJSON(ctx context.Context, sql string) ([]byte, error) {
+	var out strings.Builder
+	in := strings.NewReader("set default_transaction_read_only = on;\n" + sql + ";\n")
+	if err := c.dbExec(ctx, nil, in, &out, nil, "psql", "-d", "postgres", "-AtXq", "-v", "ON_ERROR_STOP=1", "-f", "-"); err != nil {
+		return nil, err
+	}
+	return []byte(strings.TrimSpace(out.String())), nil
+}

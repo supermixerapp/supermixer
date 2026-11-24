@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -21,6 +22,7 @@ import (
 
 	"supermixer/internal/bootstrap"
 	"supermixer/internal/config"
+	"supermixer/internal/provision"
 	"supermixer/internal/secrets"
 	"supermixer/internal/store"
 	"supermixer/internal/theme"
@@ -305,10 +307,19 @@ func TestOrganizationsRolesAndProjects(t *testing.T) {
 			Service, Status string
 			Detail          string
 		} `json:"services"`
+		ExampleSecrets []string `json:"example_secrets"`
 	}
 	admin.must(200, "POST", "/organizations/acme-inc/projects/test-connection", connectionFor(t, gw, env.dbURL), &health)
-	if health.Status != "healthy" {
+	if health.Status != "healthy" || health.ExampleSecrets != nil {
 		t.Fatalf("test-connection: %+v", health)
+	}
+	// Supabase's public example secrets are pointed out.
+	example := connectionFor(t, gw, env.dbURL)
+	example["keys"].(map[string]any)["jwt_secret"] = provision.ExampleEnv()["JWT_SECRET"]
+	example["keys"].(map[string]any)["service_role"] = provision.ExampleEnv()["SERVICE_ROLE_KEY"]
+	admin.must(200, "POST", "/organizations/acme-inc/projects/test-connection", example, &health)
+	if !slices.Equal(health.ExampleSecrets, []string{"JWT secret", "service_role key"}) {
+		t.Fatalf("example secrets = %v", health.ExampleSecrets)
 	}
 	var p1, p2 struct {
 		Ref      string `json:"ref"`

@@ -270,6 +270,10 @@ func (h *handlers) UpdateMember(ctx context.Context, req api.UpdateMemberRequest
 		if !rbac.CanAssign(a.Role, curRole) || !rbac.CanAssign(a.Role, newRole) {
 			return forbidden("manage Owners")
 		}
+		before, err := keyAccess(ctx, q, a.Org.ID, req.UserId)
+		if err != nil {
+			return err
+		}
 		if curRole != newRole {
 			if err := ensureOwnerRemains(ctx, q, a.Org.ID, curRole); err != nil {
 				return err
@@ -296,6 +300,15 @@ func (h *handlers) UpdateMember(ctx context.Context, req api.UpdateMemberRequest
 		}
 		if target, err = q.GetUserByID(ctx, req.UserId); err != nil {
 			return err
+		}
+		after, err := keyAccess(ctx, q, a.Org.ID, req.UserId)
+		if err != nil {
+			return err
+		}
+		if target.DisabledAt == nil { // a disabled account was advised for when it was disabled
+			if err := adviseRotation(ctx, q, before, after, target.Username, "role_changed"); err != nil {
+				return err
+			}
 		}
 		h.audit(ctx, q, auditEntry{OrgID: &a.Org.ID, Action: "member.updated", TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username, Metadata: meta})
 		return nil
@@ -340,6 +353,10 @@ func (h *handlers) RemoveMember(ctx context.Context, req api.RemoveMemberRequest
 		if err := ensureOwnerRemains(ctx, q, a.Org.ID, curRole); err != nil {
 			return err
 		}
+		before, err := keyAccess(ctx, q, a.Org.ID, req.UserId)
+		if err != nil {
+			return err
+		}
 		if err := q.DeleteMemberProjectRoles(ctx, db.DeleteMemberProjectRolesParams{OrganizationID: a.Org.ID, UserID: req.UserId}); err != nil {
 			return err
 		}
@@ -350,9 +367,14 @@ func (h *handlers) RemoveMember(ctx context.Context, req api.RemoveMemberRequest
 		if err != nil {
 			return err
 		}
-		action := "member.removed"
+		action, reason := "member.removed", "removed"
 		if self {
-			action = "member.left"
+			action, reason = "member.left", "left"
+		}
+		if target.DisabledAt == nil { // a disabled account was advised for when it was disabled
+			if err := adviseRotation(ctx, q, before, nil, target.Username, reason); err != nil {
+				return err
+			}
 		}
 		h.audit(ctx, q, auditEntry{OrgID: &a.Org.ID, Action: action, TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username,
 			Metadata: map[string]any{"role": curRole}})

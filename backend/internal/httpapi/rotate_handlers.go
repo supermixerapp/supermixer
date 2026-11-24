@@ -65,6 +65,7 @@ func (h *handlers) RotateStackKeys(ctx context.Context, req api.RotateStackKeysR
 // its keys, then, if it runs, brings it up so Compose recreates the services
 // whose settings changed (and functions_user gets its new password).
 func (h *handlers) rotateKeys(ctx context.Context, p db.Project, which []provision.Rotation, running bool, log io.Writer) error {
+	started := time.Now() // advice recorded after this may concern the new keys
 	dir := h.stackLayout(p.Ref).Dir
 	env, err := provision.ReadEnv(dir)
 	if err != nil {
@@ -87,6 +88,12 @@ func (h *handlers) rotateKeys(ctx context.Context, p db.Project, which []provisi
 	conn.Keys.Publishable, conn.Keys.Secret = env["SUPABASE_PUBLISHABLE_KEY"], env["SUPABASE_SECRET_KEY"]
 	if _, err := h.saveConnection(context.WithoutCancel(ctx), p, conn); err != nil {
 		return fmt.Errorf("rotated the stack's keys, but couldn't save Supermixer's copy: %w", err)
+	}
+	if rotationClears(which) {
+		if _, err := h.deps.Store.Queries.ClearRotationAdvisories(context.WithoutCancel(ctx),
+			db.ClearRotationAdvisoriesParams{ProjectID: p.ID, Before: started}); err != nil {
+			fmt.Fprintf(log, "\ncouldn't clear the advice to rotate: %v\n", err)
+		}
 	}
 	if !running {
 		fmt.Fprintf(log, "the stack is paused; it starts with the new keys\n")

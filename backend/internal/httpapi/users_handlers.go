@@ -158,6 +158,9 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 			return createUserErr(err)
 		}
 		if disabling {
+			if err := adviseRotationForUser(ctx, q, u, "disabled"); err != nil {
+				return err
+			}
 			return q.DeleteUserSessions(ctx, u.ID)
 		}
 		return nil

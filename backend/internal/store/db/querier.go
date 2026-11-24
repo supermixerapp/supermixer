@@ -13,7 +13,11 @@ import (
 
 type Querier interface {
 	AddBackupLeftover(ctx context.Context, arg AddBackupLeftoverParams) error
+	AddDBSnapshot(ctx context.Context, arg AddDBSnapshotParams) (AddDBSnapshotRow, error)
 	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
+	AddRotationAdvisory(ctx context.Context, arg AddRotationAdvisoryParams) error
+	// Those recorded before a time (a rotation's start: later ones may concern its new keys).
+	ClearRotationAdvisories(ctx context.Context, arg ClearRotationAdvisoriesParams) (int64, error)
 	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOwners(ctx context.Context, organizationID uuid.UUID) (int64, error)
@@ -45,6 +49,7 @@ type Querier interface {
 	// The session for a token, if it is unexpired and its user is enabled.
 	GetActiveSession(ctx context.Context, tokenHash []byte) (GetActiveSessionRow, error)
 	GetBackup(ctx context.Context, arg GetBackupParams) (Backup, error)
+	GetDBSnapshot(ctx context.Context, arg GetDBSnapshotParams) (DbSnapshot, error)
 	GetInstalledAt(ctx context.Context) (time.Time, error)
 	GetInvitationByTokenHash(ctx context.Context, tokenHash []byte) (GetInvitationByTokenHashRow, error)
 	GetMemberRole(ctx context.Context, arg GetMemberRoleParams) (OrgRole, error)
@@ -58,9 +63,11 @@ type Querier interface {
 	// When the stack's last scheduled backup started (failed ones count, so a
 	// failing stack isn't retried every minute).
 	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
+	LatestDBSnapshotData(ctx context.Context, projectID uuid.UUID) ([]byte, error)
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
 	ListBackupLeftovers(ctx context.Context, bucket string) ([]BackupLeftover, error)
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
+	ListDBSnapshots(ctx context.Context, projectID uuid.UUID) ([]ListDBSnapshotsRow, error)
 	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
 	ListOrganizationProjectRoles(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationProjectRolesRow, error)
@@ -70,6 +77,7 @@ type Querier interface {
 	ListProjectRemoteBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
 	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
+	ListRotationAdvisories(ctx context.Context, projectID uuid.UUID) ([]RotationAdvisory, error)
 	ListRunningStacksForBackup(ctx context.Context) ([]Project, error)
 	ListSnippets(ctx context.Context, arg ListSnippetsParams) ([]ListSnippetsRow, error)
 	ListStackPorts(ctx context.Context) ([]ListStackPortsRow, error)
@@ -91,6 +99,9 @@ type Querier interface {
 	// failed upload waiting 2, 4, 8 ... minutes (an hour at most) between tries.
 	PendingUploads(ctx context.Context) ([]PendingUploadsRow, error)
 	ProjectRefExists(ctx context.Context, ref string) (bool, error)
+	// Keeps a project's newest 20 snapshots taken before deploys. Manual ones
+	// stay until the project goes, so deploys can't push a baseline out.
+	PruneDBSnapshots(ctx context.Context, projectID uuid.UUID) error
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)

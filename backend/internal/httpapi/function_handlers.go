@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -135,7 +136,11 @@ func (h *handlers) GetEdgeFunction(ctx context.Context, req api.GetEdgeFunctionR
 	if err != nil {
 		return nil, err
 	}
-	out := api.GetEdgeFunction200JSONResponse{Function: h.toEdgeFunction(p, info), OtherFiles: other,
+	sum, err := provision.FunctionHash(dir, req.Name)
+	if err != nil {
+		return nil, err
+	}
+	out := api.GetEdgeFunction200JSONResponse{Function: h.toEdgeFunction(p, info), OtherFiles: other, Sha256: sum,
 		Files: make([]api.EdgeFunctionFile, len(files))}
 	for i, f := range files {
 		out.Files[i] = api.EdgeFunctionFile{Path: f.Path, Content: f.Content}
@@ -157,27 +162,178 @@ func (h *handlers) DeployEdgeFunction(ctx context.Context, req api.DeployEdgeFun
 	}
 	keep := deref(req.Body.Keep)
 	_, _, _, missing := provision.ReadFunction(dir, req.Name)
+	by := username(ctx)
+	var version provision.FunctionVersion
+	var recordErr error
 	restarted, err := h.changeFunctions(ctx, p, "deploying "+req.Name, func() error {
+		h.beforeFunctionChange(ctx, p, dir, req.Name)
 		if err := provision.WriteFunction(dir, req.Name, files, keep); err != nil {
 			return badRequest("%s", err)
 		}
+		// From here the new files are live: a failure to keep the version
+		// doesn't stop the restart or the audit entry.
+		version, _, recordErr = provision.RecordFunctionVersion(dir, req.Name, provision.VersionDeployed, by, "", time.Now())
 		return nil
 	})
 	if err != nil && !isStatus(err, http.StatusBadGateway) {
 		return nil, err
 	}
+	meta := h.versionAudit(dir, req.Name, version, recordErr)
+	meta["function"], meta["new"] = req.Name, missing != nil
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.function_deployed",
-		TargetType: "project", TargetID: p.Ref, TargetName: p.Name,
-		Metadata: map[string]any{"function": req.Name, "files": len(files) + len(keep), "new": missing != nil}})
+		TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: meta})
 	if err != nil {
 		return nil, err // saved, but the restart failed
 	}
-	info, _, _, err := provision.ReadFunction(dir, req.Name)
+	if recordErr != nil {
+		return nil, newError(http.StatusInternalServerError, "deployed, but keeping this version failed: %v", recordErr)
+	}
+	out, err := h.functionChange(p, dir, req.Name, restarted, version)
 	if err != nil {
 		return nil, err
 	}
+	return api.DeployEdgeFunction200JSONResponse(out), nil
+}
+
+// functionChange is the response to a deploy or restore.
+func (h *handlers) functionChange(p db.Project, dir, name string, restarted bool, v provision.FunctionVersion) (api.EdgeFunctionChange, error) {
+	info, _, _, err := provision.ReadFunction(dir, name)
+	if err != nil {
+		return api.EdgeFunctionChange{}, err
+	}
 	fn := h.toEdgeFunction(p, info)
-	return api.DeployEdgeFunction200JSONResponse{Function: &fn, Restarted: restarted}, nil
+	out := api.EdgeFunctionChange{Function: &fn, Restarted: restarted}
+	if v.ID != "" {
+		av := toFunctionVersion(v)
+		out.Version = &av
+	}
+	return out, nil
+}
+
+// beforeFunctionChange runs, holding the stack, before a function's files
+// change: the function as it is is kept as a version (if it isn't already),
+// so it can be restored, and the database is snapshotted for Advisors ›
+// Changes. Neither stops the change if it fails.
+func (h *handlers) beforeFunctionChange(ctx context.Context, p db.Project, dir, name string) {
+	if err := provision.RecordFoundVersion(dir, name, time.Now()); err != nil {
+		h.deps.Logger.Warn("keeping a function's current version", "ref", p.Ref, "function", name, "err", err)
+	}
+	h.snapshotBeforeDeploy(ctx, p, name)
+}
+
+// versionAudit is what the audit log records of a function version: the
+// number of files, the function's hash and each file's, so a deploy can be
+// checked against what ran. If the version couldn't be kept, the hash is
+// taken from the files now.
+func (h *handlers) versionAudit(dir, name string, v provision.FunctionVersion, recordErr error) map[string]any {
+	if v.ID == "" {
+		meta := map[string]any{}
+		if recordErr != nil {
+			meta["version_error"] = firstLine(recordErr.Error())
+			if sum, err := provision.FunctionHash(dir, name); err == nil {
+				meta["sha256"] = sum
+			}
+		}
+		return meta
+	}
+	hashes := make([]map[string]any, len(v.Files))
+	for i, f := range v.Files {
+		hashes[i] = map[string]any{"path": f.Path, "sha256": f.SHA256}
+	}
+	return map[string]any{"version": v.ID, "sha256": v.SHA256, "files": len(v.Files), "file_hashes": hashes}
+}
+
+func toFunctionVersion(v provision.FunctionVersion) api.FunctionVersion {
+	var out api.FunctionVersion
+	b, _ := json.Marshal(v) // the same JSON shape
+	_ = json.Unmarshal(b, &out)
+	return out
+}
+
+// username is the signed-in user's name, for records.
+func username(ctx context.Context) string {
+	if p, err := currentUser(ctx); err == nil {
+		return p.User.Username
+	}
+	return ""
+}
+
+func (h *handlers) ListFunctionVersions(ctx context.Context, req api.ListFunctionVersionsRequestObject) (api.ListFunctionVersionsResponseObject, error) {
+	_, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectDataRead, "view this project's functions")
+	if err != nil {
+		return nil, err
+	}
+	list, err := provision.ListFunctionVersions(dir, req.Name)
+	if errors.Is(err, provision.ErrNoFunction) {
+		return nil, newError(http.StatusNotFound, "there's no function %q", req.Name)
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := make(api.ListFunctionVersions200JSONResponse, len(list))
+	for i, v := range list {
+		out[i] = toFunctionVersion(v)
+	}
+	return out, nil
+}
+
+func (h *handlers) GetFunctionVersion(ctx context.Context, req api.GetFunctionVersionRequestObject) (api.GetFunctionVersionResponseObject, error) {
+	_, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectDataRead, "view this project's functions")
+	if err != nil {
+		return nil, err
+	}
+	v, files, other, err := provision.ReadFunctionVersion(dir, req.Name, req.Id)
+	if errors.Is(err, provision.ErrNoVersion) {
+		return nil, notFound("version")
+	}
+	if err != nil {
+		return nil, err
+	}
+	out := api.GetFunctionVersion200JSONResponse{Version: toFunctionVersion(v), OtherFiles: other,
+		Files: make([]api.EdgeFunctionFile, len(files))}
+	for i, f := range files {
+		out.Files[i] = api.EdgeFunctionFile{Path: f.Path, Content: f.Content}
+	}
+	return out, nil
+}
+
+func (h *handlers) RestoreFunctionVersion(ctx context.Context, req api.RestoreFunctionVersionRequestObject) (api.RestoreFunctionVersionResponseObject, error) {
+	p, dir, err := h.managedFunctions(ctx, req.Ref, rbac.ProjectFunctionsDeploy, "deploy functions")
+	if err != nil {
+		return nil, err
+	}
+	if _, _, _, err := provision.ReadFunctionVersion(dir, req.Name, req.Id); err != nil {
+		return nil, notFound("version")
+	}
+	by := username(ctx)
+	var version provision.FunctionVersion
+	var recordErr error
+	restarted, err := h.changeFunctions(ctx, p, "restoring "+req.Name, func() error {
+		h.beforeFunctionChange(ctx, p, dir, req.Name)
+		if err := provision.RestoreFunctionVersion(dir, req.Name, req.Id); err != nil {
+			return err
+		}
+		version, _, recordErr = provision.RecordFunctionVersion(dir, req.Name, provision.VersionRestored, by, req.Id, time.Now())
+		return nil
+	})
+	if err != nil && !isStatus(err, http.StatusBadGateway) {
+		return nil, err
+	}
+	meta := h.versionAudit(dir, req.Name, version, recordErr)
+	meta["function"], meta["restored_from"] = req.Name, req.Id
+	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.function_restored",
+		TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: meta})
+	if err != nil {
+		return nil, err
+	}
+	if recordErr != nil {
+		return nil, newError(http.StatusInternalServerError, "restored, but keeping this version failed: %v", recordErr)
+	}
+	out, err := h.functionChange(p, dir, req.Name, restarted, version)
+	if err != nil {
+		return nil, err
+	}
+	return api.RestoreFunctionVersion200JSONResponse(out), nil
 }
 
 func (h *handlers) DeleteEdgeFunction(ctx context.Context, req api.DeleteEdgeFunctionRequestObject) (api.DeleteEdgeFunctionResponseObject, error) {
@@ -185,7 +341,15 @@ func (h *handlers) DeleteEdgeFunction(ctx context.Context, req api.DeleteEdgeFun
 	if err != nil {
 		return nil, err
 	}
+	var last provision.FunctionVersion
 	restarted, err := h.changeFunctions(ctx, p, "deleting "+req.Name, func() error {
+		// Kept, so a deleted function can be restored.
+		if err := provision.RecordFoundVersion(dir, req.Name, time.Now()); err != nil {
+			h.deps.Logger.Warn("keeping a function's current version", "ref", p.Ref, "function", req.Name, "err", err)
+		}
+		if list, err := provision.ListFunctionVersions(dir, req.Name); err == nil && len(list) > 0 {
+			last = list[0]
+		}
 		err := provision.DeleteFunction(dir, req.Name)
 		if errors.Is(err, provision.ErrNoFunction) {
 			return newError(http.StatusNotFound, "there's no function %q", req.Name)
@@ -195,8 +359,10 @@ func (h *handlers) DeleteEdgeFunction(ctx context.Context, req api.DeleteEdgeFun
 	if err != nil && !isStatus(err, http.StatusBadGateway) {
 		return nil, err
 	}
+	meta := h.versionAudit(dir, req.Name, last, nil)
+	meta["function"] = req.Name
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.function_deleted",
-		TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: map[string]any{"function": req.Name}})
+		TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: meta})
 	if err != nil {
 		return nil, err
 	}

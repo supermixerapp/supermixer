@@ -343,7 +343,7 @@ func TestBackupBucketSwitch(t *testing.T) {
 			c.Provisioning.BackupsDir = backups
 			c.Provisioning.BackupInterval = 0
 			c.Provisioning.Docker = fake
-			c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8270-8271", "54470-54471", "64470-64471"
+			c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8272-8273", "54472-54473", "64472-64473"
 			c.Provisioning.BackupS3 = config.BackupS3{Bucket: bucket, Endpoint: "http://s3.test", Prefix: "sm", KeepLocal: keepLocal}
 		}
 	}

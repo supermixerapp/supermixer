@@ -10,6 +10,7 @@ import (
 
 	"supermixer/internal/advisors"
 	"supermixer/internal/api"
+	"supermixer/internal/provision"
 	"supermixer/internal/rbac"
 	"supermixer/internal/stack"
 )
@@ -47,6 +48,10 @@ func (h *handlers) ListLints(ctx context.Context, req api.ListLintsRequestObject
 	lints, err := advisors.FromResult(results[len(results)-1])
 	if err != nil {
 		return nil, err
+	}
+	k := conn.Keys
+	if l := advisors.ExampleSecretsLint(provision.ExampleSecrets(k.JWTSecret, k.Anon, k.ServiceRole, conn.Database.Password)); l != nil {
+		lints = append(lints, *l)
 	}
 	sort.SliceStable(lints, func(i, j int) bool {
 		if lintOrder[lints[i].Level] != lintOrder[lints[j].Level] {

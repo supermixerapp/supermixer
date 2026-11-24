@@ -53,6 +53,36 @@ func TestSplinterRuns(t *testing.T) {
 		c.Close(context.Background())
 	}()
 
+	// Supermixer's own check: the JWT secret as a setting (set for this session only).
+	count := func() int {
+		rows, err := c.Query(ctx, supermixerSQL)
+		if err != nil {
+			t.Fatal(err)
+		}
+		n := 0
+		for rows.Next() {
+			n++
+		}
+		rows.Close()
+		return n
+	}
+	if _, err := c.Exec(ctx, `reset "app.settings.jwt_secret"`); err != nil {
+		t.Fatal(err)
+	}
+	baseline := count()
+	if _, err := c.Exec(ctx, `set "app.settings.jwt_secret" = 'probe'`); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(); n != 1 {
+		t.Errorf("with the setting: %d rows", n)
+	}
+	if _, err := c.Exec(ctx, `set "app.settings.jwt_secret" = ''`); err != nil {
+		t.Fatal(err)
+	}
+	if n := count(); n != 0 {
+		t.Errorf("with the setting empty: %d rows (baseline %d)", n, baseline)
+	}
+
 	u, _ := url.Parse(raw)
 	pw, _ := u.User.Password()
 	port, _ := strconv.Atoi(u.Port())

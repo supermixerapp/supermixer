@@ -327,6 +327,13 @@ func WriteFunction(stackDir, name string, files []FunctionFile, keep []string) e
 		}
 	}
 
+	return swapIn(root, name, tmp)
+}
+
+// swapIn makes the folder tmp (in root) the function name, replacing the
+// current one, if any, in one rename.
+func swapIn(root, name, tmp string) error {
+	current := filepath.Join(root, name)
 	old := ""
 	if _, err := os.Lstat(current); err == nil {
 		old = filepath.Join(root, fmt.Sprintf(".old-%s-%d", name, time.Now().UnixNano()))
