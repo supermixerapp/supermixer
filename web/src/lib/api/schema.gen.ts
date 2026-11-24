@@ -1012,7 +1012,7 @@ export interface paths {
         /** How a created stack's Edge Functions reach its database */
         get: operations["getFunctionSettings"];
         /**
-         * Change how Edge Functions reach the database, then restart the functions service
+         * Change what Edge Functions can reach, then restart the functions service
          * @description Needs project settings access (Owners and Administrators). Recorded in the audit log.
          */
         put: operations["setFunctionSettings"];
@@ -1605,6 +1605,18 @@ export interface components {
              * @enum {string}
              */
             database_access: "service_role" | "postgres";
+            /**
+             * @description Whether functions get SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEYS and SUPABASE_DB_URL
+             *     (the default). Without them a function acts as its caller, with the caller's token and
+             *     the publishable or anon key: deployed code can't bypass Row Level Security, but
+             *     functions that use admin APIs or the database URL stop working.
+             */
+            admin_access: boolean;
+        };
+        FunctionSettingsUpdate: {
+            /** @enum {string} */
+            database_access?: "service_role" | "postgres";
+            admin_access?: boolean;
         };
         FunctionSecret: {
             name: string;
@@ -3676,7 +3688,7 @@ export interface operations {
         };
         requestBody: {
             content: {
-                "application/json": components["schemas"]["FunctionSettings"];
+                "application/json": components["schemas"]["FunctionSettingsUpdate"];
             };
         };
         responses: {

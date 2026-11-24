@@ -71,6 +71,7 @@ function SecretsPage() {
   }
   return (
     <DatabasePage title="Edge Function Secrets" description={description}>
+      <AdminAccess projectRef={ref} canChange={can(project, 'project:update')} />
       <DatabaseAccess projectRef={ref} canChange={can(project, 'project:update')} />
       <Secrets
         projectRef={ref}
@@ -267,6 +268,95 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
   )
 }
 
+const ADMIN: { value: boolean; title: string; text: string }[] = [
+  {
+    value: true,
+    title: 'Admin access (default)',
+    text: 'Functions get SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEYS and SUPABASE_DB_URL, and can bypass Row Level Security.',
+  },
+  {
+    value: false,
+    title: 'Caller’s access only',
+    text: 'Functions get none of them: they act as whoever calls them, with the caller’s token and the publishable or anon key.',
+  },
+]
+
+/** Whether functions get the admin keys and the database URL. */
+function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canChange: boolean }) {
+  const queryClient = useQueryClient()
+  const settings = useQuery(functionSettingsQuery(ref))
+  const [confirm, setConfirm] = useState(false)
+  const set = useMutation({
+    mutationFn: (on: boolean) =>
+      unwrap(api.PUT('/projects/{ref}/function-settings', { params: { path: { ref } }, body: { admin_access: on } })),
+    onSuccess: (res) => {
+      toast.success(
+        (res.admin_access ? 'Functions have admin access again' : 'Functions now act as their caller') +
+          (res.restarted ? '' : '; this takes effect when the stack starts')
+      )
+      setConfirm(false)
+      void queryClient.invalidateQueries({ queryKey: functionSettingsQuery(ref).queryKey })
+    },
+  })
+  const current = settings.data?.admin_access
+  const choose = (on: boolean) => {
+    if (on === current || set.isPending) return
+    if (!on) setConfirm(true)
+    else set.mutate(true)
+  }
+  return (
+    <Card className="flex flex-col gap-4 p-5">
+      <div className="flex flex-col gap-1">
+        <span className="text-sm text-foreground">Admin access</span>
+        <span className="text-xs text-foreground-lighter">
+          Whether deployed code can act with full access. Without it, a malicious or careless deploy can’t bypass Row Level
+          Security or read the project’s secret keys.
+          {!canChange && ' Owners and Administrators can change it.'}
+        </span>
+      </div>
+      {settings.error ? (
+        <Alert variant="destructive" title={settings.error.message} />
+      ) : current === undefined ? (
+        <Skeleton className="h-20" />
+      ) : (
+        <div role="radiogroup" aria-label="Admin access" className="grid gap-3 sm:grid-cols-2">
+          {ADMIN.map((a) => (
+            <button
+              key={String(a.value)}
+              type="button"
+              role="radio"
+              aria-checked={current === a.value}
+              disabled={!canChange || set.isPending}
+              onClick={() => choose(a.value)}
+              className={cn(
+                'flex flex-col gap-1 rounded-panel border px-4 py-3 text-left focus-ring disabled:cursor-not-allowed',
+                current === a.value ? 'border-primary-bright bg-surface-100' : 'enabled:hover:border-strong',
+                !canChange && current !== a.value && 'opacity-60'
+              )}
+            >
+              <span className="text-sm text-foreground">{a.title}</span>
+              <span className="text-xs text-foreground-lighter">{a.text}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {set.error && !confirm && <Alert variant="destructive" title={set.error.message} />}
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        variant="warning"
+        title="Turn off the functions’ admin access?"
+        description="Functions stop getting SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEYS and SUPABASE_DB_URL. Any function that uses Auth’s admin API, bypasses Row Level Security or connects to the database directly stops working until you turn it back on. Functions that act for the signed-in user keep working."
+        confirmLabel="Turn off admin access"
+        loading={set.isPending}
+        onConfirm={() => set.mutate(false)}
+      >
+        {set.error && <Alert variant="destructive" title={set.error.message} />}
+      </ConfirmDialog>
+    </Card>
+  )
+}
+
 type Access = 'service_role' | 'postgres'
 
 const ACCESS: { value: Access; title: string; text: string }[] = [
@@ -300,6 +390,7 @@ function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; ca
     },
   })
   const current = settings.data?.database_access
+  const withheld = settings.data?.admin_access === false
   const choose = (access: Access) => {
     if (access === current || set.isPending) return
     if (access === 'postgres') setConfirm(true)
@@ -311,6 +402,7 @@ function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; ca
         <span className="text-sm text-foreground">Database access</span>
         <span className="text-xs text-foreground-lighter">
           The login in SUPABASE_DB_URL, which every function can read.
+          {withheld && ' Functions don’t get SUPABASE_DB_URL while admin access is off.'}
           {!canChange && ' Owners and Administrators can change it.'}
         </span>
       </div>
