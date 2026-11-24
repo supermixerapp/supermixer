@@ -33,8 +33,8 @@ async function signIn(page: Page) {
   await page.getByLabel('Username').fill('admin')
   await page.getByLabel('Password', { exact: true }).fill(ADMIN_PASSWORD)
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
-  // The landing page: one organization's projects, or the list.
-  await page.waitForURL((u) => !u.pathname.startsWith('/sign-in') && u.pathname !== '/')
+  // The dashboard: one organization's projects, or the list.
+  await page.waitForURL((u) => !u.pathname.startsWith('/sign-in') && u.pathname !== '/dashboard')
 }
 
 test('an organization requires Dex, and people join by signing in with it', async ({ page, browser }) => {

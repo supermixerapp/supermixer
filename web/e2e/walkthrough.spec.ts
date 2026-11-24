@@ -96,6 +96,28 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await ctx.close()
   })
 
+  await test.step('the homepage: Sign in for visitors; Dashboard, search and the account menu once signed in', async () => {
+    const ctx = await browser.newContext()
+    watchRequests(ctx, outside)
+    const visitor = await ctx.newPage()
+    await visitor.goto('/')
+    await expect(visitor.getByRole('heading', { name: /All your Supabase projects/ })).toBeVisible()
+    const nav = visitor.getByRole('banner')
+    await expect(nav.getByRole('link', { name: 'Dashboard' })).toHaveCount(0)
+    await expect(nav.getByRole('button', { name: 'Account menu' })).toHaveCount(0)
+    await nav.getByRole('link', { name: 'Sign in' }).click()
+    await expect(visitor).toHaveURL(/\/sign-in$/)
+    await ctx.close()
+
+    await page.goto('/')
+    const header = page.getByRole('banner')
+    await expect(header.getByRole('button', { name: 'Account menu' })).toBeVisible()
+    await expect(header.getByRole('button', { name: /^Search\.\.\./ })).toBeVisible()
+    await expect(header.getByRole('link', { name: 'Sign in' })).toHaveCount(0)
+    await header.getByRole('link', { name: 'Dashboard' }).click()
+    await expect(page).toHaveURL(new RegExp(`/org/${slug}$`))
+  })
+
   let ref = ''
   await test.step('register the dev stack; Test connection passes', async () => {
     await page.goto(`/new/${slug}`)
@@ -205,6 +227,13 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(page.getByText(`${message.length} / 256`)).toBeVisible()
     await page.getByRole('button', { name: 'Post notice' }).click()
     await expect(page.getByText('Notice posted')).toBeVisible()
+
+    // Visitors who aren't signed in see it on the homepage too.
+    const anon = await browser.newContext()
+    const visitor = await anon.newPage()
+    await visitor.goto('/')
+    await expect(visitor.getByRole('status', { name: 'Warning notice' })).toHaveText(shown)
+    await anon.close()
 
     // The member: after a reload (otherwise within a minute), on any page, as tall as the header.
     await reader.goto(`/org/${slug}`)
@@ -362,6 +391,9 @@ test('the first admin sets up an organization, a project and a Read-only member'
       await signedOut.goto('/sign-in')
       await expect(signedOut.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
       await expect(signedOut).toHaveScreenshot(`sign-in-${theme}${sso}.png`, shot)
+      await signedOut.goto('/')
+      await expect(signedOut.getByRole('heading', { name: /All your Supabase projects/ })).toBeVisible()
+      await expect(signedOut).toHaveScreenshot(`home-${theme}.png`, shot)
       await fresh.close()
 
       // Signed in: the account's choice.

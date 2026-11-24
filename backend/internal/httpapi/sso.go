@@ -134,7 +134,7 @@ func (h *handlers) ssoStart(w http.ResponseWriter, r *http.Request) {
 		h.ssoFail(w, r, "", "That sign-in provider isn't set up here")
 		return
 	}
-	u, err := h.beginSSO(w, p, localPath(r.URL.Query().Get("redirect"), "/"), "")
+	u, err := h.beginSSO(w, p, localPath(r.URL.Query().Get("redirect"), "/dashboard"), "")
 	if err != nil {
 		h.deps.Logger.Warn("starting single sign-on", "provider", p.cfg.ID, "err", err)
 		h.ssoFail(w, r, "", "Couldn't reach "+p.cfg.Name+"; try again, or ask an instance admin to check its settings")

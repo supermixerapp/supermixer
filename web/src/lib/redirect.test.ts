@@ -9,7 +9,7 @@ describe('safeRedirect', () => {
   it.each([undefined, 'https://evil.test', '//evil.test', '/\\evil.test', 'javascript:alert(1)'])(
     'rejects %s',
     (target) => {
-      expect(safeRedirect(target)).toBe('/')
+      expect(safeRedirect(target)).toBe('/dashboard')
     }
   )
 })
