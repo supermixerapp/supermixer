@@ -1,15 +1,17 @@
 /*
  * Instance › Overview: the instance at a glance, for instance admins.
  */
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { SettingsSection } from '@/components/layout/section'
 import { Alert } from '@/components/ui/alert'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 
@@ -25,6 +27,11 @@ function OverviewPage() {
     enabled: !!me?.is_instance_admin,
   })
   const o = overview.data
+  const testEmail = useMutation({
+    mutationFn: () => unwrap(api.POST('/admin/email/test')),
+    onSuccess: (r) => toast.success(`Sent a test email to ${r.sent_to}`),
+    onError: (e) => toast.error(e.message),
+  })
   return (
     <AdminLayout title="Overview" description="This Supermixer instance at a glance.">
       {overview.error ? (
@@ -68,6 +75,21 @@ function OverviewPage() {
               </Row>
               <Row label="Backup copies">
                 {o.backups.s3 ? <span className="font-mono text-xs">{o.backups.s3}</span> : 'Not copied to a bucket'}
+              </Row>
+              <Row label="Email">
+                {o.email.enabled ? (
+                  <span className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      As <span className="font-mono text-xs">{o.email.from}</span>, through{' '}
+                      <span className="font-mono text-xs">{o.email.server}</span>
+                    </span>
+                    <Button size="tiny" variant="default" loading={testEmail.isPending} onClick={() => testEmail.mutate()}>
+                      Send test email
+                    </Button>
+                  </span>
+                ) : (
+                  'Off (email.smtp_host): invitations give a link to share, and only admins reset passwords'
+                )}
               </Row>
             </Card>
           </SettingsSection>

@@ -140,7 +140,7 @@ function SignUp({ token, email }: { token: string; email: string }) {
       <FormField label="Email" htmlFor="su-email">
         <Input id="su-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} />
       </FormField>
-      <FormField label="Password" htmlFor="su-password" description="At least 8 characters">
+      <FormField label="Password" htmlFor="su-password" description="At least 8 characters, and not a common password or your username">
         <Input
           id="su-password"
           type="password"

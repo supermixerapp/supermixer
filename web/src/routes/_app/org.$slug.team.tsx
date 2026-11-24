@@ -35,7 +35,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useProfile, useProjects, useSelectedOrganization } from '@/lib/api/hooks'
-import { invitationsQuery, membersQuery } from '@/lib/api/queries'
+import { invitationsQuery, membersQuery, uiConfigQuery } from '@/lib/api/queries'
 import { ORG_ROLES, PROJECT_ROLES, roleLabel, type OrgRole, type ProjectRole } from '@/lib/roles'
 
 export const Route = createFileRoute('/_app/org/$slug/team')({
@@ -395,6 +395,8 @@ function InviteDialog({
   const [role, setRole] = useState<OrgRole>('developer')
   const [assignments, setAssignments] = useState<Assignment[]>([])
   const [link, setLink] = useState<string | null>(null)
+  const [emailed, setEmailed] = useState<{ sent: boolean; error?: string | null } | null>(null)
+  const emailOn = useQuery(uiConfigQuery).data?.email_enabled ?? false
 
   const create = useMutation({
     mutationFn: () =>
@@ -406,6 +408,8 @@ function InviteDialog({
       ),
     onSuccess: (inv) => {
       setLink(inv.url)
+      // Only when Supermixer sends email; otherwise there's nothing to report.
+      setEmailed(emailOn && inv.email ? { sent: inv.email_sent, error: inv.email_error } : null)
       void queryClient.invalidateQueries({ queryKey: invitationsQuery(slug).queryKey })
     },
   })
@@ -416,6 +420,7 @@ function InviteDialog({
       setRole('developer')
       setAssignments([])
       setLink(null)
+      setEmailed(null)
       create.reset()
     }
     onOpenChange(o)
@@ -425,19 +430,34 @@ function InviteDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent size="medium">
         <DialogHeader>
-          <DialogTitle>{link ? 'Share the invitation link' : 'Invite a member'}</DialogTitle>
+          <DialogTitle>{!link ? 'Invite a member' : emailed?.sent ? 'Invitation sent' : 'Share the invitation link'}</DialogTitle>
           <DialogDescription>
-            {link
-              ? 'Send this link to the person you are inviting. It works once and expires in 7 days. It will not be shown again.'
-              : 'Create a link that lets someone join this organization, creating an account if they need one.'}
+            {!link
+              ? emailOn
+                ? 'Email someone a link to join this organization, creating an account if they need one. Or leave the email empty to share the link yourself.'
+                : 'Create a link that lets someone join this organization, creating an account if they need one.'
+              : emailed?.sent
+                ? `We emailed the link to ${email}. You can also share it yourself: it works once, for 7 days, and won't be shown again.`
+                : 'Send this link to the person you are inviting. It works once and expires in 7 days. It will not be shown again.'}
           </DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-4 border-t">
           {link ? (
-            <CopyField value={link} />
+            <>
+              {emailed && !emailed.sent && (
+                <Alert variant="warning" title="Couldn't email the invitation">
+                  {emailed.error ?? 'The mail server refused it.'} Share the link yourself.
+                </Alert>
+              )}
+              <CopyField value={link} />
+            </>
           ) : (
             <>
-              <FormField label="Email (optional)" htmlFor="inv-email" description="Pre-fills their sign-up form.">
+              <FormField
+                label="Email (optional)"
+                htmlFor="inv-email"
+                description={emailOn ? 'We’ll email them the link; it also pre-fills their sign-up form.' : 'Pre-fills their sign-up form.'}
+              >
                 <Input id="inv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </FormField>
               <AccessEditor
@@ -470,7 +490,7 @@ function InviteDialog({
                 disabled={role === 'no_access' && assignments.length === 0}
                 onClick={() => create.mutate()}
               >
-                Create invitation link
+                {emailOn && email ? 'Send invitation' : 'Create invitation link'}
               </Button>
             </>
           )}

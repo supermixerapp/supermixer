@@ -14,8 +14,11 @@ import './styles/globals.css'
 
 // A 401 anywhere means the session ended (expired, revoked, or the user was
 // disabled): drop cached data and go to sign-in.
+// Pages for people who aren't signed in, where a 401 is expected.
+const PUBLIC_PAGES = ['/sign-in', '/join', '/forgot-password', '/reset-password']
+
 function onAuthError(error: unknown) {
-  if (isApiError(error, 401) && !window.location.pathname.startsWith('/sign-in')) {
+  if (isApiError(error, 401) && !PUBLIC_PAGES.some((p) => window.location.pathname.startsWith(p))) {
     queryClient.clear()
     void router.navigate({ to: '/sign-in', search: { redirect: window.location.pathname + window.location.search } })
   }

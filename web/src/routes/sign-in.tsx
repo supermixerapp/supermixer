@@ -1,5 +1,5 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { AuthLayout } from '@/components/layout/auth-layout'
@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
-import { profileQuery } from '@/lib/api/queries'
+import { profileQuery, uiConfigQuery } from '@/lib/api/queries'
 import { safeRedirect } from '@/lib/redirect'
 
 
@@ -30,6 +30,7 @@ function SignInPage() {
   const queryClient = useQueryClient()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const emailOn = useQuery(uiConfigQuery).data?.email_enabled
   // Set when the account has two-factor sign-in: the password was right.
   const [challenge, setChallenge] = useState<Schemas['MfaChallenge'] | null>(null)
 
@@ -97,6 +98,11 @@ function SignInPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
         </FormField>
+        {emailOn && (
+          <Link to="/forgot-password" className="-mt-2 self-end text-xs text-link">
+            Forgot your password?
+          </Link>
+        )}
         {signIn.error && <Alert variant="destructive" title={signIn.error.message} />}
         <Button type="submit" variant="primary" size="large" block loading={signIn.isPending} className="mt-2">
           Sign in
