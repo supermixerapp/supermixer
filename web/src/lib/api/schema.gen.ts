@@ -599,6 +599,143 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/functions/{name}/versions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+            };
+            cookie?: never;
+        };
+        /**
+         * A function's kept versions, newest first
+         * @description The last 10 deploys of a function, kept even after it's deleted, with each file's SHA-256.
+         */
+        get: operations["listFunctionVersions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/functions/{name}/versions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** A kept version and its files */
+        get: operations["getFunctionVersion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/functions/{name}/versions/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Deploy a kept version again */
+        post: operations["restoreFunctionVersion"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/rotation-advisories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * People who could read this project's keys and lost that access
+         * @description They may still have the keys, so the project's keys should be rotated. The list is cleared
+         *     by rotating the secret key and the JWT secret together (stacks Supermixer created), or by
+         *     dismissing it.
+         */
+        get: operations["listRotationAdvisories"];
+        put?: never;
+        post?: never;
+        /** Dismiss the advisories (after rotating the keys where the stack runs) */
+        delete: operations["dismissRotationAdvisories"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/advisors/snapshots": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /**
+         * Snapshots of the database's objects, newest first
+         * @description Fingerprints of the objects that could keep someone in: roles, SECURITY DEFINER functions,
+         *     triggers, event triggers, cron jobs and Auth users' passwords and roles. Taken before each
+         *     function deploy and on demand; the newest 20 are kept.
+         */
+        get: operations["listDBSnapshots"];
+        put?: never;
+        /** Take a snapshot now, to compare with later */
+        post: operations["createDBSnapshot"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/advisors/changes": {
+        parameters: {
+            query?: {
+                /** @description The snapshot to compare with; the newest if left out. */
+                since?: string;
+            };
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** What changed in the database since a snapshot */
+        get: operations["getDBChanges"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/stack/upgrade": {
         parameters: {
             query?: never;
@@ -1267,6 +1404,8 @@ export interface components {
         };
         EdgeFunctionDetail: {
             function: components["schemas"]["EdgeFunction"];
+            /** @description The deployed files' hash, as a version's (FunctionVersion.sha256). */
+            sha256: string;
             files: components["schemas"]["EdgeFunctionFile"][];
             /** @description Files that can't be edited as text (binary, over 1 MiB, links). Pass them as keep to deploy without removing them. */
             other_files: string[];
@@ -1275,6 +1414,84 @@ export interface components {
             function?: components["schemas"]["EdgeFunction"];
             /** @description Whether the functions service was recreated; false while the stack isn't running. */
             restarted: boolean;
+            version?: components["schemas"]["FunctionVersion"];
+        };
+        DBSnapshot: {
+            /** Format: uuid */
+            id: string;
+            /** Format: date-time */
+            taken_at: string;
+            /** @enum {string} */
+            reason: "manual" | "function_deploy";
+            /** @description For function_deploy, the function's name. */
+            detail: string;
+            taken_by: string;
+        };
+        DBChange: {
+            key: string;
+            /** @description For Auth users, their email or phone now. */
+            label?: string;
+            /** @description The fingerprint in the snapshot. */
+            before?: unknown;
+            /** @description The fingerprint now. */
+            after?: unknown;
+        };
+        DBChanges: {
+            since: components["schemas"]["DBSnapshot"];
+            /** Format: date-time */
+            checked_at: string;
+            /** @description Whether the database was read as a superuser: role passwords and every role's cron jobs are covered then. */
+            superuser: boolean;
+            categories: {
+                name: string;
+                label: string;
+                /** @description Why it couldn't be compared. */
+                skipped?: string;
+                added: components["schemas"]["DBChange"][];
+                removed: components["schemas"]["DBChange"][];
+                changed: components["schemas"]["DBChange"][];
+            }[];
+        };
+        RotationAdvisory: {
+            username: string;
+            /** @enum {string} */
+            reason: "removed" | "left" | "role_changed" | "disabled" | "transferred";
+            /** Format: date-time */
+            created_at: string;
+        };
+        FunctionVersion: {
+            id: string;
+            /**
+             * @description found: the function as Supermixer found it before changing it, deployed before versions were kept or changed outside Supermixer.
+             * @enum {string}
+             */
+            kind: "deployed" | "restored" | "found";
+            /** Format: date-time */
+            created_at: string;
+            /** @description Who deployed or restored it. */
+            created_by?: string;
+            /** @description The version a restored one copies. */
+            restored_from?: string;
+            /** @description The whole function's hash: SHA-256 of its files' paths and hashes. */
+            sha256: string;
+            /** Format: int64 */
+            size: number;
+            files: {
+                path: string;
+                sha256: string;
+                /** Format: int64 */
+                size: number;
+                /** @description A symbolic link's target (its hash is of the target). */
+                link?: string;
+                /** @description A file Supermixer couldn't read (one a container's user wrote): listed, but not hashed or kept. */
+                unreadable?: boolean;
+            }[];
+        };
+        FunctionVersionDetail: {
+            version: components["schemas"]["FunctionVersion"];
+            files: components["schemas"]["EdgeFunctionFile"][];
+            /** @description Files that can't be shown as text. */
+            other_files: string[];
         };
         LogDrain: {
             id: string;
@@ -1668,6 +1885,8 @@ export interface components {
             auth_version?: string;
             /** Format: date-time */
             checked_at: string;
+            /** @description From a connection test: the credentials given that are Supabase's public example values. */
+            example_secrets?: string[];
         };
         /** @enum {string} */
         LogSource: "api_gateway" | "auth" | "postgres" | "postgrest" | "pooler" | "storage" | "realtime" | "functions";
@@ -2827,6 +3046,196 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listFunctionVersions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The versions. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionVersion"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getFunctionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The version. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FunctionVersionDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    restoreFunctionVersion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                name: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Restored. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listRotationAdvisories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The advisories, oldest first. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RotationAdvisory"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    dismissRotationAdvisories: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Dismissed. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listDBSnapshots: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The snapshots. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DBSnapshot"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createDBSnapshot: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Taken. */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DBSnapshot"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getDBChanges: {
+        parameters: {
+            query?: {
+                /** @description The snapshot to compare with; the newest if left out. */
+                since?: string;
+            };
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The changes. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["DBChanges"];
                 };
             };
             default: components["responses"]["Error"];

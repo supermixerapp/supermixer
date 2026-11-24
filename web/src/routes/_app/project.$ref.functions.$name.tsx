@@ -15,6 +15,7 @@ import {
 } from '@/components/functions/api'
 import { FunctionCodeEditor } from '@/components/functions/code-editor'
 import { FunctionInvoker } from '@/components/functions/invoker'
+import { FunctionVersions } from '@/components/functions/versions'
 import { SettingsSection } from '@/components/layout/section'
 import { PermissionButton } from '@/components/permission-button'
 import { Alert } from '@/components/ui/alert'
@@ -94,9 +95,10 @@ function FunctionPage() {
     mutationFn: () => unwrap(api.DELETE('/projects/{ref}/functions/{name}', { params: { path: { ref, name } } })),
     onSuccess: () => {
       toast.success(`Deleted ${name}`)
-      queryClient.removeQueries({ queryKey: functionQuery(ref, name).queryKey })
+      setDeleting(false)
+      // The page stays, showing the kept versions to restore from.
+      void queryClient.invalidateQueries({ queryKey: functionQuery(ref, name).queryKey })
       refresh()
-      void navigate({ to: '/project/$ref/functions', params: { ref } })
     },
   })
 
@@ -118,7 +120,10 @@ function FunctionPage() {
   if (fn.error && !isNew) {
     return (
       <DatabasePage title={name}>
-        <Alert variant="destructive" title={missing ? `There's no function called ${name}` : fn.error.message} />
+        <Alert variant={missing ? 'default' : 'destructive'} title={missing ? `There's no function called ${name}` : fn.error.message}>
+          {missing && 'If it was deleted, its kept versions are below; restoring one brings it back.'}
+        </Alert>
+        {missing && <FunctionVersions projectRef={ref} name={name} canDeploy={canDeploy} />}
       </DatabasePage>
     )
   }
@@ -158,6 +163,9 @@ function FunctionPage() {
           <TabsTrigger value="test" disabled={isNew}>
             Test
           </TabsTrigger>
+          <TabsTrigger value="versions" disabled={isNew}>
+            Versions
+          </TabsTrigger>
           <TabsTrigger value="details" disabled={isNew}>
             Details
           </TabsTrigger>
@@ -192,6 +200,9 @@ function FunctionPage() {
         <TabsContent value="test">
           <FunctionInvoker projectRef={ref} initialName={name} />
         </TabsContent>
+        <TabsContent value="versions">
+          {!isNew && <FunctionVersions projectRef={ref} name={name} canDeploy={canDeploy} current={fn.data?.sha256} />}
+        </TabsContent>
         <TabsContent value="details" className="flex flex-col gap-8">
           {fn.data && (
             <Card className="flex flex-col divide-y text-sm">
@@ -220,7 +231,8 @@ function FunctionPage() {
                 </PermissionButton>
               }
             >
-              Its folder is removed and its URL stops answering. This can’t be undone.
+              Its folder is removed and its URL stops answering. Its last versions are kept on this page, so it can be
+              restored.
             </Alert>
           </SettingsSection>
         </TabsContent>
@@ -229,7 +241,7 @@ function FunctionPage() {
         open={deleting}
         onOpenChange={setDeleting}
         title={`Delete ${name}?`}
-        description="Its files are deleted and the stack's functions service restarts."
+        description="Its files are deleted and the stack's functions service restarts. Its last versions are kept, so you can restore it from this page."
         confirmLabel="Delete function"
         confirmText={name}
         loading={remove.isPending}

@@ -32,6 +32,7 @@ import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$r
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppProjectRefAdvisorsChangesRouteImport } from './routes/_app/project.$ref.advisors.changes'
 import { Route as AppProjectRefAdvisorsPerformanceRouteImport } from './routes/_app/project.$ref.advisors.performance'
 import { Route as AppProjectRefAdvisorsQueryPerformanceRouteImport } from './routes/_app/project.$ref.advisors.query-performance'
 import { Route as AppProjectRefAdvisorsSecurityRouteImport } from './routes/_app/project.$ref.advisors.security'
@@ -204,6 +205,12 @@ const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   path: '/sql',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefAdvisorsChangesRoute =
+  AppProjectRefAdvisorsChangesRouteImport.update({
+    id: '/advisors/changes',
+    path: '/advisors/changes',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefAdvisorsPerformanceRoute =
   AppProjectRefAdvisorsPerformanceRouteImport.update({
     id: '/advisors/performance',
@@ -564,6 +571,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/project/$ref/advisors/changes': typeof AppProjectRefAdvisorsChangesRoute
   '/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
   '/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
@@ -641,6 +649,7 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/project/$ref/advisors/changes': typeof AppProjectRefAdvisorsChangesRoute
   '/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
   '/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
@@ -724,6 +733,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/project/$ref/advisors/changes': typeof AppProjectRefAdvisorsChangesRoute
   '/_app/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/_app/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
   '/_app/project/$ref/advisors/security': typeof AppProjectRefAdvisorsSecurityRoute
@@ -807,6 +817,7 @@ export interface FileRouteTypes {
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/project/$ref/advisors/changes'
     | '/project/$ref/advisors/performance'
     | '/project/$ref/advisors/query-performance'
     | '/project/$ref/advisors/security'
@@ -884,6 +895,7 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/project/$ref/advisors/changes'
     | '/project/$ref/advisors/performance'
     | '/project/$ref/advisors/query-performance'
     | '/project/$ref/advisors/security'
@@ -966,6 +978,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/project/$ref/advisors/changes'
     | '/_app/project/$ref/advisors/performance'
     | '/_app/project/$ref/advisors/query-performance'
     | '/_app/project/$ref/advisors/security'
@@ -1193,6 +1206,13 @@ declare module '@tanstack/react-router' {
       path: '/sql'
       fullPath: '/project/$ref/sql'
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/advisors/changes': {
+      id: '/_app/project/$ref/advisors/changes'
+      path: '/advisors/changes'
+      fullPath: '/project/$ref/advisors/changes'
+      preLoaderRoute: typeof AppProjectRefAdvisorsChangesRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/advisors/performance': {
@@ -1652,6 +1672,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefEditorRoute: typeof AppProjectRefEditorRouteWithChildren
   AppProjectRefSqlRoute: typeof AppProjectRefSqlRouteWithChildren
   AppProjectRefIndexRoute: typeof AppProjectRefIndexRoute
+  AppProjectRefAdvisorsChangesRoute: typeof AppProjectRefAdvisorsChangesRoute
   AppProjectRefAdvisorsPerformanceRoute: typeof AppProjectRefAdvisorsPerformanceRoute
   AppProjectRefAdvisorsQueryPerformanceRoute: typeof AppProjectRefAdvisorsQueryPerformanceRoute
   AppProjectRefAdvisorsSecurityRoute: typeof AppProjectRefAdvisorsSecurityRoute
@@ -1712,6 +1733,7 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefEditorRoute: AppProjectRefEditorRouteWithChildren,
   AppProjectRefSqlRoute: AppProjectRefSqlRouteWithChildren,
   AppProjectRefIndexRoute: AppProjectRefIndexRoute,
+  AppProjectRefAdvisorsChangesRoute: AppProjectRefAdvisorsChangesRoute,
   AppProjectRefAdvisorsPerformanceRoute: AppProjectRefAdvisorsPerformanceRoute,
   AppProjectRefAdvisorsQueryPerformanceRoute:
     AppProjectRefAdvisorsQueryPerformanceRoute,

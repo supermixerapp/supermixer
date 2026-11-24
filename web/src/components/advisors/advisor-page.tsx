@@ -157,6 +157,12 @@ export function AdvisorPage({ projectRef, category, title, description }: { proj
                     <h3 className="text-xs text-foreground-lighter">Why it matters</h3>
                     <p className="text-foreground-light">{inlineCode(open.description)}</p>
                   </div>
+                  {open.remediation && !/^https?:\/\//.test(open.remediation) && (
+                    <div className="flex flex-col gap-1">
+                      <h3 className="text-xs text-foreground-lighter">How to fix it</h3>
+                      <p className="text-foreground-light">{inlineCode(open.remediation)}</p>
+                    </div>
+                  )}
                   {/^https:\/\/supabase\.com\//.test(open.remediation) && (
                     <a
                       href={open.remediation}

@@ -207,6 +207,7 @@ export const productMenus: Record<string, ProductMenu> = {
           { label: 'Security Advisor', path: 'advisors/security', stage: 3 },
           { label: 'Performance Advisor', path: 'advisors/performance', stage: 3 },
           { label: 'Query Performance', path: 'advisors/query-performance', stage: 3 },
+          { label: 'Changes', path: 'advisors/changes', stage: 3 },
         ],
       },
     ],

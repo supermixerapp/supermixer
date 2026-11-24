@@ -75,6 +75,7 @@ export function RotateKeys({ project }: { project: Schemas['Project'] }) {
   useEffect(() => {
     if (last.current === 'rotating_keys' && !operation) {
       void queryClient.invalidateQueries({ queryKey: ['projects', ref, 'api-keys'] })
+      void queryClient.invalidateQueries({ queryKey: ['projects', ref, 'rotation-advisories'] })
     }
     last.current = operation
   }, [operation, queryClient, ref])

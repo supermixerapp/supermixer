@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react'
 
 import { CheckIcon, ErrorIcon } from '@/components/icons'
+import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -345,6 +346,24 @@ export function EnvImportDialog({
 
 /** Results of a connection test or health check, one row per service. */
 export function HealthChecks({ report }: { report: Schemas['HealthReport'] }) {
+  const examples = report.example_secrets ?? []
+  return (
+    <div className="flex flex-col gap-3">
+      {examples.length > 0 && (
+        <Alert variant="destructive" title="This stack uses Supabase's example secrets">
+          The {examples.join(', ')} {examples.length === 1 ? 'is' : 'are'} the public example from Supabase's
+          self-hosting files, so anyone can use {examples.length === 1 ? 'it' : 'them'}: with the example JWT secret,
+          anyone can sign a service_role token. Generate new secrets and restart the stack before you use it. Change the
+          other example values in its .env too (DASHBOARD_PASSWORD, SECRET_KEY_BASE, VAULT_ENC_KEY, PG_META_CRYPTO_KEY,
+          the Logflare tokens): Supermixer can't check those.
+        </Alert>
+      )}
+      <HealthList report={report} />
+    </div>
+  )
+}
+
+function HealthList({ report }: { report: Schemas['HealthReport'] }) {
   return (
     <ul className="flex flex-col divide-y rounded-md border">
       {report.services.map((s) => (

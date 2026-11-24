@@ -7,6 +7,7 @@ import { ExternalLinkIcon } from '@/components/icons'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { SettingsSection } from '@/components/layout/section'
 import { HealthChecks } from '@/components/project/connection-form'
+import { RotationAdvice } from '@/components/project/rotation-advice'
 import { StackBadge, StackProgress, stackUp } from '@/components/project/stack'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -54,6 +55,9 @@ function ProjectOverview() {
         }
       />
       <PageContainer size="large" className="grid gap-10 pb-16 lg:grid-cols-5">
+        <div className="empty:hidden lg:col-span-5">
+          <RotationAdvice project={project} linkToKeys />
+        </div>
         {project.stack && (
           <div className="empty:hidden lg:col-span-5">
             <StackProgress project={project} />
