@@ -60,6 +60,7 @@ type Querier interface {
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
 	GetUserByUsername(ctx context.Context, username string) (User, error)
 	InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) error
+	InstanceCounts(ctx context.Context) (InstanceCountsRow, error)
 	// When the stack's last scheduled backup started (failed ones count, so a
 	// failing stack isn't retried every minute).
 	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
@@ -69,6 +70,8 @@ type Querier interface {
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListDBSnapshots(ctx context.Context, projectID uuid.UUID) ([]ListDBSnapshotsRow, error)
 	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
+	// Entries outside any organization (accounts, sign-ins, instance settings).
+	ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAuditLogsParams) ([]AuditLog, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
 	ListOrganizationProjectRoles(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationProjectRolesRow, error)
 	ListOrganizationsForUser(ctx context.Context, userID uuid.UUID) ([]ListOrganizationsForUserRow, error)
@@ -106,6 +109,7 @@ type Querier interface {
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
 	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
+	SetPasswordChangeRequired(ctx context.Context, arg SetPasswordChangeRequiredParams) (User, error)
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
 	SetProjectStack(ctx context.Context, arg SetProjectStackParams) (Project, error)
 	SetSnippetFavorite(ctx context.Context, arg SetSnippetFavoriteParams) error
@@ -126,6 +130,8 @@ type Querier interface {
 	// Backups both here and in this bucket, to remove here when keep_local is
 	// off (not those in another bucket, which Supermixer can no longer read).
 	UploadedLocalBackups(ctx context.Context, bucket string) ([]UploadedLocalBackupsRow, error)
+	// When each user was last active, from their sessions.
+	UserLastSeen(ctx context.Context) ([]UserLastSeenRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

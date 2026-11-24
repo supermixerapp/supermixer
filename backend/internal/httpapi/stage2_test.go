@@ -251,7 +251,7 @@ func TestGatewayProxy(t *testing.T) {
 // joinAs creates a user and adds them to org with role via an invitation.
 func joinAs(t *testing.T, env *testEnv, admin *client, org, username, role string) *client {
 	t.Helper()
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": username, "password": username + "-password"}, nil)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": username, "password": username + "-password", "require_password_change": false}, nil)
 	var inv struct{ Token string }
 	admin.must(201, "POST", "/organizations/"+org+"/invitations", map[string]any{"role": role}, &inv)
 	c := env.client(t)

@@ -543,6 +543,12 @@ func (h *handlers) ListAuditLogs(ctx context.Context, req api.ListAuditLogsReque
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, err
 	}
+	return api.ListAuditLogs200JSONResponse(toAuditPage(rows, limit)), nil
+}
+
+// toAuditPage is a page of entries; rows holds up to one more than limit,
+// which says there's a next page.
+func toAuditPage(rows []db.AuditLog, limit int) api.AuditLogPage {
 	page := api.AuditLogPage{Entries: []api.AuditLogEntry{}}
 	if len(rows) > limit {
 		rows = rows[:limit]
@@ -560,5 +566,5 @@ func (h *handlers) ListAuditLogs(ctx context.Context, req api.ListAuditLogsReque
 		}
 		page.Entries = append(page.Entries, e)
 	}
-	return api.ListAuditLogs200JSONResponse(page), nil
+	return page
 }

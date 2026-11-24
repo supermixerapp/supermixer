@@ -23,11 +23,16 @@ func TestPasswordRoundTrip(t *testing.T) {
 }
 
 func TestValidateNewPassword(t *testing.T) {
-	if ValidateNewPassword("short") == nil {
-		t.Error("short password accepted")
+	for _, bad := range []string{"short", "password", "Password123!", "admin", "admin2026", "qwerty123", "12345678",
+		"abcdefghij", "aaaaaaaaaa", "98765432", "supermixer1", "alice-smith", "htims-ecila"} {
+		if ValidateNewPassword(bad, "alice-smith") == nil {
+			t.Errorf("%q was accepted", bad)
+		}
 	}
-	if ValidateNewPassword("long enough") != nil {
-		t.Error("valid password rejected")
+	for _, ok := range []string{"long enough", "correct horse battery", "alice-password", "dev-password-1", "Tr1cky-Ferret-42"} {
+		if err := ValidateNewPassword(ok, "alice-smith"); err != nil {
+			t.Errorf("%q: %v", ok, err)
+		}
 	}
 }
 

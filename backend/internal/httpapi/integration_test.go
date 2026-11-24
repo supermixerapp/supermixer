@@ -119,10 +119,16 @@ func newTestEnvDeps(t *testing.T, dbURL string, configure func(*config.Config), 
 	cfg.Server.PublicURL = "http://supermixer.test"
 	cfg.Security.EncryptionKey = testKey
 	cfg.Security.SessionTTL = time.Hour
+	cfg.BootstrapAdmin.Password = "admin" // tests sign in as admin/admin
 	if configure != nil {
 		configure(cfg)
 	}
 	if err := bootstrap.EnsureAdmin(ctx, st, cfg, logger); err != nil {
+		t.Fatal(err)
+	}
+	// Tests sign in as admin/admin and get on with it; admin_test.go
+	// covers the required change.
+	if _, err := st.Pool.Exec(ctx, `update users set password_change_required = false where username = 'admin'`); err != nil {
 		t.Fatal(err)
 	}
 	box, _ := secrets.New(testKey)
@@ -345,6 +351,21 @@ func TestOrganizationsRolesAndProjects(t *testing.T) {
 	}
 	dev := env.client(t)
 	dev.signIn("dev1", "dev-password-1")
+	// The admin set this password: dev1 chooses their own before anything else.
+	var me struct {
+		PasswordChangeRequired bool `json:"password_change_required"`
+	}
+	dev.must(200, "GET", "/profile", nil, &me)
+	if !me.PasswordChangeRequired {
+		t.Fatal("an admin-set password didn't need changing")
+	}
+	dev.must(403, "GET", "/organizations", nil, nil)
+	dev.must(400, "POST", "/profile/password", map[string]string{"current_password": "dev-password-1", "new_password": "password123"}, nil)
+	dev.must(204, "POST", "/profile/password", map[string]string{"current_password": "dev-password-1", "new_password": "dev1-own-choice"}, nil)
+	dev.must(200, "GET", "/profile", nil, &me)
+	if me.PasswordChangeRequired {
+		t.Fatal("still required after changing it")
+	}
 	var preview struct {
 		OrganizationName string `json:"organization_name"`
 		Valid            bool   `json:"valid"`
@@ -408,7 +429,7 @@ func TestOrganizationsRolesAndProjects(t *testing.T) {
 	}
 
 	// Outsiders cannot see the organization at all.
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": "outsider", "password": "outsider-pw"}, nil)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": "outsider", "password": "outsider-pw", "require_password_change": false}, nil)
 	out := env.client(t)
 	out.signIn("outsider", "outsider-pw")
 	if got := out.do("GET", "/organizations/acme-inc", nil, nil); got != 404 {
@@ -470,7 +491,7 @@ func TestInstanceAdminGuards(t *testing.T) {
 		t.Fatalf("disable self = %d, want 400", got)
 	}
 	var u struct{ ID string }
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": "bob", "password": "bob-password"}, &u)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": "bob", "password": "bob-password", "require_password_change": false}, &u)
 	bob := env.client(t)
 	bob.signIn("bob", "bob-password")
 	if got := bob.do("GET", "/admin/users", nil, nil); got != 403 {

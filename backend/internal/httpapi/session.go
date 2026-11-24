@@ -76,6 +76,21 @@ func publicRoute(method, path string) bool {
 	return false
 }
 
+// passwordChangeRoute reports whether a request is allowed while the user
+// must choose a new password: what the change screen needs.
+func passwordChangeRoute(method, path string) bool {
+	p := strings.TrimPrefix(path, "/api/v1")
+	switch {
+	case publicRoute(method, path):
+		return true
+	case method == http.MethodGet && p == "/profile":
+		return true
+	case method == http.MethodPost && p == "/profile/password":
+		return true
+	}
+	return false
+}
+
 func safeMethod(m string) bool {
 	return m == http.MethodGet || m == http.MethodHead || m == http.MethodOptions
 }
@@ -114,6 +129,12 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 
 		if info.Principal == nil && !publicRoute(r.Method, r.URL.Path) {
 			writeError(w, http.StatusUnauthorized, "sign in to continue")
+			return
+		}
+		// Someone who must choose a new password can do that and nothing else
+		// (the password they have was set by someone else, or is in a log).
+		if info.Principal != nil && info.Principal.User.PasswordChangeRequired && !passwordChangeRoute(r.Method, r.URL.Path) {
+			writeError(w, http.StatusForbidden, "choose a new password to continue")
 			return
 		}
 

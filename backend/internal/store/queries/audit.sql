@@ -12,3 +12,12 @@ WHERE organization_id = @organization_id
   AND (sqlc.narg(before_id)::bigint IS NULL OR id < sqlc.narg(before_id))
 ORDER BY id DESC
 LIMIT @row_limit;
+
+-- name: ListInstanceAuditLogs :many
+-- Entries outside any organization (accounts, sign-ins, instance settings).
+SELECT * FROM audit_logs
+WHERE organization_id IS NULL
+  AND (sqlc.narg(action_prefix)::text IS NULL OR action LIKE sqlc.narg(action_prefix) || '%')
+  AND (sqlc.narg(before_id)::bigint IS NULL OR id < sqlc.narg(before_id))
+ORDER BY id DESC
+LIMIT @row_limit;

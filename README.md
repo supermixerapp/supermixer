@@ -17,7 +17,7 @@ make setup   # install dependencies; creates .env.toml with a fresh encryption k
 make dev     # starts Postgres (port 5433), the API (:8080, live reload) and Vite (:5173)
 ```
 
-Open http://localhost:5173 and sign in as `admin` / `admin` (from `.env.toml`). Change the password right away; a banner reminds you until you do.
+Open http://localhost:5173 and sign in as `admin`, with the one-time password Supermixer prints in its log on first start (or `bootstrap_admin.password` from `.env.toml`, if you set one). You choose a new password before anything else.
 
 To try project registration against a real stack:
 

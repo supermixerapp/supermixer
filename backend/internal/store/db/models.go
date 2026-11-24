@@ -430,15 +430,16 @@ type SqlSnippetFavorite struct {
 }
 
 type User struct {
-	ID              uuid.UUID  `json:"id"`
-	Username        string     `json:"username"`
-	Email           *string    `json:"email"`
-	DisplayName     string     `json:"display_name"`
-	PasswordHash    string     `json:"password_hash"`
-	IsInstanceAdmin bool       `json:"is_instance_admin"`
-	DefaultPassword bool       `json:"default_password"`
-	DisabledAt      *time.Time `json:"disabled_at"`
-	CreatedAt       time.Time  `json:"created_at"`
-	UpdatedAt       time.Time  `json:"updated_at"`
-	Theme           *string    `json:"theme"`
+	ID                     uuid.UUID  `json:"id"`
+	Username               string     `json:"username"`
+	Email                  *string    `json:"email"`
+	DisplayName            string     `json:"display_name"`
+	PasswordHash           string     `json:"password_hash"`
+	IsInstanceAdmin        bool       `json:"is_instance_admin"`
+	DefaultPassword        bool       `json:"default_password"`
+	DisabledAt             *time.Time `json:"disabled_at"`
+	CreatedAt              time.Time  `json:"created_at"`
+	UpdatedAt              time.Time  `json:"updated_at"`
+	Theme                  *string    `json:"theme"`
+	PasswordChangeRequired bool       `json:"password_change_required"`
 }

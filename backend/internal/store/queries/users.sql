@@ -2,8 +2,8 @@
 SELECT count(*) FROM users;
 
 -- name: CreateUser :one
-INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password)
-VALUES ($1, $2, $3, $4, $5, $6)
+INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password, password_change_required)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetUserByID :one
@@ -22,7 +22,25 @@ WHERE id = $1
 RETURNING *;
 
 -- name: SetUserPassword :exec
-UPDATE users SET password_hash = $2, default_password = $3, updated_at = now() WHERE id = $1;
+UPDATE users SET password_hash = $2, default_password = $3, password_change_required = $4, updated_at = now() WHERE id = $1;
+
+-- name: SetPasswordChangeRequired :one
+UPDATE users SET password_change_required = $2, updated_at = now() WHERE id = $1
+RETURNING *;
+
+-- name: InstanceCounts :one
+SELECT (SELECT count(*) FROM users)::int AS users,
+       (SELECT count(*) FROM users WHERE disabled_at IS NULL)::int AS active_users,
+       (SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL)::int AS instance_admins,
+       (SELECT count(*) FROM users WHERE password_change_required AND disabled_at IS NULL)::int AS password_change_required,
+       (SELECT count(*) FROM organizations)::int AS organizations,
+       (SELECT count(*) FROM projects)::int AS projects,
+       (SELECT count(*) FROM projects WHERE managed)::int AS managed_projects;
+
+-- name: UserLastSeen :many
+-- When each user was last active, from their sessions.
+SELECT user_id, max(last_seen_at)::timestamptz AS last_seen_at, count(*)::int AS sessions
+FROM sessions WHERE expires_at > now() GROUP BY user_id;
 
 -- name: CountActiveInstanceAdmins :one
 SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL;

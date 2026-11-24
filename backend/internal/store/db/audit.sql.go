@@ -109,3 +109,53 @@ func (q *Queries) ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([
 	}
 	return items, nil
 }
+
+const listInstanceAuditLogs = `-- name: ListInstanceAuditLogs :many
+SELECT id, organization_id, project_id, actor_id, actor_username, action, target_type, target_id, target_name, metadata, ip, user_agent, created_at FROM audit_logs
+WHERE organization_id IS NULL
+  AND ($1::text IS NULL OR action LIKE $1 || '%')
+  AND ($2::bigint IS NULL OR id < $2)
+ORDER BY id DESC
+LIMIT $3
+`
+
+type ListInstanceAuditLogsParams struct {
+	ActionPrefix *string `json:"action_prefix"`
+	BeforeID     *int64  `json:"before_id"`
+	RowLimit     int32   `json:"row_limit"`
+}
+
+// Entries outside any organization (accounts, sign-ins, instance settings).
+func (q *Queries) ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAuditLogsParams) ([]AuditLog, error) {
+	rows, err := q.db.Query(ctx, listInstanceAuditLogs, arg.ActionPrefix, arg.BeforeID, arg.RowLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AuditLog
+	for rows.Next() {
+		var i AuditLog
+		if err := rows.Scan(
+			&i.ID,
+			&i.OrganizationID,
+			&i.ProjectID,
+			&i.ActorID,
+			&i.ActorUsername,
+			&i.Action,
+			&i.TargetType,
+			&i.TargetID,
+			&i.TargetName,
+			&i.Metadata,
+			&i.Ip,
+			&i.UserAgent,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

@@ -55,13 +55,14 @@ func validDisplayName(s string) (string, error) {
 
 func toProfile(u db.User) api.Profile {
 	p := api.Profile{
-		Id:              u.ID,
-		Username:        u.Username,
-		Email:           u.Email,
-		DisplayName:     u.DisplayName,
-		IsInstanceAdmin: u.IsInstanceAdmin,
-		DefaultPassword: u.DefaultPassword,
-		CreatedAt:       u.CreatedAt,
+		Id:                     u.ID,
+		Username:               u.Username,
+		Email:                  u.Email,
+		DisplayName:            u.DisplayName,
+		IsInstanceAdmin:        u.IsInstanceAdmin,
+		DefaultPassword:        u.DefaultPassword,
+		PasswordChangeRequired: u.PasswordChangeRequired,
+		CreatedAt:              u.CreatedAt,
 	}
 	if u.Theme != nil {
 		t := api.ThemePreference(*u.Theme)
@@ -208,7 +209,7 @@ func (h *handlers) ChangePassword(ctx context.Context, req api.ChangePasswordReq
 	if err := auth.VerifyPassword(p.User.PasswordHash, req.Body.CurrentPassword); err != nil {
 		return nil, badRequest("current password is incorrect")
 	}
-	if err := auth.ValidateNewPassword(req.Body.NewPassword); err != nil {
+	if err := auth.ValidateNewPassword(req.Body.NewPassword, p.User.Username); err != nil {
 		return nil, badRequest("%s", err.Error())
 	}
 	if req.Body.NewPassword == req.Body.CurrentPassword {

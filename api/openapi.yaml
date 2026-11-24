@@ -214,6 +214,44 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         default: { $ref: "#/components/responses/Error" }
+  /admin/users/{user_id}/sessions:
+    delete:
+      operationId: revokeUserSessions
+      tags: [Users]
+      summary: Sign the user out everywhere
+      parameters:
+        - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        "204": { description: Signed out. }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/overview:
+    get:
+      operationId: getAdminOverview
+      tags: [Users]
+      summary: The instance at a glance, for instance admins
+      responses:
+        "200":
+          description: Counts and settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AdminOverview" }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/audit-logs:
+    get:
+      operationId: listInstanceAuditLogs
+      tags: [Audit]
+      summary: Audit entries outside any organization (accounts and sign-ins), for instance admins
+      parameters:
+        - { name: action, in: query, required: false, description: "Action prefix, e.g. user.", schema: { type: string } }
+        - { name: before, in: query, required: false, description: Cursor from next_before, schema: { type: integer, format: int64 } }
+        - { name: limit, in: query, required: false, schema: { type: integer, minimum: 1, maximum: 200, default: 50 } }
+      responses:
+        "200":
+          description: Entries, newest first.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AuditLogPage" }
+        default: { $ref: "#/components/responses/Error" }
   /admin/users/{user_id}/password:
     post:
       operationId: resetUserPassword
@@ -1925,7 +1963,7 @@ components:
         password: { type: string }
     Profile:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -1935,6 +1973,9 @@ components:
         default_password:
           type: boolean
           description: Still using the well-known bootstrap password.
+        password_change_required:
+          type: boolean
+          description: "Must choose a new password before anything else; until then the API only allows the profile, changing the password and signing out."
         theme:
           allOf: [{ $ref: "#/components/schemas/ThemePreference" }]
           nullable: true
@@ -1960,6 +2001,34 @@ components:
       required: [password]
       properties:
         password: { type: string }
+        require_password_change: { type: boolean, default: true, description: "They choose their own password at next sign-in (not for your own account)." }
+    AdminOverview:
+      type: object
+      required: [version, users, active_users, instance_admins, password_change_required, organizations, projects, managed_projects, provisioning, backups]
+      properties:
+        version: { type: string }
+        users: { type: integer }
+        active_users: { type: integer }
+        instance_admins: { type: integer, description: Active ones. }
+        password_change_required: { type: integer, description: Active accounts that must still choose a new password. }
+        organizations: { type: integer }
+        projects: { type: integer }
+        managed_projects: { type: integer, description: Projects whose stacks Supermixer created. }
+        provisioning:
+          type: object
+          required: [enabled, stacks_dir, public_host]
+          properties:
+            enabled: { type: boolean }
+            stacks_dir: { type: string }
+            public_host: { type: string }
+        backups:
+          type: object
+          required: [dir, interval_hours, keep]
+          properties:
+            dir: { type: string }
+            interval_hours: { type: number }
+            keep: { type: integer }
+            s3: { type: string, nullable: true, description: "s3://bucket/prefix, if backups are copied to a bucket." }
     Session:
       type: object
       required: [id, created_at, last_seen_at, expires_at, ip, user_agent, current]
@@ -1991,7 +2060,7 @@ components:
 
     User:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, disabled, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, disabled, sessions, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -1999,7 +2068,10 @@ components:
         display_name: { type: string }
         is_instance_admin: { type: boolean }
         default_password: { type: boolean }
+        password_change_required: { type: boolean }
         disabled: { type: boolean }
+        sessions: { type: integer, description: Signed-in sessions. }
+        last_seen_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
     UserCreate:
       type: object
@@ -2010,6 +2082,7 @@ components:
         email: { type: string, nullable: true }
         display_name: { type: string }
         is_instance_admin: { type: boolean, default: false }
+        require_password_change: { type: boolean, default: true, description: "They choose their own password at first sign-in." }
     UserUpdate:
       type: object
       properties:
@@ -2017,6 +2090,7 @@ components:
         display_name: { type: string }
         is_instance_admin: { type: boolean }
         disabled: { type: boolean }
+        password_change_required: { type: boolean, description: They must choose a new password at their next request. }
 
     Organization:
       type: object

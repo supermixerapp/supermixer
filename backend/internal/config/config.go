@@ -74,9 +74,12 @@ type SignIn struct {
 	Lockout     time.Duration `toml:"lockout"`
 }
 
-// BootstrapAdmin is created on first start when there are no users.
+// BootstrapAdmin is created on first start when there are no users. It
+// must choose a new password when it first signs in.
 type BootstrapAdmin struct {
 	Username string `toml:"username"`
+	// Password is the first sign-in's; empty generates a one-time password
+	// and logs it.
 	Password string `toml:"password"`
 }
 
@@ -179,7 +182,7 @@ func Default() Config {
 		Server:         Server{Listen: ":8080", PublicURL: "http://localhost:8080"},
 		Log:            Log{Level: "info", Format: "text"},
 		Security:       Security{SessionTTL: 168 * time.Hour, SignIn: SignIn{MaxFailures: 10, Lockout: 15 * time.Minute}},
-		BootstrapAdmin: BootstrapAdmin{Username: "admin", Password: "admin"},
+		BootstrapAdmin: BootstrapAdmin{Username: "admin"},
 		Appearance:     Appearance{BrandColor: "#0019A8", DefaultTheme: "light"},
 		Projects: Projects{
 			HealthCheckTimeout: 5 * time.Second, HealthCacheTTL: 15 * time.Second,
@@ -392,8 +395,8 @@ func (c *Config) validate() error {
 	if c.Security.SignIn.MaxFailures < 1 || c.Security.SignIn.Lockout < time.Second {
 		fail("security.sign_in needs max_failures ≥ 1 and lockout ≥ 1s")
 	}
-	if strings.TrimSpace(c.BootstrapAdmin.Username) == "" || c.BootstrapAdmin.Password == "" {
-		fail("bootstrap_admin.username and bootstrap_admin.password must not be empty")
+	if strings.TrimSpace(c.BootstrapAdmin.Username) == "" {
+		fail("bootstrap_admin.username must not be empty")
 	}
 	if !hexColor.MatchString(c.Appearance.BrandColor) {
 		fail("appearance.brand_color must be a hex colour like #0019A8, got %q", c.Appearance.BrandColor)

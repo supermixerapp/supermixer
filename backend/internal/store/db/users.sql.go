@@ -35,18 +35,19 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password)
-VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme
+INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password, password_change_required)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
 `
 
 type CreateUserParams struct {
-	Username        string  `json:"username"`
-	Email           *string `json:"email"`
-	DisplayName     string  `json:"display_name"`
-	PasswordHash    string  `json:"password_hash"`
-	IsInstanceAdmin bool    `json:"is_instance_admin"`
-	DefaultPassword bool    `json:"default_password"`
+	Username               string  `json:"username"`
+	Email                  *string `json:"email"`
+	DisplayName            string  `json:"display_name"`
+	PasswordHash           string  `json:"password_hash"`
+	IsInstanceAdmin        bool    `json:"is_instance_admin"`
+	DefaultPassword        bool    `json:"default_password"`
+	PasswordChangeRequired bool    `json:"password_change_required"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -57,6 +58,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.PasswordHash,
 		arg.IsInstanceAdmin,
 		arg.DefaultPassword,
+		arg.PasswordChangeRequired,
 	)
 	var i User
 	err := row.Scan(
@@ -71,12 +73,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Theme,
+		&i.PasswordChangeRequired,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme FROM users WHERE id = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -94,12 +97,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Theme,
+		&i.PasswordChangeRequired,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme FROM users WHERE username = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -117,6 +121,42 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Theme,
+		&i.PasswordChangeRequired,
+	)
+	return i, err
+}
+
+const instanceCounts = `-- name: InstanceCounts :one
+SELECT (SELECT count(*) FROM users)::int AS users,
+       (SELECT count(*) FROM users WHERE disabled_at IS NULL)::int AS active_users,
+       (SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL)::int AS instance_admins,
+       (SELECT count(*) FROM users WHERE password_change_required AND disabled_at IS NULL)::int AS password_change_required,
+       (SELECT count(*) FROM organizations)::int AS organizations,
+       (SELECT count(*) FROM projects)::int AS projects,
+       (SELECT count(*) FROM projects WHERE managed)::int AS managed_projects
+`
+
+type InstanceCountsRow struct {
+	Users                  int32 `json:"users"`
+	ActiveUsers            int32 `json:"active_users"`
+	InstanceAdmins         int32 `json:"instance_admins"`
+	PasswordChangeRequired int32 `json:"password_change_required"`
+	Organizations          int32 `json:"organizations"`
+	Projects               int32 `json:"projects"`
+	ManagedProjects        int32 `json:"managed_projects"`
+}
+
+func (q *Queries) InstanceCounts(ctx context.Context) (InstanceCountsRow, error) {
+	row := q.db.QueryRow(ctx, instanceCounts)
+	var i InstanceCountsRow
+	err := row.Scan(
+		&i.Users,
+		&i.ActiveUsers,
+		&i.InstanceAdmins,
+		&i.PasswordChangeRequired,
+		&i.Organizations,
+		&i.Projects,
+		&i.ManagedProjects,
 	)
 	return i, err
 }
@@ -146,7 +186,7 @@ func (q *Queries) ListDefaultPasswordUsers(ctx context.Context) ([]string, error
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme FROM users ORDER BY username
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required FROM users ORDER BY username
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -170,6 +210,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.Theme,
+			&i.PasswordChangeRequired,
 		); err != nil {
 			return nil, err
 		}
@@ -181,24 +222,60 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const setPasswordChangeRequired = `-- name: SetPasswordChangeRequired :one
+UPDATE users SET password_change_required = $2, updated_at = now() WHERE id = $1
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
+`
+
+type SetPasswordChangeRequiredParams struct {
+	ID                     uuid.UUID `json:"id"`
+	PasswordChangeRequired bool      `json:"password_change_required"`
+}
+
+func (q *Queries) SetPasswordChangeRequired(ctx context.Context, arg SetPasswordChangeRequiredParams) (User, error) {
+	row := q.db.QueryRow(ctx, setPasswordChangeRequired, arg.ID, arg.PasswordChangeRequired)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.DisplayName,
+		&i.PasswordHash,
+		&i.IsInstanceAdmin,
+		&i.DefaultPassword,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Theme,
+		&i.PasswordChangeRequired,
+	)
+	return i, err
+}
+
 const setUserPassword = `-- name: SetUserPassword :exec
-UPDATE users SET password_hash = $2, default_password = $3, updated_at = now() WHERE id = $1
+UPDATE users SET password_hash = $2, default_password = $3, password_change_required = $4, updated_at = now() WHERE id = $1
 `
 
 type SetUserPasswordParams struct {
-	ID              uuid.UUID `json:"id"`
-	PasswordHash    string    `json:"password_hash"`
-	DefaultPassword bool      `json:"default_password"`
+	ID                     uuid.UUID `json:"id"`
+	PasswordHash           string    `json:"password_hash"`
+	DefaultPassword        bool      `json:"default_password"`
+	PasswordChangeRequired bool      `json:"password_change_required"`
 }
 
 func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error {
-	_, err := q.db.Exec(ctx, setUserPassword, arg.ID, arg.PasswordHash, arg.DefaultPassword)
+	_, err := q.db.Exec(ctx, setUserPassword,
+		arg.ID,
+		arg.PasswordHash,
+		arg.DefaultPassword,
+		arg.PasswordChangeRequired,
+	)
 	return err
 }
 
 const setUserTheme = `-- name: SetUserTheme :one
 UPDATE users SET theme = $2, updated_at = now() WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
 `
 
 type SetUserThemeParams struct {
@@ -221,6 +298,7 @@ func (q *Queries) SetUserTheme(ctx context.Context, arg SetUserThemeParams) (Use
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Theme,
+		&i.PasswordChangeRequired,
 	)
 	return i, err
 }
@@ -229,7 +307,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET display_name = $2, email = $3, is_instance_admin = $4, disabled_at = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required
 `
 
 type UpdateUserParams struct {
@@ -261,6 +339,39 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Theme,
+		&i.PasswordChangeRequired,
 	)
 	return i, err
+}
+
+const userLastSeen = `-- name: UserLastSeen :many
+SELECT user_id, max(last_seen_at)::timestamptz AS last_seen_at, count(*)::int AS sessions
+FROM sessions WHERE expires_at > now() GROUP BY user_id
+`
+
+type UserLastSeenRow struct {
+	UserID     uuid.UUID `json:"user_id"`
+	LastSeenAt time.Time `json:"last_seen_at"`
+	Sessions   int32     `json:"sessions"`
+}
+
+// When each user was last active, from their sessions.
+func (q *Queries) UserLastSeen(ctx context.Context) ([]UserLastSeenRow, error) {
+	rows, err := q.db.Query(ctx, userLastSeen)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UserLastSeenRow
+	for rows.Next() {
+		var i UserLastSeenRow
+		if err := rows.Scan(&i.UserID, &i.LastSeenAt, &i.Sessions); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

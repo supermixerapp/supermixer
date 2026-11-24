@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"path"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -11,13 +13,15 @@ import (
 	"supermixer/internal/api"
 	"supermixer/internal/auth"
 	"supermixer/internal/store/db"
+	"supermixer/internal/version"
 )
 
 func toUser(u db.User) api.User {
 	return api.User{
 		Id: u.ID, Username: u.Username, Email: u.Email, DisplayName: u.DisplayName,
 		IsInstanceAdmin: u.IsInstanceAdmin, DefaultPassword: u.DefaultPassword,
-		Disabled: u.DisabledAt != nil, CreatedAt: u.CreatedAt,
+		PasswordChangeRequired: u.PasswordChangeRequired,
+		Disabled:               u.DisabledAt != nil, CreatedAt: u.CreatedAt,
 	}
 }
 
@@ -40,9 +44,21 @@ func (h *handlers) ListUsers(ctx context.Context, _ api.ListUsersRequestObject) 
 	if err != nil {
 		return nil, err
 	}
+	seen, err := h.deps.Store.Queries.UserLastSeen(ctx)
+	if err != nil {
+		return nil, err
+	}
+	activity := map[[16]byte]db.UserLastSeenRow{}
+	for _, r := range seen {
+		activity[r.UserID] = r
+	}
 	out := make(api.ListUsers200JSONResponse, 0, len(rows))
 	for _, u := range rows {
-		out = append(out, toUser(u))
+		au := toUser(u)
+		if a, ok := activity[u.ID]; ok {
+			au.Sessions, au.LastSeenAt = int(a.Sessions), &a.LastSeenAt
+		}
+		out = append(out, au)
 	}
 	return out, nil
 }
@@ -55,7 +71,7 @@ func newUserParams(username, password string, email *string, displayName string)
 	if p.Username, err = normalizeUsername(username); err != nil {
 		return p, err
 	}
-	if err := auth.ValidateNewPassword(password); err != nil {
+	if err := auth.ValidateNewPassword(password, p.Username); err != nil {
 		return p, badRequest("%s", err.Error())
 	}
 	if p.Email, err = normalizeEmail(email); err != nil {
@@ -87,12 +103,15 @@ func (h *handlers) CreateUser(ctx context.Context, req api.CreateUserRequestObje
 		return nil, err
 	}
 	params.IsInstanceAdmin = deref(b.IsInstanceAdmin)
+	// The admin knows the password they set: the user replaces it, unless
+	// the admin says otherwise.
+	params.PasswordChangeRequired = b.RequirePasswordChange == nil || *b.RequirePasswordChange
 	u, err := h.deps.Store.Queries.CreateUser(ctx, params)
 	if err != nil {
 		return nil, createUserErr(err)
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.created", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
-		Metadata: map[string]any{"is_instance_admin": u.IsInstanceAdmin}})
+		Metadata: map[string]any{"is_instance_admin": u.IsInstanceAdmin, "password_change_required": u.PasswordChangeRequired}})
 	return api.CreateUser201JSONResponse(toUser(u)), nil
 }
 
@@ -157,6 +176,14 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 		if err != nil {
 			return createUserErr(err)
 		}
+		if b.PasswordChangeRequired != nil && *b.PasswordChangeRequired != updated.PasswordChangeRequired {
+			if self && *b.PasswordChangeRequired {
+				return badRequest("change your own password under Account › Preferences")
+			}
+			if updated, err = q.SetPasswordChangeRequired(ctx, db.SetPasswordChangeRequiredParams{ID: u.ID, PasswordChangeRequired: *b.PasswordChangeRequired}); err != nil {
+				return err
+			}
+		}
 		if disabling {
 			if err := adviseRotationForUser(ctx, q, u, "disabled"); err != nil {
 				return err
@@ -169,7 +196,8 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 		return nil, err
 	}
 	h.audit(ctx, nil, auditEntry{Action: "user.updated", TargetType: "user", TargetID: updated.ID.String(), TargetName: updated.Username,
-		Metadata: map[string]any{"is_instance_admin": updated.IsInstanceAdmin, "disabled": updated.DisabledAt != nil}})
+		Metadata: map[string]any{"is_instance_admin": updated.IsInstanceAdmin, "disabled": updated.DisabledAt != nil,
+			"password_change_required": updated.PasswordChangeRequired}})
 	return api.UpdateUser200JSONResponse(toUser(updated)), nil
 }
 
@@ -178,19 +206,22 @@ func (h *handlers) ResetUserPassword(ctx context.Context, req api.ResetUserPassw
 	if err != nil {
 		return nil, err
 	}
-	if err := auth.ValidateNewPassword(req.Body.Password); err != nil {
+	target, err := h.loadUser(ctx, h.deps.Store.Queries, req.UserId)
+	if err != nil {
+		return nil, err
+	}
+	if err := auth.ValidateNewPassword(req.Body.Password, target.Username); err != nil {
 		return nil, badRequest("%s", err.Error())
 	}
 	hash, err := auth.HashPassword(req.Body.Password)
 	if err != nil {
 		return nil, err
 	}
-	var target db.User
+	// A password the admin set is temporary, unless they say otherwise (or
+	// it's their own).
+	change := (req.Body.RequirePasswordChange == nil || *req.Body.RequirePasswordChange) && target.ID != me.User.ID
 	err = h.deps.Store.InTx(ctx, func(q *db.Queries) error {
-		if target, err = h.loadUser(ctx, q, req.UserId); err != nil {
-			return err
-		}
-		if err := q.SetUserPassword(ctx, db.SetUserPasswordParams{ID: target.ID, PasswordHash: hash}); err != nil {
+		if err := q.SetUserPassword(ctx, db.SetUserPasswordParams{ID: target.ID, PasswordHash: hash, PasswordChangeRequired: change}); err != nil {
 			return err
 		}
 		if target.ID == me.User.ID {
@@ -202,7 +233,8 @@ func (h *handlers) ResetUserPassword(ctx context.Context, req api.ResetUserPassw
 	if err != nil {
 		return nil, err
 	}
-	h.audit(ctx, nil, auditEntry{Action: "user.password_reset", TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username})
+	h.audit(ctx, nil, auditEntry{Action: "user.password_reset", TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username,
+		Metadata: map[string]any{"password_change_required": change}})
 	return api.ResetUserPassword204Response{}, nil
 }
 
@@ -212,4 +244,68 @@ func deref[T any](p *T) T {
 		return zero
 	}
 	return *p
+}
+
+func (h *handlers) RevokeUserSessions(ctx context.Context, req api.RevokeUserSessionsRequestObject) (api.RevokeUserSessionsResponseObject, error) {
+	me, err := requireInstanceAdmin(ctx)
+	if err != nil {
+		return nil, err
+	}
+	q := h.deps.Store.Queries
+	target, err := h.loadUser(ctx, q, req.UserId)
+	if err != nil {
+		return nil, err
+	}
+	if target.ID == me.User.ID { // keep the session this request came from
+		err = q.DeleteOtherUserSessions(ctx, db.DeleteOtherUserSessionsParams{UserID: target.ID, ID: me.Session.ID})
+	} else {
+		err = q.DeleteUserSessions(ctx, target.ID)
+	}
+	if err != nil {
+		return nil, err
+	}
+	h.audit(ctx, nil, auditEntry{Action: "user.signed_out_everywhere", TargetType: "user", TargetID: target.ID.String(), TargetName: target.Username})
+	return api.RevokeUserSessions204Response{}, nil
+}
+
+func (h *handlers) GetAdminOverview(ctx context.Context, _ api.GetAdminOverviewRequestObject) (api.GetAdminOverviewResponseObject, error) {
+	if _, err := requireInstanceAdmin(ctx); err != nil {
+		return nil, err
+	}
+	c, err := h.deps.Store.Queries.InstanceCounts(ctx)
+	if err != nil {
+		return nil, err
+	}
+	pv := h.deps.Config.Provisioning
+	out := api.GetAdminOverview200JSONResponse{
+		Version: version.Version, Users: int(c.Users), ActiveUsers: int(c.ActiveUsers), InstanceAdmins: int(c.InstanceAdmins),
+		PasswordChangeRequired: int(c.PasswordChangeRequired), Organizations: int(c.Organizations),
+		Projects: int(c.Projects), ManagedProjects: int(c.ManagedProjects),
+	}
+	out.Provisioning.Enabled, out.Provisioning.StacksDir, out.Provisioning.PublicHost = pv.Enabled, pv.StacksDir, pv.PublicHost
+	out.Backups.Dir, out.Backups.IntervalHours, out.Backups.Keep = pv.BackupsDir, float32(pv.BackupInterval.Hours()), pv.BackupKeep
+	if h.s3 != nil {
+		loc := "s3://" + path.Join(h.s3.Bucket(), pv.BackupS3.Prefix)
+		out.Backups.S3 = &loc
+	}
+	return out, nil
+}
+
+func (h *handlers) ListInstanceAuditLogs(ctx context.Context, req api.ListInstanceAuditLogsRequestObject) (api.ListInstanceAuditLogsResponseObject, error) {
+	if _, err := requireInstanceAdmin(ctx); err != nil {
+		return nil, err
+	}
+	limit := 50
+	if req.Params.Limit != nil {
+		limit = min(max(*req.Params.Limit, 1), 200)
+	}
+	params := db.ListInstanceAuditLogsParams{BeforeID: req.Params.Before, RowLimit: int32(limit + 1)}
+	if s := strings.TrimSpace(deref(req.Params.Action)); s != "" {
+		params.ActionPrefix = &s
+	}
+	rows, err := h.deps.Store.Queries.ListInstanceAuditLogs(ctx, params)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return nil, err
+	}
+	return api.ListInstanceAuditLogs200JSONResponse(toAuditPage(rows, limit)), nil
 }
