@@ -344,6 +344,17 @@ func (h *handlers) upStack(ref string) func(ctx context.Context, log io.Writer) 
 		if err := h.bringUp(ctx, ref, log); err != nil {
 			return err
 		}
+		// An upgrade Supermixer stopped during: the files are the new
+		// version's, and now they run, so finish it.
+		if provision.UpgradeInterrupted(dir) {
+			row, err := h.deps.Store.Queries.GetProjectByRef(ctx, ref)
+			if err != nil {
+				return err
+			}
+			if err := h.finishUpgrade(ctx, row.Project, log); err != nil {
+				return fmt.Errorf("finishing an interrupted upgrade: %w", err)
+			}
+		}
 		if pending := provision.PendingRestore(dir); dirExists(pending) {
 			if err := h.restorePending(ctx, ref, pending, log); err != nil {
 				return fmt.Errorf("restoring the backup this project was created from: %w", err)
@@ -450,7 +461,8 @@ func (h *handlers) runStackFor(reqCtx context.Context, p db.Project, op api.Stac
 }
 
 // recoverRestores finds running stacks a restore in place left on a new
-// database (Supermixer stopped during it) and puts them back on the old one.
+// database (Supermixer stopped during it) and puts them back on the old one,
+// and stacks an upgrade stopped partway, which it brings up on the new version.
 func (h *handlers) recoverRestores(ctx context.Context, before time.Time) {
 	if !h.deps.Config.Provisioning.Enabled {
 		return
@@ -466,13 +478,18 @@ func (h *handlers) recoverRestores(ctx context.Context, before time.Time) {
 		if h.stacks.current(p.Ref) != nil {
 			continue
 		}
-		env, err := provision.ReadEnv(h.stackLayout(p.Ref).Dir)
-		if err != nil || env[provision.RestoringFrom] == "" {
+		dir := h.stackLayout(p.Ref).Dir
+		env, err := provision.ReadEnv(dir)
+		if err != nil || (env[provision.RestoringFrom] == "" && !provision.UpgradeInterrupted(dir)) {
 			continue
 		}
-		h.deps.Logger.Warn("undoing an interrupted restore", "ref", p.Ref)
+		h.deps.Logger.Warn("finishing an interrupted restore or upgrade", "ref", p.Ref)
 		start := h.upStack(p.Ref)
-		h.runStack(ctx, p, api.StackOperationRestoring, db.StackStatusRunning, func(ctx context.Context, log io.Writer) error {
+		op := api.StackOperationRestoring
+		if env[provision.RestoringFrom] == "" {
+			op = api.StackOperationUpgrading
+		}
+		h.runStack(ctx, p, op, db.StackStatusRunning, func(ctx context.Context, log io.Writer) error {
 			if err := h.compose(p.Ref).Stop(ctx, log); err != nil {
 				return err
 			}

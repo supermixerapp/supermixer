@@ -452,6 +452,21 @@ func (q *Queries) SetStackStatus(ctx context.Context, arg SetStackStatusParams) 
 	return i, err
 }
 
+const setStackTemplate = `-- name: SetStackTemplate :exec
+UPDATE projects SET stack_template = $2 WHERE id = $1 AND managed
+`
+
+type SetStackTemplateParams struct {
+	ID            uuid.UUID `json:"id"`
+	StackTemplate string    `json:"stack_template"`
+}
+
+// After an upgrade: the template the stack's files now come from.
+func (q *Queries) SetStackTemplate(ctx context.Context, arg SetStackTemplateParams) error {
+	_, err := q.db.Exec(ctx, setStackTemplate, arg.ID, arg.StackTemplate)
+	return err
+}
+
 const touchStack = `-- name: TouchStack :exec
 UPDATE projects SET stack_status_at = now() WHERE id = $1 AND managed
 `

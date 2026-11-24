@@ -523,6 +523,9 @@ func RefreshOverlay(stackDir string) error {
 	if err := ensureSecretsFile(stackDir); err != nil {
 		return err
 	}
+	if err := ensureDrainsConfig(stackDir); err != nil {
+		return err
+	}
 	o, err := renderOverlay(stackDir)
 	if err != nil {
 		return err

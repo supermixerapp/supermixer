@@ -1,6 +1,7 @@
 #!/bin/sh
 # Stands in for the docker CLI in tests. Records each call in $FAKE_DOCKER_LOG;
-# fails `compose <cmd>` when $FAKE_DOCKER_FAIL is <cmd>.
+# fails `compose <cmd>` when $FAKE_DOCKER_FAIL is <cmd> (or, once, when the
+# file $FAKE_DOCKER_FAIL_ONCE holds it).
 echo "$*" >> "${FAKE_DOCKER_LOG:-/dev/null}"
 if [ "$1" = "ps" ]; then
   # Something outside Supermixer already publishes 8200.
@@ -17,6 +18,12 @@ if [ "$1" = "compose" ]; then
     esac
   done
   cmd="$1"
+  # $FAKE_DOCKER_FAIL_ONCE names a file holding a subcommand to fail once.
+  if [ -n "${FAKE_DOCKER_FAIL_ONCE:-}" ] && [ -f "$FAKE_DOCKER_FAIL_ONCE" ] && [ "$cmd" = "$(cat "$FAKE_DOCKER_FAIL_ONCE")" ]; then
+    rm -f "$FAKE_DOCKER_FAIL_ONCE"
+    echo "Error response from daemon: pretend $cmd failed once" >&2
+    exit 1
+  fi
   if [ "$cmd" = "${FAKE_DOCKER_FAIL:-}" ]; then
     echo "Error response from daemon: pretend $cmd failed" >&2
     exit 1

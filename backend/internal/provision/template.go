@@ -43,7 +43,8 @@ const overlayName = "supermixer.yml"
 //     (Docker Desktop's) don't support.
 //
 // It also gives the functions service the stack's Edge Function secrets, the
-// auth service its settings (auth.env), and adds auth-templates: a tiny file
+// auth service its settings (auth.env), Vector the log drains' config, and
+// adds auth-templates: a tiny file
 // server for custom email templates, since Auth only fetches them over HTTP.
 // It runs on the stack's own Studio image (already pulled; it has Node).
 //
@@ -88,6 +89,11 @@ services:
   imgproxy:
     volumes:
       - storage-files:/var/lib/storage
+  vector:
+    # Log drains: a second config with their sinks (drains.go).
+    volumes:
+      - ./volumes/logs/drains:/etc/vector/drains:ro,z
+    command: ["--config", "/etc/vector/vector.yml", "--config", "/etc/vector/drains/drains.yml"]
 
 volumes:
   db-data:
@@ -113,36 +119,64 @@ func WriteStack(l Layout, env map[string]string) error {
 	if err := os.MkdirAll(l.Dir, 0o700); err != nil {
 		return err
 	}
-	compose, err := fs.ReadFile(templateFS, "template/docker-compose.yml")
+	files, err := templateFiles(l.Project)
 	if err != nil {
 		return err
+	}
+	if err := writeFiles(l.Dir, files, nil); err != nil {
+		return err
+	}
+	if err := RefreshOverlay(l.Dir); err != nil {
+		return err
+	}
+	example, err := fs.ReadFile(templateFS, "template/.env.example")
+	if err != nil {
+		return err
+	}
+	// So docker compose run by hand in the folder means the same stack.
+	all := map[string]string{"COMPOSE_PROJECT_NAME": l.Project, "COMPOSE_FILE": strings.Join(composeFiles, ":")}
+	for k, v := range env {
+		all[k] = v
+	}
+	return os.WriteFile(filepath.Join(l.Dir, ".env"), []byte(renderEnv(string(example), all)), 0o600)
+}
+
+// templateFile is one of the template's files, rendered for a stack.
+type templateFile struct {
+	data []byte
+	mode os.FileMode
+}
+
+// templateFiles renders the bundled template for the Compose project: every
+// file by its path in the stack's folder (slash-separated), .env aside.
+func templateFiles(project string) (map[string]templateFile, error) {
+	compose, err := fs.ReadFile(templateFS, "template/docker-compose.yml")
+	if err != nil {
+		return nil, err
 	}
 	logs, err := fs.ReadFile(templateFS, "template/docker-compose.logs.yml")
 	if err != nil {
-		return err
+		return nil, err
 	}
 	scopedCompose, err := scopeContainers(string(compose))
 	if err != nil {
-		return fmt.Errorf("docker-compose.yml: %w", err)
+		return nil, fmt.Errorf("docker-compose.yml: %w", err)
 	}
 	if scopedCompose, err = enableJWKS(scopedCompose); err != nil {
-		return err
+		return nil, err
 	}
 	scopedLogs, err := scopeContainers(string(logs))
 	if err != nil {
-		return fmt.Errorf("docker-compose.logs.yml: %w", err)
+		return nil, fmt.Errorf("docker-compose.logs.yml: %w", err)
 	}
 	names := serviceAliases(scopedCompose, scopedLogs)
 
+	files := map[string]templateFile{}
 	err = fs.WalkDir(templateFS, "template", func(p string, d fs.DirEntry, err error) error {
-		if err != nil {
+		if err != nil || d.IsDir() {
 			return err
 		}
-		rel := strings.TrimPrefix(strings.TrimPrefix(p, "template"), "/")
-		dst := filepath.Join(l.Dir, filepath.FromSlash(rel))
-		if d.IsDir() {
-			return os.MkdirAll(dst, 0o755)
-		}
+		rel := strings.TrimPrefix(p, "template/")
 		b, err := fs.ReadFile(templateFS, p)
 		if err != nil {
 			return err
@@ -159,37 +193,41 @@ func WriteStack(l Layout, env map[string]string) error {
 			}
 			b = []byte(m)
 		case "volumes/logs/vector.yml":
-			v, err := scopeVector(string(b), l.Project, names)
+			v, err := scopeVector(string(b), project, names)
 			if err != nil {
 				return err
 			}
 			b = []byte(v)
-		case ".env.example":
-			// .env is written below; keep the original for reference.
 		}
 		// Embedding drops file modes; entrypoint scripts must stay runnable.
 		mode := os.FileMode(0o644)
 		if path.Ext(rel) == ".sh" {
 			mode = 0o755
 		}
-		return os.WriteFile(dst, b, mode)
+		files[rel] = templateFile{b, mode}
+		return nil
 	})
-	if err != nil {
-		return err
+	return files, err
+}
+
+// writeFiles writes files into dir, except those skip says to keep.
+func writeFiles(dir string, files map[string]templateFile, skip func(rel string) bool) error {
+	for rel, f := range files {
+		if skip != nil && skip(rel) {
+			continue
+		}
+		dst := filepath.Join(dir, filepath.FromSlash(rel))
+		if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
+			return err
+		}
+		if err := os.WriteFile(dst, f.data, f.mode); err != nil {
+			return err
+		}
+		if err := os.Chmod(dst, f.mode); err != nil {
+			return err
+		}
 	}
-	if err := RefreshOverlay(l.Dir); err != nil {
-		return err
-	}
-	example, err := fs.ReadFile(templateFS, "template/.env.example")
-	if err != nil {
-		return err
-	}
-	// So docker compose run by hand in the folder means the same stack.
-	all := map[string]string{"COMPOSE_PROJECT_NAME": l.Project, "COMPOSE_FILE": strings.Join(composeFiles, ":")}
-	for k, v := range env {
-		all[k] = v
-	}
-	return os.WriteFile(filepath.Join(l.Dir, ".env"), []byte(renderEnv(string(example), all)), 0o600)
+	return nil
 }
 
 var envKey = regexp.MustCompile(`^([A-Z][A-Z0-9_]*)=`)

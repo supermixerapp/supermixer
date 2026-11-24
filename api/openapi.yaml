@@ -687,6 +687,132 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/EdgeFunctionChange" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/stack/upgrade:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: getStackUpgrade
+      tags: [Projects]
+      summary: What upgrading the stack to the Supabase version Supermixer bundles would change
+      responses:
+        "200":
+          description: The upgrade.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackUpgrade" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: upgradeStack
+      tags: [Projects]
+      summary: Upgrade the stack to the Supabase version Supermixer bundles
+      description: |
+        Backs the database up, renders the stack's files from the new version (its .env and Edge
+        Functions kept), pulls the new images and recreates the services that changed. If the stack
+        doesn't come up, it goes back to its previous files and images. Runs in the background.
+      responses:
+        "202":
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/stack/rotate-keys:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    post:
+      operationId: rotateStackKeys
+      tags: [Projects]
+      summary: Replace some of a created stack's keys
+      description: |
+        Writes new values to the stack's .env and Supermixer's copy, then (if the stack runs) recreates
+        the services that use them. Old values stop working at once, except the previous signing key,
+        which still verifies sessions it signed until the next rotation. Runs in the background.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [keys]
+              properties:
+                keys:
+                  type: array
+                  minItems: 1
+                  items:
+                    type: string
+                    enum: [secret_key, publishable_key, signing_key, jwt_secret, functions_db_password]
+      responses:
+        "202":
+          description: Started.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/log-drains:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    get:
+      operationId: listLogDrains
+      tags: [Projects]
+      summary: Where a created stack's logs are also sent
+      responses:
+        "200":
+          description: The drains; secrets are never returned.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [drains]
+                properties:
+                  drains:
+                    type: array
+                    items: { $ref: "#/components/schemas/LogDrain" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: createLogDrain
+      tags: [Projects]
+      summary: Add a log drain
+      description: Vector checks the new configuration first, then restarts with it if the stack runs.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LogDrainInput" }
+      responses:
+        "201":
+          description: Added.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LogDrain" }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/log-drains/{id}:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      operationId: updateLogDrain
+      tags: [Projects]
+      summary: Change a log drain
+      description: Header values and the API key are kept when left out.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/LogDrainInput" }
+      responses:
+        "200":
+          description: Changed.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/LogDrain" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: deleteLogDrain
+      tags: [Projects]
+      summary: Remove a log drain
+      responses:
+        "204": { description: Removed. }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/backups:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -1221,7 +1347,7 @@ components:
       required: [name, type]
       properties:
         name: { type: string }
-        type: { type: string, description: Postgres type name, or its OID when unknown. }
+        type: { type: string, description: "Postgres type name, or its OID when unknown." }
     QueryResult:
       type: object
       required: [command, row_count, columns, rows, truncated]
@@ -1340,12 +1466,12 @@ components:
       description: Set on projects Supermixer created; null for connected ones.
       properties:
         status: { $ref: "#/components/schemas/StackStatus" }
-        error: { type: string, description: What went wrong, when status is failed. }
+        error: { type: string, description: "What went wrong, when status is failed." }
         status_at: { type: string, format: date-time, nullable: true }
         template: { type: string, description: The supabase/supabase commit the stack was made from. }
         operation:
           type: string
-          enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring]
+          enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring, upgrading, rotating_keys]
           nullable: true
           description: What Supermixer is doing to the stack right now.
     EdgeFunction:
@@ -1353,10 +1479,10 @@ components:
       required: [name, url, updated_at, files, size, entrypoint]
       properties:
         name: { type: string }
-        url: { type: string, description: Where it's invoked, through the stack's API gateway. }
+        url: { type: string, description: "Where it's invoked, through the stack's API gateway." }
         updated_at: { type: string, format: date-time }
         files: { type: integer }
-        size: { type: integer, description: Bytes, all files together. }
+        size: { type: integer, description: "Bytes, all files together." }
         entrypoint: { type: string, nullable: true, description: The file it starts from; null if it has none. }
     EdgeFunctionFile:
       type: object
@@ -1382,18 +1508,79 @@ components:
       properties:
         function: { $ref: "#/components/schemas/EdgeFunction" }
         restarted: { type: boolean, description: Whether the functions service was recreated; false while the stack isn't running. }
+    LogDrain:
+      type: object
+      required: [id, name, type, enabled, url, headers, gzip, datadog_site, api_key_set]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [http, loki, datadog] }
+        enabled: { type: boolean }
+        url: { type: string, description: "The HTTP endpoint, or Loki's base URL." }
+        headers:
+          type: array
+          items:
+            type: object
+            required: [name, value_set]
+            properties:
+              name: { type: string }
+              value_set: { type: boolean }
+        gzip: { type: boolean }
+        datadog_site: { type: string }
+        api_key_set: { type: boolean }
+    LogDrainInput:
+      type: object
+      required: [name, type]
+      properties:
+        name: { type: string }
+        type: { type: string, enum: [http, loki, datadog] }
+        enabled: { type: boolean, default: true }
+        url: { type: string }
+        headers:
+          type: array
+          items:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string }
+              value: { type: string, description: Left out to keep the current value. }
+        gzip: { type: boolean }
+        datadog_site: { type: string }
+        api_key: { type: string, description: Left out (or empty) to keep the current key. }
+    StackUpgrade:
+      type: object
+      required: [current, latest, up_to_date, images, new_keys]
+      properties:
+        current: { type: string, description: The supabase/supabase commit the stack's files come from. }
+        latest: { type: string, description: The commit Supermixer bundles. }
+        up_to_date: { type: boolean }
+        images:
+          type: array
+          description: Services whose image changes. from is empty for a new service, to for a removed one.
+          items:
+            type: object
+            required: [service, from, to]
+            properties:
+              service: { type: string }
+              from: { type: string }
+              to: { type: string }
+        new_keys:
+          type: array
+          description: .env settings the new version adds (generated, or the template's defaults).
+          items: { type: string }
+        blocked: { type: string, description: "Why the upgrade can't run, if it can't." }
     Backup:
       type: object
       required: [id, kind, status, error, size_bytes, template, postgres_version, started_at]
       properties:
         id: { type: string, format: uuid }
-        kind: { type: string, enum: [scheduled, manual, pre_restore] }
+        kind: { type: string, enum: [scheduled, manual, pre_restore, pre_upgrade] }
         status: { type: string, enum: [running, completed, failed] }
         error: { type: string }
         size_bytes: { type: integer, format: int64, description: Compressed. }
         template: { type: string }
         postgres_version: { type: string }
-        created_by: { type: string, nullable: true, description: Username, for manual backups. }
+        created_by: { type: string, nullable: true, description: "Username, for manual backups." }
         started_at: { type: string, format: date-time }
         finished_at: { type: string, format: date-time, nullable: true }
     BackupList:
@@ -1417,7 +1604,7 @@ components:
           type: array
           items: { type: string }
         callback_url: { type: string, description: The redirect URL to register with OAuth providers. }
-        restarted: { type: boolean, description: After a change, whether the auth service was recreated. }
+        restarted: { type: boolean, description: "After a change, whether the auth service was recreated." }
     FunctionSettings:
       type: object
       required: [database_access]
@@ -1434,7 +1621,7 @@ components:
       required: [name, digest]
       properties:
         name: { type: string }
-        digest: { type: string, description: The value's SHA-256, in hex. }
+        digest: { type: string, description: "The value's SHA-256, in hex." }
     FunctionSecretsChange:
       type: object
       required: [secrets, restarted]
@@ -1703,7 +1890,7 @@ components:
       type: object
       required: [api_url, database, keys]
       properties:
-        api_url: { type: string, description: The stack's API gateway, e.g. http://localhost:8000 }
+        api_url: { type: string, description: "The stack's API gateway, e.g. http://localhost:8000" }
         studio_url: { type: string }
         database: { $ref: "#/components/schemas/DatabaseConnection" }
         keys: { $ref: "#/components/schemas/ApiKeysInput" }
@@ -1842,7 +2029,7 @@ components:
       type: object
       required: [name, title, level, facing, categories, description, detail, remediation, metadata, cache_key]
       properties:
-        name: { type: string, description: The check, e.g. rls_disabled_in_public }
+        name: { type: string, description: "The check, e.g. rls_disabled_in_public" }
         title: { type: string }
         level: { type: string, enum: [ERROR, WARN, INFO] }
         facing: { type: string, enum: [EXTERNAL, INTERNAL] }
@@ -1850,7 +2037,7 @@ components:
           type: array
           items: { type: string, enum: [SECURITY, PERFORMANCE] }
         description: { type: string }
-        detail: { type: string, description: What was found, in Markdown. }
+        detail: { type: string, description: "What was found, in Markdown." }
         remediation: { type: string, description: Supabase's guide to fixing it. }
         metadata: { type: object, additionalProperties: true, description: "The object it's about: schema, name, type, …" }
         cache_key: { type: string }
@@ -1864,7 +2051,7 @@ components:
         kind: { type: string, enum: [legacy, api_key, jwt_secret] }
         secret: { type: boolean, description: Must never be exposed in a browser. }
         present: { type: boolean }
-        value: { type: string, description: Present for public keys, and for secret ones when revealed. }
+        value: { type: string, description: "Present for public keys, and for secret ones when revealed." }
         description: { type: string }
 
     AuditLogEntry:

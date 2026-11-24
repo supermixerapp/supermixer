@@ -75,6 +75,7 @@ func (e ApiKeyKind) Valid() bool {
 const (
 	BackupKindManual     BackupKind = "manual"
 	BackupKindPreRestore BackupKind = "pre_restore"
+	BackupKindPreUpgrade BackupKind = "pre_upgrade"
 	BackupKindScheduled  BackupKind = "scheduled"
 )
 
@@ -84,6 +85,8 @@ func (e BackupKind) Valid() bool {
 	case BackupKindManual:
 		return true
 	case BackupKindPreRestore:
+		return true
+	case BackupKindPreUpgrade:
 		return true
 	case BackupKindScheduled:
 		return true
@@ -272,6 +275,48 @@ func (e LintLevel) Valid() bool {
 	}
 }
 
+// Defines values for LogDrainType.
+const (
+	LogDrainTypeDatadog LogDrainType = "datadog"
+	LogDrainTypeHttp    LogDrainType = "http"
+	LogDrainTypeLoki    LogDrainType = "loki"
+)
+
+// Valid indicates whether the value is a known member of the LogDrainType enum.
+func (e LogDrainType) Valid() bool {
+	switch e {
+	case LogDrainTypeDatadog:
+		return true
+	case LogDrainTypeHttp:
+		return true
+	case LogDrainTypeLoki:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for LogDrainInputType.
+const (
+	LogDrainInputTypeDatadog LogDrainInputType = "datadog"
+	LogDrainInputTypeHttp    LogDrainInputType = "http"
+	LogDrainInputTypeLoki    LogDrainInputType = "loki"
+)
+
+// Valid indicates whether the value is a known member of the LogDrainInputType enum.
+func (e LogDrainInputType) Valid() bool {
+	switch e {
+	case LogDrainInputTypeDatadog:
+		return true
+	case LogDrainInputTypeHttp:
+		return true
+	case LogDrainInputTypeLoki:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for LogSource.
 const (
 	LogSourceApiGateway LogSource = "api_gateway"
@@ -421,13 +466,15 @@ func (e SnippetVisibility) Valid() bool {
 
 // Defines values for StackOperation.
 const (
-	StackOperationBackingUp  StackOperation = "backing_up"
-	StackOperationDeleting   StackOperation = "deleting"
-	StackOperationRestarting StackOperation = "restarting"
-	StackOperationRestoring  StackOperation = "restoring"
-	StackOperationStarting   StackOperation = "starting"
-	StackOperationStopping   StackOperation = "stopping"
-	StackOperationUpdating   StackOperation = "updating"
+	StackOperationBackingUp    StackOperation = "backing_up"
+	StackOperationDeleting     StackOperation = "deleting"
+	StackOperationRestarting   StackOperation = "restarting"
+	StackOperationRestoring    StackOperation = "restoring"
+	StackOperationRotatingKeys StackOperation = "rotating_keys"
+	StackOperationStarting     StackOperation = "starting"
+	StackOperationStopping     StackOperation = "stopping"
+	StackOperationUpdating     StackOperation = "updating"
+	StackOperationUpgrading    StackOperation = "upgrading"
 )
 
 // Valid indicates whether the value is a known member of the StackOperation enum.
@@ -441,11 +488,15 @@ func (e StackOperation) Valid() bool {
 		return true
 	case StackOperationRestoring:
 		return true
+	case StackOperationRotatingKeys:
+		return true
 	case StackOperationStarting:
 		return true
 	case StackOperationStopping:
 		return true
 	case StackOperationUpdating:
+		return true
+	case StackOperationUpgrading:
 		return true
 	default:
 		return false
@@ -454,13 +505,15 @@ func (e StackOperation) Valid() bool {
 
 // Defines values for StackDetailOperation.
 const (
-	StackDetailOperationBackingUp  StackDetailOperation = "backing_up"
-	StackDetailOperationDeleting   StackDetailOperation = "deleting"
-	StackDetailOperationRestarting StackDetailOperation = "restarting"
-	StackDetailOperationRestoring  StackDetailOperation = "restoring"
-	StackDetailOperationStarting   StackDetailOperation = "starting"
-	StackDetailOperationStopping   StackDetailOperation = "stopping"
-	StackDetailOperationUpdating   StackDetailOperation = "updating"
+	StackDetailOperationBackingUp    StackDetailOperation = "backing_up"
+	StackDetailOperationDeleting     StackDetailOperation = "deleting"
+	StackDetailOperationRestarting   StackDetailOperation = "restarting"
+	StackDetailOperationRestoring    StackDetailOperation = "restoring"
+	StackDetailOperationRotatingKeys StackDetailOperation = "rotating_keys"
+	StackDetailOperationStarting     StackDetailOperation = "starting"
+	StackDetailOperationStopping     StackDetailOperation = "stopping"
+	StackDetailOperationUpdating     StackDetailOperation = "updating"
+	StackDetailOperationUpgrading    StackDetailOperation = "upgrading"
 )
 
 // Valid indicates whether the value is a known member of the StackDetailOperation enum.
@@ -474,11 +527,15 @@ func (e StackDetailOperation) Valid() bool {
 		return true
 	case StackDetailOperationRestoring:
 		return true
+	case StackDetailOperationRotatingKeys:
+		return true
 	case StackDetailOperationStarting:
 		return true
 	case StackDetailOperationStopping:
 		return true
 	case StackDetailOperationUpdating:
+		return true
+	case StackDetailOperationUpgrading:
 		return true
 	default:
 		return false
@@ -572,6 +629,33 @@ func (e SetFunctionSettings200JSONResponseBodyDatabaseAccess) Valid() bool {
 	}
 }
 
+// Defines values for RotateStackKeysJSONBodyKeys.
+const (
+	RotateStackKeysJSONBodyKeysFunctionsDbPassword RotateStackKeysJSONBodyKeys = "functions_db_password"
+	RotateStackKeysJSONBodyKeysJwtSecret           RotateStackKeysJSONBodyKeys = "jwt_secret"
+	RotateStackKeysJSONBodyKeysPublishableKey      RotateStackKeysJSONBodyKeys = "publishable_key"
+	RotateStackKeysJSONBodyKeysSecretKey           RotateStackKeysJSONBodyKeys = "secret_key"
+	RotateStackKeysJSONBodyKeysSigningKey          RotateStackKeysJSONBodyKeys = "signing_key"
+)
+
+// Valid indicates whether the value is a known member of the RotateStackKeysJSONBodyKeys enum.
+func (e RotateStackKeysJSONBodyKeys) Valid() bool {
+	switch e {
+	case RotateStackKeysJSONBodyKeysFunctionsDbPassword:
+		return true
+	case RotateStackKeysJSONBodyKeysJwtSecret:
+		return true
+	case RotateStackKeysJSONBodyKeysPublishableKey:
+		return true
+	case RotateStackKeysJSONBodyKeysSecretKey:
+		return true
+	case RotateStackKeysJSONBodyKeysSigningKey:
+		return true
+	default:
+		return false
+	}
+}
+
 // ApiKey defines model for ApiKey.
 type ApiKey struct {
 	Description string     `json:"description"`
@@ -583,7 +667,7 @@ type ApiKey struct {
 	// Secret Must never be exposed in a browser.
 	Secret bool `json:"secret"`
 
-	// Value Present for public keys
+	// Value Present for public keys, and for secret ones when revealed.
 	Value *string `json:"value,omitempty"`
 }
 
@@ -628,7 +712,7 @@ type AuthConfig struct {
 	// CallbackUrl The redirect URL to register with OAuth providers.
 	CallbackUrl string `json:"callback_url"`
 
-	// Restarted After a change
+	// Restarted After a change, whether the auth service was recreated.
 	Restarted  *bool    `json:"restarted,omitempty"`
 	SecretsSet []string `json:"secrets_set"`
 
@@ -638,7 +722,7 @@ type AuthConfig struct {
 
 // Backup defines model for Backup.
 type Backup struct {
-	// CreatedBy Username
+	// CreatedBy Username, for manual backups.
 	CreatedBy       *string            `json:"created_by"`
 	Error           string             `json:"error"`
 	FinishedAt      *time.Time         `json:"finished_at"`
@@ -692,11 +776,11 @@ type EdgeFunction struct {
 	Files      int     `json:"files"`
 	Name       string  `json:"name"`
 
-	// Size Bytes
+	// Size Bytes, all files together.
 	Size      int       `json:"size"`
 	UpdatedAt time.Time `json:"updated_at"`
 
-	// Url Where it's invoked
+	// Url Where it's invoked, through the stack's API gateway.
 	Url string `json:"url"`
 }
 
@@ -732,7 +816,7 @@ type Error struct {
 
 // FunctionSecret defines model for FunctionSecret.
 type FunctionSecret struct {
-	// Digest The value's SHA-256
+	// Digest The value's SHA-256, in hex.
 	Digest string `json:"digest"`
 	Name   string `json:"name"`
 }
@@ -847,7 +931,7 @@ type Lint struct {
 	Categories  []LintCategories `json:"categories"`
 	Description string           `json:"description"`
 
-	// Detail What was found
+	// Detail What was found, in Markdown.
 	Detail string     `json:"detail"`
 	Facing LintFacing `json:"facing"`
 	Level  LintLevel  `json:"level"`
@@ -855,7 +939,7 @@ type Lint struct {
 	// Metadata The object it's about: schema, name, type, …
 	Metadata map[string]any `json:"metadata"`
 
-	// Name The check
+	// Name The check, e.g. rls_disabled_in_public
 	Name string `json:"name"`
 
 	// Remediation Supabase's guide to fixing it.
@@ -871,6 +955,48 @@ type LintFacing string
 
 // LintLevel defines model for Lint.Level.
 type LintLevel string
+
+// LogDrain defines model for LogDrain.
+type LogDrain struct {
+	ApiKeySet   bool   `json:"api_key_set"`
+	DatadogSite string `json:"datadog_site"`
+	Enabled     bool   `json:"enabled"`
+	Gzip        bool   `json:"gzip"`
+	Headers     []struct {
+		Name     string `json:"name"`
+		ValueSet bool   `json:"value_set"`
+	} `json:"headers"`
+	Id   string       `json:"id"`
+	Name string       `json:"name"`
+	Type LogDrainType `json:"type"`
+
+	// Url The HTTP endpoint, or Loki's base URL.
+	Url string `json:"url"`
+}
+
+// LogDrainType defines model for LogDrain.Type.
+type LogDrainType string
+
+// LogDrainInput defines model for LogDrainInput.
+type LogDrainInput struct {
+	// ApiKey Left out (or empty) to keep the current key.
+	ApiKey      *string `json:"api_key,omitempty"`
+	DatadogSite *string `json:"datadog_site,omitempty"`
+	Enabled     *bool   `json:"enabled,omitempty"`
+	Gzip        *bool   `json:"gzip,omitempty"`
+	Headers     *[]struct {
+		Name string `json:"name"`
+
+		// Value Left out to keep the current value.
+		Value *string `json:"value,omitempty"`
+	} `json:"headers,omitempty"`
+	Name string            `json:"name"`
+	Type LogDrainInputType `json:"type"`
+	Url  *string           `json:"url,omitempty"`
+}
+
+// LogDrainInputType defines model for LogDrainInput.Type.
+type LogDrainInputType string
 
 // LogEntry defines model for LogEntry.
 type LogEntry struct {
@@ -1019,7 +1145,7 @@ type Project struct {
 
 // ProjectConnection defines model for ProjectConnection.
 type ProjectConnection struct {
-	// ApiUrl The stack's API gateway
+	// ApiUrl The stack's API gateway, e.g. http://localhost:8000
 	ApiUrl   string             `json:"api_url"`
 	Database DatabaseConnection `json:"database"`
 
@@ -1065,7 +1191,7 @@ type ProjectUpdate struct {
 type QueryColumn struct {
 	Name string `json:"name"`
 
-	// Type Postgres type name
+	// Type Postgres type name, or its OID when unknown.
 	Type string `json:"type"`
 }
 
@@ -1208,7 +1334,7 @@ type SnippetVisibility string
 
 // Stack Set on projects Supermixer created; null for connected ones.
 type Stack struct {
-	// Error What went wrong
+	// Error What went wrong, when status is failed.
 	Error string `json:"error"`
 
 	// Operation What Supermixer is doing to the stack right now.
@@ -1225,7 +1351,7 @@ type StackOperation string
 
 // StackDetail defines model for StackDetail.
 type StackDetail struct {
-	// Error What went wrong
+	// Error What went wrong, when status is failed.
 	Error string `json:"error"`
 
 	// Log The end of Supermixer's log of docker compose output for this stack.
@@ -1259,6 +1385,29 @@ type StackDetailOperation string
 
 // StackStatus defines model for StackStatus.
 type StackStatus string
+
+// StackUpgrade defines model for StackUpgrade.
+type StackUpgrade struct {
+	// Blocked Why the upgrade can't run, if it can't.
+	Blocked *string `json:"blocked,omitempty"`
+
+	// Current The supabase/supabase commit the stack's files come from.
+	Current string `json:"current"`
+
+	// Images Services whose image changes. from is empty for a new service, to for a removed one.
+	Images []struct {
+		From    string `json:"from"`
+		Service string `json:"service"`
+		To      string `json:"to"`
+	} `json:"images"`
+
+	// Latest The commit Supermixer bundles.
+	Latest string `json:"latest"`
+
+	// NewKeys .env settings the new version adds (generated, or the template's defaults).
+	NewKeys  []string `json:"new_keys"`
+	UpToDate bool     `json:"up_to_date"`
+}
 
 // ThemePreference defines model for ThemePreference.
 type ThemePreference string
@@ -1398,6 +1547,14 @@ type GetRequestStatsParams struct {
 	Since time.Time `form:"since" json:"since"`
 }
 
+// RotateStackKeysJSONBody defines body for RotateStackKeys for application/json ContentType.
+type RotateStackKeysJSONBody struct {
+	Keys []RotateStackKeysJSONBodyKeys `json:"keys"`
+}
+
+// RotateStackKeysJSONBodyKeys defines model for RotateStackKeysJSONBody.Keys.
+type RotateStackKeysJSONBodyKeys string
+
 // CreateUserJSONRequestBody defines body for CreateUser for application/json ContentType.
 type CreateUserJSONRequestBody = UserCreate
 
@@ -1461,6 +1618,12 @@ type SetFunctionSettingsJSONRequestBody = FunctionSettings
 // DeployEdgeFunctionJSONRequestBody defines body for DeployEdgeFunction for application/json ContentType.
 type DeployEdgeFunctionJSONRequestBody DeployEdgeFunctionJSONBody
 
+// CreateLogDrainJSONRequestBody defines body for CreateLogDrain for application/json ContentType.
+type CreateLogDrainJSONRequestBody = LogDrainInput
+
+// UpdateLogDrainJSONRequestBody defines body for UpdateLogDrain for application/json ContentType.
+type UpdateLogDrainJSONRequestBody = LogDrainInput
+
 // RunQueryJSONRequestBody defines body for RunQuery for application/json ContentType.
 type RunQueryJSONRequestBody = QueryRequest
 
@@ -1469,6 +1632,9 @@ type CreateSnippetJSONRequestBody = SnippetCreate
 
 // UpdateSnippetJSONRequestBody defines body for UpdateSnippet for application/json ContentType.
 type UpdateSnippetJSONRequestBody = SnippetUpdate
+
+// RotateStackKeysJSONRequestBody defines body for RotateStackKeys for application/json ContentType.
+type RotateStackKeysJSONRequestBody RotateStackKeysJSONBody
 
 // TransferProjectJSONRequestBody defines body for TransferProject for application/json ContentType.
 type TransferProjectJSONRequestBody = ProjectTransfer
@@ -1640,6 +1806,18 @@ type ServerInterface interface {
 
 	// (GET /projects/{ref}/health)
 	GetProjectHealth(w http.ResponseWriter, r *http.Request, ref Ref)
+	// ListLogDrains Where a created stack's logs are also sent
+	// (GET /projects/{ref}/log-drains)
+	ListLogDrains(w http.ResponseWriter, r *http.Request, ref Ref)
+	// CreateLogDrain Add a log drain
+	// (POST /projects/{ref}/log-drains)
+	CreateLogDrain(w http.ResponseWriter, r *http.Request, ref Ref)
+	// DeleteLogDrain Remove a log drain
+	// (DELETE /projects/{ref}/log-drains/{id})
+	DeleteLogDrain(w http.ResponseWriter, r *http.Request, ref Ref, id string)
+	// UpdateLogDrain Change a log drain
+	// (PATCH /projects/{ref}/log-drains/{id})
+	UpdateLogDrain(w http.ResponseWriter, r *http.Request, ref Ref, id string)
 	// ListLogs Log entries from the stack's log analytics (Logflare), newest first.
 	// (GET /projects/{ref}/logs)
 	ListLogs(w http.ResponseWriter, r *http.Request, ref Ref, params ListLogsParams)
@@ -1673,6 +1851,15 @@ type ServerInterface interface {
 	// GetStack A created stack's status, containers and recent output
 	// (GET /projects/{ref}/stack)
 	GetStack(w http.ResponseWriter, r *http.Request, ref Ref)
+	// RotateStackKeys Replace some of a created stack's keys
+	// (POST /projects/{ref}/stack/rotate-keys)
+	RotateStackKeys(w http.ResponseWriter, r *http.Request, ref Ref)
+	// GetStackUpgrade What upgrading the stack to the Supabase version Supermixer bundles would change
+	// (GET /projects/{ref}/stack/upgrade)
+	GetStackUpgrade(w http.ResponseWriter, r *http.Request, ref Ref)
+	// UpgradeStack Upgrade the stack to the Supabase version Supermixer bundles
+	// (POST /projects/{ref}/stack/upgrade)
+	UpgradeStack(w http.ResponseWriter, r *http.Request, ref Ref)
 	// StackAction Start (or retry), stop (pause) or restart a created stack
 	// (POST /projects/{ref}/stack/{action})
 	StackAction(w http.ResponseWriter, r *http.Request, ref Ref, action string)
@@ -2005,6 +2192,30 @@ func (_ Unimplemented) GetProjectHealth(w http.ResponseWriter, r *http.Request, 
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// ListLogDrains Where a created stack's logs are also sent
+// (GET /projects/{ref}/log-drains)
+func (_ Unimplemented) ListLogDrains(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// CreateLogDrain Add a log drain
+// (POST /projects/{ref}/log-drains)
+func (_ Unimplemented) CreateLogDrain(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// DeleteLogDrain Remove a log drain
+// (DELETE /projects/{ref}/log-drains/{id})
+func (_ Unimplemented) DeleteLogDrain(w http.ResponseWriter, r *http.Request, ref Ref, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpdateLogDrain Change a log drain
+// (PATCH /projects/{ref}/log-drains/{id})
+func (_ Unimplemented) UpdateLogDrain(w http.ResponseWriter, r *http.Request, ref Ref, id string) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // ListLogs Log entries from the stack's log analytics (Logflare), newest first.
 // (GET /projects/{ref}/logs)
 func (_ Unimplemented) ListLogs(w http.ResponseWriter, r *http.Request, ref Ref, params ListLogsParams) {
@@ -2064,6 +2275,24 @@ func (_ Unimplemented) UpdateSnippet(w http.ResponseWriter, r *http.Request, ref
 // GetStack A created stack's status, containers and recent output
 // (GET /projects/{ref}/stack)
 func (_ Unimplemented) GetStack(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// RotateStackKeys Replace some of a created stack's keys
+// (POST /projects/{ref}/stack/rotate-keys)
+func (_ Unimplemented) RotateStackKeys(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// GetStackUpgrade What upgrading the stack to the Supabase version Supermixer bundles would change
+// (GET /projects/{ref}/stack/upgrade)
+func (_ Unimplemented) GetStackUpgrade(w http.ResponseWriter, r *http.Request, ref Ref) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// UpgradeStack Upgrade the stack to the Supabase version Supermixer bundles
+// (POST /projects/{ref}/stack/upgrade)
+func (_ Unimplemented) UpgradeStack(w http.ResponseWriter, r *http.Request, ref Ref) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -3576,6 +3805,128 @@ func (siw *ServerInterfaceWrapper) GetProjectHealth(w http.ResponseWriter, r *ht
 	handler.ServeHTTP(w, r)
 }
 
+// ListLogDrains operation middleware
+func (siw *ServerInterfaceWrapper) ListLogDrains(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListLogDrains(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// CreateLogDrain operation middleware
+func (siw *ServerInterfaceWrapper) CreateLogDrain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.CreateLogDrain(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// DeleteLogDrain operation middleware
+func (siw *ServerInterfaceWrapper) DeleteLogDrain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.DeleteLogDrain(w, r, ref, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpdateLogDrain operation middleware
+func (siw *ServerInterfaceWrapper) UpdateLogDrain(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	// ------------- Path parameter "id" -------------
+	var id string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "id", chi.URLParam(r, "id"), &id, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpdateLogDrain(w, r, ref, id)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // ListLogs operation middleware
 func (siw *ServerInterfaceWrapper) ListLogs(w http.ResponseWriter, r *http.Request) {
 
@@ -3986,6 +4337,84 @@ func (siw *ServerInterfaceWrapper) GetStack(w http.ResponseWriter, r *http.Reque
 	handler.ServeHTTP(w, r)
 }
 
+// RotateStackKeys operation middleware
+func (siw *ServerInterfaceWrapper) RotateStackKeys(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.RotateStackKeys(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// GetStackUpgrade operation middleware
+func (siw *ServerInterfaceWrapper) GetStackUpgrade(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.GetStackUpgrade(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
+// UpgradeStack operation middleware
+func (siw *ServerInterfaceWrapper) UpgradeStack(w http.ResponseWriter, r *http.Request) {
+
+	var err error
+	_ = err
+
+	// ------------- Path parameter "ref" -------------
+	var ref Ref
+
+	err = runtime.BindStyledParameterWithOptions("simple", "ref", chi.URLParam(r, "ref"), &ref, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: r.URL.RawPath == ""})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "ref", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UpgradeStack(w, r, ref)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r)
+}
+
 // StackAction operation middleware
 func (siw *ServerInterfaceWrapper) StackAction(w http.ResponseWriter, r *http.Request) {
 
@@ -4329,6 +4758,27 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Put(options.BaseURL+"/projects/{ref}/functions/{name}", wrapper.DeployEdgeFunction)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/stack/upgrade", wrapper.GetStackUpgrade)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/stack/upgrade", wrapper.UpgradeStack)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/stack/rotate-keys", wrapper.RotateStackKeys)
+	})
+	r.Group(func(r chi.Router) {
+		r.Get(options.BaseURL+"/projects/{ref}/log-drains", wrapper.ListLogDrains)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/projects/{ref}/log-drains", wrapper.CreateLogDrain)
+	})
+	r.Group(func(r chi.Router) {
+		r.Delete(options.BaseURL+"/projects/{ref}/log-drains/{id}", wrapper.DeleteLogDrain)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/projects/{ref}/log-drains/{id}", wrapper.UpdateLogDrain)
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/projects/{ref}/backups", wrapper.ListBackups)
@@ -6615,6 +7065,162 @@ func (response GetProjectHealthdefaultJSONResponse) VisitGetProjectHealthRespons
 	return err
 }
 
+type ListLogDrainsRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type ListLogDrainsResponseObject interface {
+	VisitListLogDrainsResponse(w http.ResponseWriter) error
+}
+
+type ListLogDrains200JSONResponse struct {
+	Drains []LogDrain `json:"drains"`
+}
+
+func (response ListLogDrains200JSONResponse) VisitListLogDrainsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type ListLogDrainsdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response ListLogDrainsdefaultJSONResponse) VisitListLogDrainsResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLogDrainRequestObject struct {
+	Ref  Ref `json:"ref"`
+	Body *CreateLogDrainJSONRequestBody
+}
+
+type CreateLogDrainResponseObject interface {
+	VisitCreateLogDrainResponse(w http.ResponseWriter) error
+}
+
+type CreateLogDrain201JSONResponse LogDrain
+
+func (response CreateLogDrain201JSONResponse) VisitCreateLogDrainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(201)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type CreateLogDraindefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response CreateLogDraindefaultJSONResponse) VisitCreateLogDrainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type DeleteLogDrainRequestObject struct {
+	Ref Ref    `json:"ref"`
+	Id  string `json:"id"`
+}
+
+type DeleteLogDrainResponseObject interface {
+	VisitDeleteLogDrainResponse(w http.ResponseWriter) error
+}
+
+type DeleteLogDrain204Response struct {
+}
+
+func (response DeleteLogDrain204Response) VisitDeleteLogDrainResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteLogDraindefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response DeleteLogDraindefaultJSONResponse) VisitDeleteLogDrainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLogDrainRequestObject struct {
+	Ref  Ref    `json:"ref"`
+	Id   string `json:"id"`
+	Body *UpdateLogDrainJSONRequestBody
+}
+
+type UpdateLogDrainResponseObject interface {
+	VisitUpdateLogDrainResponse(w http.ResponseWriter) error
+}
+
+type UpdateLogDrain200JSONResponse LogDrain
+
+func (response UpdateLogDrain200JSONResponse) VisitUpdateLogDrainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpdateLogDraindefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UpdateLogDraindefaultJSONResponse) VisitUpdateLogDrainResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type ListLogsRequestObject struct {
 	Ref    Ref `json:"ref"`
 	Params ListLogsParams
@@ -7060,6 +7666,124 @@ func (response GetStackdefaultJSONResponse) VisitGetStackResponse(w http.Respons
 	return err
 }
 
+type RotateStackKeysRequestObject struct {
+	Ref  Ref `json:"ref"`
+	Body *RotateStackKeysJSONRequestBody
+}
+
+type RotateStackKeysResponseObject interface {
+	VisitRotateStackKeysResponse(w http.ResponseWriter) error
+}
+
+type RotateStackKeys202JSONResponse StackDetail
+
+func (response RotateStackKeys202JSONResponse) VisitRotateStackKeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type RotateStackKeysdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response RotateStackKeysdefaultJSONResponse) VisitRotateStackKeysResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStackUpgradeRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type GetStackUpgradeResponseObject interface {
+	VisitGetStackUpgradeResponse(w http.ResponseWriter) error
+}
+
+type GetStackUpgrade200JSONResponse StackUpgrade
+
+func (response GetStackUpgrade200JSONResponse) VisitGetStackUpgradeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type GetStackUpgradedefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response GetStackUpgradedefaultJSONResponse) VisitGetStackUpgradeResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpgradeStackRequestObject struct {
+	Ref Ref `json:"ref"`
+}
+
+type UpgradeStackResponseObject interface {
+	VisitUpgradeStackResponse(w http.ResponseWriter) error
+}
+
+type UpgradeStack202JSONResponse StackDetail
+
+func (response UpgradeStack202JSONResponse) VisitUpgradeStackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(202)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
+type UpgradeStackdefaultJSONResponse struct {
+	Body       Error
+	StatusCode int
+}
+
+func (response UpgradeStackdefaultJSONResponse) VisitUpgradeStackResponse(w http.ResponseWriter) error {
+
+	var buf bytes.Buffer
+	if err := runtime.JSONMarshalWrite(&buf, response.Body); err != nil {
+		return err
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(response.StatusCode)
+	_, err := buf.WriteTo(w)
+	return err
+}
+
 type StackActionRequestObject struct {
 	Ref    Ref    `json:"ref"`
 	Action string `json:"action"`
@@ -7387,6 +8111,18 @@ type StrictServerInterface interface {
 
 	// (GET /projects/{ref}/health)
 	GetProjectHealth(ctx context.Context, request GetProjectHealthRequestObject) (GetProjectHealthResponseObject, error)
+	// ListLogDrains Where a created stack's logs are also sent
+	// (GET /projects/{ref}/log-drains)
+	ListLogDrains(ctx context.Context, request ListLogDrainsRequestObject) (ListLogDrainsResponseObject, error)
+	// CreateLogDrain Add a log drain
+	// (POST /projects/{ref}/log-drains)
+	CreateLogDrain(ctx context.Context, request CreateLogDrainRequestObject) (CreateLogDrainResponseObject, error)
+	// DeleteLogDrain Remove a log drain
+	// (DELETE /projects/{ref}/log-drains/{id})
+	DeleteLogDrain(ctx context.Context, request DeleteLogDrainRequestObject) (DeleteLogDrainResponseObject, error)
+	// UpdateLogDrain Change a log drain
+	// (PATCH /projects/{ref}/log-drains/{id})
+	UpdateLogDrain(ctx context.Context, request UpdateLogDrainRequestObject) (UpdateLogDrainResponseObject, error)
 	// ListLogs Log entries from the stack's log analytics (Logflare), newest first.
 	// (GET /projects/{ref}/logs)
 	ListLogs(ctx context.Context, request ListLogsRequestObject) (ListLogsResponseObject, error)
@@ -7420,6 +8156,15 @@ type StrictServerInterface interface {
 	// GetStack A created stack's status, containers and recent output
 	// (GET /projects/{ref}/stack)
 	GetStack(ctx context.Context, request GetStackRequestObject) (GetStackResponseObject, error)
+	// RotateStackKeys Replace some of a created stack's keys
+	// (POST /projects/{ref}/stack/rotate-keys)
+	RotateStackKeys(ctx context.Context, request RotateStackKeysRequestObject) (RotateStackKeysResponseObject, error)
+	// GetStackUpgrade What upgrading the stack to the Supabase version Supermixer bundles would change
+	// (GET /projects/{ref}/stack/upgrade)
+	GetStackUpgrade(ctx context.Context, request GetStackUpgradeRequestObject) (GetStackUpgradeResponseObject, error)
+	// UpgradeStack Upgrade the stack to the Supabase version Supermixer bundles
+	// (POST /projects/{ref}/stack/upgrade)
+	UpgradeStack(ctx context.Context, request UpgradeStackRequestObject) (UpgradeStackResponseObject, error)
 	// StackAction Start (or retry), stop (pause) or restart a created stack
 	// (POST /projects/{ref}/stack/{action})
 	StackAction(ctx context.Context, request StackActionRequestObject) (StackActionResponseObject, error)
@@ -9042,6 +9787,126 @@ func (sh *strictHandler) GetProjectHealth(w http.ResponseWriter, r *http.Request
 	}
 }
 
+// ListLogDrains operation middleware
+func (sh *strictHandler) ListLogDrains(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request ListLogDrainsRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.ListLogDrains(ctx, request.(ListLogDrainsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "ListLogDrains")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(ListLogDrainsResponseObject); ok {
+		if err := validResponse.VisitListLogDrainsResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// CreateLogDrain operation middleware
+func (sh *strictHandler) CreateLogDrain(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request CreateLogDrainRequestObject
+
+	request.Ref = ref
+
+	var body CreateLogDrainJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.CreateLogDrain(ctx, request.(CreateLogDrainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateLogDrain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(CreateLogDrainResponseObject); ok {
+		if err := validResponse.VisitCreateLogDrainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// DeleteLogDrain operation middleware
+func (sh *strictHandler) DeleteLogDrain(w http.ResponseWriter, r *http.Request, ref Ref, id string) {
+	var request DeleteLogDrainRequestObject
+
+	request.Ref = ref
+	request.Id = id
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.DeleteLogDrain(ctx, request.(DeleteLogDrainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteLogDrain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(DeleteLogDrainResponseObject); ok {
+		if err := validResponse.VisitDeleteLogDrainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpdateLogDrain operation middleware
+func (sh *strictHandler) UpdateLogDrain(w http.ResponseWriter, r *http.Request, ref Ref, id string) {
+	var request UpdateLogDrainRequestObject
+
+	request.Ref = ref
+	request.Id = id
+
+	var body UpdateLogDrainJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.UpdateLogDrain(ctx, request.(UpdateLogDrainRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateLogDrain")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpdateLogDrainResponseObject); ok {
+		if err := validResponse.VisitUpdateLogDrainResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // ListLogs operation middleware
 func (sh *strictHandler) ListLogs(w http.ResponseWriter, r *http.Request, ref Ref, params ListLogsParams) {
 	var request ListLogsRequestObject
@@ -9354,6 +10219,91 @@ func (sh *strictHandler) GetStack(w http.ResponseWriter, r *http.Request, ref Re
 	}
 }
 
+// RotateStackKeys operation middleware
+func (sh *strictHandler) RotateStackKeys(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request RotateStackKeysRequestObject
+
+	request.Ref = ref
+
+	var body RotateStackKeysJSONRequestBody
+	if err := runtime.BindJSONBody(r, &body); err != nil {
+		sh.options.RequestErrorHandlerFunc(w, r, fmt.Errorf("can't decode JSON body: %w", err))
+		return
+	}
+	request.Body = &body
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.RotateStackKeys(ctx, request.(RotateStackKeysRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "RotateStackKeys")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(RotateStackKeysResponseObject); ok {
+		if err := validResponse.VisitRotateStackKeysResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// GetStackUpgrade operation middleware
+func (sh *strictHandler) GetStackUpgrade(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request GetStackUpgradeRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.GetStackUpgrade(ctx, request.(GetStackUpgradeRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetStackUpgrade")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(GetStackUpgradeResponseObject); ok {
+		if err := validResponse.VisitGetStackUpgradeResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
+// UpgradeStack operation middleware
+func (sh *strictHandler) UpgradeStack(w http.ResponseWriter, r *http.Request, ref Ref) {
+	var request UpgradeStackRequestObject
+
+	request.Ref = ref
+
+	handler := func(ctx context.Context, w http.ResponseWriter, r *http.Request, request any) (any, error) {
+		return sh.ssi.UpgradeStack(ctx, request.(UpgradeStackRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpgradeStack")
+	}
+
+	response, err := handler(r.Context(), w, r, request)
+
+	if err != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, err)
+	} else if validResponse, ok := response.(UpgradeStackResponseObject); ok {
+		if err := validResponse.VisitUpgradeStackResponse(w); err != nil {
+			sh.options.ResponseErrorHandlerFunc(w, r, err)
+		}
+	} else if response != nil {
+		sh.options.ResponseErrorHandlerFunc(w, r, fmt.Errorf("unexpected response type: %T", response))
+	}
+}
+
 // StackAction operation middleware
 func (sh *strictHandler) StackAction(w http.ResponseWriter, r *http.Request, ref Ref, action string) {
 	var request StackActionRequestObject
@@ -9469,171 +10419,187 @@ func (sh *strictHandler) GetUiConfig(w http.ResponseWriter, r *http.Request) {
 // const string: with thousands of chunks the chained `+` fold is several
 // times slower for the Go compiler than parsing a slice literal.
 var swaggerSpec = []string{
-	"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",
-	"95/u/zsAAP//",
+	"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",
+	"gnlfdGnlue/r84fP/y8AAP//",
 }
 
 // decodeSpec returns the embedded OpenAPI spec as raw JSON bytes,

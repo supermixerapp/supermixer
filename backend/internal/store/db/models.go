@@ -18,6 +18,7 @@ const (
 	BackupKindScheduled  BackupKind = "scheduled"
 	BackupKindManual     BackupKind = "manual"
 	BackupKindPreRestore BackupKind = "pre_restore"
+	BackupKindPreUpgrade BackupKind = "pre_upgrade"
 )
 
 func (e *BackupKind) Scan(src interface{}) error {

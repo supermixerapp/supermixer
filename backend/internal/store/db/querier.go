@@ -86,6 +86,8 @@ type Querier interface {
 	SetProjectStack(ctx context.Context, arg SetProjectStackParams) (Project, error)
 	SetSnippetFavorite(ctx context.Context, arg SetSnippetFavoriteParams) error
 	SetStackStatus(ctx context.Context, arg SetStackStatusParams) (Project, error)
+	// After an upgrade: the template the stack's files now come from.
+	SetStackTemplate(ctx context.Context, arg SetStackTemplateParams) error
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
 	TouchSession(ctx context.Context, id uuid.UUID) error

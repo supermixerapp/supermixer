@@ -62,3 +62,7 @@ WHERE managed AND stack_status::text = ANY(sqlc.arg(statuses)::text[])
 -- name: TouchStack :exec
 -- A running operation's heartbeat, so other servers don't think it's stuck.
 UPDATE projects SET stack_status_at = now() WHERE id = $1 AND managed;
+
+-- name: SetStackTemplate :exec
+-- After an upgrade: the template the stack's files now come from.
+UPDATE projects SET stack_template = $2 WHERE id = $1 AND managed;

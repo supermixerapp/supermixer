@@ -1,9 +1,6 @@
 package provision
 
 import (
-	"crypto/ecdsa"
-	"crypto/elliptic"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
@@ -73,25 +70,11 @@ const opaqueKeyProject = "supabase-self-hosted"
 
 // GenerateAPIKeys makes the newer keys for a stack whose legacy JWT secret is jwtSecret.
 func GenerateAPIKeys(jwtSecret string, now time.Time) (APIKeys, error) {
-	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
-	if err != nil {
-		return APIKeys{}, fmt.Errorf("generating the signing key: %w", err)
-	}
-	kid, err := uuidV4()
+	priv, signing, err := newSigningKey()
 	if err != nil {
 		return APIKeys{}, err
 	}
-	b64 := base64.RawURLEncoding
-	pad := func(b []byte) []byte { // coordinates are 32 bytes, left-padded
-		out := make([]byte, 32)
-		copy(out[32-len(b):], b)
-		return out
-	}
-	pub := priv.PublicKey
-	x, y := b64.EncodeToString(pad(pub.X.Bytes())), b64.EncodeToString(pad(pub.Y.Bytes()))
-	oct := octJWK{Kty: "oct", K: b64.EncodeToString([]byte(jwtSecret)), Alg: "HS256"}
-	signing := ecJWK{Kty: "EC", Kid: kid, Use: "sig", KeyOps: []string{"sign", "verify"}, Alg: "ES256", Ext: true,
-		Crv: "P-256", X: x, Y: y, D: b64.EncodeToString(pad(priv.D.Bytes()))}
+	oct := octJWK{Kty: "oct", K: base64.RawURLEncoding.EncodeToString([]byte(jwtSecret)), Alg: "HS256"}
 	verify := signing
 	verify.KeyOps, verify.D = []string{"verify"}, ""
 
@@ -103,25 +86,11 @@ func GenerateAPIKeys(jwtSecret string, now time.Time) (APIKeys, error) {
 	if err != nil {
 		return APIKeys{}, err
 	}
-
-	iat, exp := now.Unix(), now.Add(keyLifetime).Unix()
-	sign := func(role string) (string, error) {
-		h, _ := json.Marshal(es256Header{Alg: "ES256", Typ: "JWT", Kid: kid})
-		p, _ := json.Marshal(apiKeyClaims{Role: role, Iss: "supabase", Iat: iat, Exp: exp})
-		data := b64.EncodeToString(h) + "." + b64.EncodeToString(p)
-		digest := sha256.Sum256([]byte(data))
-		r, s, err := ecdsa.Sign(rand.Reader, priv, digest[:])
-		if err != nil {
-			return "", err
-		}
-		sig := append(pad(r.Bytes()), pad(s.Bytes())...) // IEEE P1363: r || s
-		return data + "." + b64.EncodeToString(sig), nil
-	}
 	out := APIKeys{JWTKeys: string(keys), JWTJWKS: string(jwks)}
-	if out.AnonAsymmetric, err = sign("anon"); err != nil {
+	if out.AnonAsymmetric, err = signES256(priv, signing.Kid, "anon", now); err != nil {
 		return APIKeys{}, err
 	}
-	if out.ServiceRoleAsymmetric, err = sign("service_role"); err != nil {
+	if out.ServiceRoleAsymmetric, err = signES256(priv, signing.Kid, "service_role", now); err != nil {
 		return APIKeys{}, err
 	}
 	if out.Publishable, err = opaqueKey("sb_publishable_"); err != nil {
