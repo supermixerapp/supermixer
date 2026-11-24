@@ -12,10 +12,24 @@ import (
 	"github.com/google/uuid"
 )
 
+const addBackupLeftover = `-- name: AddBackupLeftover :exec
+INSERT INTO backup_leftovers (bucket, key) VALUES ($1, $2) ON CONFLICT DO NOTHING
+`
+
+type AddBackupLeftoverParams struct {
+	Bucket string `json:"bucket"`
+	Key    string `json:"key"`
+}
+
+func (q *Queries) AddBackupLeftover(ctx context.Context, arg AddBackupLeftoverParams) error {
+	_, err := q.db.Exec(ctx, addBackupLeftover, arg.Bucket, arg.Key)
+	return err
+}
+
 const createBackup = `-- name: CreateBackup :one
 INSERT INTO backups (project_id, kind, template, created_by)
 VALUES ($1, $2, $3, $4)
-RETURNING id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at
+RETURNING id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at
 `
 
 type CreateBackupParams struct {
@@ -45,6 +59,13 @@ func (q *Queries) CreateBackup(ctx context.Context, arg CreateBackupParams) (Bac
 		&i.CreatedBy,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.Local,
+		&i.RemoteBucket,
+		&i.RemoteKey,
+		&i.UploadedAt,
+		&i.UploadError,
+		&i.UploadAttempts,
+		&i.UploadAttemptedAt,
 	)
 	return i, err
 }
@@ -55,6 +76,20 @@ DELETE FROM backups WHERE id = $1
 
 func (q *Queries) DeleteBackup(ctx context.Context, id uuid.UUID) error {
 	_, err := q.db.Exec(ctx, deleteBackup, id)
+	return err
+}
+
+const deleteBackupLeftover = `-- name: DeleteBackupLeftover :exec
+DELETE FROM backup_leftovers WHERE bucket = $1 AND key = $2
+`
+
+type DeleteBackupLeftoverParams struct {
+	Bucket string `json:"bucket"`
+	Key    string `json:"key"`
+}
+
+func (q *Queries) DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error {
+	_, err := q.db.Exec(ctx, deleteBackupLeftover, arg.Bucket, arg.Key)
 	return err
 }
 
@@ -95,7 +130,7 @@ func (q *Queries) FailStaleBackups(ctx context.Context, before time.Time) ([]Fai
 const finishBackup = `-- name: FinishBackup :one
 UPDATE backups SET status = $2, error = $3, size_bytes = $4, postgres_version = $5, finished_at = now()
 WHERE id = $1
-RETURNING id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at
+RETURNING id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at
 `
 
 type FinishBackupParams struct {
@@ -127,12 +162,19 @@ func (q *Queries) FinishBackup(ctx context.Context, arg FinishBackupParams) (Bac
 		&i.CreatedBy,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.Local,
+		&i.RemoteBucket,
+		&i.RemoteKey,
+		&i.UploadedAt,
+		&i.UploadError,
+		&i.UploadAttempts,
+		&i.UploadAttemptedAt,
 	)
 	return i, err
 }
 
 const getBackup = `-- name: GetBackup :one
-SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at FROM backups WHERE id = $1 AND project_id = $2
+SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at FROM backups WHERE id = $1 AND project_id = $2
 `
 
 type GetBackupParams struct {
@@ -155,6 +197,13 @@ func (q *Queries) GetBackup(ctx context.Context, arg GetBackupParams) (Backup, e
 		&i.CreatedBy,
 		&i.StartedAt,
 		&i.FinishedAt,
+		&i.Local,
+		&i.RemoteBucket,
+		&i.RemoteKey,
+		&i.UploadedAt,
+		&i.UploadError,
+		&i.UploadAttempts,
+		&i.UploadAttemptedAt,
 	)
 	return i, err
 }
@@ -173,8 +222,32 @@ func (q *Queries) LastScheduledBackup(ctx context.Context, projectID uuid.UUID) 
 	return started_at, err
 }
 
+const listBackupLeftovers = `-- name: ListBackupLeftovers :many
+SELECT bucket, key, created_at FROM backup_leftovers WHERE bucket = $1 ORDER BY created_at LIMIT 100
+`
+
+func (q *Queries) ListBackupLeftovers(ctx context.Context, bucket string) ([]BackupLeftover, error) {
+	rows, err := q.db.Query(ctx, listBackupLeftovers, bucket)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []BackupLeftover
+	for rows.Next() {
+		var i BackupLeftover
+		if err := rows.Scan(&i.Bucket, &i.Key, &i.CreatedAt); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listBackups = `-- name: ListBackups :many
-SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at FROM backups WHERE project_id = $1 ORDER BY started_at DESC
+SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at FROM backups WHERE project_id = $1 ORDER BY started_at DESC
 `
 
 func (q *Queries) ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error) {
@@ -198,6 +271,57 @@ func (q *Queries) ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backu
 			&i.CreatedBy,
 			&i.StartedAt,
 			&i.FinishedAt,
+			&i.Local,
+			&i.RemoteBucket,
+			&i.RemoteKey,
+			&i.UploadedAt,
+			&i.UploadError,
+			&i.UploadAttempts,
+			&i.UploadAttemptedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listProjectRemoteBackups = `-- name: ListProjectRemoteBackups :many
+SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at FROM backups WHERE project_id = $1 AND uploaded_at IS NOT NULL
+`
+
+// A project's backups with a copy in a bucket (to remove when it's deleted).
+func (q *Queries) ListProjectRemoteBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error) {
+	rows, err := q.db.Query(ctx, listProjectRemoteBackups, projectID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Backup
+	for rows.Next() {
+		var i Backup
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Kind,
+			&i.Status,
+			&i.Error,
+			&i.SizeBytes,
+			&i.Template,
+			&i.PostgresVersion,
+			&i.CreatedBy,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.Local,
+			&i.RemoteBucket,
+			&i.RemoteKey,
+			&i.UploadedAt,
+			&i.UploadError,
+			&i.UploadAttempts,
+			&i.UploadAttemptedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -257,8 +381,61 @@ func (q *Queries) ListRunningStacksForBackup(ctx context.Context) ([]Project, er
 	return items, nil
 }
 
+const markBackupUploadFailed = `-- name: MarkBackupUploadFailed :exec
+UPDATE backups SET upload_error = $2, upload_attempts = upload_attempts + 1, upload_attempted_at = now()
+WHERE id = $1
+`
+
+type MarkBackupUploadFailedParams struct {
+	ID          uuid.UUID `json:"id"`
+	UploadError string    `json:"upload_error"`
+}
+
+func (q *Queries) MarkBackupUploadFailed(ctx context.Context, arg MarkBackupUploadFailedParams) error {
+	_, err := q.db.Exec(ctx, markBackupUploadFailed, arg.ID, arg.UploadError)
+	return err
+}
+
+const markBackupUploaded = `-- name: MarkBackupUploaded :one
+UPDATE backups SET remote_bucket = $2, remote_key = $3, uploaded_at = now(), upload_error = ''
+WHERE id = $1
+RETURNING id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at
+`
+
+type MarkBackupUploadedParams struct {
+	ID           uuid.UUID `json:"id"`
+	RemoteBucket string    `json:"remote_bucket"`
+	RemoteKey    string    `json:"remote_key"`
+}
+
+func (q *Queries) MarkBackupUploaded(ctx context.Context, arg MarkBackupUploadedParams) (Backup, error) {
+	row := q.db.QueryRow(ctx, markBackupUploaded, arg.ID, arg.RemoteBucket, arg.RemoteKey)
+	var i Backup
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Kind,
+		&i.Status,
+		&i.Error,
+		&i.SizeBytes,
+		&i.Template,
+		&i.PostgresVersion,
+		&i.CreatedBy,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.Local,
+		&i.RemoteBucket,
+		&i.RemoteKey,
+		&i.UploadedAt,
+		&i.UploadError,
+		&i.UploadAttempts,
+		&i.UploadAttemptedAt,
+	)
+	return i, err
+}
+
 const oldScheduledBackups = `-- name: OldScheduledBackups :many
-SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at FROM backups
+SELECT id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at FROM backups
 WHERE project_id = $1 AND kind = 'scheduled' AND status = $2::backup_status
 ORDER BY started_at DESC
 OFFSET $3::int
@@ -292,6 +469,172 @@ func (q *Queries) OldScheduledBackups(ctx context.Context, arg OldScheduledBacku
 			&i.CreatedBy,
 			&i.StartedAt,
 			&i.FinishedAt,
+			&i.Local,
+			&i.RemoteBucket,
+			&i.RemoteKey,
+			&i.UploadedAt,
+			&i.UploadError,
+			&i.UploadAttempts,
+			&i.UploadAttemptedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const pendingUploads = `-- name: PendingUploads :many
+SELECT b.id, b.project_id, b.kind, b.status, b.error, b.size_bytes, b.template, b.postgres_version, b.created_by, b.started_at, b.finished_at, b.local, b.remote_bucket, b.remote_key, b.uploaded_at, b.upload_error, b.upload_attempts, b.upload_attempted_at, p.ref FROM backups b JOIN projects p ON p.id = b.project_id
+WHERE b.status = 'completed' AND b.local AND b.uploaded_at IS NULL
+  AND (b.upload_attempted_at IS NULL
+       OR b.upload_attempted_at < now() - make_interval(mins => least(power(2, least(b.upload_attempts, 6))::int, 60)))
+ORDER BY b.started_at
+LIMIT 20
+`
+
+type PendingUploadsRow struct {
+	Backup Backup `json:"backup"`
+	Ref    string `json:"ref"`
+}
+
+// Completed backups with files here and no copy in the bucket yet, after a
+// failed upload waiting 2, 4, 8 ... minutes (an hour at most) between tries.
+func (q *Queries) PendingUploads(ctx context.Context) ([]PendingUploadsRow, error) {
+	rows, err := q.db.Query(ctx, pendingUploads)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []PendingUploadsRow
+	for rows.Next() {
+		var i PendingUploadsRow
+		if err := rows.Scan(
+			&i.Backup.ID,
+			&i.Backup.ProjectID,
+			&i.Backup.Kind,
+			&i.Backup.Status,
+			&i.Backup.Error,
+			&i.Backup.SizeBytes,
+			&i.Backup.Template,
+			&i.Backup.PostgresVersion,
+			&i.Backup.CreatedBy,
+			&i.Backup.StartedAt,
+			&i.Backup.FinishedAt,
+			&i.Backup.Local,
+			&i.Backup.RemoteBucket,
+			&i.Backup.RemoteKey,
+			&i.Backup.UploadedAt,
+			&i.Backup.UploadError,
+			&i.Backup.UploadAttempts,
+			&i.Backup.UploadAttemptedAt,
+			&i.Ref,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const retryBackupUpload = `-- name: RetryBackupUpload :one
+UPDATE backups SET upload_attempted_at = NULL, upload_error = '' WHERE id = $1 AND project_id = $2
+RETURNING id, project_id, kind, status, error, size_bytes, template, postgres_version, created_by, started_at, finished_at, local, remote_bucket, remote_key, uploaded_at, upload_error, upload_attempts, upload_attempted_at
+`
+
+type RetryBackupUploadParams struct {
+	ID        uuid.UUID `json:"id"`
+	ProjectID uuid.UUID `json:"project_id"`
+}
+
+// Upload at the next chance, not after the wait (shown as uploading meanwhile).
+func (q *Queries) RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error) {
+	row := q.db.QueryRow(ctx, retryBackupUpload, arg.ID, arg.ProjectID)
+	var i Backup
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Kind,
+		&i.Status,
+		&i.Error,
+		&i.SizeBytes,
+		&i.Template,
+		&i.PostgresVersion,
+		&i.CreatedBy,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.Local,
+		&i.RemoteBucket,
+		&i.RemoteKey,
+		&i.UploadedAt,
+		&i.UploadError,
+		&i.UploadAttempts,
+		&i.UploadAttemptedAt,
+	)
+	return i, err
+}
+
+const setBackupLocal = `-- name: SetBackupLocal :exec
+UPDATE backups SET local = $2 WHERE id = $1
+`
+
+type SetBackupLocalParams struct {
+	ID    uuid.UUID `json:"id"`
+	Local bool      `json:"local"`
+}
+
+func (q *Queries) SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error {
+	_, err := q.db.Exec(ctx, setBackupLocal, arg.ID, arg.Local)
+	return err
+}
+
+const uploadedLocalBackups = `-- name: UploadedLocalBackups :many
+SELECT b.id, b.project_id, b.kind, b.status, b.error, b.size_bytes, b.template, b.postgres_version, b.created_by, b.started_at, b.finished_at, b.local, b.remote_bucket, b.remote_key, b.uploaded_at, b.upload_error, b.upload_attempts, b.upload_attempted_at, p.ref FROM backups b JOIN projects p ON p.id = b.project_id
+WHERE b.local AND b.uploaded_at IS NOT NULL AND b.remote_bucket = $1
+`
+
+type UploadedLocalBackupsRow struct {
+	Backup Backup `json:"backup"`
+	Ref    string `json:"ref"`
+}
+
+// Backups both here and in this bucket, to remove here when keep_local is
+// off (not those in another bucket, which Supermixer can no longer read).
+func (q *Queries) UploadedLocalBackups(ctx context.Context, bucket string) ([]UploadedLocalBackupsRow, error) {
+	rows, err := q.db.Query(ctx, uploadedLocalBackups, bucket)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []UploadedLocalBackupsRow
+	for rows.Next() {
+		var i UploadedLocalBackupsRow
+		if err := rows.Scan(
+			&i.Backup.ID,
+			&i.Backup.ProjectID,
+			&i.Backup.Kind,
+			&i.Backup.Status,
+			&i.Backup.Error,
+			&i.Backup.SizeBytes,
+			&i.Backup.Template,
+			&i.Backup.PostgresVersion,
+			&i.Backup.CreatedBy,
+			&i.Backup.StartedAt,
+			&i.Backup.FinishedAt,
+			&i.Backup.Local,
+			&i.Backup.RemoteBucket,
+			&i.Backup.RemoteKey,
+			&i.Backup.UploadedAt,
+			&i.Backup.UploadError,
+			&i.Backup.UploadAttempts,
+			&i.Backup.UploadAttemptedAt,
+			&i.Ref,
 		); err != nil {
 			return nil, err
 		}

@@ -747,6 +747,10 @@ func (h *handlers) deleteManaged(ctx context.Context, p db.Project) error {
 				return err
 			}
 		}
+		remote, err := h.deps.Store.Queries.ListProjectRemoteBackups(ctx, p.ID)
+		if err != nil {
+			return err
+		}
 		if err := h.deps.Store.InTx(ctx, func(q *db.Queries) error {
 			h.audit(ctx, q, auditEntry{OrgID: &p.OrganizationID, Action: "project.deleted", TargetType: "project",
 				TargetID: p.Ref, TargetName: p.Name, Metadata: map[string]any{"managed": true}})
@@ -758,6 +762,7 @@ func (h *handlers) deleteManaged(ctx context.Context, p db.Project) error {
 		if err := os.RemoveAll(filepath.Join(h.deps.Config.Provisioning.BackupsDir, p.Ref)); err != nil {
 			h.deps.Logger.Warn("removing a deleted project's backups", "ref", p.Ref, "err", err)
 		}
+		h.removeRemoteCopies(ctx, p.Ref, remote)
 		return nil
 	})
 	if !started {

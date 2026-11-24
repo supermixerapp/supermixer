@@ -291,17 +291,30 @@ type AuditLog struct {
 }
 
 type Backup struct {
-	ID              uuid.UUID    `json:"id"`
-	ProjectID       uuid.UUID    `json:"project_id"`
-	Kind            BackupKind   `json:"kind"`
-	Status          BackupStatus `json:"status"`
-	Error           string       `json:"error"`
-	SizeBytes       int64        `json:"size_bytes"`
-	Template        string       `json:"template"`
-	PostgresVersion string       `json:"postgres_version"`
-	CreatedBy       *uuid.UUID   `json:"created_by"`
-	StartedAt       time.Time    `json:"started_at"`
-	FinishedAt      *time.Time   `json:"finished_at"`
+	ID                uuid.UUID    `json:"id"`
+	ProjectID         uuid.UUID    `json:"project_id"`
+	Kind              BackupKind   `json:"kind"`
+	Status            BackupStatus `json:"status"`
+	Error             string       `json:"error"`
+	SizeBytes         int64        `json:"size_bytes"`
+	Template          string       `json:"template"`
+	PostgresVersion   string       `json:"postgres_version"`
+	CreatedBy         *uuid.UUID   `json:"created_by"`
+	StartedAt         time.Time    `json:"started_at"`
+	FinishedAt        *time.Time   `json:"finished_at"`
+	Local             bool         `json:"local"`
+	RemoteBucket      string       `json:"remote_bucket"`
+	RemoteKey         string       `json:"remote_key"`
+	UploadedAt        *time.Time   `json:"uploaded_at"`
+	UploadError       string       `json:"upload_error"`
+	UploadAttempts    int32        `json:"upload_attempts"`
+	UploadAttemptedAt *time.Time   `json:"upload_attempted_at"`
+}
+
+type BackupLeftover struct {
+	Bucket    string    `json:"bucket"`
+	Key       string    `json:"key"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 type InstanceSetting struct {

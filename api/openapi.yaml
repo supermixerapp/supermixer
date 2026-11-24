@@ -846,9 +846,25 @@ paths:
     delete:
       operationId: deleteBackup
       tags: [Backups]
-      summary: Delete a backup and its files
+      summary: Delete a backup and its files, in the bucket too
       responses:
         "204": { description: Deleted. }
+        default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/backups/{id}/upload:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+      - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: retryBackupUpload
+      tags: [Backups]
+      summary: Try copying a backup to the bucket again now
+      description: After a failed upload, Supermixer tries again on its own, waiting longer each time (an hour at most).
+      responses:
+        "202":
+          description: Queued.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Backup" }
         default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/backups/{id}/files/{file}:
     parameters:
@@ -1571,7 +1587,7 @@ components:
         blocked: { type: string, description: "Why the upgrade can't run, if it can't." }
     Backup:
       type: object
-      required: [id, kind, status, error, size_bytes, template, postgres_version, started_at]
+      required: [id, kind, status, error, size_bytes, template, postgres_version, started_at, local, upload_error]
       properties:
         id: { type: string, format: uuid }
         kind: { type: string, enum: [scheduled, manual, pre_restore, pre_upgrade] }
@@ -1583,6 +1599,12 @@ components:
         created_by: { type: string, nullable: true, description: "Username, for manual backups." }
         started_at: { type: string, format: date-time }
         finished_at: { type: string, format: date-time, nullable: true }
+        local: { type: boolean, description: "Whether the files are on Supermixer's disk (backups_dir)." }
+        remote:
+          type: string
+          nullable: true
+          description: "The copy in a bucket, as s3://bucket/key, once uploaded."
+        upload_error: { type: string, description: "Why the last upload to the bucket failed; empty if it didn't." }
     BackupList:
       type: object
       required: [backups, interval_hours, keep]
@@ -1592,6 +1614,15 @@ components:
           items: { $ref: "#/components/schemas/Backup" }
         interval_hours: { type: number, description: How often scheduled backups run; 0 when they're off. }
         keep: { type: integer, description: Scheduled backups kept. }
+        s3:
+          type: object
+          nullable: true
+          description: The bucket backups are copied to, if one is set up.
+          required: [location, endpoint, keep_local]
+          properties:
+            location: { type: string, description: "s3://bucket/prefix/<ref>" }
+            endpoint: { type: string }
+            keep_local: { type: boolean, description: "Whether backups stay in backups_dir after they're copied." }
     AuthConfig:
       type: object
       required: [values, secrets_set, callback_url]

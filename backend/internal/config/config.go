@@ -129,7 +129,33 @@ type Provisioning struct {
 	BackupInterval time.Duration `toml:"backup_interval"`
 	// BackupKeep is how many scheduled backups to keep per stack.
 	BackupKeep int `toml:"backup_keep"`
+	// BackupS3 copies backups to an S3-compatible bucket as well.
+	BackupS3 BackupS3 `toml:"backup_s3"`
 }
+
+// BackupS3 is a bucket backups are copied to (AWS S3, MinIO, Cloudflare R2,
+// ...). It's off while Bucket is empty.
+type BackupS3 struct {
+	Bucket string `toml:"bucket"`
+	// Endpoint is the service's URL, such as https://s3.us-east-1.amazonaws.com.
+	Endpoint string `toml:"endpoint"`
+	Region   string `toml:"region"`
+	// Prefix starts every object's key: <prefix>/<project ref>/<backup id>/.
+	Prefix string `toml:"prefix"`
+	// Without an access key, the AWS environment variables or the host's
+	// IAM role are used.
+	AccessKeyID     string `toml:"access_key_id"`
+	SecretAccessKey string `toml:"secret_access_key"`
+	// PathStyle puts the bucket in the URL's path (MinIO, most other
+	// services) rather than its host name (AWS).
+	PathStyle bool `toml:"path_style"`
+	// KeepLocal keeps backups in backups_dir after they're copied; off, they
+	// stay only in the bucket, and restores and downloads fetch them from it.
+	KeepLocal bool `toml:"keep_local"`
+}
+
+// Enabled reports whether backups are copied to a bucket.
+func (s BackupS3) Enabled() bool { return s.Bucket != "" }
 
 // PortRange is an inclusive range of host ports.
 type PortRange struct{ First, Last int }
@@ -163,6 +189,7 @@ func Default() Config {
 			StacksDir: "/var/lib/supermixer/stacks", Docker: "docker", PublicHost: "localhost",
 			APIPorts: "8200-8299", DBPorts: "54400-54499", PoolerPorts: "64400-64499", StartTimeout: 20 * time.Minute,
 			BackupsDir: "/var/lib/supermixer/backups", BackupInterval: 24 * time.Hour, BackupKeep: 7,
+			BackupS3: BackupS3{Prefix: "supermixer", KeepLocal: true},
 		},
 	}
 }
@@ -325,6 +352,8 @@ func applyEnv(v reflect.Value, path []string, lookup func(string) (string, bool)
 	return errors.Join(errs...)
 }
 
+var s3Bucket = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$`)
+
 var hexColor = regexp.MustCompile(`^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$`)
 
 // A DNS name or IPv4 address, or an IPv6 address with both brackets or neither.
@@ -413,6 +442,26 @@ func (c *Config) validate() error {
 		}
 		if pv.BackupKeep < 1 || pv.BackupKeep > 1000 {
 			fail("provisioning.backup_keep must be between 1 and 1000, got %d", pv.BackupKeep)
+		}
+		if s3 := pv.BackupS3; s3.Enabled() {
+			if !s3Bucket.MatchString(s3.Bucket) {
+				fail("provisioning.backup_s3.bucket must be a bucket name (3-63 lowercase letters, digits, dots and hyphens), got %q", s3.Bucket)
+			}
+			if u, err := url.Parse(s3.Endpoint); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" ||
+				(u.Path != "" && u.Path != "/") || u.User != nil || u.RawQuery != "" {
+				fail("provisioning.backup_s3.endpoint must be a URL like https://s3.us-east-1.amazonaws.com, got %q", s3.Endpoint)
+			}
+			if strings.HasPrefix(s3.Prefix, "/") || strings.HasSuffix(s3.Prefix, "/") || strings.Contains(s3.Prefix, "//") ||
+				strings.Contains("/"+s3.Prefix+"/", "/../") {
+				fail("provisioning.backup_s3.prefix must be like supermixer or backups/supermixer (no leading or trailing /), got %q", s3.Prefix)
+			}
+			if strings.Contains(s3.Bucket, ".") && !s3.PathStyle && strings.HasPrefix(s3.Endpoint, "https:") {
+				// bucket.with.dots.s3.amazonaws.com doesn't match AWS's *.s3.amazonaws.com certificate.
+				fail("provisioning.backup_s3.bucket %q has dots, which don't work over HTTPS in the host name; set path_style = true", s3.Bucket)
+			}
+			if (s3.AccessKeyID == "") != (s3.SecretAccessKey == "") {
+				fail("provisioning.backup_s3 needs both access_key_id and secret_access_key, or neither (to use the AWS environment or IAM role)")
+			}
 		}
 		ranges := map[string]PortRange{}
 		for name, raw := range map[string]string{"api_ports": pv.APIPorts, "db_ports": pv.DBPorts, "pooler_ports": pv.PoolerPorts} {

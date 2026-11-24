@@ -203,12 +203,17 @@ func OpenBackupFile(dir, file string) (io.ReadCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	zr, err := gzip.NewReader(f)
+	return gunzip(f)
+}
+
+// gunzip reads r uncompressed, closing it with the result.
+func gunzip(r io.ReadCloser) (io.ReadCloser, error) {
+	zr, err := gzip.NewReader(r)
 	if err != nil {
-		f.Close()
+		r.Close()
 		return nil, err
 	}
-	return readCloser{zr, func() error { zr.Close(); return f.Close() }}, nil
+	return readCloser{zr, func() error { zr.Close(); return r.Close() }}, nil
 }
 
 type readCloser struct {
@@ -252,12 +257,60 @@ func ReadBackupManifest(dir string) (BackupManifest, error) {
 // until the restore succeeds, so starting it again retries the restore.
 func PendingRestore(stackDir string) string { return filepath.Join(stackDir, "restore") }
 
-// StageRestore copies a backup into a stack's folder as its pending restore
-// (hard links when they share a file system: the backups don't change).
-func StageRestore(src, stackDir string) error {
+// StageRestore copies a backup into a stack's folder as its pending restore.
+func StageRestore(src, stackDir string) error { return CopyBackup(src, PendingRestore(stackDir)) }
+
+// RemoteRestore is a pending restore of a backup that's only in a bucket:
+// it's downloaded when the stack starts, which retries until it succeeds,
+// rather than while the project is being created.
+type RemoteRestore struct {
+	Bucket string `json:"bucket"`
+	Key    string `json:"key"`
+}
+
+const remoteRestoreFile = "remote.json"
+
+// StageRemoteRestore makes a backup in a bucket the stack's pending restore.
+func StageRemoteRestore(stackDir string, r RemoteRestore) error {
 	dst := PendingRestore(stackDir)
 	tmp := dst + ".tmp"
 	_ = os.RemoveAll(tmp)
+	if err := os.Mkdir(tmp, 0o700); err != nil {
+		return err
+	}
+	b, _ := json.Marshal(r)
+	if err := os.WriteFile(filepath.Join(tmp, remoteRestoreFile), b, 0o600); err != nil {
+		_ = os.RemoveAll(tmp)
+		return err
+	}
+	return os.Rename(tmp, dst)
+}
+
+// ReadRemoteRestore reads a pending restore's bucket copy, if it has one
+// rather than the files.
+func ReadRemoteRestore(pending string) (RemoteRestore, bool, error) {
+	var r RemoteRestore
+	b, err := os.ReadFile(filepath.Join(pending, remoteRestoreFile))
+	if errors.Is(err, os.ErrNotExist) {
+		return r, false, nil
+	}
+	if err != nil {
+		return r, false, err
+	}
+	if err := json.Unmarshal(b, &r); err != nil || r.Bucket == "" || r.Key == "" {
+		return r, false, fmt.Errorf("%s: not a backup in a bucket", remoteRestoreFile)
+	}
+	return r, true, nil
+}
+
+// CopyBackup copies a backup's files to dst, which is only there once every
+// file is (hard links when they share a file system: backups don't change).
+func CopyBackup(src, dst string) error {
+	tmp := dst + ".tmp"
+	_ = os.RemoveAll(tmp)
+	if err := os.MkdirAll(filepath.Dir(tmp), 0o700); err != nil {
+		return err
+	}
 	if err := os.Mkdir(tmp, 0o700); err != nil {
 		return err
 	}

@@ -12,6 +12,7 @@ import (
 )
 
 type Querier interface {
+	AddBackupLeftover(ctx context.Context, arg AddBackupLeftoverParams) error
 	AddMember(ctx context.Context, arg AddMemberParams) (int64, error)
 	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
@@ -25,6 +26,7 @@ type Querier interface {
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	DeleteBackup(ctx context.Context, id uuid.UUID) error
+	DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error
 	DeleteExpiredSessions(ctx context.Context) error
 	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
 	DeleteMemberProjectRoles(ctx context.Context, arg DeleteMemberProjectRolesParams) error
@@ -57,12 +59,15 @@ type Querier interface {
 	// failing stack isn't retried every minute).
 	LastScheduledBackup(ctx context.Context, projectID uuid.UUID) (time.Time, error)
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
+	ListBackupLeftovers(ctx context.Context, bucket string) ([]BackupLeftover, error)
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
 	ListOrganizationProjectRoles(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationProjectRolesRow, error)
 	ListOrganizationsForUser(ctx context.Context, userID uuid.UUID) ([]ListOrganizationsForUserRow, error)
 	ListPendingInvitations(ctx context.Context, organizationID uuid.UUID) ([]ListPendingInvitationsRow, error)
+	// A project's backups with a copy in a bucket (to remove when it's deleted).
+	ListProjectRemoteBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
 	ListProjectsInOrganizations(ctx context.Context, organizationIds []uuid.UUID) ([]ListProjectsInOrganizationsRow, error)
 	ListRunningStacksForBackup(ctx context.Context) ([]Project, error)
@@ -75,13 +80,21 @@ type Querier interface {
 	ListUserProjectRoles(ctx context.Context, userID uuid.UUID) ([]ListUserProjectRolesRow, error)
 	ListUserSessions(ctx context.Context, userID uuid.UUID) ([]Session, error)
 	ListUsers(ctx context.Context) ([]User, error)
+	MarkBackupUploadFailed(ctx context.Context, arg MarkBackupUploadFailedParams) error
+	MarkBackupUploaded(ctx context.Context, arg MarkBackupUploadedParams) (Backup, error)
 	MarkInvitationAccepted(ctx context.Context, arg MarkInvitationAcceptedParams) (int64, error)
 	MoveProject(ctx context.Context, arg MoveProjectParams) error
 	// Scheduled backups with this status beyond the newest keep, to remove.
 	OldScheduledBackups(ctx context.Context, arg OldScheduledBackupsParams) ([]Backup, error)
 	OrganizationSlugExists(ctx context.Context, slug string) (bool, error)
+	// Completed backups with files here and no copy in the bucket yet, after a
+	// failed upload waiting 2, 4, 8 ... minutes (an hour at most) between tries.
+	PendingUploads(ctx context.Context) ([]PendingUploadsRow, error)
 	ProjectRefExists(ctx context.Context, ref string) (bool, error)
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
+	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
+	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
+	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
 	SetProjectRole(ctx context.Context, arg SetProjectRoleParams) error
 	SetProjectStack(ctx context.Context, arg SetProjectStackParams) (Project, error)
 	SetSnippetFavorite(ctx context.Context, arg SetSnippetFavoriteParams) error
@@ -99,6 +112,9 @@ type Querier interface {
 	UpdateProject(ctx context.Context, arg UpdateProjectParams) (Project, error)
 	UpdateSnippet(ctx context.Context, arg UpdateSnippetParams) (SqlSnippet, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error)
+	// Backups both here and in this bucket, to remove here when keep_local is
+	// off (not those in another bucket, which Supermixer can no longer read).
+	UploadedLocalBackups(ctx context.Context, bucket string) ([]UploadedLocalBackupsRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

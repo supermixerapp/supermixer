@@ -20,6 +20,9 @@ type handlers struct {
 	health  *healthCache
 	pools   *stack.Pools
 	stacks  *stackJobs
+	// s3 is the bucket backups are copied to, nil without one.
+	s3      provision.ObjectStore
+	uploads *uploader
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)

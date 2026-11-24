@@ -144,7 +144,7 @@ func TestExampleFileCoversEverySetting(t *testing.T) {
 	defer f.Close()
 	present := map[string]bool{}
 	section := ""
-	sec := regexp.MustCompile(`^\[([a-z_.]+)\]`)
+	sec := regexp.MustCompile(`^\[([a-z0-9_.]+)\]`)
 	key := regexp.MustCompile(`^([a-z_]+)\s*=`)
 	s := bufio.NewScanner(f)
 	for s.Scan() {
@@ -196,6 +196,40 @@ func TestHostNames(t *testing.T) {
 	} {
 		if hostName.MatchString(host) != ok {
 			t.Errorf("%q: want valid=%v", host, ok)
+		}
+	}
+}
+
+func TestBackupS3(t *testing.T) {
+	load := func(s3 string) error {
+		_, err := Load(write(t, minimal+"\n[provisioning]\nenabled = true\n[provisioning.backup_s3]\n"+s3), true)
+		return err
+	}
+	if err := load(`bucket = "my-backups"
+endpoint = "https://s3.eu-west-1.amazonaws.com"
+access_key_id = "AKIA"
+secret_access_key = "s"`); err != nil {
+		t.Fatalf("valid settings: %v", err)
+	}
+	if err := load(`bucket = ""`); err != nil {
+		t.Fatalf("off: %v", err)
+	}
+	if err := load(`bucket = "backups.example.com"
+endpoint = "https://s3.us-east-1.amazonaws.com"`); err == nil || !strings.Contains(err.Error(), "path_style") {
+		t.Errorf("dotted bucket over https: %v", err)
+	}
+	if err := load(`bucket = "backups.example.com"
+endpoint = "https://s3.us-east-1.amazonaws.com"
+path_style = true`); err != nil {
+		t.Errorf("dotted bucket, path style: %v", err)
+	}
+	err := load(`bucket = "My_Bucket"
+endpoint = "s3.amazonaws.com"
+prefix = "/a/"
+access_key_id = "AKIA"`)
+	for _, want := range []string{"backup_s3.bucket", "backup_s3.endpoint", "backup_s3.prefix", "both access_key_id"} {
+		if err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("error does not mention %s: %v", want, err)
 		}
 	}
 }

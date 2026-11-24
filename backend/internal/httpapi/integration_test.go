@@ -96,6 +96,12 @@ func openTestDB(t *testing.T, dbURL string) *pgx.Conn {
 
 func newTestEnvOn(t *testing.T, dbURL string, configure func(*config.Config)) *testEnv {
 	t.Helper()
+	return newTestEnvDeps(t, dbURL, configure, nil)
+}
+
+// newTestEnvDeps lets a test change the server's collaborators too.
+func newTestEnvDeps(t *testing.T, dbURL string, configure func(*config.Config), withDeps func(*Deps)) *testEnv {
+	t.Helper()
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	ctx := context.Background()
 	st, err := store.Open(ctx, dbURL, 0, logger)
@@ -119,7 +125,11 @@ func newTestEnvOn(t *testing.T, dbURL string, configure func(*config.Config)) *t
 	}
 	box, _ := secrets.New(testKey)
 	palette, _ := theme.Derive("#0019A8")
-	srv := httptest.NewServer(New(Deps{Config: cfg, DB: st, Store: st, Box: box, Palette: palette, Logger: logger}))
+	deps := Deps{Config: cfg, DB: st, Store: st, Box: box, Palette: palette, Logger: logger}
+	if withDeps != nil {
+		withDeps(&deps)
+	}
+	srv := httptest.NewServer(New(deps))
 	t.Cleanup(srv.Close)
 	return &testEnv{server: srv, dbURL: dbURL}
 }

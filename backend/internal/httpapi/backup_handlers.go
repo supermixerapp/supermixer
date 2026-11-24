@@ -5,8 +5,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
+	"path"
 	"slices"
 	"strings"
 	"time"
@@ -47,7 +49,11 @@ func (h *handlers) toBackup(ctx context.Context, b db.Backup) api.Backup {
 	out := api.Backup{
 		Id: b.ID, Kind: api.BackupKind(b.Kind), Status: api.BackupStatus(b.Status), Error: b.Error,
 		SizeBytes: b.SizeBytes, Template: b.Template, PostgresVersion: b.PostgresVersion,
-		StartedAt: b.StartedAt, FinishedAt: b.FinishedAt,
+		StartedAt: b.StartedAt, FinishedAt: b.FinishedAt, Local: b.Local, UploadError: b.UploadError,
+	}
+	if b.RemoteKey != "" {
+		remote := "s3://" + b.RemoteBucket + "/" + b.RemoteKey
+		out.Remote = &remote
 	}
 	if b.CreatedBy != nil {
 		if u, err := h.deps.Store.Queries.GetUserByID(ctx, *b.CreatedBy); err == nil {
@@ -87,6 +93,9 @@ func (h *handlers) dump(ctx context.Context, p db.Project, b db.Backup, log io.W
 	if ferr != nil {
 		return b, errors.Join(err, ferr)
 	}
+	if err == nil && h.s3 != nil {
+		h.uploads.poke()
+	}
 	return done, err
 }
 
@@ -124,6 +133,14 @@ func (h *handlers) ListBackups(ctx context.Context, req api.ListBackupsRequestOb
 		IntervalHours: float32(pv.BackupInterval.Hours()), Keep: pv.BackupKeep}
 	for i, b := range rows {
 		out.Backups[i] = h.toBackup(ctx, b)
+	}
+	if h.s3 != nil {
+		s3 := pv.BackupS3
+		out.S3 = &struct {
+			Endpoint  string `json:"endpoint"`
+			KeepLocal bool   `json:"keep_local"`
+			Location  string `json:"location"`
+		}{Endpoint: s3.Endpoint, KeepLocal: s3.KeepLocal, Location: "s3://" + path.Join(h.s3.Bucket(), s3.Prefix, p.Ref)}
 	}
 	return out, nil
 }
@@ -194,10 +211,7 @@ func (h *handlers) DeleteBackup(ctx context.Context, req api.DeleteBackupRequest
 	if op := h.stacks.current(p.Ref); op != nil && *op == api.StackOperationRestoring {
 		return nil, conflict("the project is being restored; wait for it to finish")
 	}
-	if err := os.RemoveAll(h.backupDir(p.Ref, b.ID)); err != nil {
-		return nil, err
-	}
-	if err := h.deps.Store.Queries.DeleteBackup(ctx, b.ID); err != nil {
+	if err := h.removeBackup(ctx, p.Ref, b); err != nil {
 		return nil, err
 	}
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.backup_deleted",
@@ -218,8 +232,12 @@ func (h *handlers) DownloadBackupFile(ctx context.Context, req api.DownloadBacku
 	if err != nil {
 		return nil, err
 	}
-	r, err := provision.OpenBackupFile(h.backupDir(p.Ref, b.ID), string(req.File))
+	r, err := h.openBackupFile(ctx, p.Ref, b, string(req.File))
 	if err != nil {
+		var he *apiError
+		if errors.As(err, &he) {
+			return nil, err
+		}
 		return nil, newError(http.StatusNotFound, "can't read the backup: %v", err)
 	}
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.backup_downloaded",
@@ -283,6 +301,11 @@ func (h *handlers) restoreInPlace(ctx context.Context, p db.Project, b db.Backup
 	if b.Template != p.StackTemplate {
 		fmt.Fprintf(log, "\nthe backup is from Supabase template %.7s; this stack runs %.7s\n", b.Template, p.StackTemplate)
 	}
+	src, cleanup, err := h.backupFiles(ctx, p.Ref, b, log)
+	if err != nil {
+		return &recoveredError{fmt.Errorf("didn't restore: %v", firstLine(err.Error()))}
+	}
+	defer cleanup()
 	pre, err := h.startBackup(ctx, p, db.BackupKindPreRestore, by)
 	if err == nil {
 		_, err = h.dump(ctx, p, pre, log)
@@ -299,7 +322,6 @@ func (h *handlers) restoreInPlace(ctx context.Context, p db.Project, b db.Backup
 	if err := provision.UpdateEnv(dir, map[string]string{provision.RestoringFrom: old}); err != nil {
 		return &recoveredError{fmt.Errorf("didn't restore: %w", err)}
 	}
-	src := h.backupDir(p.Ref, b.ID)
 	attempt := func() error {
 		if err := c.Stop(ctx, log); err != nil {
 			return err
@@ -353,7 +375,23 @@ func (h *handlers) restoreInPlace(ctx context.Context, p db.Project, b db.Backup
 // restorePending replays the backup a new project was created from (see
 // upStack), then removes it from the stack's folder.
 func (h *handlers) restorePending(ctx context.Context, ref, pending string, log io.Writer) error {
-	m, err := provision.ReadBackupManifest(pending)
+	src := pending
+	if r, ok, err := provision.ReadRemoteRestore(pending); err != nil {
+		return err
+	} else if ok {
+		s, err := h.store(r.Bucket)
+		if err != nil {
+			return err
+		}
+		src = pending + "-download" // in the stack's folder: it goes with the project
+		_ = os.RemoveAll(src)
+		defer os.RemoveAll(src)
+		fmt.Fprintf(log, "\ndownloading the backup from s3://%s/%s\n", r.Bucket, r.Key)
+		if err := provision.FetchBackup(ctx, s, r.Key, src); err != nil {
+			return fmt.Errorf("downloading the backup from the bucket (was it deleted?): %w", err)
+		}
+	}
+	m, err := provision.ReadBackupManifest(src)
 	if err != nil {
 		return err
 	}
@@ -366,7 +404,7 @@ func (h *handlers) restorePending(ctx context.Context, ref, pending string, log 
 		return err
 	}
 	fmt.Fprintf(log, "\nrestoring a backup of %s from %s\n", m.Project, m.CreatedAt.UTC().Format(time.RFC3339))
-	if err := c.Restore(ctx, log, pending); err != nil {
+	if err := c.Restore(ctx, log, src); err != nil {
 		return err
 	}
 	if err := c.RestartAndWait(ctx, log); err != nil {
@@ -393,15 +431,34 @@ func (h *handlers) RestoreBackupToNewProject(ctx context.Context, req api.Restor
 	}
 	// The backup is copied into the new stack's folder now, so deleting it
 	// (or its project) meanwhile doesn't matter, and starting the new project
-	// again retries the restore until it succeeds.
-	src := h.backupDir(p.Ref, b.ID)
+	// again retries the restore until it succeeds. One that's only in the
+	// bucket is downloaded when the stack starts instead (restorePending), not
+	// during this request: it may take a while.
+	if !b.Local {
+		if _, err := h.store(b.RemoteBucket); err != nil {
+			return nil, err
+		}
+	}
 	out, err := h.createStack(ctx, org, req.Body.Name,
 		map[string]any{"restored_from": map[string]any{"project": p.Ref, "backup": b.ID}},
 		func(dir string) error {
-			if err := provision.StageRestore(src, dir); err != nil {
-				return newError(http.StatusInternalServerError, "copying the backup: %v", err)
+			b := b
+			if b.Local {
+				err := provision.StageRestore(h.backupDir(p.Ref, b.ID), dir)
+				if err == nil {
+					return nil
+				}
+				if !errors.Is(err, fs.ErrNotExist) {
+					return newError(http.StatusInternalServerError, "copying the backup: %v", err)
+				}
+				if b, err = h.reload(ctx, b); err != nil { // moved to the bucket only, meanwhile
+					return err
+				}
 			}
-			return nil
+			if b.RemoteKey == "" {
+				return conflict("the backup's files are missing")
+			}
+			return provision.StageRemoteRestore(dir, provision.RemoteRestore{Bucket: b.RemoteBucket, Key: b.RemoteKey})
 		})
 	if err != nil {
 		return nil, err
@@ -415,6 +472,7 @@ func (h *handlers) RestoreBackupToNewProject(ctx context.Context, req api.Restor
 // running stack whose last scheduled backup is older than the interval, one
 // at a time; then removes the oldest beyond backup_keep.
 func (h *handlers) backupLoop(ctx context.Context) {
+	h.removeWorkCopies()
 	h.failStaleBackups(ctx)
 	t := time.NewTicker(time.Minute)
 	defer t.Stop()
@@ -494,9 +552,31 @@ func (h *handlers) pruneBackups(ctx context.Context, p db.Project) {
 			return
 		}
 		for _, b := range old {
-			if err := os.RemoveAll(h.backupDir(p.Ref, b.ID)); err == nil {
-				_ = h.deps.Store.Queries.DeleteBackup(ctx, b.ID)
+			if err := h.removeBackup(ctx, p.Ref, b); err != nil {
+				h.deps.Logger.Warn("removing an old backup", "ref", p.Ref, "backup", b.ID, "err", err)
 			}
 		}
 	}
+}
+
+func (h *handlers) RetryBackupUpload(ctx context.Context, req api.RetryBackupUploadRequestObject) (api.RetryBackupUploadResponseObject, error) {
+	_, p, err := h.managedBackups(ctx, req.Ref, rbac.ProjectUpdate, "back up this project")
+	if err != nil {
+		return nil, err
+	}
+	if h.s3 == nil {
+		return nil, conflict("backups aren't copied to a bucket: provisioning.backup_s3 isn't set up")
+	}
+	b, err := h.completedBackup(ctx, p, req.Id)
+	if err != nil {
+		return nil, err
+	}
+	if b.UploadedAt != nil {
+		return nil, conflict("the backup is already in the bucket")
+	}
+	if b, err = h.deps.Store.Queries.RetryBackupUpload(ctx, db.RetryBackupUploadParams{ID: b.ID, ProjectID: p.ID}); err != nil {
+		return nil, err
+	}
+	h.uploads.poke()
+	return api.RetryBackupUpload202JSONResponse(h.toBackup(ctx, b)), nil
 }

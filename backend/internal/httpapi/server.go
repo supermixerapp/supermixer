@@ -20,6 +20,7 @@ import (
 	"supermixer/internal/api"
 	"supermixer/internal/auth"
 	"supermixer/internal/config"
+	"supermixer/internal/provision"
 	"supermixer/internal/secrets"
 	"supermixer/internal/stack"
 	"supermixer/internal/store"
@@ -43,6 +44,8 @@ type Deps struct {
 	Logger  *slog.Logger
 	WebUI   fs.FS // built React app; may be empty in development
 	Pools   *stack.Pools
+	// BackupStore replaces the bucket provisioning.backup_s3 describes (tests).
+	BackupStore provision.ObjectStore
 	// Background, if set, runs periodic work (recovering stuck stack
 	// operations) until it's cancelled.
 	Background context.Context
@@ -72,11 +75,25 @@ func New(deps Deps) http.Handler {
 		health:  &healthCache{ttl: pc.HealthCacheTTL},
 		pools:   deps.Pools,
 		stacks:  &stackJobs{},
+		uploads: newUploader(),
+	}
+	if pv := deps.Config.Provisioning; deps.BackupStore != nil {
+		h.s3 = deps.BackupStore
+	} else if pv.Enabled && pv.BackupS3.Enabled() {
+		s3, err := provision.NewS3(pv.BackupS3)
+		if err != nil {
+			deps.Logger.Error("backups won't be copied to S3", "err", err)
+		} else {
+			h.s3 = s3
+		}
 	}
 	if deps.Store != nil {
 		if deps.Background != nil {
 			go h.watchStacks(deps.Background)
 			go h.backupLoop(deps.Background)
+			if h.s3 != nil {
+				go h.uploadLoop(deps.Background)
+			}
 		} else {
 			h.recoverStacks(context.Background(), time.Now().Add(-stackStale))
 		}
