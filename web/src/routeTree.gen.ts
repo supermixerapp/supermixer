@@ -46,6 +46,7 @@ import { Route as AppProjectRefAuthSessionsRouteImport } from './routes/_app/pro
 import { Route as AppProjectRefAuthTemplatesRouteImport } from './routes/_app/project.$ref.auth.templates'
 import { Route as AppProjectRefAuthUrlConfigurationRouteImport } from './routes/_app/project.$ref.auth.url-configuration'
 import { Route as AppProjectRefAuthUsersRouteImport } from './routes/_app/project.$ref.auth.users'
+import { Route as AppProjectRefDatabaseBackupsRouteImport } from './routes/_app/project.$ref.database.backups'
 import { Route as AppProjectRefDatabaseColumnPrivilegesRouteImport } from './routes/_app/project.$ref.database.column-privileges'
 import { Route as AppProjectRefDatabaseExtensionsRouteImport } from './routes/_app/project.$ref.database.extensions'
 import { Route as AppProjectRefDatabaseFunctionsRouteImport } from './routes/_app/project.$ref.database.functions'
@@ -283,6 +284,12 @@ const AppProjectRefAuthUsersRoute = AppProjectRefAuthUsersRouteImport.update({
   path: '/auth/users',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppProjectRefDatabaseBackupsRoute =
+  AppProjectRefDatabaseBackupsRouteImport.update({
+    id: '/database/backups',
+    path: '/database/backups',
+    getParentRoute: () => AppProjectRefRoute,
+  } as any)
 const AppProjectRefDatabaseColumnPrivilegesRoute =
   AppProjectRefDatabaseColumnPrivilegesRouteImport.update({
     id: '/database/column-privileges',
@@ -564,6 +571,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/auth/templates': typeof AppProjectRefAuthTemplatesRoute
   '/project/$ref/auth/url-configuration': typeof AppProjectRefAuthUrlConfigurationRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
+  '/project/$ref/database/backups': typeof AppProjectRefDatabaseBackupsRoute
   '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
@@ -639,6 +647,7 @@ export interface FileRoutesByTo {
   '/project/$ref/auth/templates': typeof AppProjectRefAuthTemplatesRoute
   '/project/$ref/auth/url-configuration': typeof AppProjectRefAuthUrlConfigurationRoute
   '/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
+  '/project/$ref/database/backups': typeof AppProjectRefDatabaseBackupsRoute
   '/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
@@ -720,6 +729,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/auth/templates': typeof AppProjectRefAuthTemplatesRoute
   '/_app/project/$ref/auth/url-configuration': typeof AppProjectRefAuthUrlConfigurationRoute
   '/_app/project/$ref/auth/users': typeof AppProjectRefAuthUsersRoute
+  '/_app/project/$ref/database/backups': typeof AppProjectRefDatabaseBackupsRoute
   '/_app/project/$ref/database/column-privileges': typeof AppProjectRefDatabaseColumnPrivilegesRoute
   '/_app/project/$ref/database/extensions': typeof AppProjectRefDatabaseExtensionsRoute
   '/_app/project/$ref/database/functions': typeof AppProjectRefDatabaseFunctionsRoute
@@ -801,6 +811,7 @@ export interface FileRouteTypes {
     | '/project/$ref/auth/templates'
     | '/project/$ref/auth/url-configuration'
     | '/project/$ref/auth/users'
+    | '/project/$ref/database/backups'
     | '/project/$ref/database/column-privileges'
     | '/project/$ref/database/extensions'
     | '/project/$ref/database/functions'
@@ -876,6 +887,7 @@ export interface FileRouteTypes {
     | '/project/$ref/auth/templates'
     | '/project/$ref/auth/url-configuration'
     | '/project/$ref/auth/users'
+    | '/project/$ref/database/backups'
     | '/project/$ref/database/column-privileges'
     | '/project/$ref/database/extensions'
     | '/project/$ref/database/functions'
@@ -956,6 +968,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/auth/templates'
     | '/_app/project/$ref/auth/url-configuration'
     | '/_app/project/$ref/auth/users'
+    | '/_app/project/$ref/database/backups'
     | '/_app/project/$ref/database/column-privileges'
     | '/_app/project/$ref/database/extensions'
     | '/_app/project/$ref/database/functions'
@@ -1265,6 +1278,13 @@ declare module '@tanstack/react-router' {
       path: '/auth/users'
       fullPath: '/project/$ref/auth/users'
       preLoaderRoute: typeof AppProjectRefAuthUsersRouteImport
+      parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/project/$ref/database/backups': {
+      id: '/_app/project/$ref/database/backups'
+      path: '/database/backups'
+      fullPath: '/project/$ref/database/backups'
+      preLoaderRoute: typeof AppProjectRefDatabaseBackupsRouteImport
       parentRoute: typeof AppProjectRefRoute
     }
     '/_app/project/$ref/database/column-privileges': {
@@ -1626,6 +1646,7 @@ interface AppProjectRefRouteChildren {
   AppProjectRefAuthTemplatesRoute: typeof AppProjectRefAuthTemplatesRoute
   AppProjectRefAuthUrlConfigurationRoute: typeof AppProjectRefAuthUrlConfigurationRoute
   AppProjectRefAuthUsersRoute: typeof AppProjectRefAuthUsersRoute
+  AppProjectRefDatabaseBackupsRoute: typeof AppProjectRefDatabaseBackupsRoute
   AppProjectRefDatabaseColumnPrivilegesRoute: typeof AppProjectRefDatabaseColumnPrivilegesRoute
   AppProjectRefDatabaseExtensionsRoute: typeof AppProjectRefDatabaseExtensionsRoute
   AppProjectRefDatabaseFunctionsRoute: typeof AppProjectRefDatabaseFunctionsRoute
@@ -1686,6 +1707,7 @@ const AppProjectRefRouteChildren: AppProjectRefRouteChildren = {
   AppProjectRefAuthUrlConfigurationRoute:
     AppProjectRefAuthUrlConfigurationRoute,
   AppProjectRefAuthUsersRoute: AppProjectRefAuthUsersRoute,
+  AppProjectRefDatabaseBackupsRoute: AppProjectRefDatabaseBackupsRoute,
   AppProjectRefDatabaseColumnPrivilegesRoute:
     AppProjectRefDatabaseColumnPrivilegesRoute,
   AppProjectRefDatabaseExtensionsRoute: AppProjectRefDatabaseExtensionsRoute,

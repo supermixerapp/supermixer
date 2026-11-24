@@ -599,6 +599,123 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/backups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        /** Database backups of a stack Supermixer created, newest first */
+        get: operations["listBackups"];
+        put?: never;
+        /**
+         * Back the database up now
+         * @description Runs in the background; poll the list. Needs project settings access.
+         */
+        post: operations["createBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/backups/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Delete a backup and its files */
+        delete: operations["deleteBackup"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/backups/{id}/files/{file}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+                file: "roles.sql" | "schema.sql" | "data.sql";
+            };
+            cookie?: never;
+        };
+        /**
+         * Download one of a backup's dumps
+         * @description The data dump holds every row, Auth's users included, so this needs project settings
+         *     access and is recorded in the audit log. Restore elsewhere as Supabase documents:
+         *     psql --single-transaction -v ON_ERROR_STOP=1 -f roles.sql -f schema.sql -f data.sql.
+         */
+        get: operations["downloadBackupFile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/backups/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a backup into this project
+         * @description Takes a backup of the current database first, then starts a fresh database and replays the
+         *     backup into it. The project is offline meanwhile, and changes since the backup are lost. If the
+         *     restore fails, the project goes back to its previous database. Runs in the background.
+         */
+        post: operations["restoreBackup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/projects/{ref}/backups/{id}/restore-to-new": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create a new project from a backup
+         * @description A new stack in the same organization, with its own keys, started and then restored from the backup.
+         */
+        post: operations["restoreBackupToNewProject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/auth-config": {
         parameters: {
             query?: never;
@@ -1010,7 +1127,7 @@ export interface components {
              * @description What Supermixer is doing to the stack right now.
              * @enum {string|null}
              */
-            operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | null;
+            operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | null;
         };
         EdgeFunction: {
             name: string;
@@ -1039,6 +1156,35 @@ export interface components {
             function?: components["schemas"]["EdgeFunction"];
             /** @description Whether the functions service was recreated; false while the stack isn't running. */
             restarted: boolean;
+        };
+        Backup: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            kind: "scheduled" | "manual" | "pre_restore";
+            /** @enum {string} */
+            status: "running" | "completed" | "failed";
+            error: string;
+            /**
+             * Format: int64
+             * @description Compressed.
+             */
+            size_bytes: number;
+            template: string;
+            postgres_version: string;
+            /** @description Username */
+            created_by?: string | null;
+            /** Format: date-time */
+            started_at: string;
+            /** Format: date-time */
+            finished_at?: string | null;
+        };
+        BackupList: {
+            backups: components["schemas"]["Backup"][];
+            /** @description How often scheduled backups run; 0 when they're off. */
+            interval_hours: number;
+            /** @description Scheduled backups kept. */
+            keep: number;
         };
         AuthConfig: {
             /** @description Setting name → true/false, a number, text, or null (Auth's default). */
@@ -2498,6 +2644,154 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EdgeFunctionChange"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listBackups: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Backups, and the schedule. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BackupList"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    createBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Backup"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    deleteBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    downloadBackupFile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+                file: "roles.sql" | "schema.sql" | "data.sql";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The SQL. */
+            200: {
+                headers: {
+                    "Content-Disposition"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/octet-stream": string;
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    restoreBackup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Started. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    restoreBackupToNewProject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Creating. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Project"];
                 };
             };
             default: components["responses"]["Error"];

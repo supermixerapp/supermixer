@@ -35,6 +35,8 @@ const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
   restarting: 'Restarting…',
   deleting: 'Deleting…',
   updating: 'Updating functions…',
+  backing_up: 'Backing up…',
+  restoring: 'Restoring…',
 }
 
 const STATUS: Record<
@@ -55,9 +57,11 @@ export function StackBadge({ stack }: { stack: Pick<Stack, 'status' | 'operation
 }
 
 /** Whether a project's health checks mean anything right now. Updating
- * functions only restarts the functions service. */
+ * functions only restarts the functions service; a backup stops nothing. */
 export const stackUp = (stack: Pick<Stack, 'status' | 'operation'> | null | undefined) =>
-  !stack || (stack.status === 'running' && (!stack.operation || stack.operation === 'updating'))
+  !stack ||
+  (stack.status === 'running' &&
+    (!stack.operation || stack.operation === 'updating' || stack.operation === 'backing_up'))
 
 /** A stack's project was deleted: refresh the lists that still show it. */
 export function useStackGone(error: Error | null) {
