@@ -27,15 +27,18 @@ app: ## Run Supermixer and its Postgres in containers (reads .env.toml)
 
 # provisioning.stacks_dir from .env.toml (its default if unset).
 STACKS_DIR = $(shell awk -F'"' '/^\[/{s=($$0 ~ /^\[provisioning\]/)} s && /^[ \t]*stacks_dir[ \t]*=/{print $$2; exit}' .env.toml 2>/dev/null)
+# provisioning.backups_dir likewise.
+BACKUPS_DIR = $(shell awk -F'"' '/^\[/{s=($$0 ~ /^\[provisioning\]/)} s && /^[ \t]*backups_dir[ \t]*=/{print $$2; exit}' .env.toml 2>/dev/null)
 
 app-stacks: ## Like app, but the container may create Supabase stacks (Docker socket; see deploy/docker-compose.provisioning.yml)
 	@test -f .env.toml || { echo "no .env.toml; run make env first" >&2; exit 1; }
-	@dir="$(or $(STACKS_DIR),/var/lib/supermixer/stacks)"; \
+	@for dir in "$(or $(STACKS_DIR),/var/lib/supermixer/stacks)" "$(or $(BACKUPS_DIR),/var/lib/supermixer/backups)"; do \
 	test -d "$$dir" -a -w "$$dir" || { \
-	  echo "the stacks folder $$dir must exist and be writable by $$(id -un); for example:" >&2; \
-	  echo "  sudo install -d -o $$(id -u) -g $$(id -g) -m 750 $$dir" >&2; exit 1; }
+	  echo "the folder $$dir must exist and be writable by $$(id -un); for example:" >&2; \
+	  echo "  sudo install -d -o $$(id -u) -g $$(id -g) -m 700 $$dir" >&2; exit 1; }; done
 	SUPERMIXER_UID=$$(id -u) SUPERMIXER_GID=$$(id -g) \
 	SUPERMIXER_STACKS_DIR="$(or $(STACKS_DIR),/var/lib/supermixer/stacks)" \
+	SUPERMIXER_BACKUPS_DIR="$(or $(BACKUPS_DIR),/var/lib/supermixer/backups)" \
 	DOCKER_GID=$$(stat -c %g /var/run/docker.sock 2>/dev/null || stat -f %g /var/run/docker.sock) \
 	$(COMPOSE) -f deploy/docker-compose.provisioning.yml --profile app up -d --build
 

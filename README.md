@@ -67,10 +67,12 @@ It is off by default, because control of the Docker daemon is root-equivalent on
 [provisioning]
 enabled = true
 stacks_dir = "/var/lib/supermixer/stacks"   # one folder per stack
+backups_dir = "/var/lib/supermixer/backups" # database backups (Database › Backups)
 public_host = "supabase.example.internal"   # the host name in stacks' URLs
 ```
 
-- Running Supermixer in a container: create `stacks_dir` owned by your user first (`sudo install -d -o $(id -u) -g $(id -g) -m 750 /var/lib/supermixer/stacks`), then `make app-stacks`. It mounts the Docker socket, and `stacks_dir` at the same path inside the container (Compose resolves the stacks' bind mounts on the host).
+- Running Supermixer in a container: create `stacks_dir` and `backups_dir` owned by your user first (`sudo install -d -o $(id -u) -g $(id -g) -m 700 /var/lib/supermixer/stacks /var/lib/supermixer/backups`), then `make app-stacks`. It mounts the Docker socket, and both folders at the same paths inside the container (Compose resolves the stacks' bind mounts on the host).
+- Backups are Supabase-style dumps of each stack's database (roles, schema, data), taken every `backup_interval` and on demand; Storage files aren't included. Back `backups_dir` up off the server too.
 - Run one Supermixer server per metadata database when provisioning: operations on a stack are coordinated within a server. (A stuck create or delete is still noticed across servers: a running operation keeps its status fresh, and one left untouched for three minutes is marked failed.)
 - Each stack takes one port from each of `api_ports`, `db_ports` and `pooler_ports`; widen them for more stacks.
 - To update the bundled Supabase version, run `backend/internal/provision/sync-template.sh <commit>`, then the tests, and create a stack before committing.

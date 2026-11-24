@@ -23,6 +23,7 @@ coverage/
 /deploy/dev-stacks/.src/
 # Stacks Supermixer creates in development (provisioning.stacks_dir)
 /deploy/dev-stacks/.managed/
+/deploy/dev-stacks/.backups/
 
 # Python bytecode (deploy/dev-stacks tests)
 __pycache__/

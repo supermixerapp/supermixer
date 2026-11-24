@@ -3,8 +3,9 @@
 #   make app-stacks
 #
 # Also set [provisioning] enabled = true in .env.toml. make app-stacks reads
-# provisioning.stacks_dir from there and passes it as SUPERMIXER_STACKS_DIR;
-# the folder must already exist, owned by the user the container runs as.
+# provisioning.stacks_dir and backups_dir from there and passes them as
+# SUPERMIXER_STACKS_DIR and SUPERMIXER_BACKUPS_DIR; both folders must already
+# exist, owned by the user the container runs as.
 #
 # This gives the container the Docker socket, which is root-equivalent on the
 # host: only enable it on a server dedicated to Supermixer and its stacks.
@@ -21,6 +22,13 @@ services:
       - type: bind
         source: ${SUPERMIXER_STACKS_DIR:?set SUPERMIXER_STACKS_DIR to provisioning.stacks_dir from .env.toml}
         target: ${SUPERMIXER_STACKS_DIR}
+        bind:
+          create_host_path: false
+      # Database backups of the stacks (provisioning.backups_dir), at the
+      # path the configuration names. Not created here either, for the same reason.
+      - type: bind
+        source: ${SUPERMIXER_BACKUPS_DIR:?set SUPERMIXER_BACKUPS_DIR to provisioning.backups_dir from .env.toml}
+        target: ${SUPERMIXER_BACKUPS_DIR}
         bind:
           create_host_path: false
     environment:
