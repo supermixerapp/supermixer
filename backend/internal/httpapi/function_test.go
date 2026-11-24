@@ -23,7 +23,7 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8220-8221", "54420-54421", "64420-64421"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Fns"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/fns/projects/new-stack", map[string]string{"name": "Fns"}, &p)
@@ -244,7 +244,7 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 func TestEdgeFunctionsNeedACreatedStack(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Linked"}, nil)
 	var p struct{ Ref string }
 	admin.must(201, "POST", "/organizations/linked/projects", map[string]any{"name": "P", "connection": connectionFor(t, "http://127.0.0.1:9", env.dbURL)}, &p)
@@ -264,7 +264,7 @@ func TestFunctionVersionsAPI(t *testing.T) {
 		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8226-8227", "54426-54427", "64426-64427"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Ver"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/ver/projects/new-stack", map[string]string{"name": "Ver"}, &p)

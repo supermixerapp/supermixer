@@ -10,7 +10,7 @@ import (
 func TestAccessTokens(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 
 	admin.must(400, "POST", "/profile/access-tokens", map[string]any{"name": " ", "expires_in_days": 30}, nil)
 	admin.must(400, "POST", "/profile/access-tokens", map[string]any{"name": "CI", "expires_in_days": 400}, nil)
@@ -69,7 +69,7 @@ func TestAccessTokens(t *testing.T) {
 	// admin's own password or email, or sign their sessions out.
 	var adminMe struct{ ID string }
 	admin.must(200, "GET", "/profile", nil, &adminMe)
-	ci.must(403, "POST", "/admin/users/"+adminMe.ID+"/password", map[string]any{"password": "taken-over-1"}, nil)
+	ci.must(403, "POST", "/admin/users/"+adminMe.ID+"/password", map[string]any{"password": "taken-over-1-secret"}, nil)
 	ci.must(403, "PATCH", "/admin/users/"+adminMe.ID, map[string]any{"email": "evil@example.com"}, nil)
 	ci.must(403, "DELETE", "/admin/users/"+adminMe.ID+"/sessions", nil, nil)
 	admin.must(200, "GET", "/profile", nil, nil)
@@ -102,9 +102,9 @@ func TestAccessTokens(t *testing.T) {
 	ci.must(401, "GET", "/profile", nil, nil)
 
 	// Signing someone out everywhere stops their tokens too.
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": "dana", "password": "dana-pass-1", "require_password_change": false}, nil)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": "dana", "password": "dana-pass-1-secret", "require_password_change": false}, nil)
 	dana := env.client(t)
-	dana.signIn("dana", "dana-pass-1")
+	dana.signIn("dana", "dana-pass-1-secret")
 	var dt struct{ Token string }
 	dana.must(201, "POST", "/profile/access-tokens", map[string]any{"name": "laptop", "expires_in_days": 7}, &dt)
 	danaCI := env.client(t)
@@ -117,7 +117,7 @@ func TestAccessTokens(t *testing.T) {
 	danaCI.must(401, "GET", "/organizations", nil, nil)
 
 	// Disabling deletes tokens: enabling again doesn't bring them back.
-	dana.signIn("dana", "dana-pass-1")
+	dana.signIn("dana", "dana-pass-1-secret")
 	dana.must(201, "POST", "/profile/access-tokens", map[string]any{"name": "laptop", "expires_in_days": 7}, &dt)
 	admin.must(200, "PATCH", "/admin/users/"+me.ID, map[string]any{"disabled": true}, nil)
 	admin.must(200, "PATCH", "/admin/users/"+me.ID, map[string]any{"disabled": false}, nil)
@@ -125,11 +125,11 @@ func TestAccessTokens(t *testing.T) {
 	danaCI.must(401, "GET", "/organizations", nil, nil)
 
 	// So do changing your password and turning on two-factor sign-in.
-	dana.signIn("dana", "dana-pass-1")
+	dana.signIn("dana", "dana-pass-1-secret")
 	dana.must(201, "POST", "/profile/access-tokens", map[string]any{"name": "laptop", "expires_in_days": 7}, &dt)
 	danaCI.bearer = dt.Token
 	danaCI.must(200, "GET", "/organizations", nil, nil)
-	dana.must(204, "POST", "/profile/password", map[string]string{"current_password": "dana-pass-1", "new_password": "dana-pass-2"}, nil)
+	dana.must(204, "POST", "/profile/password", map[string]string{"current_password": "dana-pass-1-secret", "new_password": "dana-pass-2-secret"}, nil)
 	danaCI.must(401, "GET", "/organizations", nil, nil)
 	dana.must(200, "GET", "/profile", nil, nil) // this session stays
 }

@@ -16,6 +16,7 @@ require (
 	github.com/prometheus/client_golang v1.20.5
 	golang.org/x/crypto v0.59.0
 	golang.org/x/oauth2 v0.36.0
+	golang.org/x/text v0.44.0
 	rsc.io/qr v0.2.0
 )
 
@@ -74,7 +75,6 @@ require (
 	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sync v0.25.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
-	golang.org/x/text v0.44.0 // indirect
 	golang.org/x/tools v0.53.0 // indirect
 	google.golang.org/protobuf v1.36.12 // indirect
 	gopkg.in/ini.v1 v1.67.3 // indirect

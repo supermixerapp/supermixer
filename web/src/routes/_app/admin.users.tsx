@@ -36,6 +36,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { uiConfigQuery, usersQuery } from '@/lib/api/queries'
 import { relativeTime } from '@/lib/auth-users'
+import { passwordRule } from '@/lib/passwords'
 
 export const Route = createFileRoute('/_app/admin/users')({
   component: UsersPage,
@@ -247,13 +248,13 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                 <Input id="nu-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </FormField>
             </div>
-            <FormField label="Password" htmlFor="nu-password" description="At least 8 characters, and not a common password or their username">
+            <FormField label="Password" htmlFor="nu-password" description={passwordRule(false, 'their').hint}>
               <Input
                 id="nu-password"
                 type="password"
                 autoComplete="new-password"
                 required
-                minLength={8}
+                minLength={passwordRule(false).min}
                 value={form.password}
                 onChange={(e) => setForm({ ...form, password: e.target.value })}
               />
@@ -328,14 +329,14 @@ function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolea
             </DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
-            <FormField label="New password" htmlFor="rp-password" description="At least 8 characters, and not a common password or their username">
+            <FormField label="New password" htmlFor="rp-password" description={passwordRule(user.mfa_enabled, 'their').hint}>
               <Input
                 id="rp-password"
                 type="password"
                 autoComplete="new-password"
                 autoFocus
                 required
-                minLength={8}
+                minLength={passwordRule(user.mfa_enabled).min}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
               />

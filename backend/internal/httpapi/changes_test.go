@@ -8,7 +8,7 @@ import (
 func TestDBChanges(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Chg"}, nil)
 	var p struct{ Ref string }
 	admin.must(201, "POST", "/organizations/chg/projects", map[string]any{"name": "P", "connection": connectionFor(t, fakeGateway(t), env.dbURL)}, &p)

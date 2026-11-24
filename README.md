@@ -72,6 +72,10 @@ from = "Supermixer <supermixer@example.com>"
 
 For development, `make mail` runs [Mailpit](https://mailpit.axllent.org), which keeps everything it's sent: set `smtp_host = "localhost"`, `smtp_port = 1025`, `security = "none"` and read the mail at http://localhost:8025.
 
+## Passwords
+
+New passwords follow NIST SP 800-63B-4: at least 15 characters for an account that signs in with a password alone, or 8 with two-factor sign-in on; not one of the UK NCSC's 100,000 most used passwords (bundled, so this works offline) or the username. Characters are counted after Unicode normalization (NFKC). An account without two-factor sign-in whose password is shorter than 15 characters is asked to choose a new one at its next sign-in.
+
 ## Single sign-on
 
 Supermixer can sign people in through OpenID Connect providers (Okta, Microsoft Entra ID, Google Workspace, Keycloak, Authentik, Dex, ...), with a **Continue with ...** button for each on the sign-in page. Register `<public_url>/api/v1/auth/sso/<id>/callback` as the redirect URI with the provider, then:

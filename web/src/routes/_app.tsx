@@ -27,7 +27,7 @@ function AppLayout() {
   return (
     <>
       <ThemeSync />
-      {me?.password_change_required ? <ChoosePassword username={me.username} /> : <Outlet />}
+      {me?.password_change_required ? <ChoosePassword username={me.username} mfa={me.mfa_enabled} /> : <Outlet />}
     </>
   )
 }

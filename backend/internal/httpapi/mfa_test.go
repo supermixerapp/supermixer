@@ -12,7 +12,7 @@ import (
 func TestMFA(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	code := func(secret []byte, ahead int64) string { return auth.TOTPCode(secret, auth.TOTPStep(time.Now())+ahead) }
 
 	// Setting up: the password, then a code from the app.
@@ -30,7 +30,7 @@ func TestMFA(t *testing.T) {
 		URI    string `json:"uri"`
 		QRSVG  string `json:"qr_svg"`
 	}
-	admin.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": "admin"}, &setup)
+	admin.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": adminPassword}, &setup)
 	secret, err := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ReplaceAll(setup.Secret, " ", ""))
 	if err != nil || !strings.HasPrefix(setup.URI, "otpauth://totp/Supermixer:admin@") || !strings.HasPrefix(setup.QRSVG, "<svg") {
 		t.Fatalf("setup = %+v (%v)", setup, err)
@@ -38,14 +38,14 @@ func TestMFA(t *testing.T) {
 	admin.must(400, "POST", "/profile/mfa/enable", map[string]string{"code": "000000"}, nil)
 	var rc struct{ Codes []string }
 	other := env.client(t)
-	other.signIn("admin", "admin") // with the password alone
+	other.signIn("admin", adminPassword) // with the password alone
 	admin.must(200, "POST", "/profile/mfa/enable", map[string]string{"code": code(secret, 0)}, &rc)
 	other.must(401, "GET", "/profile", nil, nil) // signed out by turning it on
 	admin.must(200, "GET", "/profile", nil, nil)
 	if len(rc.Codes) != 10 {
 		t.Fatalf("recovery codes = %v", rc.Codes)
 	}
-	admin.must(409, "POST", "/profile/mfa/setup", map[string]string{"password": "admin"}, nil)
+	admin.must(409, "POST", "/profile/mfa/setup", map[string]string{"password": adminPassword}, nil)
 	admin.must(200, "GET", "/profile/mfa", nil, &status)
 	if !status.Enabled || status.RecoveryCodesLeft != 10 {
 		t.Fatalf("status = %+v", status)
@@ -58,7 +58,7 @@ func TestMFA(t *testing.T) {
 			MfaRequired bool   `json:"mfa_required"`
 			Challenge   string `json:"challenge"`
 		}
-		c.must(202, "POST", "/auth/sign-in", map[string]string{"username": "admin", "password": "admin"}, &ch)
+		c.must(202, "POST", "/auth/sign-in", map[string]string{"username": "admin", "password": adminPassword}, &ch)
 		if !ch.MfaRequired || ch.Challenge == "" {
 			t.Fatalf("challenge = %+v", ch)
 		}
@@ -115,14 +115,14 @@ func TestMFA(t *testing.T) {
 	bob.must(204, "DELETE", "/organizations/vault/members/"+me.ID, nil, nil)
 
 	// Turning it off takes the password and a code; an admin can reset it.
-	admin.must(400, "POST", "/profile/mfa/disable", map[string]string{"password": "admin", "code": "nope-nope"}, nil)
-	admin.must(204, "POST", "/profile/mfa/disable", map[string]string{"password": "admin", "code": rc.Codes[1]}, nil)
+	admin.must(400, "POST", "/profile/mfa/disable", map[string]string{"password": adminPassword, "code": "nope-nope"}, nil)
+	admin.must(204, "POST", "/profile/mfa/disable", map[string]string{"password": adminPassword, "code": rc.Codes[1]}, nil)
 	admin.must(200, "GET", "/profile/mfa", nil, &status)
 	if status.Enabled || status.RecoveryCodesLeft != 0 {
 		t.Fatalf("after disabling: %+v", status)
 	}
 	admin.must(409, "DELETE", "/admin/users/"+me.ID+"/mfa", nil, nil)
-	bob.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": "bob-password"}, &setup)
+	bob.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": "bob-long-password"}, &setup)
 	secret, _ = base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ReplaceAll(setup.Secret, " ", ""))
 	bob.must(200, "POST", "/profile/mfa/enable", map[string]string{"code": code(secret, 0)}, &rc)
 	bob.must(200, "POST", "/profile/mfa/recovery-codes", map[string]string{"code": code(secret, 1)}, &rc)

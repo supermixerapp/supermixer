@@ -58,7 +58,7 @@ func TestEmail(t *testing.T) {
 	mailer := &recordingMailer{}
 	env := newTestEnvDeps(t, testDatabase(t), nil, func(d *Deps) { d.Mailer = mailer })
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	var ui struct {
 		EmailEnabled bool `json:"email_enabled"`
 	}
@@ -88,9 +88,9 @@ func TestEmail(t *testing.T) {
 	}
 
 	// Forgot your password: the same answer whether or not there's such an account.
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": "carol", "password": "carol-old-pass", "email": "carol@example.com", "require_password_change": false}, nil)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": "carol", "password": "carol-old-pass-secret", "email": "carol@example.com", "require_password_change": false}, nil)
 	carol := env.client(t)
-	carol.signIn("carol", "carol-old-pass")
+	carol.signIn("carol", "carol-old-pass-secret")
 	before := mailer.count()
 	anon := env.client(t)
 	anon.must(202, "POST", "/auth/password-reset", map[string]string{"login": "nobody@example.com"}, nil)
@@ -110,15 +110,15 @@ func TestEmail(t *testing.T) {
 	}
 	anon.must(410, "GET", "/auth/password-reset/"+token+"x", nil, nil)
 	anon.must(400, "POST", "/auth/password-reset/"+token, map[string]string{"password": "password123"}, nil)
-	anon.must(204, "POST", "/auth/password-reset/"+token, map[string]string{"password": "carol-new-pass"}, nil)
+	anon.must(204, "POST", "/auth/password-reset/"+token, map[string]string{"password": "carol-new-pass-secret"}, nil)
 	anon.must(410, "POST", "/auth/password-reset/"+token, map[string]string{"password": "carol-newer-pass"}, nil)
 	carol.must(401, "GET", "/profile", nil, nil) // signed out everywhere
-	carol.signIn("carol", "carol-new-pass")
+	carol.signIn("carol", "carol-new-pass-secret")
 	mailer.waitFor(t, "carol@example.com", "password was changed")
 
 	// With two-factor sign-in, the link isn't enough on its own.
 	var setup struct{ Secret string }
-	carol.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": "carol-new-pass"}, &setup)
+	carol.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": "carol-new-pass-secret"}, &setup)
 	secret, _ := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ReplaceAll(setup.Secret, " ", ""))
 	step := auth.TOTPStep(time.Now())
 	carol.must(200, "POST", "/profile/mfa/enable", map[string]string{"code": auth.TOTPCode(secret, step)}, nil)
@@ -166,7 +166,7 @@ func TestEmail(t *testing.T) {
 	// Without email, there's no reset by email, and invitations don't claim
 	// an email failed.
 	offAdmin := off.client(t)
-	offAdmin.signIn("admin", "admin")
+	offAdmin.signIn("admin", adminPassword)
 	offAdmin.must(201, "POST", "/organizations", map[string]string{"name": "Quiet"}, nil)
 	var quiet struct {
 		EmailSent  bool    `json:"email_sent"`

@@ -47,7 +47,7 @@ func newRecordingGateway(t *testing.T) (*recordingGateway, string) {
 func TestGatewayProxy(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Gw"}, nil)
 	gw, gwURL := newRecordingGateway(t)
 	var p struct{ Ref string }
@@ -251,11 +251,11 @@ func TestGatewayProxy(t *testing.T) {
 // joinAs creates a user and adds them to org with role via an invitation.
 func joinAs(t *testing.T, env *testEnv, admin *client, org, username, role string) *client {
 	t.Helper()
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": username, "password": username + "-password", "require_password_change": false}, nil)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": username, "password": username + "-long-password", "require_password_change": false}, nil)
 	var inv struct{ Token string }
 	admin.must(201, "POST", "/organizations/"+org+"/invitations", map[string]any{"role": role}, &inv)
 	c := env.client(t)
-	c.signIn(username, username+"-password")
+	c.signIn(username, username+"-long-password")
 	c.must(200, "POST", "/invitations/"+inv.Token+"/accept", nil, nil)
 	return c
 }
@@ -263,7 +263,7 @@ func joinAs(t *testing.T, env *testEnv, admin *client, org, username, role strin
 func TestQueryAndSnippets(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Sql"}, nil)
 	_, gwURL := newRecordingGateway(t)
 	var p struct{ Ref string }
@@ -352,7 +352,7 @@ func TestQueryAndSnippets(t *testing.T) {
 func TestReadOnlyLogin(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Ro"}, nil)
 	_, gwURL := newRecordingGateway(t)
 	var p struct {
@@ -410,7 +410,7 @@ func TestReadOnlyLogin(t *testing.T) {
 func TestLogsWithoutAnalytics(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Logs"}, nil)
 	_, gwURL := newRecordingGateway(t)
 	var p struct{ Ref string }

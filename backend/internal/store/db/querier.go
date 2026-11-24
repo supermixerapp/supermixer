@@ -143,6 +143,8 @@ type Querier interface {
 	// stay until the project goes, so deploys can't push a baseline out.
 	PruneDBSnapshots(ctx context.Context, projectID uuid.UUID) error
 	PruneUsedChallenges(ctx context.Context) error
+	// The same password, hashed again (normalized); only if it hasn't changed since.
+	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)

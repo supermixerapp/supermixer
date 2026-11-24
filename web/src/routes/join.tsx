@@ -12,6 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { api, unwrap } from '@/lib/api/client'
 import { invitationQuery, profileQuery } from '@/lib/api/queries'
 import { roleLabel } from '@/lib/roles'
+import { passwordRule } from '@/lib/passwords'
 
 export const Route = createFileRoute('/join')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -140,13 +141,13 @@ function SignUp({ token, email }: { token: string; email: string }) {
       <FormField label="Email" htmlFor="su-email">
         <Input id="su-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} />
       </FormField>
-      <FormField label="Password" htmlFor="su-password" description="At least 8 characters, and not a common password or your username">
+      <FormField label="Password" htmlFor="su-password" description={passwordRule(false).hint}>
         <Input
           id="su-password"
           type="password"
           autoComplete="new-password"
           required
-          minLength={8}
+          minLength={passwordRule(false).min}
           value={form.password}
           onChange={set('password')}
         />

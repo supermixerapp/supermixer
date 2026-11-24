@@ -22,6 +22,12 @@ This product bundles:
     wrapper-types.json, from apps/studio/components/interfaces/Integrations/
     Wrappers/Wrappers.constants.ts by web/scripts/import-wrappers.mjs),
     Copyright Supabase, Apache License 2.0
+  - The UK National Cyber Security Centre's 100,000 most used passwords (from
+    Have I Been Pwned), as published in SecLists
+    (Passwords/Common-Credentials/100k-most-used-passwords-NCSC.txt), filtered
+    and normalized into backend/internal/auth/common-passwords.txt.gz by
+    gen_common_passwords.go; Copyright (c) 2018 Daniel Miessler, MIT License;
+    the full licence is in backend/internal/auth/COMMON_PASSWORDS_LICENSE
   - Material Icons (Two-Tone), Copyright Google LLC, Apache License 2.0
     (https://github.com/google/material-design-icons)
   - Inter, Copyright The Inter Project Authors, SIL Open Font License 1.1

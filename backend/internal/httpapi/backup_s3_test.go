@@ -145,7 +145,7 @@ func TestBackupsInS3(t *testing.T) {
 		d.Background = ctx
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "S3"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/s3/projects/new-stack", map[string]string{"name": "S3"}, &p)
@@ -352,7 +352,7 @@ func TestBackupBucketSwitch(t *testing.T) {
 	t.Cleanup(stop1)
 	env := newTestEnvDeps(t, dbURL, configure("test-bucket", true), func(d *Deps) { d.BackupStore, d.Background = old, ctx1 })
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Sw"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/sw/projects/new-stack", map[string]string{"name": "Sw"}, &p)
@@ -368,7 +368,7 @@ func TestBackupBucketSwitch(t *testing.T) {
 	t.Cleanup(stop2)
 	env2 := newTestEnvDeps(t, dbURL, configure("other-bucket", false), func(d *Deps) { d.BackupStore, d.Background = other, ctx2 })
 	c2 := env2.client(t)
-	c2.signIn("admin", "admin")
+	c2.signIn("admin", adminPassword)
 	time.Sleep(200 * time.Millisecond) // the uploader's first pass
 	got := byID(waitFor(t, c2, p.Ref, "the list", func([]s3BackupView) bool { return true }), b.ID)
 	if !got.Local || got.Remote == nil || !strings.HasPrefix(*got.Remote, "s3://test-bucket/") {

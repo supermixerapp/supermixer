@@ -147,7 +147,7 @@ func TestAuditDrains(t *testing.T) {
 		}
 	}, func(d *Deps) { d.Background = ctx })
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Drained"}, nil)
 	waitUntil := func(what string, ok func() bool) {
 		t.Helper()
@@ -277,7 +277,7 @@ func TestMetrics(t *testing.T) {
 	})
 	admin := env.client(t)
 	admin.must(401, "POST", "/auth/sign-in", map[string]string{"username": "admin", "password": "nope"}, nil)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(200, "GET", "/organizations", nil, nil)
 	admin.must(200, "GET", "/organizations", nil, nil)
 	// Made-up methods share one label.
@@ -369,7 +369,7 @@ func TestDrainStartsLate(t *testing.T) {
 		t.Fatal(err)
 	}
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	var o struct {
 		AuditDrains []struct{ State string } `json:"audit_drains"`
 	}

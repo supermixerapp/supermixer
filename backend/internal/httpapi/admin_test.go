@@ -54,20 +54,20 @@ func TestBootstrapGeneratesPassword(t *testing.T) {
 func TestInstanceAdminConsole(t *testing.T) {
 	env := newTestEnvWith(t, func(c *config.Config) { c.Provisioning.BackupsDir = "/backups" })
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	var created struct {
 		ID                     string `json:"id"`
 		PasswordChangeRequired bool   `json:"password_change_required"`
 	}
 	admin.must(400, "POST", "/admin/users", map[string]any{"username": "carol", "password": "carol"}, nil) // her own name
-	admin.must(201, "POST", "/admin/users", map[string]any{"username": "carol", "password": "carol-temp-1"}, &created)
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": "carol", "password": "carol-temp-1-secret"}, &created)
 	if !created.PasswordChangeRequired {
 		t.Fatal("an admin-created account doesn't have to change its password")
 	}
 	carol := env.client(t)
-	carol.signIn("carol", "carol-temp-1")
+	carol.signIn("carol", "carol-temp-1-secret")
 	carol.must(403, "GET", "/organizations", nil, nil)
-	carol.must(204, "POST", "/profile/password", map[string]string{"current_password": "carol-temp-1", "new_password": "carols-own-1"}, nil)
+	carol.must(204, "POST", "/profile/password", map[string]string{"current_password": "carol-temp-1-secret", "new_password": "carols-own-1-secret"}, nil)
 	carol.must(200, "GET", "/organizations", nil, nil)
 	carol.must(403, "GET", "/admin/overview", nil, nil)
 	carol.must(403, "GET", "/admin/audit-logs", nil, nil)
@@ -82,8 +82,8 @@ func TestInstanceAdminConsole(t *testing.T) {
 	admin.must(204, "DELETE", "/admin/users/"+created.ID+"/sessions", nil, nil)
 	carol.must(401, "GET", "/profile", nil, nil)
 	// A reset password is temporary too, unless the admin says otherwise.
-	admin.must(204, "POST", "/admin/users/"+created.ID+"/password", map[string]any{"password": "carol-temp-2", "require_password_change": false}, nil)
-	carol.signIn("carol", "carol-temp-2")
+	admin.must(204, "POST", "/admin/users/"+created.ID+"/password", map[string]any{"password": "carol-temp-2-secret", "require_password_change": false}, nil)
+	carol.signIn("carol", "carol-temp-2-secret")
 	carol.must(200, "GET", "/organizations", nil, nil)
 
 	var users []struct {

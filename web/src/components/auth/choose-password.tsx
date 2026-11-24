@@ -1,7 +1,8 @@
 /*
  * Shown instead of the app while the account must choose a new password:
  * the bootstrap admin's first sign-in, accounts an instance admin created,
- * and passwords an admin reset. The API allows nothing else meanwhile.
+ * passwords an admin reset, and passwords too short for an account without
+ * two-factor sign-in. The API allows nothing else meanwhile.
  */
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useRouter } from '@tanstack/react-router'
@@ -14,8 +15,10 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { api, unwrap } from '@/lib/api/client'
 import { profileQuery } from '@/lib/api/queries'
+import { passwordRule } from '@/lib/passwords'
 
-export function ChoosePassword({ username }: { username: string }) {
+export function ChoosePassword({ username, mfa }: { username: string; mfa: boolean }) {
+  const rule = passwordRule(mfa)
   const queryClient = useQueryClient()
   const navigate = useNavigate()
   const router = useRouter()
@@ -50,7 +53,8 @@ export function ChoosePassword({ username }: { username: string }) {
         <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Choose a new password</h1>
         <h2 className="font-sans text-sm font-normal text-foreground-light">
           You’re signed in as <span className="text-foreground">{username}</span> with a password that was set for you,
-          or that an administrator asked you to replace. Choose your own to continue.
+          that an administrator asked you to replace, or that’s shorter than Supermixer now requires
+          {mfa ? '' : ' without two-factor sign-in'}. Choose a new one to continue.
         </h2>
       </div>
       <form onSubmit={submit} className="flex flex-col gap-4">
@@ -70,7 +74,7 @@ export function ChoosePassword({ username }: { username: string }) {
         <FormField
           label="New password"
           htmlFor="cp-new"
-          description="At least 8 characters, and not a common password or your username"
+          description={rule.hint}
         >
           <Input
             id="cp-new"
@@ -78,7 +82,7 @@ export function ChoosePassword({ username }: { username: string }) {
             size="medium"
             autoComplete="new-password"
             required
-            minLength={8}
+            minLength={rule.min}
             value={next}
             onChange={(e) => setNext(e.target.value)}
           />

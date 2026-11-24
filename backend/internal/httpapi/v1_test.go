@@ -40,7 +40,7 @@ func v1(t *testing.T, env *testEnv, token, method, path string, body, out any) i
 func TestManagementAPI(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Tools"}, nil)
 	_, gwURL := newRecordingGateway(t)
 	var p struct{ Ref string }

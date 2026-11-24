@@ -245,6 +245,22 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	return items, nil
 }
 
+const rehashUserPassword = `-- name: RehashUserPassword :exec
+UPDATE users SET password_hash = $1 WHERE id = $2 AND password_hash = $3
+`
+
+type RehashUserPasswordParams struct {
+	NewHash string    `json:"new_hash"`
+	ID      uuid.UUID `json:"id"`
+	OldHash string    `json:"old_hash"`
+}
+
+// The same password, hashed again (normalized); only if it hasn't changed since.
+func (q *Queries) RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error {
+	_, err := q.db.Exec(ctx, rehashUserPassword, arg.NewHash, arg.ID, arg.OldHash)
+	return err
+}
+
 const setPasswordChangeRequired = `-- name: SetPasswordChangeRequired :one
 UPDATE users SET password_change_required = $2, updated_at = now() WHERE id = $1
 RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password

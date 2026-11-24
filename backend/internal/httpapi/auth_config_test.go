@@ -22,7 +22,7 @@ func TestAuthConfigOfCreatedStacks(t *testing.T) {
 		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8230-8231", "54430-54431", "64430-64431"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Authy"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/authy/projects/new-stack", map[string]string{"name": "A"}, &p)

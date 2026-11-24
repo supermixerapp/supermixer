@@ -221,7 +221,7 @@ func TestSSO(t *testing.T) {
 	// Never matched by email: someone at the provider with an existing
 	// account's address doesn't get into it.
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(200, "PATCH", "/profile", map[string]any{"email": "admin@corp.test"}, nil)
 	idp.as(map[string]any{"sub": "imposter", "email": "ADMIN@Corp.test", "email_verified": true})
 	if e := ssoError(env.client(t).sso(start("corp", "/"))); !strings.Contains(e, "already exists") {
@@ -233,7 +233,7 @@ func TestSSO(t *testing.T) {
 	env.client(t).must(401, "POST", "/profile/identities/partner/connect", nil, nil)
 	var conn struct{ URL string }
 	admin.must(400, "POST", "/profile/identities/partner/connect", map[string]string{"password": "wrong"}, nil)
-	admin.must(200, "POST", "/profile/identities/partner/connect", map[string]string{"password": "admin"}, &conn)
+	admin.must(200, "POST", "/profile/identities/partner/connect", map[string]string{"password": adminPassword}, &conn)
 	idp.as(map[string]any{"sub": "pat-1"})
 	if end := admin.sso(conn.URL); end.Path != "/account/security" || ssoError(end) != "" {
 		t.Fatalf("connect ended at %s", end)
@@ -266,7 +266,7 @@ func TestSSO(t *testing.T) {
 
 	// Two-factor sign-in still applies after the provider.
 	var setup struct{ Secret string }
-	admin.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": "admin"}, &setup)
+	admin.must(200, "POST", "/profile/mfa/setup", map[string]string{"password": adminPassword}, &setup)
 	secret, _ := base32.StdEncoding.WithPadding(base32.NoPadding).DecodeString(strings.ReplaceAll(setup.Secret, " ", ""))
 	admin.must(200, "POST", "/profile/mfa/enable", map[string]string{"code": auth.TOTPCode(secret, auth.TOTPStep(time.Now()))}, nil)
 	mfa := env.client(t)

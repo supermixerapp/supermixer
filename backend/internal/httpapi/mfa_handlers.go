@@ -351,6 +351,10 @@ func (h *handlers) DisableMfa(ctx context.Context, req api.DisableMfaRequestObje
 	if err := h.confirmPassword(p, req.Body.Password); err != nil {
 		return nil, err
 	}
+	// Then the password is the only way in: it needs 15 characters.
+	if u.HasPassword && auth.PasswordLength(req.Body.Password) < auth.MinSingleFactorPasswordLength {
+		return nil, conflict("without two-factor sign-in, a password needs at least %d characters: change yours under Account › Preferences first", auth.MinSingleFactorPasswordLength)
+	}
 	q := h.deps.Store.Queries
 	method, err := h.checkCode(ctx, q, u, req.Body.Code)
 	if err != nil {
@@ -420,6 +424,13 @@ func (h *handlers) ResetUserMfa(ctx context.Context, req api.ResetUserMfaRequest
 		// Whoever has their device shouldn't stay signed in either.
 		if err := q.DeleteUserAccessTokens(ctx, target.ID); err != nil {
 			return err
+		}
+		// Their password is now the only way in, and may be shorter than
+		// that needs: they choose a new one at next sign-in.
+		if target.HasPassword {
+			if _, err := q.SetPasswordChangeRequired(ctx, db.SetPasswordChangeRequiredParams{ID: target.ID, PasswordChangeRequired: true}); err != nil {
+				return err
+			}
 		}
 		return q.DeleteUserSessions(ctx, target.ID)
 	})

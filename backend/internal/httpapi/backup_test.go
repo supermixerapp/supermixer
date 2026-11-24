@@ -58,7 +58,7 @@ func TestBackups(t *testing.T) {
 		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8240-8242", "54440-54442", "64440-64442"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Bk"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/bk/projects/new-stack", map[string]string{"name": "Bk"}, &p)
@@ -282,7 +282,7 @@ func TestInterruptedRestoreRecovered(t *testing.T) {
 	}
 	env := newTestEnvWith(t, configure)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Cut"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/cut/projects/new-stack", map[string]string{"name": "x"}, &p)
@@ -299,7 +299,7 @@ func TestInterruptedRestoreRecovered(t *testing.T) {
 	_ = os.Truncate(calls, 0)
 	env2 := newTestEnvSharing(t, env, configure)
 	c2 := env2.client(t)
-	c2.signIn("admin", "admin")
+	c2.signIn("admin", adminPassword)
 	if s := waitStack(t, c2, p.Ref); s.Status != "running" || !strings.Contains(s.Error, "restore didn't finish") {
 		t.Fatalf("after restart: %+v", s)
 	}

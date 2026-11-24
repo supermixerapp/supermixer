@@ -53,7 +53,7 @@ func TestCreatedStacks(t *testing.T) {
 		c.Provisioning.PoolerPorts = "64400-64403"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Stacks"}, nil)
 
 	var ui struct{ Provisioning struct{ Enabled bool } }
@@ -201,7 +201,7 @@ func TestCreatedStacks(t *testing.T) {
 func TestCreatingStacksNeedsProvisioning(t *testing.T) {
 	env := newTestEnv(t)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Off"}, nil)
 	admin.must(409, "POST", "/organizations/off/projects/new-stack", map[string]string{"name": "x"}, nil)
 }
@@ -217,7 +217,7 @@ func TestInterruptedStacksAreMarkedFailed(t *testing.T) {
 	}
 	env := newTestEnvWith(t, configure)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Crash"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/crash/projects/new-stack", map[string]string{"name": "x"}, &p)
@@ -230,7 +230,7 @@ func TestInterruptedStacksAreMarkedFailed(t *testing.T) {
 	}
 	env2 := newTestEnvSharing(t, env, configure)
 	c2 := env2.client(t)
-	c2.signIn("admin", "admin")
+	c2.signIn("admin", adminPassword)
 	var s stackView
 	c2.must(200, "GET", "/projects/"+p.Ref+"/stack", nil, &s)
 	if s.Status != "failed" || !strings.Contains(s.Error, "stopped") {

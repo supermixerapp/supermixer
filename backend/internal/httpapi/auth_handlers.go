@@ -127,8 +127,24 @@ func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api
 	} else if err != nil {
 		return nil, err
 	}
-	if err := auth.VerifyPassword(user.PasswordHash, req.Body.Password); err != nil || user.DisabledAt != nil {
+	rehash, err := auth.CheckPassword(user.PasswordHash, req.Body.Password)
+	if err != nil || user.DisabledAt != nil {
 		return fail()
+	}
+	q := h.deps.Store.Queries
+	if rehash { // hashed before passwords were normalized
+		if hash, err := auth.HashPassword(req.Body.Password); err == nil &&
+			q.RehashUserPassword(ctx, db.RehashUserPasswordParams{ID: user.ID, NewHash: hash, OldHash: user.PasswordHash}) == nil {
+			user.PasswordHash = hash
+		}
+	}
+	// NIST SP 800-63B-4: a password that's the only way in needs 15
+	// characters. Shorter ones from before keep working, but are replaced
+	// now (as an admin-set one is).
+	if !hasMFA(user) && !user.PasswordChangeRequired && auth.PasswordLength(req.Body.Password) < auth.MinSingleFactorPasswordLength {
+		if u, err := q.SetPasswordChangeRequired(ctx, db.SetPasswordChangeRequiredParams{ID: user.ID, PasswordChangeRequired: true}); err == nil {
+			user = u
+		}
 	}
 	h.limiter.Reset(ipKey)
 	h.limiter.Reset(userKey)
@@ -218,7 +234,7 @@ func (h *handlers) ChangePassword(ctx context.Context, req api.ChangePasswordReq
 	if err := auth.VerifyPassword(p.User.PasswordHash, req.Body.CurrentPassword); err != nil {
 		return nil, badRequest("current password is incorrect")
 	}
-	if err := auth.ValidateNewPassword(req.Body.NewPassword, p.User.Username); err != nil {
+	if err := auth.ValidateNewPassword(req.Body.NewPassword, p.User.Username, hasMFA(p.User)); err != nil {
 		return nil, badRequest("%s", err.Error())
 	}
 	if req.Body.NewPassword == req.Body.CurrentPassword {

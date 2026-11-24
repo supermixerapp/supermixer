@@ -94,7 +94,8 @@ func newUserParams(username, password string, email *string, displayName string)
 	if p.Username, err = normalizeUsername(username); err != nil {
 		return p, err
 	}
-	if err := auth.ValidateNewPassword(password, p.Username); err != nil {
+	// A new account has no second factor yet.
+	if err := auth.ValidateNewPassword(password, p.Username, false); err != nil {
 		return p, badRequest("%s", err.Error())
 	}
 	if p.Email, err = normalizeEmail(email); err != nil {
@@ -244,7 +245,7 @@ func (h *handlers) ResetUserPassword(ctx context.Context, req api.ResetUserPassw
 	if err != nil {
 		return nil, err
 	}
-	if err := auth.ValidateNewPassword(req.Body.Password, target.Username); err != nil {
+	if err := auth.ValidateNewPassword(req.Body.Password, target.Username, hasMFA(target)); err != nil {
 		return nil, badRequest("%s", err.Error())
 	}
 	hash, err := auth.HashPassword(req.Body.Password)

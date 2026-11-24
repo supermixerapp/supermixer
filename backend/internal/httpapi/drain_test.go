@@ -34,7 +34,7 @@ func TestLogDrains(t *testing.T) {
 		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8280-8281", "54480-54481", "64480-64481"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Dr"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/dr/projects/new-stack", map[string]string{"name": "x"}, &p)

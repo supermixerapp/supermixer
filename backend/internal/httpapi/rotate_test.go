@@ -22,7 +22,7 @@ func TestRotateStackKeys(t *testing.T) {
 		c.Provisioning.APIPorts, c.Provisioning.DBPorts, c.Provisioning.PoolerPorts = "8270-8271", "54470-54471", "64470-64471"
 	})
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Rot"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/rot/projects/new-stack", map[string]string{"name": "x"}, &p)

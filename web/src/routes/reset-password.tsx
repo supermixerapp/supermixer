@@ -14,6 +14,7 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
+import { passwordRule } from '@/lib/passwords'
 
 export const Route = createFileRoute('/reset-password')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -74,7 +75,7 @@ function ResetPasswordPage() {
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
           <input type="text" autoComplete="username" value={info.data.username} readOnly hidden />
-          <FormField label="New password" htmlFor="rp-new" description="At least 8 characters, and not a common password or your username">
+          <FormField label="New password" htmlFor="rp-new" description={passwordRule(undefined).hint}>
             <Input
               id="rp-new"
               type="password"
@@ -82,7 +83,7 @@ function ResetPasswordPage() {
               autoComplete="new-password"
               autoFocus
               required
-              minLength={8}
+              minLength={passwordRule(undefined).min}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />

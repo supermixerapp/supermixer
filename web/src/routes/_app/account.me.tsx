@@ -15,6 +15,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { healthQuery, profileQuery, sessionsQuery } from '@/lib/api/queries'
+import { passwordRule } from '@/lib/passwords'
 
 export const Route = createFileRoute('/_app/account/me')({
   component: PreferencesPage,
@@ -172,8 +173,8 @@ function PasswordSection() {
               <FormField label="Current password" htmlFor="pw-current" layout="horizontal">
                 <Input id="pw-current" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
               </FormField>
-              <FormField label="New password" htmlFor="pw-new" layout="horizontal" description="At least 8 characters, and not a common password or your username">
-                <Input id="pw-new" type="password" autoComplete="new-password" required minLength={8} value={next} onChange={(e) => setNext(e.target.value)} />
+              <FormField label="New password" htmlFor="pw-new" layout="horizontal" description={passwordRule(me?.mfa_enabled).hint}>
+                <Input id="pw-new" type="password" autoComplete="new-password" required minLength={passwordRule(me?.mfa_enabled).min} value={next} onChange={(e) => setNext(e.target.value)} />
               </FormField>
               <FormField label="Confirm new password" htmlFor="pw-confirm" layout="horizontal" error={mismatch ? 'Passwords do not match' : undefined}>
                 <Input

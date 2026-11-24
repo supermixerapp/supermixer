@@ -2,6 +2,9 @@ package auth
 
 import (
 	"bytes"
+	"encoding/base64"
+	"fmt"
+	"golang.org/x/crypto/argon2"
 	"strings"
 	"testing"
 	"time"
@@ -25,16 +28,58 @@ func TestPasswordRoundTrip(t *testing.T) {
 }
 
 func TestValidateNewPassword(t *testing.T) {
+	// With two-factor sign-in: 8 characters, nothing guessable.
 	for _, bad := range []string{"short", "password", "Password123!", "admin", "admin2026", "qwerty123", "12345678",
-		"abcdefghij", "aaaaaaaaaa", "98765432", "supermixer1", "alice-smith", "htims-ecila"} {
-		if ValidateNewPassword(bad, "alice-smith") == nil {
+		"abcdefghij", "aaaaaaaaaa", "98765432", "supermixer1", "alice-smith", "htims-ecila",
+		"liverpool1", "sunflower", "Sunflower2024!", // the NCSC list, and with digits and symbols added
+		"ｐａｓｓｗｏｒｄ１", // full-width: the same password once normalized
+		"日本語です",     // 5 characters, though 15 bytes
+	} {
+		if ValidateNewPassword(bad, "alice-smith", true) == nil {
 			t.Errorf("%q was accepted", bad)
 		}
 	}
-	for _, ok := range []string{"long enough", "correct horse battery", "alice-password", "dev-password-1", "Tr1cky-Ferret-42"} {
-		if err := ValidateNewPassword(ok, "alice-smith"); err != nil {
+	for _, ok := range []string{"long enough", "correct horse battery", "alice-password", "dev-password-1", "Tr1cky-Ferret-42", "日本語のパスワードです"} {
+		if err := ValidateNewPassword(ok, "alice-smith", true); err != nil {
 			t.Errorf("%q: %v", ok, err)
 		}
+	}
+	// The only way to sign in: 15 characters.
+	if err := ValidateNewPassword("Tr1cky-Ferret-42", "alice-smith", false); err != nil {
+		t.Errorf("16 characters: %v", err)
+	}
+	for _, bad := range []string{"Tr1cky-Ferret", "日本語のパスワードです"} {
+		if err := ValidateNewPassword(bad, "alice-smith", false); err == nil || !strings.Contains(err.Error(), "15") {
+			t.Errorf("%q without two-factor: %v", bad, err)
+		}
+	}
+	if len(ncsc()) < 90000 {
+		t.Errorf("the NCSC list has %d passwords", len(ncsc()))
+	}
+}
+
+func TestPasswordNormalization(t *testing.T) {
+	// Hashed normalized: the composed and decomposed forms are one password.
+	h, _ := HashPassword("caf\u00e9-terrace-view")                       // é as one code point
+	if err := VerifyPassword(h, "cafe\u0301-terrace-view"); err != nil { // e + combining accent
+		t.Fatalf("decomposed form: %v", err)
+	}
+	// A hash made before normalization still matches the password as typed,
+	// and says to remake it.
+	salt := make([]byte, saltLen)
+	raw := "ｆｕｌｌｗｉｄｔｈ-secret"
+	key := argon2.IDKey([]byte(raw), salt, argonTime, argonMemory, argonThreads, argonKeyLen)
+	enc := base64.RawStdEncoding
+	old := fmt.Sprintf("$argon2id$v=%d$m=%d,t=%d,p=%d$%s$%s", argon2.Version, argonMemory, argonTime, argonThreads,
+		enc.EncodeToString(salt), enc.EncodeToString(key))
+	if rehash, err := CheckPassword(old, raw); err != nil || !rehash {
+		t.Fatalf("old hash: rehash %v, %v", rehash, err)
+	}
+	if rehash, err := CheckPassword(h, "caf\u00e9-terrace-view"); err != nil || rehash {
+		t.Fatalf("new hash: rehash %v, %v", rehash, err)
+	}
+	if PasswordLength("cafe\u0301") != 4 {
+		t.Errorf("length = %d", PasswordLength("cafe\u0301"))
 	}
 }
 

@@ -3,6 +3,8 @@
 package auth
 
 import (
+	"bytes"
+	"compress/gzip"
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
@@ -10,9 +12,16 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"io"
+	"slices"
 	"strings"
+	"sync"
+	"unicode/utf8"
+
+	_ "embed"
 
 	"golang.org/x/crypto/argon2"
+	"golang.org/x/text/unicode/norm"
 )
 
 // Argon2id parameters (OWASP-recommended minimums: 19 MiB, 2 iterations).
@@ -24,14 +33,30 @@ const (
 	saltLen      = 16
 )
 
-// MinPasswordLength applies to passwords people choose (NIST SP 800-63B's
-// minimum, with common passwords refused as well).
-const MinPasswordLength = 8
+// Password lengths after NIST SP 800-63B-4, in characters (code points,
+// after normalization): a password that is the only way to sign in needs
+// 15; one used with a second factor (two-factor sign-in), 8.
+const (
+	MinPasswordLength             = 8
+	MinSingleFactorPasswordLength = 15
+	MaxPasswordLength             = 256
+)
+
+// NormalizePassword is applied before hashing and checking, so the same
+// password typed on different keyboards or systems matches (NFKC, as NIST
+// suggests).
+func NormalizePassword(p string) string { return norm.NFKC.String(p) }
+
+// PasswordLength counts characters as NIST does: code points, normalized.
+func PasswordLength(p string) int { return utf8.RuneCountInString(NormalizePassword(p)) }
 
 var ErrMismatch = errors.New("password does not match")
 
-// HashPassword returns an encoded argon2id hash ($argon2id$v=19$m=...,t=...,p=...$salt$hash).
-func HashPassword(password string) (string, error) {
+// HashPassword returns an encoded argon2id hash ($argon2id$v=19$m=...,t=...,p=...$salt$hash)
+// of the normalized password.
+func HashPassword(password string) (string, error) { return hash(NormalizePassword(password)) }
+
+func hash(password string) (string, error) {
 	salt := make([]byte, saltLen)
 	if _, err := rand.Read(salt); err != nil {
 		return "", err
@@ -44,6 +69,25 @@ func HashPassword(password string) (string, error) {
 
 // VerifyPassword checks password against an encoded hash in constant time.
 func VerifyPassword(encoded, password string) error {
+	_, err := CheckPassword(encoded, password)
+	return err
+}
+
+// CheckPassword is VerifyPassword that also says whether the hash should be
+// remade: hashes from before passwords were normalized match the password
+// as typed, which is tried when the normalized one doesn't match.
+func CheckPassword(encoded, password string) (rehash bool, err error) {
+	n := NormalizePassword(password)
+	err = verifyExact(encoded, n)
+	if errors.Is(err, ErrMismatch) && n != password {
+		if verifyExact(encoded, password) == nil {
+			return true, nil
+		}
+	}
+	return false, err
+}
+
+func verifyExact(encoded, password string) error {
 	parts := strings.Split(encoded, "$")
 	if len(parts) != 6 || parts[1] != "argon2id" {
 		return errors.New("unsupported password hash")
@@ -81,25 +125,64 @@ var dummyHash, _ = HashPassword("supermixer-timing-equaliser")
 func VerifyDummy(password string) { _ = VerifyPassword(dummyHash, password) }
 
 // ValidateNewPassword enforces the password policy for passwords people
-// choose, after NIST SP 800-63B: long enough, and not one an attacker would
-// try first (common passwords, the username, the product's name, repeats
-// and runs).
-func ValidateNewPassword(password, username string) error {
-	if len(password) < MinPasswordLength {
-		return fmt.Errorf("password must be at least %d characters", MinPasswordLength)
+// choose, after NIST SP 800-63B-4: long enough (15 characters when it's the
+// only way to sign in, 8 with two-factor sign-in), and not one an attacker
+// would try first (the UK NCSC's 100,000 most used passwords, the username,
+// the product's name, repeats and runs).
+func ValidateNewPassword(password, username string, multiFactor bool) error {
+	min := MinSingleFactorPasswordLength
+	if multiFactor {
+		min = MinPasswordLength
 	}
-	if len(password) > 256 {
-		return errors.New("password must be at most 256 characters")
+	n := PasswordLength(password)
+	if n < min {
+		if multiFactor {
+			return fmt.Errorf("password must be at least %d characters", min)
+		}
+		return fmt.Errorf("password must be at least %d characters (%d with two-factor sign-in on)", min, MinPasswordLength)
 	}
+	if n > MaxPasswordLength {
+		return fmt.Errorf("password must be at most %d characters", MaxPasswordLength)
+	}
+	password = NormalizePassword(password)
 	if guessable(password, username) {
 		return errors.New("that password is too easy to guess: it's a common password, or made from the username or the product's name; choose another")
 	}
 	return nil
 }
 
-// commonPasswords are among the most used passwords (compared lowercased,
-// without trailing digits and symbols, so "Password123!" counts too).
+// commonPasswords are words and names that are common in passwords, or
+// guessable for this product, besides the NCSC list (compared lowercased,
+// and without trailing digits and symbols, so "Password123!" counts too).
 var commonPasswords = map[string]bool{}
+
+// The UK National Cyber Security Centre's 100,000 most used passwords, from
+// SecLists (see gen_common_passwords.go and NOTICE): normalized, lowercased
+// and sorted, read on first use.
+//
+//go:embed common-passwords.txt.gz
+var ncscGz []byte
+
+var ncsc = sync.OnceValue(func() []string {
+	zr, err := gzip.NewReader(bytes.NewReader(ncscGz))
+	if err != nil {
+		panic("common-passwords.txt.gz: " + err.Error())
+	}
+	b, err := io.ReadAll(zr)
+	if err != nil {
+		panic("common-passwords.txt.gz: " + err.Error())
+	}
+	return strings.Split(strings.TrimSuffix(string(b), "\n"), "\n")
+})
+
+func isCommon(p string) bool {
+	if commonPasswords[p] {
+		return true
+	}
+	list := ncsc()
+	_, found := slices.BinarySearch(list, p)
+	return found
+}
 
 func init() {
 	for _, p := range strings.Fields(`password passw0rd p@ssword p@ssw0rd qwerty qwertyuiop qwertyui asdfgh asdfghjkl
@@ -116,7 +199,7 @@ func init() {
 func guessable(password, username string) bool {
 	lower := strings.ToLower(password)
 	core := strings.TrimRight(lower, "0123456789!@#$%^&*()-_=+.?~ ")
-	if core == "" || commonPasswords[lower] || commonPasswords[core] {
+	if core == "" || isCommon(lower) || isCommon(core) {
 		return true
 	}
 	if u := strings.ToLower(username); u != "" && (core == u || lower == u || reverse(lower) == u) {
@@ -124,8 +207,9 @@ func guessable(password, username string) bool {
 	}
 	// One character repeated, or a run such as 12345678, abcdefgh, 98765432.
 	same, up, down := true, true, true
-	for i := 1; i < len(lower); i++ {
-		d := int(lower[i]) - int(lower[i-1])
+	r := []rune(lower)
+	for i := 1; i < len(r); i++ {
+		d := int(r[i]) - int(r[i-1])
 		same, up, down = same && d == 0, up && d == 1, down && d == -1
 	}
 	return same || up || down

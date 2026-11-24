@@ -142,7 +142,7 @@ func (h *handlers) CompletePasswordReset(ctx context.Context, req api.CompletePa
 	if err != nil {
 		return nil, err
 	}
-	if err := auth.ValidateNewPassword(req.Body.Password, u.Username); err != nil {
+	if err := auth.ValidateNewPassword(req.Body.Password, u.Username, hasMFA(u)); err != nil {
 		return nil, badRequest("%s", err.Error())
 	}
 	if hasMFA(u) && deref(req.Body.Code) == "" {

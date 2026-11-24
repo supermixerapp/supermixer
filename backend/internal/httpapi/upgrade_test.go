@@ -34,7 +34,7 @@ func TestUpgradeStack(t *testing.T) {
 	}
 	env := newTestEnvWith(t, configure)
 	admin := env.client(t)
-	admin.signIn("admin", "admin")
+	admin.signIn("admin", adminPassword)
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Up"}, nil)
 	var p struct{ Ref string }
 	admin.must(202, "POST", "/organizations/up/projects/new-stack", map[string]string{"name": "x"}, &p)
