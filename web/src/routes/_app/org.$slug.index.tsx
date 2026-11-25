@@ -3,10 +3,12 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { BlockedButton } from '@/components/blocked-button'
-import { AddIcon, DatabaseIcon, GridViewIcon, SearchIcon, ViewListIcon } from '@/components/icons'
+import { AddIcon, DatabaseIcon, GridViewIcon, MoreIcon, SearchIcon, SettingsIcon, ViewListIcon } from '@/components/icons'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { PermissionButton } from '@/components/permission-button'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -170,6 +172,7 @@ function ProjectsPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Postgres</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="w-px text-right">Settings</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -223,6 +226,17 @@ function ProjectRow({ project, onOpen }: { project: Schemas['Project']; onOpen: 
       <TableCell>{badge}</TableCell>
       <TableCell className="text-foreground-light">{postgres ?? '—'}</TableCell>
       <TableCell className="whitespace-nowrap text-foreground-light">{new Date(project.created_at).toLocaleDateString()}</TableCell>
+      <TableCell className="text-right">
+        <Button asChild variant="text" size="tiny" icon={<SettingsIcon />} className="w-6.5">
+          <Link
+            to="/project/$ref/settings/general"
+            params={{ ref: project.ref }}
+            aria-label={`Settings for ${project.name}`}
+            title="Settings"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </Button>
+      </TableCell>
     </TableRow>
   )
 }
@@ -230,10 +244,11 @@ function ProjectRow({ project, onOpen }: { project: Schemas['Project']; onOpen: 
 function ProjectCard({ project }: { project: Schemas['Project'] }) {
   const { badge, postgres } = useProjectStatus(project)
   return (
-    <li>
+    <li className="relative">
       <Link to="/project/$ref" params={{ ref: project.ref }} className="group block rounded-panel focus-ring">
         <Card className="flex h-36 flex-col justify-between px-5 py-4 transition-colors group-hover:border-strong group-hover:bg-surface-200">
-          <div className="flex flex-col gap-0.5">
+          {/* Room for the menu in the corner. */}
+          <div className="flex flex-col gap-0.5 pr-8">
             <h5 className="font-sans text-sm font-normal text-foreground">{project.name}</h5>
             <p className="truncate font-mono text-xs text-foreground-lighter">{project.api_url}</p>
           </div>
@@ -243,6 +258,21 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
           </div>
         </Card>
       </Link>
+      {/* Beside the link, not inside it: a button can't sit in a link. */}
+      <div className="absolute top-3 right-3">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${project.name}`} />
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem asChild>
+              <Link to="/project/$ref/settings/general" params={{ ref: project.ref }}>
+                Settings
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     </li>
   )
 }

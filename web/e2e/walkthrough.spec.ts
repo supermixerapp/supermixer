@@ -158,8 +158,17 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await page.getByRole('row').filter({ hasText: 'Dev stack' }).getByText('localhost:8100').click()
     await expect(page).toHaveURL(new RegExp(`/project/${ref}$`))
     await page.goto(`/org/${slug}`)
+    // Each row's Settings button goes straight to the project's settings.
+    await page.getByRole('link', { name: 'Settings for Dev stack' }).click()
+    await expect(page).toHaveURL(new RegExp(`/project/${ref}/settings/general$`))
+    await page.goto(`/org/${slug}`)
     await page.getByRole('button', { name: 'Toggle grid view' }).click()
     await expect(page.getByRole('link').filter({ hasText: 'Dev stack' })).toBeVisible()
+    // So does each card's menu.
+    await page.getByRole('button', { name: 'Actions for Dev stack' }).click()
+    await page.getByRole('menuitem', { name: 'Settings' }).click()
+    await expect(page).toHaveURL(new RegExp(`/project/${ref}/settings/general$`))
+    await page.goto(`/org/${slug}`)
   })
 
   let invite = ''
