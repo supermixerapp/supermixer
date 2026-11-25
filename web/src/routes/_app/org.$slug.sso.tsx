@@ -68,6 +68,9 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
   const [role, setRole] = useState<OrgRole>(saved.join_role ?? 'developer')
   const [domains, setDomains] = useState(saved.join_domains.join(', '))
   const chosen = saved.providers.find((p) => p.id === provider)
+  // Anyone has a GitHub account and its verified addresses go stale, so
+  // nobody joins through it (the server refuses it too).
+  const canJoin = chosen?.type !== 'github'
   const signedInWithIt = !!chosen && saved.signed_in_with === chosen.id
   const save = useMutation({
     mutationFn: () =>
@@ -77,7 +80,7 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
           body: {
             provider: chosen ? chosen.id : null,
             required: !!chosen && required,
-            join_role: chosen && joins ? role : null,
+            join_role: chosen && canJoin && joins ? role : null,
             join_domains: chosen && joins ? domains.split(/[\s,]+/).filter(Boolean) : [],
           },
         })
@@ -150,14 +153,23 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
                   )}
                 </div>
               </FormField>
-              <FormField
-                label="Join by signing in"
-                layout="horizontal"
-                description={`People signing in with ${chosen.name} become members by themselves.`}
-              >
-                <Switch aria-label="Let people join by signing in" checked={joins} onCheckedChange={setJoins} />
-              </FormField>
-              {joins && (
+              {!canJoin ? (
+                <FormField label="Join by signing in" layout="horizontal">
+                  <p className="pt-2 text-sm text-foreground-light">
+                    Not with {chosen.name}: anyone can have an account there, and the addresses it has verified may be
+                    years old. Invite people from the Team page instead.
+                  </p>
+                </FormField>
+              ) : (
+                <FormField
+                  label="Join by signing in"
+                  layout="horizontal"
+                  description={`People signing in with ${chosen.name} become members by themselves.`}
+                >
+                  <Switch aria-label="Let people join by signing in" checked={joins} onCheckedChange={setJoins} />
+                </FormField>
+              )}
+              {canJoin && joins && (
                 <>
                   <FormField label="As" layout="horizontal" description={JOIN_ROLES.find((r) => r.value === role)?.description}>
                     <Select value={role} onValueChange={(v) => setRole(v as OrgRole)}>

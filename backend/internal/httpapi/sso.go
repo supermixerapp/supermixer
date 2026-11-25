@@ -507,7 +507,7 @@ func (h *handlers) signUpThroughProvider(ctx context.Context, p *ssoProvider, su
 		return db.User{}, err
 	}
 	if email == "" {
-		return db.User{}, badRequest("%s didn't share a verified email address. Verify one on %s, then try again.", p.cfg.Name, p.cfg.Name)
+		return db.User{}, badRequest("%s didn't share a verified email address you can receive mail at (its no-reply addresses can't be used). Add and verify one on %s, then try again.", p.cfg.Name, p.cfg.Name)
 	}
 	if !domainAllowed(email, s.AllowedDomains) {
 		return db.User{}, errDomainNotAllowed(s.AllowedDomains)

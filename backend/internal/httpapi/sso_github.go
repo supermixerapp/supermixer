@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"golang.org/x/oauth2"
 )
@@ -94,12 +95,21 @@ func (p *ssoProvider) githubIdentity(ctx context.Context, tok *oauth2.Token) (st
 	return strconv.FormatInt(u.ID, 10), pickGitHubEmail(emails), ssoClaims{Name: u.Name, PreferredUsername: u.Login}, nil
 }
 
+// noReplyAddress is GitHub's stand-in for a private address
+// (…@users.noreply.github.com, or users.noreply.<host> on GitHub
+// Enterprise Server), which can't receive mail.
+func noReplyAddress(email string) bool {
+	at := strings.LastIndex(email, "@")
+	return at >= 0 && strings.HasPrefix(strings.ToLower(email[at+1:]), "users.noreply.")
+}
+
 // pickGitHubEmail is the primary address if it's verified, else the first
-// verified one, normalized; empty if there's none.
+// verified one, normalized; empty if there's none. No-reply addresses
+// don't count: password resets and notices couldn't reach them.
 func pickGitHubEmail(emails []githubEmail) string {
 	pick := ""
 	for _, e := range emails {
-		if !e.Verified {
+		if !e.Verified || noReplyAddress(e.Email) {
 			continue
 		}
 		if e.Primary {

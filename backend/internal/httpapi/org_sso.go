@@ -30,18 +30,7 @@ func (h *handlers) toOrganizationSso(o db.Organization, p *principal) api.Organi
 	if o.SsoProvider != nil && h.sso[*o.SsoProvider] == nil {
 		out.ProviderMissing = ptr(true)
 	}
-	for _, sp := range h.ssoList(false) {
-		out.Providers = append(out.Providers, struct {
-			Id   string `json:"id"`
-			Name string `json:"name"`
-		}{sp.Id, sp.Name})
-	}
-	if out.Providers == nil {
-		out.Providers = []struct {
-			Id   string `json:"id"`
-			Name string `json:"name"`
-		}{}
-	}
+	out.Providers = h.ssoList(false)
 	if s := p.signedInWith(); s != "" {
 		out.SignedInWith = &s
 	}
@@ -77,6 +66,12 @@ func (h *handlers) UpdateOrganizationSso(ctx context.Context, req api.UpdateOrga
 			}
 			params.SsoRequired = true
 		}
+		// Anyone can have a GitHub account, and the addresses GitHub calls
+		// verified are never checked again (someone who left a company keeps
+		// theirs), so neither says who belongs here: invite people instead.
+		if b.JoinRole != nil && sp.isGitHub() {
+			return nil, badRequest("people can't join by signing in with %s: anyone can have an account there, and its verified addresses can be years old. Invite them instead.", sp.cfg.Name)
+		}
 		if b.JoinRole != nil {
 			role := rbac.Role(*b.JoinRole)
 			if role == rbac.Owner || !slices.Contains(rbac.OrgRoles, role) {
@@ -94,11 +89,6 @@ func (h *handlers) UpdateOrganizationSso(ctx context.Context, req api.UpdateOrga
 				if !slices.Contains(params.SsoJoinDomains, d) {
 					params.SsoJoinDomains = append(params.SsoJoinDomains, d)
 				}
-			}
-			// Anyone can have a GitHub account: without domains, everyone
-			// signing in with GitHub would join.
-			if sp.isGitHub() && len(params.SsoJoinDomains) == 0 {
-				return nil, badRequest("anyone can sign in with %s, so list the email domains whose people join", sp.cfg.Name)
 			}
 		}
 	} else if b.Required || b.JoinRole != nil {
@@ -128,13 +118,13 @@ func (h *handlers) ssoAutoJoin(ctx context.Context, u db.User, provider, email s
 		h.deps.Logger.ErrorContext(ctx, "single sign-on: listing organizations to join", "err", err)
 		return
 	}
-	github := h.sso[provider] != nil && h.sso[provider].isGitHub()
+	// Never through GitHub (see UpdateOrganizationSso), including settings
+	// saved before that was refused.
+	if p := h.sso[provider]; p != nil && p.isGitHub() {
+		return
+	}
 	for _, o := range orgs {
 		if len(o.SsoJoinDomains) > 0 && !emailInDomains(email, o.SsoJoinDomains) {
-			continue
-		}
-		// Settings saved before GitHub needed domains: never everyone.
-		if github && len(o.SsoJoinDomains) == 0 {
 			continue
 		}
 		n, err := q.AddMember(ctx, db.AddMemberParams{OrganizationID: o.ID, UserID: u.ID, Role: o.SsoJoinRole.OrgRole})

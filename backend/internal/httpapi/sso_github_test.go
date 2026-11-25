@@ -1,6 +1,7 @@
 package httpapi
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -8,6 +9,8 @@ import (
 	"strings"
 	"sync"
 	"testing"
+
+	"github.com/jackc/pgx/v5"
 
 	"supermixer/internal/config"
 )
@@ -156,25 +159,31 @@ func TestGitHubSignIn(t *testing.T) {
 	}
 	mailer.waitFor(t, "boss@example.com", "New Supermixer account: octocat")
 
-	// An organization can let people join by signing in with GitHub, but only
-	// from listed domains: anyone can have a GitHub account.
+	// People can't join an organization by signing in with GitHub, with or
+	// without domains: anyone has an account there, and verified addresses
+	// go stale. Choosing GitHub without joining is fine.
 	admin.must(201, "POST", "/organizations", map[string]string{"name": "Gh Org"}, nil)
-	joinBy := func(domains ...string) int {
-		if domains == nil {
-			domains = []string{}
+	for _, domains := range [][]string{{}, {"example.com"}} {
+		var refused struct{ Message string }
+		if s := admin.do("PUT", "/organizations/gh-org/sso", map[string]any{"provider": "github", "required": false, "join_role": "developer", "join_domains": domains}, &refused); s != 400 ||
+			!strings.Contains(refused.Message, "Invite them instead") {
+			t.Fatalf("joining through GitHub (domains %v) = %d %+v", domains, s, refused)
 		}
-		return admin.do("PUT", "/organizations/gh-org/sso", map[string]any{"provider": "github", "required": false, "join_role": "developer", "join_domains": domains}, nil)
 	}
-	if s := joinBy(); s != 400 {
-		t.Fatalf("joining through GitHub without domains = %d, want 400", s)
+	admin.must(200, "PUT", "/organizations/gh-org/sso", map[string]any{"provider": "github", "required": false, "join_role": nil, "join_domains": []string{}}, nil)
+	// Even settings stored before it was refused don't let anyone join.
+	conn, err := pgx.Connect(context.Background(), env.dbURL)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if s := joinBy("example.com"); s != 200 {
-		t.Fatalf("joining through GitHub for example.com = %d", s)
+	_, err = conn.Exec(context.Background(), `UPDATE organizations SET sso_join_role = 'developer', sso_join_domains = '{example.com}' WHERE slug = 'gh-org'`)
+	conn.Close(context.Background())
+	if err != nil {
+		t.Fatal(err)
 	}
 
 	// The next time, the same account, though the username and address changed
-	// on GitHub: it's the user ID that counts. Its address is at example.com,
-	// so it joins Gh Org.
+	// on GitHub: it's the user ID that counts. It doesn't join Gh Org.
 	gh.as(githubUser{ID: 583231, Login: "octocat-renamed"}, githubEmail{Email: "new@example.com", Primary: true, Verified: true})
 	again := env.client(t)
 	again.sso(start)
@@ -185,12 +194,10 @@ func TestGitHubSignIn(t *testing.T) {
 	}
 	var orgs []struct{ Slug, Role string }
 	again.must(200, "GET", "/organizations", nil, &orgs)
-	joined := false
 	for _, o := range orgs {
-		joined = joined || (o.Slug == "gh-org" && o.Role == "developer")
-	}
-	if !joined {
-		t.Fatalf("didn't join Gh Org: %+v", orgs)
+		if o.Slug == "gh-org" {
+			t.Fatalf("joined Gh Org by signing in with GitHub: %+v", orgs)
+		}
 	}
 
 	// No verified address, an address outside the allowed domains, or one
@@ -270,7 +277,13 @@ func TestPickGitHubEmail(t *testing.T) {
 		"p@x.io": {{Email: "a@x.io", Verified: true}, {Email: "P@x.io", Primary: true, Verified: true}},
 		"a@x.io": {{Email: "p@x.io", Primary: true}, {Email: "a@x.io", Verified: true}, {Email: "b@x.io", Verified: true}},
 		"":       {{Email: "p@x.io", Primary: true}, {Email: "not an address", Verified: true}},
+		// GitHub's no-reply addresses can't receive mail, on github.com or Enterprise Server.
+		"real@x.io": {{Email: "1+octo@users.noreply.github.com", Primary: true, Verified: true}, {Email: "real@x.io", Verified: true}},
+		"none":      {{Email: "1+octo@users.noreply.github.com", Verified: true}, {Email: "2+o@USERS.NOREPLY.github.example.com", Verified: true}},
 	} {
+		if want == "none" {
+			want = ""
+		}
 		if got := pickGitHubEmail(emails); got != want {
 			t.Errorf("pickGitHubEmail(%+v) = %q, want %q", emails, got, want)
 		}

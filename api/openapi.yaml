@@ -3066,13 +3066,8 @@ components:
         join_domains: { type: array, items: { type: string }, description: "Only these email domains join; empty for anyone the provider signs in." }
         providers:
           type: array
-          description: The instance's providers.
-          items:
-            type: object
-            required: [id, name]
-            properties:
-              id: { type: string }
-              name: { type: string }
+          description: "The instance's providers (people can't join an organization through a GitHub one)."
+          items: { $ref: "#/components/schemas/SsoProvider" }
         signed_in_with: { type: string, nullable: true, description: The provider your current session came through, if any. }
     OrganizationSsoUpdate:
       type: object

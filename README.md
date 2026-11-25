@@ -139,11 +139,11 @@ client_secret_file = "/run/secrets/github"
 # github_url = "https://github.example.com"   # GitHub Enterprise Server
 ```
 
-Someone new signing in with GitHub gets an account only while **Instance › Sign-up** is on, with its allowed domains and approval; `create_users` isn't used. People who already have an account connect GitHub under **Account › Security**.
+Someone new signing in with GitHub gets an account only while **Instance › Sign-up** is on, with its allowed domains and approval; `create_users` isn't used. People who already have an account connect GitHub under **Account › Security**. GitHub's no-reply addresses (`…@users.noreply.github.com`) aren't used, since they can't receive mail.
 
 Each organization's Owners can then, under **Organization Settings › SSO**:
 - **Require** one of these providers: the organization's pages, projects and API refuse sessions that didn't sign in through it, and access tokens made from them. To avoid locking yourself out, you have to be signed in with the provider to turn this on.
-- **Let people join by signing in**: someone who signs in through the provider becomes a member, with the role chosen, if their email (as the provider vouches for it) is in the listed domains, or always if none are listed.
+- **Let people join by signing in**: someone who signs in through the provider becomes a member, with the role chosen, if their email (as the provider vouches for it) is in the listed domains, or always if none are listed. Not with GitHub: anyone can have an account there, and the addresses it has verified may be years old, so people are invited instead.
 
 ## Webhooks
 

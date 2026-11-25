@@ -2726,11 +2726,8 @@ export interface components {
             join_role: components["schemas"]["OrgRole"] | null;
             /** @description Only these email domains join; empty for anyone the provider signs in. */
             join_domains: string[];
-            /** @description The instance's providers. */
-            providers: {
-                id: string;
-                name: string;
-            }[];
+            /** @description The instance's providers (people can't join an organization through a GitHub one). */
+            providers: components["schemas"]["SsoProvider"][];
             /** @description The provider your current session came through */
             signed_in_with: string | null;
         };
