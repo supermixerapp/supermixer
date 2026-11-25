@@ -2,14 +2,18 @@ import { Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
 import { AppIcon } from '@/components/icons'
+import { GlobalNotice } from '@/components/layout/global-notice'
 
 /**
  * Split layout for sign-in and invitation pages, modelled on Studio's
- * SignInLayout: form on the left, brand panel on the right.
+ * SignInLayout: form on the left, brand panel on the right, under the
+ * global notice if one is posted.
  */
 export function AuthLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-full flex-col bg-alternative">
+      {/* A downtime notice reaches people before they sign in, too. */}
+      <GlobalNotice />
       {/* The logo exactly where the homepage's and the app's navbar have it
           (their 1px bottom border included, here transparent). */}
       <header className="flex h-12 shrink-0 items-center border-b border-transparent pr-3 pl-4">

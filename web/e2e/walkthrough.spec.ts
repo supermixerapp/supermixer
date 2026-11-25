@@ -296,11 +296,15 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await page.getByRole('button', { name: 'Post notice' }).click()
     await expect(page.getByText('Notice posted')).toBeVisible()
 
-    // Visitors who aren't signed in see it on the homepage too.
+    // Visitors who aren't signed in see it on the homepage and the sign-in pages too.
     const anon = await browser.newContext()
     const visitor = await anon.newPage()
     await visitor.goto('/')
     await expect(visitor.getByRole('status', { name: 'Warning notice' })).toHaveText(shown)
+    for (const path of ['/sign-in', '/forgot-password']) {
+      await visitor.goto(path)
+      await expect(visitor.getByRole('status', { name: 'Warning notice' })).toHaveText(shown)
+    }
     await anon.close()
 
     // The member: after a reload (otherwise within a minute), on any page, as tall as the header.
