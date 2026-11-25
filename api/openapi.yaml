@@ -1486,6 +1486,35 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/DBChanges" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/stack/logs:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    put:
+      operationId: setStackLogs
+      tags: [Projects]
+      summary: Turn the stack's logs on or off
+      description: |
+        Logs come from Logflare and Vector (Supabase's docker-compose.logs.yml). Turning them off removes
+        both containers and stops collecting logs; turning them on starts them again. On a running stack
+        this runs in the background, bringing the stack up with its new files (only the services that
+        change are recreated); otherwise it takes effect when the stack next starts. Logs already
+        collected stay in the stack's database.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        "202":
+          description: Changed, or started on a running stack.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/stack/upgrade:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -2337,7 +2366,7 @@ components:
       enum: [provisioning, running, paused, failed, deleting]
     Stack:
       type: object
-      required: [status, error, template, studio]
+      required: [status, error, template, studio, logs]
       description: Set on projects Supermixer created; null for connected ones.
       properties:
         status: { $ref: "#/components/schemas/StackStatus" }
@@ -2352,6 +2381,10 @@ components:
         studio:
           type: boolean
           description: Whether the stack runs Supabase Studio (provisioning.studio, as last applied to it).
+        logs:
+          type: boolean
+          description: >-
+            Whether the stack collects logs: runs Logflare and Vector, for Logs Explorer, the API report and log drains.
     EdgeFunction:
       type: object
       required: [name, url, updated_at, files, size, entrypoint]

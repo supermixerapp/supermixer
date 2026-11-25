@@ -226,6 +226,10 @@ type Provisioning struct {
 	// default, as Supermixer is the dashboard; Supermixer applies a change
 	// to every running stack it created when it next starts.
 	Studio bool `toml:"studio"`
+	// Logs is whether new stacks collect logs (Logflare and Vector, about
+	// 800 MB of memory): on by default. Each project can change it under
+	// Settings › Infrastructure; this only sets where new ones start.
+	Logs bool `toml:"logs"`
 	// StacksDir holds one folder per stack. Compose resolves the stacks' bind
 	// mounts on the Docker host, so when Supermixer runs in a container this
 	// folder must be mounted at the same path inside it.
@@ -309,7 +313,7 @@ func Default() Config {
 		},
 		Provisioning: Provisioning{
 			StacksDir: "/var/lib/supermixer/stacks", Docker: "docker", PublicHost: "localhost",
-			APIPorts: "8200-8299", DBPorts: "54400-54499", PoolerPorts: "64400-64499", StartTimeout: 20 * time.Minute,
+			APIPorts: "8200-8299", DBPorts: "54400-54499", PoolerPorts: "64400-64499", StartTimeout: 20 * time.Minute, Logs: true,
 			BackupsDir: "/var/lib/supermixer/backups", BackupInterval: 24 * time.Hour, BackupKeep: 7,
 			BackupS3: BackupS3{Prefix: "supermixer", KeepLocal: true},
 		},

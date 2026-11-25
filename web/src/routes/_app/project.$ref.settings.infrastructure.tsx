@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
@@ -20,6 +20,7 @@ import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
+import { toast } from '@/components/ui/toaster'
 import {
   Table,
   TableBody,
@@ -156,6 +157,8 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
 
       <StudioLogin project={project} studio={s.studio_state ?? null} stackRunning={s.status === 'running'} />
 
+      <StackLogs projectRef={projectRef} stack={s} allowed={allowed} />
+
       <SettingsSection
         title="Containers"
         description="As Docker Compose reports them, refreshed every 15 seconds."
@@ -234,6 +237,64 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
         }}
       />
     </>
+  )
+}
+
+/** Logflare and Vector: on or off per project. */
+function StackLogs({ projectRef, stack: s, allowed }: { projectRef: string; stack: Schemas['StackDetail']; allowed: boolean }) {
+  const queryClient = useQueryClient()
+  const [confirm, setConfirm] = useState(false)
+  const change = useMutation({
+    mutationFn: (enabled: boolean) =>
+      unwrap(api.PUT('/projects/{ref}/stack/logs', { params: { path: { ref: projectRef } }, body: { enabled } })),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['projects', projectRef, 'stack'], data)
+      // The log pages go by the project's stack.logs.
+      void queryClient.invalidateQueries({ queryKey: ['projects', projectRef], exact: true })
+    },
+    onError: (e) => toast.error(e.message),
+    onSettled: () => setConfirm(false),
+  })
+  const on = s.logs
+  const busy = !!s.operation || s.status === 'provisioning' || s.status === 'deleting'
+  const running = s.status === 'running'
+  return (
+    <SettingsSection
+      title="Logs"
+      description="Supabase collects this project's logs with Vector and keeps them with Logflare, for Logs Explorer, the API report and log drains. Together they use about 800 MB of memory."
+    >
+      <Card className="flex flex-col divide-y text-sm">
+        <Row label="Status">
+          <Badge variant={on ? 'success' : 'default'}>{on ? 'Collecting' : 'Off'}</Badge>
+        </Row>
+        <div className="flex items-center justify-end gap-2 px-5 py-3">
+          <PermissionButton
+            allowed={allowed}
+            action="turn this project's logs on or off"
+            variant={on ? 'warning' : 'default'}
+            disabled={busy}
+            onClick={() => setConfirm(true)}
+          >
+            {on ? 'Turn logs off' : 'Turn logs on'}
+          </PermissionButton>
+        </div>
+      </Card>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        variant={on ? 'warning' : 'primary'}
+        title={on ? 'Turn logs off?' : 'Turn logs on?'}
+        description={
+          (on
+            ? 'This stops Logflare and Vector and frees about 800 MB of memory. New logs won’t be saved, so Logs Explorer, the API report and log drains won’t work until you turn logs back on. Logs you already have are kept.'
+            : 'This starts Logflare and Vector again. They use about 800 MB of memory.') +
+          (running ? ' Your project stays online.' : ' This applies the next time you start the stack.')
+        }
+        confirmLabel={on ? 'Turn logs off' : 'Turn logs on'}
+        loading={change.isPending}
+        onConfirm={() => change.mutate(!on)}
+      />
+    </SettingsSection>
   )
 }
 

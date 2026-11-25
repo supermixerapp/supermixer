@@ -84,22 +84,24 @@ func (h *handlers) stackOf(p db.Project) *api.Stack {
 	if !p.Managed || !p.StackStatus.Valid {
 		return nil
 	}
-	return &api.Stack{
+	s := &api.Stack{
 		Status: api.StackStatus(p.StackStatus.StackStatus), Error: p.StackError, StatusAt: p.StackStatusAt,
-		Template: p.StackTemplate, Operation: h.stacks.current(p.Ref), Studio: h.runsStudio(p.Ref),
+		Template: p.StackTemplate, Operation: h.stacks.current(p.Ref),
 	}
+	s.Studio, s.Logs = h.stackFeatures(p.Ref)
+	return s
 }
 
-// runsStudio reports whether a stack runs Supabase Studio, as its .env
-// records it. Stacks from before provisioning.studio have no entry, and
-// run it.
-func (h *handlers) runsStudio(ref string) bool {
+// stackFeatures reports whether a stack runs Supabase Studio and collects
+// logs, as its .env records them. Stacks from before these settings have
+// no entries, and do both.
+func (h *handlers) stackFeatures(ref string) (studio, logs bool) {
 	env, err := provision.ReadEnv(h.stackLayout(ref).Dir)
 	if err != nil {
-		return true
+		return true, true
 	}
 	v, ok := env[provision.StudioEnv]
-	return !ok || v == "true"
+	return !ok || v == "true", provision.LogsOf(env)
 }
 
 func (h *handlers) CreateStack(ctx context.Context, req api.CreateStackRequestObject) (api.CreateStackResponseObject, error) {
@@ -261,6 +263,7 @@ func stackEnv(pv config.Provisioning, ref string, p provision.Ports) map[string]
 	public := publicURL(pv, p.API)
 	return map[string]string{
 		provision.StudioEnv:             strconv.FormatBool(pv.Studio),
+		provision.LogsEnv:               strconv.FormatBool(pv.Logs),
 		"API_GW_HTTP_PORT":              strconv.Itoa(p.API),
 		"KONG_HTTP_PORT":                strconv.Itoa(p.API),
 		"POSTGRES_PORT":                 strconv.Itoa(p.DB),
@@ -483,6 +486,13 @@ func (h *handlers) runStackFor(reqCtx context.Context, p db.Project, op api.Stac
 	if !h.stacks.begin(p.Ref, op) {
 		return false
 	}
+	h.runStackHeld(reqCtx, p, op, ok, timeout, fn)
+	return true
+}
+
+// runStackHeld is runStackFor for a caller that has already begun op on
+// the stack (stacks.begin); the job ends it.
+func (h *handlers) runStackHeld(reqCtx context.Context, p db.Project, op api.StackOperation, ok db.StackStatus, timeout time.Duration, fn func(ctx context.Context, log io.Writer) error) {
 	go func() {
 		defer h.stacks.end(p.Ref)
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(reqCtx), timeout)
@@ -531,7 +541,6 @@ func (h *handlers) runStackFor(reqCtx context.Context, p db.Project, op api.Stac
 			h.deps.Logger.Error("saving stack status", "ref", p.Ref, "err", err)
 		}
 	}()
-	return true
 }
 
 // recoverRestores finds running stacks a restore in place left on a new
@@ -674,7 +683,7 @@ func (h *handlers) stackDetail(ctx context.Context, p db.Project) (api.StackDeta
 	if s == nil {
 		return api.StackDetail{}, newError(http.StatusNotFound, "this project is a stack Supermixer connects to, not one it created")
 	}
-	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio}
+	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio, Logs: s.Logs}
 	if s.Operation != nil {
 		op := api.StackDetailOperation(*s.Operation)
 		out.Operation = &op

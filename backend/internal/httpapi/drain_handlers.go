@@ -88,9 +88,16 @@ func fromInput(cur provision.LogDrain, in api.LogDrainInput) provision.LogDrain 
 
 // saveDrains checks the drains with Vector, saves them, and restarts Vector
 // if the stack runs.
-func (h *handlers) saveDrains(ctx context.Context, p db.Project, what string, drains []provision.LogDrain) error {
+func (h *handlers) saveDrains(ctx context.Context, p db.Project, what string, drains []provision.LogDrain, removing bool) error {
 	l := h.stackLayout(p.Ref)
+	if h.logsOff(p) {
+		return h.saveDrainsLogsOff(ctx, p, drains, removing)
+	}
 	_, err := h.changeService(ctx, p, what, "vector", nil, func() error {
+		// Logs may have been turned off since the request checked.
+		if h.logsOff(p) {
+			return errLogsOff()
+		}
 		// Older stacks' overlay predates drains.
 		if err := provision.RefreshOverlay(l.Dir); err != nil {
 			return err
@@ -118,6 +125,9 @@ func (h *handlers) CreateLogDrain(ctx context.Context, req api.CreateLogDrainReq
 	if err != nil {
 		return nil, err
 	}
+	if h.logsOff(p) {
+		return nil, errLogsOff()
+	}
 	drains, err := provision.ReadDrains(h.stackLayout(p.Ref).Dir)
 	if err != nil {
 		return nil, err
@@ -133,7 +143,7 @@ func (h *handlers) CreateLogDrain(ctx context.Context, req api.CreateLogDrainReq
 	if err := provision.ValidateDrain(d); err != nil {
 		return nil, badRequest("%v", err)
 	}
-	if err := h.saveDrains(ctx, p, "adding log drain "+d.Name, append(drains, d)); err != nil {
+	if err := h.saveDrains(ctx, p, "adding log drain "+d.Name, append(drains, d), false); err != nil {
 		return nil, err
 	}
 	h.drainAudit(ctx, p, "project.log_drain_created", d)
@@ -144,6 +154,9 @@ func (h *handlers) UpdateLogDrain(ctx context.Context, req api.UpdateLogDrainReq
 	_, p, err := h.managedStack(ctx, req.Ref, rbac.ProjectUpdate, "change log drains")
 	if err != nil {
 		return nil, err
+	}
+	if h.logsOff(p) {
+		return nil, errLogsOff()
 	}
 	drains, err := provision.ReadDrains(h.stackLayout(p.Ref).Dir)
 	if err != nil {
@@ -158,7 +171,7 @@ func (h *handlers) UpdateLogDrain(ctx context.Context, req api.UpdateLogDrainReq
 			return nil, badRequest("%v", err)
 		}
 		drains[i] = d
-		if err := h.saveDrains(ctx, p, "changing log drain "+d.Name, drains); err != nil {
+		if err := h.saveDrains(ctx, p, "changing log drain "+d.Name, drains, false); err != nil {
 			return nil, err
 		}
 		h.drainAudit(ctx, p, "project.log_drain_updated", d)
@@ -178,7 +191,7 @@ func (h *handlers) DeleteLogDrain(ctx context.Context, req api.DeleteLogDrainReq
 	}
 	for i, d := range drains {
 		if d.ID == req.Id {
-			if err := h.saveDrains(ctx, p, "removing log drain "+d.Name, append(drains[:i:i], drains[i+1:]...)); err != nil {
+			if err := h.saveDrains(ctx, p, "removing log drain "+d.Name, append(drains[:i:i], drains[i+1:]...), true); err != nil {
 				return nil, err
 			}
 			h.drainAudit(ctx, p, "project.log_drain_deleted", d)
@@ -186,4 +199,29 @@ func (h *handlers) DeleteLogDrain(ctx context.Context, req api.DeleteLogDrainReq
 		}
 	}
 	return nil, notFound("log drain")
+}
+
+// saveDrainsLogsOff saves drains on a stack whose logs are off: there's no
+// Vector to check them with or restart, so only removals are allowed (they
+// apply when logs are turned on again), under the stack's lock like other
+// changes to its files.
+func (h *handlers) saveDrainsLogsOff(ctx context.Context, p db.Project, drains []provision.LogDrain, removing bool) error {
+	if !removing {
+		return errLogsOff()
+	}
+	if !h.deps.Config.Provisioning.Enabled {
+		return errProvisioningOff()
+	}
+	if !h.stacks.begin(p.Ref, api.StackOperationUpdating) {
+		return conflict("the stack is busy with another operation; wait for it to finish")
+	}
+	defer h.stacks.end(p.Ref)
+	if !h.logsOff(p) {
+		return conflict("this project's logs were just turned on; try again")
+	}
+	l := h.stackLayout(p.Ref)
+	if err := provision.StageDrains(l.Dir, l.Project, drains); err != nil {
+		return badRequest("%v", err)
+	}
+	return provision.CommitDrains(l.Dir, drains)
 }

@@ -1376,6 +1376,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/stack/logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Turn the stack's logs on or off
+         * @description Logs come from Logflare and Vector (Supabase's docker-compose.logs.yml). Turning them off removes
+         *     both containers and stops collecting logs; turning them on starts them again. On a running stack
+         *     this runs in the background, bringing the stack up with its new files (only the services that
+         *     change are recreated); otherwise it takes effect when the stack next starts. Logs already
+         *     collected stay in the stack's database.
+         */
+        put: operations["setStackLogs"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/stack/upgrade": {
         parameters: {
             query?: never;
@@ -2081,6 +2107,8 @@ export interface components {
             operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | "upgrading" | "rotating_keys" | null;
             /** @description Whether the stack runs Supabase Studio (provisioning.studio, as last applied to it). */
             studio: boolean;
+            /** @description Whether the stack collects logs: runs Logflare and Vector, for Logs Explorer, the API report and log drains. */
+            logs: boolean;
         };
         EdgeFunction: {
             name: string;
@@ -5406,6 +5434,35 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["DBChanges"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setStackLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Changed, or started on a running stack. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
                 };
             };
             default: components["responses"]["Error"];

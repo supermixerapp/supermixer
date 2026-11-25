@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { LogsOffAlert } from '@/components/logs/logs-off'
 import { MoreIcon } from '@/components/icons'
 import { PermissionButton } from '@/components/permission-button'
 import { Alert } from '@/components/ui/alert'
@@ -103,9 +104,16 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
   if (drains.error) return <Alert variant="destructive" title={drains.error.message} />
   if (!drains.data) return <Skeleton className="h-40" />
   const list = drains.data.drains
+  const logsOff = project.stack?.logs === false
 
   return (
     <>
+      {logsOff && (
+        <LogsOffAlert projectRef={ref}>
+          There are no logs to send: Supermixer doesn&apos;t run Logflare and Vector for this project. Destinations
+          can be removed, but not added or changed.
+        </LogsOffAlert>
+      )}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-foreground-light">
           Logs from the API gateway, Auth, the Data API, Realtime, Storage, Edge Functions and Postgres also
@@ -116,6 +124,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
           allowed={allowed}
           action="add log drains"
           variant="primary"
+          disabled={logsOff}
           onClick={() => setEditing('new')}
         >
           Add destination
@@ -152,7 +161,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
                   <TableCell>
                     <Switch
                       checked={d.enabled}
-                      disabled={!allowed || toggle.isPending}
+                      disabled={!allowed || logsOff || toggle.isPending}
                       onCheckedChange={() => toggle.mutate(d)}
                       aria-label={`${d.enabled ? 'Disable' : 'Enable'} ${d.name}`}
                     />
@@ -163,7 +172,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
                         <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${d.name}`} />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
-                        <DropdownMenuItem disabled={!allowed} onSelect={() => setEditing(d)}>
+                        <DropdownMenuItem disabled={!allowed || logsOff} onSelect={() => setEditing(d)}>
                           Edit…
                         </DropdownMenuItem>
                         <DropdownMenuItem

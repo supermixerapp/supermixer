@@ -5,12 +5,14 @@
 import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
+import { LogsOffAlert } from '@/components/logs/logs-off'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
+import { useSelectedProject } from '@/lib/api/hooks'
 import { useNow } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
 
@@ -40,10 +42,13 @@ export function RequestsReport({ projectRef }: { projectRef: string }) {
   const now = useNow(60_000)
   const start = Math.floor((now - 23 * HOUR) / HOUR) * HOUR
   const stats = useQuery(requestStatsQuery(projectRef, new Date(start).toISOString()))
+  const project = useSelectedProject()
   const s = stats.data
 
   if (stats.error) return <Alert variant="destructive" title={stats.error.message} />
   if (!s) return <Skeleton className="h-48" />
+  if (!s.available && project?.stack?.logs === false)
+    return <LogsOffAlert projectRef={projectRef}>The request reports come from the API gateway&apos;s logs.</LogsOffAlert>
   if (!s.available)
     return (
       <Alert title="Request reports need log analytics">

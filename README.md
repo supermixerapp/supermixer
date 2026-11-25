@@ -72,6 +72,23 @@ To turn it off again, set `studio = false` (or remove the line) and restart.
 - **With Studio off,** that address answers 503 after the dashboard password, where Studio would be, and Supermixer hides the project's **Open Studio** button and the Studio login. The API (`/rest/v1`, `/auth/v1` and so on) works either way. **Settings › Infrastructure** shows whether Studio is running, stopped or disabled.
 - **Leaving Studio out needs Docker Compose 2.24 or later.** With an older one, Supermixer refuses to start stacks and says so; upgrade Docker Compose, or turn Studio on.
 
+### Logs in created stacks
+
+Each stack Supermixer creates collects its logs with Vector and keeps them with Logflare, Supabase's log services. Logs Explorer, the API report and log drains need them, and together they use about 800 MB of memory per stack.
+
+To save that memory, turn a project's logs off under **Settings › Infrastructure › Logs**, and on again there.
+
+- **On a running stack,** Supermixer brings it up without (or with) the two services. The stack stays up, and only services whose settings change are recreated. On a paused stack, the change takes effect when it next starts.
+- **While logs are off,** nothing is logged. The log pages say logs are off, and log drains can be removed but not added. Logs collected before stay in the stack's database.
+- **New projects** start with logs on. To start them with logs off instead, for example on a test server, set this in `.env.toml` and restart Supermixer:
+
+  ```toml
+  [provisioning]
+  logs = false
+  ```
+
+  It only sets where new projects start; existing ones keep their choice.
+
 ## Common tasks
 
 | Command | What it does |
@@ -217,6 +234,7 @@ public_host = "supabase.example.internal"   # the host name in stacks' URLs
 - Backups are Supabase-style dumps of each stack's database (roles, schema, data), taken every `backup_interval` and on demand; Storage files aren't included. To keep copies off the server, set `[provisioning.backup_s3]` (AWS S3, MinIO, Cloudflare R2 or another S3-compatible bucket): each backup is uploaded once it's taken, and with `keep_local = false` it then lives only in the bucket. Otherwise, back `backups_dir` up off the server yourself.
 - Run one Supermixer server per metadata database when provisioning: operations on a stack are coordinated within a server. (A stuck create or delete is still noticed across servers: a running operation keeps its status fresh, and one left untouched for three minutes is marked failed.)
 - Created stacks don't run Supabase Studio unless you turn it on: see [Supabase Studio in created stacks](#supabase-studio-in-created-stacks).
+- Each project's logs (Logflare and Vector) can be turned off to save memory: see [Logs in created stacks](#logs-in-created-stacks).
 - Each stack takes one port from each of `api_ports`, `db_ports` and `pooler_ports`; widen them for more stacks.
 - To update the bundled Supabase version, run `backend/internal/provision/sync-template.sh <commit>`, then the tests, and create a stack before committing.
 

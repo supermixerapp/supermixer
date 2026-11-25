@@ -143,6 +143,11 @@ func (h *handlers) ListLogs(ctx context.Context, req api.ListLogsRequestObject) 
 		v := string(raw)
 		pattern = &v
 	}
+	// A stack Supermixer created with its logs off: what Logflare kept
+	// before isn't shown either.
+	if h.logsOff(a.Project()) {
+		return api.ListLogs200JSONResponse{Available: false, Entries: []api.LogEntry{}}, nil
+	}
 	table, err := h.logTable(ctx, a, source)
 	if errors.Is(err, errNoAnalytics) {
 		return api.ListLogs200JSONResponse{Available: false, Entries: []api.LogEntry{}}, nil
@@ -201,6 +206,9 @@ func (h *handlers) GetRequestStats(ctx context.Context, req api.GetRequestStatsR
 		Method string `json:"method"`
 		Path   string `json:"path"`
 	}{}}
+	if h.logsOff(a.Project()) {
+		return empty, nil
+	}
 	table, err := h.logTable(ctx, a, logSources[api.LogSourceApiGateway])
 	if errors.Is(err, errNoAnalytics) {
 		return empty, nil

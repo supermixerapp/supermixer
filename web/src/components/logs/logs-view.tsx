@@ -7,6 +7,7 @@ import { useEffect, useState } from 'react'
 
 import { DatabasePage, SearchBox } from '@/components/database/catalog-page'
 import { RefreshIcon } from '@/components/icons'
+import { LogsOffAlert } from '@/components/logs/logs-off'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -16,6 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetSection, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 import { api, unwrap } from '@/lib/api/client'
+import { useSelectedProject } from '@/lib/api/hooks'
 import { levelOf, requestOf, SOURCE_LABELS, TIME_RANGES, type LogEntry, type LogSource } from '@/lib/logs'
 import { cn } from '@/lib/utils'
 
@@ -75,6 +77,7 @@ export function LogsView({
   })
   const entries = logs.data?.pages.flatMap((p) => p.entries) ?? []
   const available = logs.data?.pages[0]?.available ?? true
+  const project = useSelectedProject()
 
   return (
     <DatabasePage
@@ -124,6 +127,8 @@ export function LogsView({
     >
       {logs.error ? (
         <Alert variant="destructive" title={logs.error.message} />
+      ) : !available && project?.stack?.logs === false ? (
+        <LogsOffAlert projectRef={projectRef} />
       ) : !available ? (
         <Alert title="This stack doesn't run log analytics">
           Supabase collects logs with Vector and stores them with Logflare, which the self-hosted stack only starts with

@@ -26,7 +26,10 @@ type Compose struct {
 
 func (c Compose) args(sub ...string) []string {
 	a := []string{"compose", "--project-name", c.Layout.Project, "--project-directory", c.Layout.Dir}
-	for _, f := range composeFiles {
+	// Without the logs file if the stack doesn't collect logs (a stack
+	// being written has no .env yet: all of them).
+	env, _ := ReadEnv(c.Layout.Dir)
+	for _, f := range filesFor(env) {
 		a = append(a, "--file", f)
 	}
 	return append(a, sub...)

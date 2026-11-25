@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 )
 
@@ -97,12 +98,7 @@ services:
   imgproxy:
     volumes:
       - storage-files:/var/lib/storage
-  vector:
-    # Log drains: a second config with their sinks (drains.go).
-    volumes:
-      - ./volumes/logs/drains:/etc/vector/drains:ro,z
-    command: ["--config", "/etc/vector/vector.yml", "--config", "/etc/vector/drains/drains.yml"]
-
+{{VECTOR}}
 volumes:
   db-data:
     # Restores start a new database in a fresh volume (DB_DATA_VOLUME), so a
@@ -142,7 +138,7 @@ func WriteStack(l Layout, env map[string]string) error {
 		return err
 	}
 	// So docker compose run by hand in the folder means the same stack.
-	all := map[string]string{"COMPOSE_PROJECT_NAME": l.Project, "COMPOSE_FILE": strings.Join(composeFiles, ":")}
+	all := map[string]string{"COMPOSE_PROJECT_NAME": l.Project, "COMPOSE_FILE": strings.Join(filesFor(env), ":")}
 	for k, v := range env {
 		all[k] = v
 	}
@@ -406,9 +402,68 @@ const StudioEnv = "SUPERMIXER_STUDIO"
 // StudioOf reports whether a stack runs Studio, from its .env.
 func StudioOf(env map[string]string) bool { return env[StudioEnv] == "true" }
 
-// renderOverlay is the overlay for a stack, with its Studio image, and
-// Studio left out unless studio.
-func renderOverlay(stackDir string, studio bool) (string, error) {
+// LogsEnv is the stack .env setting that says whether it collects logs:
+// runs Logflare and Vector (docker-compose.logs.yml). Missing means it does,
+// as stacks did before the setting.
+const LogsEnv = "SUPERMIXER_LOGS"
+
+const logsFile = "docker-compose.logs.yml"
+
+// LogsOf reports whether a stack collects logs, from its .env.
+func LogsOf(env map[string]string) bool { return env[LogsEnv] != "false" }
+
+// filesFor are the compose files a stack runs with: without the logs file
+// when it doesn't collect logs.
+func filesFor(env map[string]string) []string {
+	if LogsOf(env) {
+		return composeFiles
+	}
+	var out []string
+	for _, f := range composeFiles {
+		if f != logsFile {
+			out = append(out, f)
+		}
+	}
+	return out
+}
+
+// vectorOverlay, in the overlay of a stack that collects logs: log drains
+// are a second Vector config with their sinks (drains.go).
+const vectorOverlay = `  vector:
+    # Log drains: a second config with their sinks (drains.go).
+    volumes:
+      - ./volumes/logs/drains:/etc/vector/drains:ro,z
+    command: ["--config", "/etc/vector/vector.yml", "--config", "/etc/vector/drains/drains.yml"]
+`
+
+// SetLogs records whether a stack collects logs in its .env (with
+// COMPOSE_FILE, so compose run by hand in its folder agrees) and rewrites
+// its overlay. Starting the stack then adds or removes Logflare and Vector.
+func SetLogs(dir string, on bool) error {
+	old, err := ReadEnv(dir)
+	if err != nil {
+		return err
+	}
+	env := map[string]string{LogsEnv: strconv.FormatBool(on)}
+	env["COMPOSE_FILE"] = strings.Join(filesFor(env), ":")
+	if err := UpdateEnv(dir, env); err != nil {
+		return err
+	}
+	if err := RefreshOverlay(dir); err != nil {
+		// Back to what it said, so the stack's files agree with each other.
+		before := map[string]string{LogsEnv: strconv.FormatBool(LogsOf(old)), "COMPOSE_FILE": strings.Join(filesFor(old), ":")}
+		if v, ok := old["COMPOSE_FILE"]; ok {
+			before["COMPOSE_FILE"] = v
+		}
+		_ = UpdateEnv(dir, before)
+		return err
+	}
+	return nil
+}
+
+// renderOverlay is the overlay for a stack, with its Studio image, Studio
+// left out unless studio, and Vector's part only if it collects logs.
+func renderOverlay(stackDir string, studio, logs bool) (string, error) {
 	image, err := serviceImage(stackDir, "studio")
 	if err != nil {
 		// A hand-edited compose file: use the bundled template's Studio image.
@@ -427,8 +482,12 @@ func renderOverlay(stackDir string, studio bool) (string, error) {
 	if studio {
 		off = ""
 	}
+	vector := ""
+	if logs {
+		vector = vectorOverlay
+	}
 	return strings.NewReplacer("{{STUDIO_IMAGE}}", image, "{{TEMPLATE_SERVER}}", string(server),
-		"{{AUTH_ENVIRONMENT}}\n", env.String(), "{{STUDIO_OFF}}", off).Replace(overlay), nil
+		"{{AUTH_ENVIRONMENT}}\n", env.String(), "{{STUDIO_OFF}}", off, "{{VECTOR}}", vector).Replace(overlay), nil
 }
 
 // serviceImage is a service's image, from the stack's compose file.
