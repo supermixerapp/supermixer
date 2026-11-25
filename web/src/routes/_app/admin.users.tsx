@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react'
 
 import { AddIcon, SettingsIcon } from '@/components/icons'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { SearchBox } from '@/components/database/catalog-page'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +30,7 @@ import {
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toaster'
@@ -44,6 +46,22 @@ export const Route = createFileRoute('/_app/admin/users')({
 
 type User = Schemas['User']
 
+// The status filter above the users table, matching the table's badges.
+const STATUSES: { value: string; label: string; match: (u: User) => boolean }[] = [
+  { value: 'all', label: 'All', match: () => true },
+  { value: 'active', label: 'Active', match: (u) => !u.disabled },
+  { value: 'disabled', label: 'Disabled', match: (u) => u.disabled },
+  { value: 'admin', label: 'Instance admins', match: (u) => u.is_instance_admin },
+  { value: 'mfa', label: 'Two-factor on', match: (u) => u.mfa_enabled },
+  { value: 'no-mfa', label: 'Two-factor off', match: (u) => !u.mfa_enabled },
+  { value: 'sso', label: 'Single sign-on', match: (u) => u.identities.length > 0 },
+  {
+    value: 'password',
+    label: 'Must change password',
+    match: (u) => u.password_change_required || u.default_password,
+  },
+]
+
 function UsersPage() {
   const { data: me } = useProfile()
   const users = useQuery({ ...usersQuery, enabled: !!me?.is_instance_admin })
@@ -58,6 +76,17 @@ function UsersPage() {
   // People who signed up and wait for approval are listed apart.
   const waiting = users.data?.filter((u) => u.waiting_approval) ?? []
   const active = users.data?.filter((u) => !u.waiting_approval)
+  // Filters for the table: username or email, and status.
+  const [search, setSearch] = useState('')
+  const [status, setStatus] = useState('all')
+  const needle = search.trim().toLowerCase()
+  const statusMatch = (STATUSES.find((s) => s.value === status) ?? STATUSES[0]).match
+  const shown = active?.filter(
+    (u) =>
+      statusMatch(u) &&
+      (!needle || u.username.toLowerCase().includes(needle) || (u.email ?? '').toLowerCase().includes(needle))
+  )
+  const filtering = needle !== '' || status !== 'all'
   const approve = useMutation({
     mutationFn: (user: User) =>
       unwrap(api.POST('/admin/users/{user_id}/approval', { params: { path: { user_id: user.id } } })),
@@ -162,6 +191,41 @@ function UsersPage() {
         </Card>
       )}
       {me && (
+        <div className="flex flex-wrap items-center gap-2">
+          <SearchBox value={search} onChange={setSearch} placeholder="Search by username or email" />
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger size="tiny" className="w-56" aria-label="Status">
+              <span className="text-foreground-lighter">status</span>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {STATUSES.map((s) => (
+                <SelectItem key={s.value} value={s.value}>
+                  {s.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {filtering && active && (
+            <>
+              <span className="text-xs text-foreground-lighter tabular-nums">
+                {shown?.length} of {active.length} {active.length === 1 ? 'user' : 'users'}
+              </span>
+              <Button
+                variant="text"
+                size="tiny"
+                onClick={() => {
+                  setSearch('')
+                  setStatus('all')
+                }}
+              >
+                Clear filters
+              </Button>
+            </>
+          )}
+        </div>
+      )}
+      {me && (
             <Card>
               {users.isPending ? (
                 <div className="flex flex-col gap-2 p-4">
@@ -180,7 +244,14 @@ function UsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {active?.map((u) => (
+                    {shown?.length === 0 && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={5} className="py-10 text-center text-foreground-lighter">
+                          No users match these filters.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {shown?.map((u) => (
                       <TableRow key={u.id}>
                         <TableCell>
                           <span className="flex flex-col">

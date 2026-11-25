@@ -326,6 +326,24 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(reader.getByRole('alert', { name: /notice$/ })).toHaveCount(0)
   })
 
+  await test.step('filter the instance users by name, email and status', async () => {
+    await page.goto('/admin/users')
+    const rows = page.getByRole('table').getByRole('row')
+    await expect(rows.filter({ hasText: 'reader' })).toHaveCount(1)
+    await page.getByPlaceholder('Search by username or email').fill('READ')
+    await expect(rows.filter({ hasText: 'reader' })).toHaveCount(1)
+    await expect(rows.filter({ hasText: 'Administrator' })).toHaveCount(0)
+    await page.getByPlaceholder('Search by username or email').fill('')
+    await page.getByRole('combobox', { name: 'Status' }).click()
+    await page.getByRole('option', { name: 'Instance admins' }).click()
+    await expect(rows.filter({ hasText: 'Administrator' })).toHaveCount(1)
+    await expect(rows.filter({ hasText: 'reader' })).toHaveCount(0)
+    await page.getByPlaceholder('Search by username or email').fill('nobody-like-this')
+    await expect(page.getByText('No users match these filters.')).toBeVisible()
+    await page.getByRole('button', { name: 'Clear filters' }).click()
+    await expect(rows.filter({ hasText: 'reader' })).toHaveCount(1)
+  })
+
   await test.step('the audit log recorded each step', async () => {
     await page.goto(`/org/${slug}/audit`)
     const table = page.getByRole('table')
