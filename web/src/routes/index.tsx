@@ -41,9 +41,9 @@ const FEATURES: { icon: Icon; title: string; text: string }[] = [
     text: 'It runs on your own servers, so there’s no plan or project limit. Run as many Supabase projects as your hardware can hold.',
   },
   {
-    icon: TableEditorIcon,
-    title: 'The tools you know',
-    text: 'Edit tables, run SQL, manage users and files, and deploy Edge Functions, all in the Supabase layout you’re used to.',
+    icon: LockIcon,
+    title: 'Stays on your servers',
+    text: 'Supermixer runs next to your projects and provides full control over your data. Fulfill compliance requirements and run in a self-hosted isolated environment. Your data and settings stay local.',
   },
   {
     icon: TeamIcon,
@@ -56,9 +56,9 @@ const FEATURES: { icon: Icon; title: string; text: string }[] = [
     text: 'Two-step sign-in, single sign-on with your company’s login, and a record of who changed what and when.',
   },
   {
-    icon: LockIcon,
-    title: 'Stays on your servers',
-    text: 'Supermixer runs next to your projects. Your data and settings don’t go anywhere else.',
+    icon: TableEditorIcon,
+    title: 'The tools you know',
+    text: 'Edit tables, run SQL, manage users and files, and deploy Edge Functions, all in the Supabase layout you’re used to.',
   },
 ]
 
