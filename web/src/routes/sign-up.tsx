@@ -9,6 +9,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { AuthLayout } from '@/components/layout/auth-layout'
+import { ProviderIcon } from '@/components/provider-icon'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -64,7 +65,9 @@ function AskForLink() {
         })
       ),
   })
-  if (ui && !ui.sign_up_enabled) {
+  // Providers that make an account for someone new (GitHub, while sign-up is on).
+  const providers = ui?.sso_providers.filter((p) => p.creates_accounts) ?? []
+  if (ui && !ui.sign_up_enabled && providers.length === 0) {
     return (
       <>
         <Heading
@@ -85,10 +88,41 @@ function AskForLink() {
         subtitle={
           request.isSuccess
             ? 'Check your email.'
-            : 'Enter your email address, and we’ll email you a link to set up your account.'
+            : !ui?.sign_up_enabled
+              ? 'Sign in with one of these, and your account is made.'
+              : 'Enter your email address, and we’ll email you a link to set up your account.'
         }
       />
-      {request.isSuccess ? (
+      {providers.length > 0 && !request.isSuccess && (
+        <>
+          <div className="flex flex-col gap-2">
+            {providers.map((p) => (
+              <Button
+                key={p.id}
+                asChild
+                variant="default"
+                size="large"
+                block
+                icon={p.type === 'github' ? <ProviderIcon type={p.type} /> : undefined}
+              >
+                <a
+                  href={`/api/v1/auth/sso/${encodeURIComponent(p.id)}/start?redirect=${encodeURIComponent('/dashboard')}`}
+                >
+                  Continue with {p.name}
+                </a>
+              </Button>
+            ))}
+          </div>
+          {ui?.sign_up_enabled && (
+            <div className="my-6 flex items-center gap-3 text-xs text-foreground-lighter">
+              <span className="h-px flex-1 bg-border" />
+              or
+              <span className="h-px flex-1 bg-border" />
+            </div>
+          )}
+        </>
+      )}
+      {!ui?.sign_up_enabled ? null : request.isSuccess ? (
         <Alert title={`We've sent an email to ${email.trim()}`}>
           It has a link to choose your username and password, which works once, for a day. If
           nothing arrives in a few minutes, check your spam folder.

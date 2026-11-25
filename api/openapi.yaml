@@ -2317,12 +2317,7 @@ components:
         sso_providers:
           type: array
           description: Single sign-on providers, for "Continue with" buttons.
-          items:
-            type: object
-            required: [id, name]
-            properties:
-              id: { type: string }
-              name: { type: string }
+          items: { $ref: "#/components/schemas/SsoProvider" }
         app_name: { type: string }
         email_enabled: { type: boolean, description: "Supermixer sends email, so the sign-in page offers \"Forgot your password?\"." }
         sign_up_enabled: { type: boolean, description: "People can create their own accounts, so the sign-in page offers it." }
@@ -3227,6 +3222,16 @@ components:
         invited_by: { type: string }
         expires_at: { type: string, format: date-time }
         valid: { type: boolean, description: False once accepted or expired. }
+    SsoProvider:
+      type: object
+      required: [id, name, type, creates_accounts]
+      properties:
+        id: { type: string }
+        name: { type: string }
+        type: { type: string, enum: [oidc, github] }
+        creates_accounts:
+          type: boolean
+          description: "Someone new signing in through it gets an account (create_users, or for GitHub, while Instance › Sign-up is on), so the sign-up page offers it."
     SignUpRequest:
       type: object
       required: [email]

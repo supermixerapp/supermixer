@@ -19,8 +19,8 @@ SELECT user_id, provider FROM user_identities ORDER BY provider;
 DELETE FROM user_identities WHERE id = $1 AND user_id = $2 RETURNING *;
 
 -- name: CreateSSOUser :one
-INSERT INTO users (username, email, display_name, password_hash, has_password)
-VALUES ($1, $2, $3, $4, false)
+INSERT INTO users (username, email, display_name, password_hash, has_password, waiting_approval)
+VALUES ($1, $2, $3, $4, false, $5)
 RETURNING *;
 
 -- name: UsernameTaken :one

@@ -127,6 +127,20 @@ create_users = true                 # make accounts for new people; otherwise th
 
 Accounts are never matched by email address: people connect a provider to their account under **Account › Security**, or, with `create_users`, get an account when they first sign in. Accounts with two-factor sign-in still enter their code. For local testing, `make sso` runs [Dex](https://dexidp.io); see `deploy/dev-sso/dex.yaml`.
 
+**GitHub** works too, through an OAuth App (GitHub › Settings › Developer settings › OAuth Apps). It reads only the account's verified email address and its user ID:
+
+```toml
+[[sso.providers]]
+id = "github"
+name = "GitHub"
+type = "github"
+client_id = "..."
+client_secret_file = "/run/secrets/github"
+# github_url = "https://github.example.com"   # GitHub Enterprise Server
+```
+
+Someone new signing in with GitHub gets an account only while **Instance › Sign-up** is on, with its allowed domains and approval; `create_users` isn't used. People who already have an account connect GitHub under **Account › Security**.
+
 Each organization's Owners can then, under **Organization Settings › SSO**:
 - **Require** one of these providers: the organization's pages, projects and API refuse sessions that didn't sign in through it, and access tokens made from them. To avoid locking yourself out, you have to be signed in with the provider to turn this on.
 - **Let people join by signing in**: someone who signs in through the provider becomes a member, with the role chosen, if their email (as the provider vouches for it) is in the listed domains, or always if none are listed.

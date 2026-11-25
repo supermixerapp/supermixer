@@ -30,6 +30,9 @@ This product bundles:
     the full licence is in backend/internal/auth/COMMON_PASSWORDS_LICENSE
   - Material Icons (Two-Tone), Copyright Google LLC, Apache License 2.0
     (https://github.com/google/material-design-icons)
+  - The GitHub mark, from Primer Octicons (mark-github), Copyright GitHub
+    Inc., MIT License (https://github.com/primer/octicons); used on the
+    "Continue with GitHub" button. GitHub and the mark are GitHub's trademarks.
   - Inter, Copyright The Inter Project Authors, SIL Open Font License 1.1
   - Manrope, Copyright The Manrope Project Authors, SIL Open Font License 1.1
   - Source Code Pro, Copyright Adobe, SIL Open Font License 1.1

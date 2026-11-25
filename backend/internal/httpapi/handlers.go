@@ -103,6 +103,6 @@ func (h *handlers) GetUiConfig(ctx context.Context, _ api.GetUiConfigRequestObje
 		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion()},
 		EmailEnabled:  h.mailer != nil,
 		SignUpEnabled: signUpOpen,
-		SsoProviders:  h.ssoList(),
+		SsoProviders:  h.ssoList(signUpOpen),
 	}, nil
 }

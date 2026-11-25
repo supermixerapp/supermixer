@@ -73,11 +73,23 @@ func (p *ssoProvider) oidc() (*oidc.Provider, error) {
 	return d, nil
 }
 
-func (h *handlers) oauthConfig(p *ssoProvider, d *oidc.Provider) oauth2.Config {
-	return oauth2.Config{
-		ClientID: p.cfg.ClientID, ClientSecret: p.cfg.ClientSecret, Endpoint: d.Endpoint(), Scopes: p.cfg.Scopes,
+// oauthConfig is the provider's OAuth settings; an OpenID Connect provider's
+// come from its discovery document (read once).
+func (h *handlers) oauthConfig(p *ssoProvider) (oauth2.Config, error) {
+	conf := oauth2.Config{
+		ClientID: p.cfg.ClientID, ClientSecret: p.cfg.ClientSecret, Scopes: p.cfg.Scopes,
 		RedirectURL: h.joinURL("/api/v1/auth/sso/"+p.cfg.ID+"/callback", nil),
 	}
+	if p.isGitHub() {
+		conf.Endpoint = p.githubEndpoint()
+		return conf, nil
+	}
+	d, err := p.oidc()
+	if err != nil {
+		return conf, err
+	}
+	conf.Endpoint = d.Endpoint()
+	return conf, nil
 }
 
 type ssoState struct {
@@ -107,7 +119,7 @@ func localPath(p, fallback string) string {
 
 // beginSSO sets the state cookie and returns the provider's sign-in URL.
 func (h *handlers) beginSSO(w http.ResponseWriter, p *ssoProvider, redirect, linkUser string) (string, error) {
-	d, err := p.oidc()
+	conf, err := h.oauthConfig(p)
 	if err != nil {
 		return "", err
 	}
@@ -122,8 +134,14 @@ func (h *handlers) beginSSO(w http.ResponseWriter, p *ssoProvider, redirect, lin
 		MaxAge: int(ssoStateTTL.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode,
 		Secure: strings.HasPrefix(h.deps.Config.Server.PublicURL, "https://"),
 	})
-	conf := h.oauthConfig(p, d)
-	return conf.AuthCodeURL(st.State, oidc.Nonce(st.Nonce), oauth2.S256ChallengeOption(st.Verifier)), nil
+	var opts []oauth2.AuthCodeOption
+	if !p.isGitHub() {
+		opts = append(opts, oidc.Nonce(st.Nonce))
+	}
+	if p.usesPKCE() {
+		opts = append(opts, oauth2.S256ChallengeOption(st.Verifier))
+	}
+	return conf.AuthCodeURL(st.State, opts...), nil
 }
 
 // ssoStart: GET /auth/sso/{provider}/start?redirect=/path, from the
@@ -235,17 +253,35 @@ func (h *handlers) ssoCallback(w http.ResponseWriter, r *http.Request) {
 		h.ssoFail(w, r, page, msg)
 		return
 	}
-	d, err := p.oidc()
+	conf, err := h.oauthConfig(p)
 	if err != nil {
 		h.ssoFail(w, r, page, "Couldn't reach "+p.cfg.Name)
 		return
 	}
 	pctx := oidc.ClientContext(ctx, ssoHTTP)
-	conf := h.oauthConfig(p, d)
-	tok, err := conf.Exchange(pctx, q.Get("code"), oauth2.VerifierOption(st.Verifier))
+	var exchange []oauth2.AuthCodeOption
+	if p.usesPKCE() {
+		exchange = append(exchange, oauth2.VerifierOption(st.Verifier))
+	}
+	tok, err := conf.Exchange(pctx, q.Get("code"), exchange...)
 	if err != nil {
 		h.deps.Logger.Warn("single sign-on: exchanging the code", "provider", id, "err", err)
 		h.ssoFail(w, r, page, p.cfg.Name+" didn't accept the sign-in; try again")
+		return
+	}
+	if p.isGitHub() {
+		subject, email, claims, err := p.githubIdentity(pctx, tok)
+		if err != nil {
+			h.deps.Logger.Warn("single sign-on: reading the GitHub account", "provider", id, "err", err)
+			h.ssoFail(w, r, page, "Couldn't read your "+p.cfg.Name+" account; try again")
+			return
+		}
+		h.ssoFinish(w, r, p, st, page, subject, email, claims)
+		return
+	}
+	d, err := p.oidc()
+	if err != nil {
+		h.ssoFail(w, r, page, "Couldn't reach "+p.cfg.Name)
 		return
 	}
 	rawID, _ := tok.Extra("id_token").(string)
@@ -271,15 +307,21 @@ func (h *handlers) ssoCallback(w http.ResponseWriter, r *http.Request) {
 			email = *n
 		}
 	}
+	h.ssoFinish(w, r, p, st, page, idt.Subject, email, claims)
+}
+
+// ssoFinish connects the identity or signs in with it, once the provider
+// has said who it is (and its email address, only if it verified it).
+func (h *handlers) ssoFinish(w http.ResponseWriter, r *http.Request, p *ssoProvider, st ssoState, page, subject, email string, claims ssoClaims) {
 	if len(p.cfg.AllowedDomains) > 0 && !emailInDomains(email, p.cfg.AllowedDomains) {
 		h.ssoFail(w, r, page, fmt.Sprintf("Only %s accounts can sign in here", strings.Join(p.cfg.AllowedDomains, ", ")))
 		return
 	}
 	if st.LinkUser != "" {
-		h.ssoLink(w, r, p, st, idt.Subject, email)
+		h.ssoLink(w, r, p, st, subject, email)
 		return
 	}
-	h.ssoSignIn(w, r, p, st, idt.Subject, email, claims)
+	h.ssoSignIn(w, r, p, st, subject, email, claims)
 }
 
 func emailInDomains(email string, domains []string) bool {
@@ -352,11 +394,15 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 		h.deps.Logger.Error("single sign-on: finding the identity", "err", err)
 		h.ssoFail(w, r, "", "Something went wrong; try again")
 		return
-	case !p.cfg.CreateUsers:
+	case !p.cfg.CreateUsers && !p.isGitHub():
 		h.ssoFail(w, r, "", fmt.Sprintf("No Supermixer account is connected to this %s account. Sign in with your password and connect it under Account › Security, or ask an instance admin.", p.cfg.Name))
 		return
 	default:
-		if u, err = h.createSSOUser(ctx, p, subject, email, claims); err != nil {
+		create := h.createSSOUser
+		if p.isGitHub() {
+			create = h.signUpThroughProvider
+		}
+		if u, err = create(ctx, p, subject, email, claims); err != nil {
 			var ae *apiError
 			if errors.As(err, &ae) {
 				h.ssoFail(w, r, "", ae.message)
@@ -435,6 +481,48 @@ func usernameBase(preferred, email string) string {
 // createSSOUser makes an account for someone signing in through a provider
 // for the first time. It has no password until they set one.
 func (h *handlers) createSSOUser(ctx context.Context, p *ssoProvider, subject, email string, claims ssoClaims) (db.User, error) {
+	u, err := h.newSSOUser(ctx, p, subject, email, claims, false)
+	if err != nil {
+		return u, err
+	}
+	h.audit(ctx, nil, auditEntry{Action: "user.created", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
+		Metadata: map[string]any{"sso": p.cfg.ID}})
+	return u, nil
+}
+
+// signUpThroughProvider makes an account for someone new signing in through
+// GitHub, as Instance › Sign-up allows: while it's on, for an allowed
+// domain, waiting for approval if that's required. GitHub has verified the
+// address, so there's no emailed link.
+func (h *handlers) signUpThroughProvider(ctx context.Context, p *ssoProvider, subject, email string, claims ssoClaims) (db.User, error) {
+	s, err := readSignUpSettings(ctx, h.deps.Store.Queries)
+	if err != nil {
+		return db.User{}, err
+	}
+	if !h.signUpOpen(s) {
+		return db.User{}, badRequest("No Supermixer account is connected to this %s account. Sign in with your password and connect it under Account › Security, or ask an instance admin for an account.", p.cfg.Name)
+	}
+	if email == "" {
+		return db.User{}, badRequest("%s didn't share a verified email address. Verify one on %s, then try again.", p.cfg.Name, p.cfg.Name)
+	}
+	if !domainAllowed(email, s.AllowedDomains) {
+		return db.User{}, errDomainNotAllowed(s.AllowedDomains)
+	}
+	u, err := h.newSSOUser(ctx, p, subject, email, claims, s.RequireApproval)
+	if err != nil {
+		return u, err
+	}
+	h.audit(ctx, nil, auditEntry{Action: "user.signed_up", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
+		Metadata: map[string]any{"email": email, "sso": p.cfg.ID, "waiting_approval": u.WaitingApproval}})
+	if s.NotifyAdmins {
+		h.tellAdminsAboutSignUp(ctx, u)
+	}
+	return u, nil
+}
+
+// newSSOUser makes an account, connected to the identity, for someone
+// signing in through a provider for the first time.
+func (h *handlers) newSSOUser(ctx context.Context, p *ssoProvider, subject, email string, claims ssoClaims, waiting bool) (db.User, error) {
 	q := h.deps.Store.Queries
 	if email != "" {
 		if _, err := q.GetUserByEmail(ctx, email); err == nil {
@@ -472,7 +560,7 @@ func (h *handlers) createSSOUser(ctx context.Context, p *ssoProvider, subject, e
 	}
 	var u db.User
 	err = h.deps.Store.InTx(ctx, func(q *db.Queries) error {
-		if u, err = q.CreateSSOUser(ctx, db.CreateSSOUserParams{Username: username, Email: e, DisplayName: name, PasswordHash: hash}); err != nil {
+		if u, err = q.CreateSSOUser(ctx, db.CreateSSOUserParams{Username: username, Email: e, DisplayName: name, PasswordHash: hash, WaitingApproval: waiting}); err != nil {
 			return err
 		}
 		_, err = q.AddIdentity(ctx, db.AddIdentityParams{UserID: u.ID, Provider: p.cfg.ID, Subject: subject, Email: email})
@@ -482,8 +570,6 @@ func (h *handlers) createSSOUser(ctx context.Context, p *ssoProvider, subject, e
 		return u, err
 	}
 	reqInfo(ctx).Principal = &principal{User: u}
-	h.audit(ctx, nil, auditEntry{Action: "user.created", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
-		Metadata: map[string]any{"sso": p.cfg.ID}})
 	return u, nil
 }
 
@@ -550,19 +636,17 @@ func (h *handlers) DeleteIdentity(ctx context.Context, req api.DeleteIdentityReq
 }
 
 // ssoList is the providers for the sign-in page, in configuration order.
-func (h *handlers) ssoList() []struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-} {
-	out := make([]struct {
-		Id   string `json:"id"`
-		Name string `json:"name"`
-	}, 0, len(h.deps.Config.SSO.Providers))
+// ssoList is the instance's providers, for "Continue with" buttons.
+// signUpOpen is whether Instance › Sign-up is open, which is whether GitHub
+// makes accounts.
+func (h *handlers) ssoList(signUpOpen bool) []api.SsoProvider {
+	out := make([]api.SsoProvider, 0, len(h.deps.Config.SSO.Providers))
 	for _, p := range h.deps.Config.SSO.Providers {
-		out = append(out, struct {
-			Id   string `json:"id"`
-			Name string `json:"name"`
-		}{p.ID, p.Name})
+		creates := p.CreateUsers
+		if p.Type == "github" {
+			creates = signUpOpen
+		}
+		out = append(out, api.SsoProvider{Id: p.ID, Name: p.Name, Type: api.SsoProviderType(p.Type), CreatesAccounts: creates})
 	}
 	return out
 }

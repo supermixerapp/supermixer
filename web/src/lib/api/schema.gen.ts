@@ -2046,10 +2046,7 @@ export interface components {
         };
         UiConfig: {
             /** @description Single sign-on providers, for "Continue with" buttons. */
-            sso_providers: {
-                id: string;
-                name: string;
-            }[];
+            sso_providers: components["schemas"]["SsoProvider"][];
             app_name: string;
             /** @description Supermixer sends email, so the sign-in page offers "Forgot your password?". */
             email_enabled: boolean;
@@ -2863,6 +2860,14 @@ export interface components {
             expires_at: string;
             /** @description False once accepted or expired. */
             valid: boolean;
+        };
+        SsoProvider: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            type: "oidc" | "github";
+            /** @description Someone new signing in through it gets an account (create_users, or for GitHub, while Instance › Sign-up is on), so the sign-up page offers it. */
+            creates_accounts: boolean;
         };
         SignUpRequest: {
             email: string;

@@ -3,6 +3,7 @@ import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-ro
 import { useState, type FormEvent } from 'react'
 
 import { AuthLayout } from '@/components/layout/auth-layout'
+import { ProviderIcon } from '@/components/provider-icon'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -89,7 +90,7 @@ function SignInPage() {
         <>
           <div className="flex flex-col gap-2">
             {providers.map((p) => (
-              <Button key={p.id} asChild variant="default" size="large" block>
+              <Button key={p.id} asChild variant="default" size="large" block icon={p.type === 'github' ? <ProviderIcon type={p.type} /> : undefined}>
                 <a href={`/api/v1/auth/sso/${encodeURIComponent(p.id)}/start?redirect=${encodeURIComponent(safeRedirect(target))}`}>
                   Continue with {p.name}
                 </a>

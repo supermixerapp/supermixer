@@ -316,3 +316,35 @@ dev_web_url = "`+value+`"
 		}
 	}
 }
+
+func TestGitHubProviders(t *testing.T) {
+	load := func(provider string) (*Config, error) {
+		return Load(write(t, minimal+"\n[[sso.providers]]\nid = \"github\"\nname = \"GitHub\"\nclient_id = \"c\"\nclient_secret = \"s\"\n"+provider), true)
+	}
+	c, err := load(`type = "github"`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p := c.SSO.Providers[0]
+	if p.GitHubURL != "https://github.com" || strings.Join(p.Scopes, ",") != "user:email" {
+		t.Fatalf("defaults = %+v", p)
+	}
+	if c, err := load("type = \"github\"\ngithub_url = \"https://github.example.com/\""); err != nil || c.SSO.Providers[0].GitHubURL != "https://github.example.com" {
+		t.Fatalf("enterprise: %v %+v", err, c.SSO.Providers)
+	}
+	if c, err := load(`issuer = "https://idp.example.com"`); err != nil || c.SSO.Providers[0].Type != "oidc" {
+		t.Fatalf("oidc default: %v", err)
+	}
+	for provider, want := range map[string]string{
+		"type = \"github\"\nissuer = \"https://github.com\"":     "has no issuer",
+		"type = \"github\"\ncreate_users = true":                 "follow Instance › Sign-up",
+		"type = \"github\"\nscopes = [\"repo\"]":                 "only for user:email",
+		"type = \"github\"\ngithub_url = \"github.example.com\"": "github_url must be",
+		"type = \"saml\"": "type must be oidc or github",
+		"issuer = \"https://idp.example.com\"\ngithub_url = \"https://github.com\"": "only for type",
+	} {
+		if _, err := load(provider); err == nil || !strings.Contains(err.Error(), want) {
+			t.Errorf("%q: err = %v, want %q", provider, err, want)
+		}
+	}
+}

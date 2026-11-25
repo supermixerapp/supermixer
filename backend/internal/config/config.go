@@ -96,8 +96,16 @@ type SSOProvider struct {
 	// register with it is <public_url>/api/v1/auth/sso/<id>/callback.
 	ID   string `toml:"id"`
 	Name string `toml:"name"`
+	// Type is oidc (the default: an OpenID Connect provider) or github
+	// (GitHub's own sign-in, an OAuth App, which reads only the account's
+	// verified email address and its user ID). New accounts through GitHub
+	// follow Instance › Sign-up, not create_users.
+	Type string `toml:"type"`
+	// GitHubURL is GitHub Enterprise Server's address, for type github;
+	// https://github.com if empty.
+	GitHubURL string `toml:"github_url"`
 	// Issuer is the provider's OpenID Connect issuer URL; its
-	// /.well-known/openid-configuration describes the rest.
+	// /.well-known/openid-configuration describes the rest. Not for github.
 	Issuer       string `toml:"issuer"`
 	ClientID     string `toml:"client_id"`
 	ClientSecret string `toml:"client_secret"`
@@ -505,8 +513,37 @@ func (c *Config) validate() error {
 		if strings.TrimSpace(p.Name) == "" {
 			fail("%s.name must not be empty", where)
 		}
-		if u, err := url.Parse(p.Issuer); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
-			fail("%s.issuer must be the provider's issuer URL, got %q", where, p.Issuer)
+		switch p.Type {
+		case "", "oidc":
+			p.Type = "oidc"
+			if u, err := url.Parse(p.Issuer); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" {
+				fail("%s.issuer must be the provider's issuer URL, got %q", where, p.Issuer)
+			}
+			if p.GitHubURL != "" {
+				fail("%s.github_url is only for type = \"github\"", where)
+			}
+		case "github":
+			if p.Issuer != "" {
+				fail("%s: type = \"github\" has no issuer; for GitHub Enterprise Server set github_url", where)
+			}
+			if p.GitHubURL == "" {
+				p.GitHubURL = "https://github.com"
+			}
+			p.GitHubURL = strings.TrimRight(p.GitHubURL, "/")
+			if u, err := url.Parse(p.GitHubURL); err != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Host == "" || u.Path != "" {
+				fail("%s.github_url must be GitHub's address, like https://github.example.com, got %q", where, p.GitHubURL)
+			}
+			if p.CreateUsers {
+				fail("%s: GitHub sign-ups follow Instance › Sign-up; remove create_users", where)
+			}
+			if p.AssumeEmailVerified {
+				fail("%s: assume_email_verified isn't for GitHub, which says which addresses it verified", where)
+			}
+			if len(p.Scopes) > 0 {
+				fail("%s: GitHub sign-in asks only for user:email; remove scopes", where)
+			}
+		default:
+			fail("%s.type must be oidc or github, got %q", where, p.Type)
 		}
 		if p.ClientID == "" {
 			fail("%s.client_id must not be empty", where)
@@ -520,7 +557,9 @@ func (c *Config) validate() error {
 				p.ClientSecret = strings.TrimSpace(string(b))
 			}
 		}
-		if len(p.Scopes) == 0 {
+		if p.Type == "github" {
+			p.Scopes = []string{"user:email"}
+		} else if len(p.Scopes) == 0 {
 			p.Scopes = []string{"openid", "email", "profile"}
 		} else if !slices.Contains(p.Scopes, "openid") {
 			// Without it there's no ID token, and no sign-in.

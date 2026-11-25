@@ -30,7 +30,7 @@ func (h *handlers) toOrganizationSso(o db.Organization, p *principal) api.Organi
 	if o.SsoProvider != nil && h.sso[*o.SsoProvider] == nil {
 		out.ProviderMissing = ptr(true)
 	}
-	for _, sp := range h.ssoList() {
+	for _, sp := range h.ssoList(false) {
 		out.Providers = append(out.Providers, struct {
 			Id   string `json:"id"`
 			Name string `json:"name"`
