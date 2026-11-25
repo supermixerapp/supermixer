@@ -292,3 +292,27 @@ func TestMetricsPortClash(t *testing.T) {
 		}
 	}
 }
+
+// dev_web_url must be the Vite dev server, never this server: that would
+// redirect every page to itself.
+func TestDevWebURL(t *testing.T) {
+	for value, ok := range map[string]bool{
+		"http://localhost:5173":   true,
+		"http://localhost:5173/":  true,
+		"http://localhost:8080":   false, // public_url (and the listen port)
+		"http://LOCALHOST:8080/":  false,
+		"http://127.0.0.1:8080":   false, // the listen port
+		"http://localhost:5173/x": false,
+		"localhost:5173":          false,
+	} {
+		_, err := Load(write(t, minimal+`
+[server]
+listen = ":8080"
+public_url = "http://localhost:8080"
+dev_web_url = "`+value+`"
+`), true)
+		if (err == nil) != ok {
+			t.Errorf("dev_web_url %q: err = %v", value, err)
+		}
+	}
+}

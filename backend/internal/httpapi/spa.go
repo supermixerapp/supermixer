@@ -20,15 +20,22 @@ const notBuiltPage = `<!doctype html><html><head><meta charset="utf-8"><title>Su
 and open the Vite server (http://localhost:5173). For a release build, run <code>make build</code>.</p>
 </body></html>`
 
+// devProxied are the path prefixes web/vite.config.ts proxies to this
+// server; keep them in step.
+var devProxied = []string{"/api", "/v1", "/theme.css", "/favicon.svg"}
+
 // spaHandler serves the built React app: real files directly, any other
 // non-API path as index.html so client-side routes work on reload.
 type spaHandler struct {
 	files fs.FS
 	index []byte // nil when the UI is not built
+	// devWeb, when set (server.dev_web_url), is the Vite dev server: pages
+	// are sent there instead.
+	devWeb string
 }
 
-func newSPAHandler(files fs.FS, defaultTheme string) *spaHandler {
-	h := &spaHandler{files: files}
+func newSPAHandler(files fs.FS, defaultTheme, devWeb string) *spaHandler {
+	h := &spaHandler{files: files, devWeb: strings.TrimRight(devWeb, "/")}
 	if files == nil {
 		return h
 	}
@@ -41,6 +48,21 @@ func newSPAHandler(files fs.FS, defaultTheme string) *spaHandler {
 func (h *spaHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet && r.Method != http.MethodHead {
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	// In development, the page is the dev server's. Vite sends anything
+	// starting with these back here (its proxy keys match by prefix), so
+	// those get a 404 rather than a redirect that would bounce between the
+	// two forever.
+	if h.devWeb != "" {
+		for _, p := range devProxied {
+			if strings.HasPrefix(r.URL.Path, p) {
+				writeError(w, http.StatusNotFound, "not found")
+				return
+			}
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, h.devWeb+r.URL.RequestURI(), http.StatusTemporaryRedirect)
 		return
 	}
 	if h.index == nil {

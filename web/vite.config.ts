@@ -17,15 +17,38 @@ const backend = process.env.SUPERMIXER_DEV_BACKEND ?? 'http://localhost:8080'
  * appearance.default_theme. Do the same in dev, reading the repo-root
  * .env.toml (or $SUPERMIXER_CONFIG), with the same environment override.
  */
-function devDefaultTheme(): string {
-  const override = process.env.SUPERMIXER_APPEARANCE_DEFAULT_THEME
-  if (override) return override
+type DevConfig = { appearance?: { default_theme?: string }; server?: { dev_web_url?: string } }
+
+function devConfig(): DevConfig {
   const path = process.env.SUPERMIXER_CONFIG ?? fileURLToPath(new URL('../.env.toml', import.meta.url))
   try {
-    const cfg = parse(readFileSync(path, 'utf8')) as { appearance?: { default_theme?: string } }
-    return cfg.appearance?.default_theme ?? 'dark'
+    return parse(readFileSync(path, 'utf8')) as DevConfig
   } catch {
-    return 'dark'
+    return {}
+  }
+}
+
+function devDefaultTheme(): string {
+  // || : an empty override falls back to the config, as an unset one does.
+  return process.env.SUPERMIXER_APPEARANCE_DEFAULT_THEME || devConfig().appearance?.default_theme || 'dark'
+}
+
+/**
+ * With server.dev_web_url set, the Go server sends pages to that address, so
+ * Vite must be exactly there: its port, and no moving to another if it's
+ * taken (strictPort), or links would open whatever else is on that port.
+ */
+function devPort(): { port: number; strictPort: boolean } {
+  const fallback = { port: 5173, strictPort: false }
+  const value = process.env.SUPERMIXER_SERVER_DEV_WEB_URL || devConfig().server?.dev_web_url
+  if (!value) return fallback
+  try {
+    const url = new URL(value)
+    const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80))
+    return Number.isInteger(port) && port > 0 ? { port, strictPort: true } : fallback
+  } catch {
+    // The Go server refuses a malformed value with a clear message.
+    return fallback
   }
 }
 
@@ -51,7 +74,7 @@ export default defineConfig({
     alias: { '@': fileURLToPath(new URL('./src', import.meta.url)) },
   },
   server: {
-    port: 5173,
+    ...devPort(),
     proxy: {
       // ws: the Realtime Inspector's socket goes through the gateway too.
       '/api': { target: backend, ws: true },

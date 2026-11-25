@@ -144,6 +144,35 @@ func TestSPA(t *testing.T) {
 	}
 }
 
+// With server.dev_web_url (development), pages go to the Vite dev server,
+// keeping their path and query; the API, /theme.css and /favicon.svg don't.
+func TestSPADevWebURL(t *testing.T) {
+	p, _ := theme.Derive("#0019A8")
+	cfg := lightConfig()
+	cfg.Server.DevWebURL = "http://localhost:5173/"
+	h := New(Deps{Config: cfg, DB: fakeDB{}, Palette: p, Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), WebUI: builtUI})
+
+	rec := get(t, h, "/sign-up?token=abc")
+	if rec.Code != http.StatusTemporaryRedirect || rec.Header().Get("Location") != "http://localhost:5173/sign-up?token=abc" {
+		t.Fatalf("page: %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	if rec := get(t, h, "/"); rec.Header().Get("Location") != "http://localhost:5173/" {
+		t.Errorf("home: %d %q", rec.Code, rec.Header().Get("Location"))
+	}
+	for _, path := range []string{"/api/v1/health", "/theme.css", "/favicon.svg"} {
+		if rec := get(t, h, path); rec.Code == http.StatusTemporaryRedirect {
+			t.Errorf("%s was sent to the dev server", path)
+		}
+	}
+	// Unknown paths Vite proxies here are a 404, not a redirect back to
+	// Vite (which would proxy them here again, forever).
+	for _, path := range []string{"/api/health", "/api/v2/x", "/apifoo", "/v1x", "/theme.css.map", "/favicon.svg2"} {
+		if rec := get(t, h, path); rec.Code != http.StatusNotFound {
+			t.Errorf("%s = %d %q, want 404", path, rec.Code, rec.Header().Get("Location"))
+		}
+	}
+}
+
 func TestSPANotBuilt(t *testing.T) {
 	rec := get(t, newTestServer(t, fakeDB{}, fstest.MapFS{}), "/")
 	if !strings.Contains(rec.Body.String(), "web UI has not been built") {

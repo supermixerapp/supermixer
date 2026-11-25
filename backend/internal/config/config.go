@@ -148,6 +148,11 @@ type Server struct {
 	// TrustProxy takes client IPs from X-Forwarded-For / X-Real-IP. Enable
 	// only behind a reverse proxy that sets them.
 	TrustProxy bool `toml:"trust_proxy"`
+	// DevWebURL, for development only, is the Vite dev server (make dev).
+	// Pages asked of this server go there instead, so links built from
+	// public_url (emails, single sign-on) open the web app being worked on,
+	// not the copy built into the binary. The API stays here.
+	DevWebURL string `toml:"dev_web_url"`
 }
 
 type Log struct {
@@ -474,6 +479,13 @@ func (c *Config) validate() error {
 	if u, err := url.Parse(c.Server.PublicURL); err != nil || u.Scheme == "" || u.Host == "" {
 		fail("server.public_url must be an absolute URL, got %q", c.Server.PublicURL)
 	}
+	if d := c.Server.DevWebURL; d != "" {
+		if u, err := url.Parse(d); err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" || strings.Trim(u.Path, "/") != "" || u.RawQuery != "" {
+			fail("server.dev_web_url must be the Vite dev server's address, like http://localhost:5173, got %q", d)
+		} else if pu, err := url.Parse(c.Server.PublicURL); (err == nil && sameOrigin(u, pu)) || listensOn(u, c.Server.Listen) {
+			fail("server.dev_web_url is this server's own address; set it to the Vite dev server's, like http://localhost:5173")
+		}
+	}
 	if _, err := c.SlogLevel(); err != nil {
 		errs = append(errs, err)
 	}
@@ -702,4 +714,29 @@ func (c *Config) SlogLevel() (slog.Level, error) {
 		return 0, fmt.Errorf("log.level must be debug, info, warn or error, got %q", c.Log.Level)
 	}
 	return l, nil
+}
+
+// hostPort is a URL's host and port, with the scheme's default port.
+func hostPort(u *url.URL) (string, string) {
+	port := u.Port()
+	if port == "" {
+		port = map[string]string{"http": "80", "https": "443"}[u.Scheme]
+	}
+	return strings.ToLower(u.Hostname()), port
+}
+
+func sameOrigin(a, b *url.URL) bool {
+	ah, ap := hostPort(a)
+	bh, bp := hostPort(b)
+	return a.Scheme == b.Scheme && ah == bh && ap == bp
+}
+
+// listensOn reports whether u is this machine at the port listen binds.
+func listensOn(u *url.URL, listen string) bool {
+	host, port := hostPort(u)
+	_, lport, err := net.SplitHostPort(listen)
+	if err != nil || port != lport {
+		return false
+	}
+	return host == "localhost" || host == "127.0.0.1" || host == "::1"
 }

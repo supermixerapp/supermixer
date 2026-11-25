@@ -188,7 +188,7 @@ func New(deps Deps) http.Handler {
 		r.Head(path, h)
 	}
 
-	r.NotFound(newSPAHandler(deps.WebUI, deps.Config.Appearance.DefaultTheme).ServeHTTP)
+	r.NotFound(newSPAHandler(deps.WebUI, deps.Config.Appearance.DefaultTheme, deps.Config.Server.DevWebURL).ServeHTTP)
 	return r
 }
 
