@@ -184,7 +184,16 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await visitor.goto('/sign-in')
     await expect(visitor.getByText('No account yet? Ask your Supermixer admin')).toBeVisible()
     await visitor.goto('/sign-up')
-    await expect(visitor.getByText("You can't create your own account on this Supermixer")).toBeVisible()
+    // With make sso, Dex makes accounts (create_users), so it's offered
+    // there, without the email form; otherwise the page says it's closed.
+    const ui = await (await page.request.get('/api/v1/ui-config')).json()
+    const creating = ui.sso_providers.filter((p: { creates_accounts: boolean }) => p.creates_accounts)
+    if (creating.length > 0) {
+      await expect(visitor.getByRole('link', { name: `Continue with ${creating[0].name}` })).toBeVisible()
+      await expect(visitor.getByLabel('Email')).toHaveCount(0)
+    } else {
+      await expect(visitor.getByText("You can't create your own account on this Supermixer")).toBeVisible()
+    }
     await visitor.close()
   })
 
