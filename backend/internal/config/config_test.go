@@ -329,8 +329,10 @@ func TestGitHubProviders(t *testing.T) {
 	if p.GitHubURL != "https://github.com" || strings.Join(p.Scopes, ",") != "user:email" {
 		t.Fatalf("defaults = %+v", p)
 	}
-	if c, err := load("type = \"github\"\ngithub_url = \"https://github.example.com/\""); err != nil || c.SSO.Providers[0].GitHubURL != "https://github.example.com" {
-		t.Fatalf("enterprise: %v %+v", err, c.SSO.Providers)
+	if c, err := load("type = \"github\"\ngithub_url = \"https://github.example.com/\""); err != nil {
+		t.Fatalf("enterprise: %v", err)
+	} else if got := c.SSO.Providers[0].GitHubURL; got != "https://github.example.com" {
+		t.Fatalf("enterprise github_url = %q", got)
 	}
 	if c, err := load(`issuer = "https://idp.example.com"`); err != nil || c.SSO.Providers[0].Type != "oidc" {
 		t.Fatalf("oidc default: %v", err)

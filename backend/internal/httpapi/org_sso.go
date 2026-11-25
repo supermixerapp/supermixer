@@ -95,6 +95,11 @@ func (h *handlers) UpdateOrganizationSso(ctx context.Context, req api.UpdateOrga
 					params.SsoJoinDomains = append(params.SsoJoinDomains, d)
 				}
 			}
+			// Anyone can have a GitHub account: without domains, everyone
+			// signing in with GitHub would join.
+			if sp.isGitHub() && len(params.SsoJoinDomains) == 0 {
+				return nil, badRequest("anyone can sign in with %s, so list the email domains whose people join", sp.cfg.Name)
+			}
 		}
 	} else if b.Required || b.JoinRole != nil {
 		return nil, badRequest("choose a sign-in provider first")
@@ -123,8 +128,13 @@ func (h *handlers) ssoAutoJoin(ctx context.Context, u db.User, provider, email s
 		h.deps.Logger.ErrorContext(ctx, "single sign-on: listing organizations to join", "err", err)
 		return
 	}
+	github := h.sso[provider] != nil && h.sso[provider].isGitHub()
 	for _, o := range orgs {
 		if len(o.SsoJoinDomains) > 0 && !emailInDomains(email, o.SsoJoinDomains) {
+			continue
+		}
+		// Settings saved before GitHub needed domains: never everyone.
+		if github && len(o.SsoJoinDomains) == 0 {
 			continue
 		}
 		n, err := q.AddMember(ctx, db.AddMemberParams{OrganizationID: o.ID, UserID: u.ID, Role: o.SsoJoinRole.OrgRole})

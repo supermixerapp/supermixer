@@ -241,6 +241,12 @@ func (h *handlers) signUpLink(ctx context.Context, token string) (db.SignUp, sig
 	if !domainAllowed(row.Email, s.AllowedDomains) {
 		return row, s, errDomainNotAllowed(s.AllowedDomains)
 	}
+	// It got an account another way since (GitHub, an admin, an invitation).
+	if _, err := q.GetUserByEmail(ctx, row.Email); err == nil {
+		return row, s, newError(http.StatusGone, "%s already has an account; sign in with it instead", row.Email)
+	} else if !errors.Is(err, pgx.ErrNoRows) {
+		return row, s, err
+	}
 	return row, s, nil
 }
 

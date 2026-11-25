@@ -156,8 +156,25 @@ func TestGitHubSignIn(t *testing.T) {
 	}
 	mailer.waitFor(t, "boss@example.com", "New Supermixer account: octocat")
 
+	// An organization can let people join by signing in with GitHub, but only
+	// from listed domains: anyone can have a GitHub account.
+	admin.must(201, "POST", "/organizations", map[string]string{"name": "Gh Org"}, nil)
+	joinBy := func(domains ...string) int {
+		if domains == nil {
+			domains = []string{}
+		}
+		return admin.do("PUT", "/organizations/gh-org/sso", map[string]any{"provider": "github", "required": false, "join_role": "developer", "join_domains": domains}, nil)
+	}
+	if s := joinBy(); s != 400 {
+		t.Fatalf("joining through GitHub without domains = %d, want 400", s)
+	}
+	if s := joinBy("example.com"); s != 200 {
+		t.Fatalf("joining through GitHub for example.com = %d", s)
+	}
+
 	// The next time, the same account, though the username and address changed
-	// on GitHub: it's the user ID that counts.
+	// on GitHub: it's the user ID that counts. Its address is at example.com,
+	// so it joins Gh Org.
 	gh.as(githubUser{ID: 583231, Login: "octocat-renamed"}, githubEmail{Email: "new@example.com", Primary: true, Verified: true})
 	again := env.client(t)
 	again.sso(start)
@@ -165,6 +182,15 @@ func TestGitHubSignIn(t *testing.T) {
 	again.must(200, "GET", "/profile", nil, &me2)
 	if me2.ID != me.ID {
 		t.Fatal("a different account the second time")
+	}
+	var orgs []struct{ Slug, Role string }
+	again.must(200, "GET", "/organizations", nil, &orgs)
+	joined := false
+	for _, o := range orgs {
+		joined = joined || (o.Slug == "gh-org" && o.Role == "developer")
+	}
+	if !joined {
+		t.Fatalf("didn't join Gh Org: %+v", orgs)
 	}
 
 	// No verified address, an address outside the allowed domains, or one
@@ -199,6 +225,13 @@ func TestGitHubSignIn(t *testing.T) {
 	}
 	w.must(401, "GET", "/profile", nil, nil)
 	mailer.waitFor(t, "boss@example.com", "Waiting for approval: waits")
+	// Another GitHub account with the waiting account's address is told it's
+	// waiting, not to sign in with a password it can't use yet.
+	gh.as(githubUser{ID: 7, Login: "waits-too"}, githubEmail{Email: "waits@anywhere.org", Primary: true, Verified: true})
+	if msg := failure(env.client(t).sso(start)); !strings.Contains(msg, "waiting for an instance admin's approval") {
+		t.Fatalf("an address that's waiting: %q", msg)
+	}
+	gh.as(githubUser{ID: 6, Login: "waits"}, githubEmail{Email: "waits@anywhere.org", Primary: true, Verified: true})
 	var users []struct {
 		ID              string `json:"id"`
 		Username        string `json:"username"`

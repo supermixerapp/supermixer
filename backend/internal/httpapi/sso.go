@@ -502,6 +502,10 @@ func (h *handlers) signUpThroughProvider(ctx context.Context, p *ssoProvider, su
 	if !h.signUpOpen(s) {
 		return db.User{}, badRequest("No Supermixer account is connected to this %s account. Sign in with your password and connect it under Account › Security, or ask an instance admin for an account.", p.cfg.Name)
 	}
+	// The same limit as the email sign-up form's.
+	if err := h.attemptSignUp(ctx); err != nil {
+		return db.User{}, err
+	}
 	if email == "" {
 		return db.User{}, badRequest("%s didn't share a verified email address. Verify one on %s, then try again.", p.cfg.Name, p.cfg.Name)
 	}
@@ -525,7 +529,11 @@ func (h *handlers) signUpThroughProvider(ctx context.Context, p *ssoProvider, su
 func (h *handlers) newSSOUser(ctx context.Context, p *ssoProvider, subject, email string, claims ssoClaims, waiting bool) (db.User, error) {
 	q := h.deps.Store.Queries
 	if email != "" {
-		if _, err := q.GetUserByEmail(ctx, email); err == nil {
+		if existing, err := q.GetUserByEmail(ctx, email); err == nil {
+			// It can't sign in yet to connect anything.
+			if existing.WaitingApproval {
+				return db.User{}, errApprovalPending
+			}
 			return db.User{}, badRequest("An account with %s already exists. Sign in with its password and connect %s under Account › Security.", email, p.cfg.Name)
 		}
 	}
@@ -635,7 +643,6 @@ func (h *handlers) DeleteIdentity(ctx context.Context, req api.DeleteIdentityReq
 	return api.DeleteIdentity204Response{}, nil
 }
 
-// ssoList is the providers for the sign-in page, in configuration order.
 // ssoList is the instance's providers, for "Continue with" buttons.
 // signUpOpen is whether Instance › Sign-up is open, which is whether GitHub
 // makes accounts.

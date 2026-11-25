@@ -5,7 +5,7 @@
  * or waits for an instance admin's approval.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect, useNavigate } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { AuthLayout } from '@/components/layout/auth-layout'
@@ -23,6 +23,12 @@ export const Route = createFileRoute('/sign-up')({
   validateSearch: (search: Record<string, unknown>) => ({
     token: typeof search.token === 'string' ? search.token : undefined,
   }),
+  // Signed in already: creating an account here would replace that session
+  // without a word, so go on as sign-in does.
+  beforeLoad: async ({ context }) => {
+    const profile = await context.queryClient.fetchQuery(profileQuery).catch(() => undefined)
+    if (profile) throw redirect({ to: '/dashboard' })
+  },
   component: SignUpPage,
 })
 
@@ -67,6 +73,17 @@ function AskForLink() {
   })
   // Providers that make an account for someone new (GitHub, while sign-up is on).
   const providers = ui?.sso_providers.filter((p) => p.creates_accounts) ?? []
+  if (!ui) {
+    return (
+      <div aria-busy="true">
+        <div className="mb-10">
+          <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Create your account</h1>
+          <Skeleton className="h-4 w-64" />
+        </div>
+        <Skeleton className="h-36" />
+      </div>
+    )
+  }
   if (ui && !ui.sign_up_enabled && providers.length === 0) {
     return (
       <>

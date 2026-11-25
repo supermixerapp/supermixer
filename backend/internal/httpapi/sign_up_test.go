@@ -194,8 +194,16 @@ func TestSignUp(t *testing.T) {
 	}
 	late.must(429, "POST", "/auth/sign-up", map[string]string{"email": "d@example.com"}, nil)
 
+	// A link for an address that has since got an account (here, from an
+	// admin) says so, rather than offering a form that can't work.
+	aToken := signUpLink("a@example.com")
+	admin.must(201, "POST", "/admin/users", map[string]any{"username": "alpha", "password": "alpha-long-password", "email": "a@example.com", "require_password_change": false}, nil)
+	if st := late.do("GET", "/auth/sign-up/"+aToken, nil, &refused); st != 410 || !strings.Contains(refused.Message, "already has an account") {
+		t.Fatalf("link for an address with an account: %d %+v", st, refused)
+	}
+
 	admin.must(200, "PUT", "/admin/sign-up", settings{Enabled: false, AllowedDomains: []string{}, NotifyAdmins: true}, nil)
-	late.must(404, "GET", "/auth/sign-up/"+signUpLink("a@example.com"), nil, nil)
+	late.must(404, "GET", "/auth/sign-up/"+signUpLink("b@example.com"), nil, nil)
 
 	// The bot got nothing; no admin email once they were turned off.
 	time.Sleep(100 * time.Millisecond)
