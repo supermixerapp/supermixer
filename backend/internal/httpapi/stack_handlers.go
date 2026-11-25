@@ -319,7 +319,11 @@ func (h *handlers) allocatePorts(ctx context.Context, pv config.Provisioning) (p
 			}
 		}
 	}
-	ports, err := provision.AllocatePorts(ranges[0], ranges[1], ranges[2], taken, provision.ListenFree)
+	free := h.deps.PortFree
+	if free == nil {
+		free = provision.ListenFree
+	}
+	ports, err := provision.AllocatePorts(ranges[0], ranges[1], ranges[2], taken, free)
 	if errors.Is(err, provision.ErrNoPorts) {
 		return provision.Ports{}, newError(http.StatusConflict, "%v; widen the provisioning port ranges", err)
 	}

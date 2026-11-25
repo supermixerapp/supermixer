@@ -62,6 +62,10 @@ type Deps struct {
 	// Background, if set, runs periodic work (recovering stuck stack
 	// operations) until it's cancelled.
 	Background context.Context
+	// PortFree reports whether nothing on this machine listens on a port,
+	// for picking a new stack's ports; provision.ListenFree if nil. Tests
+	// replace it so they don't depend on what runs on the machine.
+	PortFree func(port int) bool
 }
 
 // New builds the root handler.

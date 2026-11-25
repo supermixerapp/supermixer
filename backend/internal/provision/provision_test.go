@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"maps"
 	"math/big"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -899,5 +900,20 @@ func TestEnsureRouterPatch(t *testing.T) {
 	}
 	if b, _ := os.ReadFile(path); string(b) != "Deno.serve(() => new Response('mine'))" {
 		t.Error("a router changed by hand was rewritten")
+	}
+}
+
+func TestListenFree(t *testing.T) {
+	l, err := net.Listen("tcp", ":0")
+	if err != nil {
+		t.Skip("can't listen here:", err)
+	}
+	port := l.Addr().(*net.TCPAddr).Port
+	if ListenFree(port) {
+		t.Errorf("port %d is in use but ListenFree says it's free", port)
+	}
+	_ = l.Close()
+	if !ListenFree(port) {
+		t.Errorf("port %d was closed but ListenFree says it's in use", port)
 	}
 }

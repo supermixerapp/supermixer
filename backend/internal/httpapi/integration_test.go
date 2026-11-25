@@ -138,7 +138,10 @@ func newTestEnvDeps(t *testing.T, dbURL string, configure func(*config.Config), 
 	box, _ := secrets.New(testKey)
 	palette, _ := theme.Derive("#0019A8")
 	// Another server on the same database takes over background work quickly.
-	deps := Deps{Config: cfg, DB: st, Store: st, Box: box, Palette: palette, Logger: logger, LeaderRetry: 50 * time.Millisecond}
+	// Ports count as free whatever runs on this machine (a developer's own
+	// stacks), so the ports tests expect don't depend on it.
+	deps := Deps{Config: cfg, DB: st, Store: st, Box: box, Palette: palette, Logger: logger, LeaderRetry: 50 * time.Millisecond,
+		PortFree: func(int) bool { return true }}
 	if withDeps != nil {
 		withDeps(&deps)
 	}
