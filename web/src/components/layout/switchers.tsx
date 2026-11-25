@@ -70,59 +70,63 @@ export function OrganizationSwitcher() {
   const selected = useSelectedOrganization()
   if (!selected) return null
 
+  // The dialog sits beside the switcher, not in its popover: choosing "New
+  // organization" closes the popover, which would take the dialog with it.
   return (
-    <SwitcherShell
-      href={`/org/${selected.slug}`}
-      label={selected.name}
-      leading={<ProjectsIcon size={14} className="text-foreground-lighter" />}
-      ariaLabel="Show organizations"
-      open={open}
-      onOpenChange={setOpen}
-    >
-      <Command>
-        <CommandInput placeholder="Find organization..." />
-        <CommandList>
-          <CommandEmpty>No organizations found</CommandEmpty>
-          <CommandGroup>
-            {orgs.map((org) => (
+    <>
+      <SwitcherShell
+        href={`/org/${selected.slug}`}
+        label={selected.name}
+        leading={<ProjectsIcon size={14} className="text-foreground-lighter" />}
+        ariaLabel="Show organizations"
+        open={open}
+        onOpenChange={setOpen}
+      >
+        <Command>
+          <CommandInput placeholder="Find organization..." />
+          <CommandList>
+            <CommandEmpty>No organizations found</CommandEmpty>
+            <CommandGroup>
+              {orgs.map((org) => (
+                <CommandItem
+                  key={org.slug}
+                  value={`${org.name} ${org.slug}`}
+                  onSelect={() => {
+                    setOpen(false)
+                    void navigate({ to: '/org/$slug', params: { slug: org.slug } })
+                  }}
+                  className="justify-between"
+                >
+                  <span className="truncate">{org.name}</span>
+                  {org.slug === selected.slug && <CheckIcon size={16} />}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+            <CommandSeparator />
+            <CommandGroup>
               <CommandItem
-                key={org.slug}
-                value={`${org.name} ${org.slug}`}
                 onSelect={() => {
                   setOpen(false)
-                  void navigate({ to: '/org/$slug', params: { slug: org.slug } })
+                  void navigate({ to: '/organizations' })
                 }}
-                className="justify-between"
               >
-                <span className="truncate">{org.name}</span>
-                {org.slug === selected.slug && <CheckIcon size={16} />}
+                All Organizations
               </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandSeparator />
-          <CommandGroup>
-            <CommandItem
-              onSelect={() => {
-                setOpen(false)
-                void navigate({ to: '/organizations' })
-              }}
-            >
-              All Organizations
-            </CommandItem>
-            <CommandItem
-              onSelect={() => {
-                setOpen(false)
-                setCreating(true)
-              }}
-            >
-              <AddIcon size={14} />
-              New organization
-            </CommandItem>
-          </CommandGroup>
-        </CommandList>
-      </Command>
+              <CommandItem
+                onSelect={() => {
+                  setOpen(false)
+                  setCreating(true)
+                }}
+              >
+                <AddIcon size={14} />
+                New organization
+              </CommandItem>
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </SwitcherShell>
       <NewOrganizationDialog open={creating} onOpenChange={setCreating} />
-    </SwitcherShell>
+    </>
   )
 }
 

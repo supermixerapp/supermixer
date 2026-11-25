@@ -163,6 +163,17 @@ test('the first admin sets up an organization, a project and a Read-only member'
   })
 
   let invite = ''
+  await test.step('New organization from the breadcrumb switcher opens its dialog', async () => {
+    await page.goto(`/org/${slug}`)
+    await page.getByRole('button', { name: 'Show organizations' }).click()
+    await page.getByRole('option', { name: 'New organization' }).click()
+    // Right away, without reopening the switcher (it used to vanish with it).
+    const dialog = page.getByRole('dialog', { name: 'Create a new organization' })
+    await expect(dialog).toBeVisible({ timeout: 2000 })
+    await page.keyboard.press('Escape')
+    await expect(dialog).toBeHidden()
+  })
+
   await test.step('sign-up stays closed without email', async () => {
     // This Supermixer can't send email, so sign-up can't be turned on.
     await page.goto('/admin/sign-up')
