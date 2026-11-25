@@ -458,7 +458,11 @@ test('the first admin sets up an organization, a project and a Read-only member'
       const signedOut = await fresh.newPage()
       await signedOut.goto('/sign-in')
       await expect(signedOut.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
-      await expect(signedOut).toHaveScreenshot(`sign-in-${theme}${sso}.png`, shot)
+      // The greeting is picked at random, so it's masked.
+      await expect(signedOut).toHaveScreenshot(`sign-in-${theme}${sso}.png`, {
+        ...shot,
+        mask: [signedOut.getByRole('heading', { level: 1 })],
+      })
       await signedOut.goto('/')
       await expect(signedOut.getByRole('heading', { name: /All your Supabase projects/ })).toBeVisible()
       await expect(signedOut).toHaveScreenshot(`home-${theme}.png`, shot)

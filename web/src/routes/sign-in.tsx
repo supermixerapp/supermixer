@@ -28,6 +28,19 @@ export const Route = createFileRoute('/sign-in')({
   component: SignInPage,
 })
 
+// "Welcome back" in a few languages, one picked at random on each visit.
+// All written in Latin letters, so anyone can read them; lang tells screen
+// readers how to say them.
+const GREETINGS = [
+  { text: 'Welcome back!', language: 'English', lang: 'en' },
+  { text: 'Bon retour !', language: 'French', lang: 'fr' },
+  { text: 'Willkommen zurück!', language: 'German', lang: 'de' },
+  { text: '¡Bienvenido de nuevo!', language: 'Spanish', lang: 'es' },
+  { text: 'Okaerinasai!', language: 'Japanese', lang: 'ja-Latn' },
+  { text: 'Namaste!', language: 'Hindi', lang: 'hi-Latn' },
+  { text: 'Ahlan wa sahlan!', language: 'Arabic', lang: 'ar-Latn' },
+]
+
 function SignInPage() {
   const { redirect: target, sso_error: ssoError, mfa } = Route.useSearch()
   const providers = useQuery(uiConfigQuery).data?.sso_providers ?? []
@@ -37,6 +50,8 @@ function SignInPage() {
   const [password, setPassword] = useState('')
   const emailOn = useQuery(uiConfigQuery).data?.email_enabled
   const signUpOn = useQuery(uiConfigQuery).data?.sign_up_enabled
+  // Chosen once per visit, so it doesn't change while they type.
+  const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
   // Set when the account has two-factor sign-in: the password was right.
   const [challenge, setChallenge] = useState<Schemas['MfaChallenge'] | null>(null)
 
@@ -82,7 +97,9 @@ function SignInPage() {
   return (
     <AuthLayout>
       <div className="mb-10">
-        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Welcome back</h1>
+        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl" lang={greeting.lang} title={`Welcome back, in ${greeting.language}`}>
+          {greeting.text}
+        </h1>
         <h2 className="font-sans text-sm font-normal text-foreground-light">Sign in to your account</h2>
       </div>
       {ssoError && <Alert variant="destructive" title={ssoError} className="mb-4" />}
