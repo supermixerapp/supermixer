@@ -154,7 +154,7 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
 
       <StackUpgrade projectRef={projectRef} stack={s} allowed={allowed} />
 
-      <StudioLogin project={project} />
+      <StudioLogin project={project} studio={s.studio_state ?? null} stackRunning={s.status === 'running'} />
 
       <SettingsSection
         title="Containers"
@@ -246,15 +246,45 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
+const STUDIO_BADGE = {
+  running: { label: 'Running', variant: 'success' },
+  stopped: { label: 'Stopped', variant: 'default' },
+  disabled: { label: 'Disabled', variant: 'default' },
+} as const
+
 /** Studio sits behind basic auth with a login Supermixer generated. */
-function StudioLogin({ project }: { project: Schemas['Project'] }) {
+function StudioLogin({
+  project,
+  studio,
+  stackRunning,
+}: {
+  project: Schemas['Project']
+  studio: Schemas['StackDetail']['studio_state']
+  stackRunning: boolean
+}) {
   const canReveal = can(project, 'project:secrets:read')
   const reveal = useMutation({
     mutationFn: () => unwrap(api.POST('/projects/{ref}/studio-login', { params: { path: { ref: project.ref } } })),
   })
   return (
-    <SettingsSection title="Studio" description="Supabase Studio for this stack, at its API URL. It asks for this login.">
+    <SettingsSection
+      title="Studio"
+      description={
+        studio === 'disabled' ? (
+          <>
+            Supabase Studio is off on this server. To run it in stacks Supermixer creates, set{' '}
+            <code className="text-xs">studio = true</code> under <code className="text-xs">[provisioning]</code> and
+            restart Supermixer.
+          </>
+        ) : (
+          'Supabase Studio for this stack, at its API URL. It asks for this login.'
+        )
+      }
+    >
       <Card className="flex flex-col divide-y text-sm">
+        {/* Without Studio there's nothing to open or sign in to. */}
+        {project.stack?.studio !== false && (
+          <>
         <Row label="URL">
           <CopyField value={project.studio_url} />
         </Row>
@@ -280,6 +310,19 @@ function StudioLogin({ project }: { project: Schemas['Project'] }) {
             </span>
           )}
         </Row>
+          </>
+        )}
+        {studio && (
+          <div className="flex items-center justify-end gap-2 px-5 py-3">
+            <Badge
+              // Stopped while the stack runs is worth noticing; with the stack paused, it's expected.
+              variant={studio === 'stopped' && stackRunning ? 'warning' : STUDIO_BADGE[studio].variant}
+              aria-label={`Studio: ${STUDIO_BADGE[studio].label}`}
+            >
+              {STUDIO_BADGE[studio].label}
+            </Badge>
+          </div>
+        )}
       </Card>
       {reveal.error && <Alert variant="destructive" title={reveal.error.message} />}
     </SettingsSection>

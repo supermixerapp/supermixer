@@ -540,7 +540,7 @@ func RefreshOverlay(stackDir string) error {
 	if err := ensureRouterPatch(stackDir, FunctionsAdminAccessOf(env)); err != nil {
 		return err
 	}
-	o, err := renderOverlay(stackDir)
+	o, err := renderOverlay(stackDir, StudioOf(env))
 	if err != nil {
 		return err
 	}

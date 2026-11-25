@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"supermixer/internal/api"
@@ -43,6 +44,9 @@ type handlers struct {
 	auditWritten wakeup
 	// webhookHTTP POSTs organizations' webhooks.
 	webhookHTTP *http.Client
+	// composeOK is set once Docker Compose is known to be new enough for
+	// stacks without Studio (checkCompose).
+	composeOK atomic.Bool
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)

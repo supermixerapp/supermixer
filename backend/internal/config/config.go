@@ -221,6 +221,11 @@ type Projects struct {
 // root-equivalent on the host.
 type Provisioning struct {
 	Enabled bool `toml:"enabled"`
+	// Studio runs Supabase Studio in the stacks Supermixer creates: the
+	// password-protected dashboard at each stack's API address. Off by
+	// default, as Supermixer is the dashboard; Supermixer applies a change
+	// to every running stack it created when it next starts.
+	Studio bool `toml:"studio"`
 	// StacksDir holds one folder per stack. Compose resolves the stacks' bind
 	// mounts on the Docker host, so when Supermixer runs in a container this
 	// folder must be mounted at the same path inside it.

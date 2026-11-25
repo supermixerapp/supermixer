@@ -86,8 +86,20 @@ func (h *handlers) stackOf(p db.Project) *api.Stack {
 	}
 	return &api.Stack{
 		Status: api.StackStatus(p.StackStatus.StackStatus), Error: p.StackError, StatusAt: p.StackStatusAt,
-		Template: p.StackTemplate, Operation: h.stacks.current(p.Ref),
+		Template: p.StackTemplate, Operation: h.stacks.current(p.Ref), Studio: h.runsStudio(p.Ref),
 	}
+}
+
+// runsStudio reports whether a stack runs Supabase Studio, as its .env
+// records it. Stacks from before provisioning.studio have no entry, and
+// run it.
+func (h *handlers) runsStudio(ref string) bool {
+	env, err := provision.ReadEnv(h.stackLayout(ref).Dir)
+	if err != nil {
+		return true
+	}
+	v, ok := env[provision.StudioEnv]
+	return !ok || v == "true"
 }
 
 func (h *handlers) CreateStack(ctx context.Context, req api.CreateStackRequestObject) (api.CreateStackResponseObject, error) {
@@ -248,6 +260,7 @@ func hostPort(host string, port int) string {
 func stackEnv(pv config.Provisioning, ref string, p provision.Ports) map[string]string {
 	public := publicURL(pv, p.API)
 	return map[string]string{
+		provision.StudioEnv:             strconv.FormatBool(pv.Studio),
 		"API_GW_HTTP_PORT":              strconv.Itoa(p.API),
 		"KONG_HTTP_PORT":                strconv.Itoa(p.API),
 		"POSTGRES_PORT":                 strconv.Itoa(p.DB),
@@ -394,13 +407,49 @@ func (h *handlers) upStack(ref string) func(ctx context.Context, log io.Writer) 
 
 // bringUp starts the stack's files as they are.
 func (h *handlers) bringUp(ctx context.Context, ref string, log io.Writer) error {
-	if err := provision.PrepareStack(h.stackLayout(ref).Dir); err != nil {
+	dir := h.stackLayout(ref).Dir
+	studio := h.deps.Config.Provisioning.Studio
+	if !studio {
+		if err := h.checkCompose(ctx); err != nil {
+			return err
+		}
+	}
+	if err := provision.UpdateEnv(dir, map[string]string{provision.StudioEnv: strconv.FormatBool(studio)}); err != nil {
 		return fmt.Errorf("updating the stack's files: %w", err)
 	}
-	if err := h.compose(ref).Up(ctx, log); err != nil {
+	if err := provision.PrepareStack(dir); err != nil {
+		return fmt.Errorf("updating the stack's files: %w", err)
+	}
+	c := h.compose(ref)
+	if err := c.Up(ctx, log); err != nil {
 		return err
 	}
+	// up leaves a Studio container of a stack that ran it running: it's left
+	// out now, not an orphan.
+	if !studio {
+		if err := c.RemoveStudio(ctx, log); err != nil {
+			return fmt.Errorf("removing Supabase Studio: %w", err)
+		}
+	}
 	return h.ensureFunctionsRole(ctx, ref, log)
+}
+
+// checkCompose refuses a Docker Compose too old for stacks without Studio,
+// whose overlay needs !reset. A version it can't read isn't refused: the
+// compose command itself then says what's wrong.
+func (h *handlers) checkCompose(ctx context.Context) error {
+	if h.composeOK.Load() {
+		return nil
+	}
+	v, err := provision.ComposeVersion(ctx, h.deps.Config.Provisioning.Docker)
+	if err != nil {
+		return nil
+	}
+	if !provision.ComposeAtLeast(v, provision.MinCompose) {
+		return fmt.Errorf("docker compose %s is too old: stacks without Supabase Studio need %s or later. Upgrade Docker Compose, or set studio = true under [provisioning]", v, provision.MinCompose)
+	}
+	h.composeOK.Store(true)
+	return nil
 }
 
 func dirExists(path string) bool {
@@ -625,7 +674,7 @@ func (h *handlers) stackDetail(ctx context.Context, p db.Project) (api.StackDeta
 	if s == nil {
 		return api.StackDetail{}, newError(http.StatusNotFound, "this project is a stack Supermixer connects to, not one it created")
 	}
-	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template}
+	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio}
 	if s.Operation != nil {
 		op := api.StackDetailOperation(*s.Operation)
 		out.Operation = &op
@@ -634,6 +683,11 @@ func (h *handlers) stackDetail(ctx context.Context, p db.Project) (api.StackDeta
 		out.Ports.Api, out.Ports.Db, out.Ports.Pooler = int(*p.StackApiPort), int(*p.StackDbPort), int(*p.StackPoolerPort)
 	}
 	out.Log = tailFile(filepath.Join(h.stackLayout(p.Ref).Dir, stackLogName), 200)
+	studioOn := s.Studio
+	if !studioOn {
+		disabled := api.StackDetailStudioStateDisabled
+		out.StudioState = &disabled
+	}
 
 	if !h.deps.Config.Provisioning.Enabled {
 		msg := "provisioning is off on this server, so Supermixer doesn't ask Docker about the stack"
@@ -654,9 +708,19 @@ func (h *handlers) stackDetail(ctx context.Context, p db.Project) (api.StackDeta
 		State   string `json:"state"`
 		Status  string `json:"status"`
 	}, len(services))
+	studio := api.StackDetailStudioStateStopped
+	if !studioOn {
+		studio = api.StackDetailStudioStateDisabled
+	}
 	for i, sv := range services {
 		list[i].Service, list[i].State, list[i].Health, list[i].Status = sv.Service, sv.State, sv.Health, sv.Status
+		// A Studio container running is reported as running, even if it
+		// should be off: that's what's there.
+		if sv.Service == "studio" && sv.State == "running" {
+			studio = api.StackDetailStudioStateRunning
+		}
 	}
+	out.StudioState = &studio
 	out.Services = &list
 	return out, nil
 }

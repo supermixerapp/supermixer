@@ -68,7 +68,8 @@ func (c Compose) Up(ctx context.Context, log io.Writer) error {
 
 // Stop stops the containers, keeping them and their data (pause).
 func (c Compose) Stop(ctx context.Context, log io.Writer) error {
-	return c.Run(ctx, log, "stop")
+	// With Studio's profile, so a Studio left running while it's off stops too.
+	return c.Run(ctx, log, "--profile", "studio", "stop")
 }
 
 // Restart restarts every service.
@@ -78,7 +79,9 @@ func (c Compose) Restart(ctx context.Context, log io.Writer) error {
 
 // Down removes the containers, networks and volumes: the stack's data.
 func (c Compose) Down(ctx context.Context, log io.Writer) error {
-	return c.Run(ctx, log, "down", "--volumes", "--remove-orphans")
+	// With Studio's profile: a container of a service left out by its profile
+	// isn't an orphan, and would keep its volume and network in use.
+	return c.Run(ctx, log, "--profile", "studio", "down", "--volumes", "--remove-orphans")
 }
 
 // Service is one container, as docker compose ps reports it.
@@ -93,7 +96,8 @@ type Service struct {
 
 // PS lists the stack's containers, stopped ones too.
 func (c Compose) PS(ctx context.Context) ([]Service, error) {
-	cmd := exec.CommandContext(ctx, c.Docker, c.args("ps", "--all", "--format", "json")...)
+	// With Studio's profile, so a Studio container is listed even when it's off.
+	cmd := exec.CommandContext(ctx, c.Docker, c.args("--profile", "studio", "ps", "--all", "--format", "json")...)
 	cmd.Dir = c.Layout.Dir
 	if len(c.Env) > 0 {
 		cmd.Env = append(cmd.Environ(), c.Env...)
@@ -298,4 +302,81 @@ func RemoveStackDir(ctx context.Context, docker, dir string, log io.Writer) erro
 		return fmt.Errorf("removing %s: %w", dir, err)
 	}
 	return nil
+}
+
+// SetStudio makes a running stack match whether it should run Studio,
+// touching only Studio: it records the choice in the stack's .env, rewrites
+// the overlay, then starts Studio or stops and removes it. Nothing else is
+// restarted. If Docker fails, the stack's files go back to what they said,
+// so the change is tried again.
+func (c Compose) SetStudio(ctx context.Context, log io.Writer, on bool) error {
+	env, err := ReadEnv(c.Layout.Dir)
+	if err != nil {
+		return err
+	}
+	before, had := env[StudioEnv]
+	if !had {
+		before = "true" // stacks from before the setting run Studio
+	}
+	err = UpdateEnv(c.Layout.Dir, map[string]string{StudioEnv: strconv.FormatBool(on)})
+	if err == nil {
+		err = RefreshOverlay(c.Layout.Dir)
+	}
+	if err == nil && on {
+		err = c.Run(ctx, log, "up", "--detach", "--no-deps", "studio")
+	} else if err == nil {
+		err = c.RemoveStudio(ctx, log)
+	}
+	if err != nil {
+		_ = UpdateEnv(c.Layout.Dir, map[string]string{StudioEnv: before})
+		_ = RefreshOverlay(c.Layout.Dir)
+	}
+	return err
+}
+
+// RemoveStudio stops and removes Studio's container, if there is one.
+// Named with its profile, so Compose finds it though it's left out.
+func (c Compose) RemoveStudio(ctx context.Context, log io.Writer) error {
+	return c.Run(ctx, log, "--profile", "studio", "rm", "--stop", "--force", "studio")
+}
+
+// StudioRunning reports whether a Studio container exists, and whether it's
+// running.
+func StudioRunning(services []Service) (exists, running bool) {
+	for _, s := range services {
+		if s.Service == "studio" {
+			exists = true
+			running = running || s.State == "running"
+		}
+	}
+	return exists, running
+}
+
+// MinCompose is the oldest Docker Compose that can run a stack without
+// Studio: its overlay resets the gateway's dependency on it with !reset.
+const MinCompose = "2.24"
+
+// ComposeVersion is the docker compose plugin's version, such as 2.29.1.
+func ComposeVersion(ctx context.Context, docker string) (string, error) {
+	out, err := exec.CommandContext(ctx, docker, "compose", "version", "--short").Output()
+	if err != nil {
+		return "", fmt.Errorf("docker compose version: %w", err)
+	}
+	return strings.TrimPrefix(strings.TrimSpace(string(out)), "v"), nil
+}
+
+// ComposeAtLeast reports whether version is min or later (major.minor).
+func ComposeAtLeast(version, min string) bool {
+	num := func(v string) (int, int) {
+		parts := strings.SplitN(v, ".", 3)
+		major, _ := strconv.Atoi(parts[0])
+		minor := 0
+		if len(parts) > 1 {
+			minor, _ = strconv.Atoi(strings.TrimFunc(parts[1], func(r rune) bool { return r < '0' || r > '9' }))
+		}
+		return major, minor
+	}
+	a, b := num(version)
+	x, y := num(min)
+	return a > x || (a == x && b >= y)
 }

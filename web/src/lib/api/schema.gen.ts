@@ -2079,6 +2079,8 @@ export interface components {
              * @enum {string|null}
              */
             operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | "upgrading" | "rotating_keys" | null;
+            /** @description Whether the stack runs Supabase Studio (provisioning.studio, as last applied to it). */
+            studio: boolean;
         };
         EdgeFunction: {
             name: string;
@@ -2418,6 +2420,11 @@ export interface components {
                 status: string;
             }[] | null;
             services_error?: string | null;
+            /**
+             * @description Supabase Studio in this stack: running; stopped (it's on, but its container isn't running, as when the stack is paused); or disabled (provisioning.studio is off). Null when Docker couldn't be asked and Studio is on.
+             * @enum {string|null}
+             */
+            studio_state?: "running" | "stopped" | "disabled" | null;
             /** @description The end of Supermixer's log of docker compose output for this stack. */
             log: string;
         };

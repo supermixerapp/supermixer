@@ -265,6 +265,7 @@ func (h *handlers) backgroundWork(ctx context.Context) {
 		go func() { defer wg.Done(); f(ctx) }()
 	}
 	run(h.watchStacks)
+	run(h.applyStudio)
 	run(h.backupLoop)
 	if h.s3 != nil {
 		run(h.uploadLoop)

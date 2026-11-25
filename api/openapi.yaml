@@ -2337,7 +2337,7 @@ components:
       enum: [provisioning, running, paused, failed, deleting]
     Stack:
       type: object
-      required: [status, error, template]
+      required: [status, error, template, studio]
       description: Set on projects Supermixer created; null for connected ones.
       properties:
         status: { $ref: "#/components/schemas/StackStatus" }
@@ -2349,6 +2349,9 @@ components:
           enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring, upgrading, rotating_keys]
           nullable: true
           description: What Supermixer is doing to the stack right now.
+        studio:
+          type: boolean
+          description: Whether the stack runs Supabase Studio (provisioning.studio, as last applied to it).
     EdgeFunction:
       type: object
       required: [name, url, updated_at, files, size, entrypoint]
@@ -2742,6 +2745,14 @@ components:
                   health: { type: string }
                   status: { type: string }
             services_error: { type: string, nullable: true }
+            studio_state:
+              type: string
+              enum: [running, stopped, disabled]
+              nullable: true
+              description: >-
+                Supabase Studio in this stack: running; stopped (it's on, but its container isn't running, as when the
+                stack is paused); or disabled (provisioning.studio is off). Null when Docker couldn't be asked and
+                Studio is on.
             log: { type: string, description: The end of Supermixer's log of docker compose output for this stack. }
 
     SignInRequest:

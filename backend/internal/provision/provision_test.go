@@ -807,7 +807,8 @@ func TestAuthConfigAsComposeResolvesIt(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	cmd := exec.Command("docker", "compose", "config", "--format", "json")
+	// With Studio's profile: it's off by default, and auth-templates uses its image.
+	cmd := exec.Command("docker", "compose", "--profile", "studio", "config", "--format", "json")
 	cmd.Dir = dir
 	out, err := cmd.Output()
 	if err != nil {

@@ -60,7 +60,7 @@ services:
   studio:
     volumes:
       - studio-snippets:/app/snippets
-  functions:
+{{STUDIO_OFF}}  functions:
     env_file:
       - ./functions.env
     environment:
@@ -390,8 +390,25 @@ const templateServer = `const h=require('http'),f=require('fs'),p=require('path'
 	`f.readFile(p.join('/templates',n),(e,b)=>{if(e){r.writeHead(404);return r.end()}` +
 	`r.writeHead(200,{'content-type':'text/html; charset=utf-8'});r.end(b)})}).listen(8080)`
 
-// renderOverlay is the overlay for a stack, with its Studio image.
-func renderOverlay(stackDir string) (string, error) {
+// studioOff, in the overlay of a stack without Studio: Studio only starts if
+// asked for by name (its profile), and the gateway, which waits for it in
+// Supabase's compose file, doesn't (!reset needs Compose 2.24 or later).
+// The gateway's routes to Studio then answer 503.
+const studioOff = `    profiles: ["studio"]
+  api-gw:
+    depends_on: !reset []
+`
+
+// StudioEnv is the stack .env setting that says whether it runs Studio
+// (provisioning.studio, applied by Supermixer); missing means it doesn't.
+const StudioEnv = "SUPERMIXER_STUDIO"
+
+// StudioOf reports whether a stack runs Studio, from its .env.
+func StudioOf(env map[string]string) bool { return env[StudioEnv] == "true" }
+
+// renderOverlay is the overlay for a stack, with its Studio image, and
+// Studio left out unless studio.
+func renderOverlay(stackDir string, studio bool) (string, error) {
 	image, err := serviceImage(stackDir, "studio")
 	if err != nil {
 		// A hand-edited compose file: use the bundled template's Studio image.
@@ -406,8 +423,12 @@ func renderOverlay(stackDir string) (string, error) {
 	for _, p := range OAuthProviders {
 		env.WriteString("      GOTRUE_EXTERNAL_" + strings.ToUpper(p) + "_REDIRECT_URI: ${API_EXTERNAL_URL}/callback\n")
 	}
+	off := studioOff
+	if studio {
+		off = ""
+	}
 	return strings.NewReplacer("{{STUDIO_IMAGE}}", image, "{{TEMPLATE_SERVER}}", string(server),
-		"{{AUTH_ENVIRONMENT}}\n", env.String()).Replace(overlay), nil
+		"{{AUTH_ENVIRONMENT}}\n", env.String(), "{{STUDIO_OFF}}", off).Replace(overlay), nil
 }
 
 // serviceImage is a service's image, from the stack's compose file.

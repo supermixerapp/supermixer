@@ -45,7 +45,8 @@ function ProjectOverview() {
         description={project.api_url}
         size="large"
         actions={
-          project.studio_url && (
+          // Not for a stack Supermixer created without Studio: it would answer 503.
+          project.studio_url && project.stack?.studio !== false && (
               <Button asChild variant="default" iconRight={<ExternalLinkIcon />}>
                 <a href={project.studio_url} target="_blank" rel="noreferrer">
                   Open Studio

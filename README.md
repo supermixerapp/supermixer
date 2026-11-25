@@ -44,6 +44,34 @@ make stack   # starts a self-hosted Supabase on :8100 (first run downloads ~3 GB
 
 Then use **New project** in Supermixer. **Fill from Supabase .env** fills the form from the stack's pasted `.env` (Supabase's own file, not Supermixer's `.env.toml`); for this stack that's `deploy/dev-stacks/.stack/.env`.
 
+## Installation
+
+To run Supermixer on a server with Docker:
+
+1. **Configure it.** `make env` writes `.env.toml` from `.env.example.toml` with a fresh encryption key. Set at least `server.public_url` (the address people reach Supermixer at), and `[email]` to send invitations and sign-up links. Every setting is explained in `.env.example.toml`.
+2. **Start it.** `make app` runs Supermixer and its Postgres in containers, on port 8080. Use `make app-stacks` instead if Supermixer should create Supabase stacks itself (see [Creating stacks](#creating-stacks)); that needs Docker Compose 2.24 or later on the server.
+3. **Sign in** as `admin`, with the one-time password Supermixer prints in its log on first start. You choose a new password before anything else.
+
+After changing `.env.toml`, restart Supermixer for it to take effect: `docker compose -f deploy/docker-compose.yml restart supermixer`. For several replicas or Kubernetes, see [Running in production](#running-in-production).
+
+### Supabase Studio in created stacks
+
+Stacks that Supermixer creates don't run Supabase Studio, Supabase's own dashboard, since Supermixer is the dashboard. Leaving it out saves about 250 MB of memory per stack.
+
+To turn Studio on, set this in `.env.toml` and restart Supermixer:
+
+```toml
+[provisioning]
+studio = true
+```
+
+To turn it off again, set `studio = false` (or remove the line) and restart.
+
+- **When it applies:** as Supermixer starts, it goes through every running stack it created and starts or removes Studio's container, one stack at a time. Nothing else in the stack restarts, so projects stay up. Stopped stacks follow the setting the next time they start, and new stacks are created with it. Stacks you connected yourself aren't touched.
+- **Signing in to Studio:** open the stack's API address (its project URL) in a browser. Studio is behind the stack's dashboard password: `DASHBOARD_USERNAME` and `DASHBOARD_PASSWORD` in the stack's `.env`, at `<stacks_dir>/<project ref>/.env`.
+- **With Studio off,** that address answers 503 after the dashboard password, where Studio would be, and Supermixer hides the project's **Open Studio** button and the Studio login. The API (`/rest/v1`, `/auth/v1` and so on) works either way. **Settings › Infrastructure** shows whether Studio is running, stopped or disabled.
+- **Leaving Studio out needs Docker Compose 2.24 or later.** With an older one, Supermixer refuses to start stacks and says so; upgrade Docker Compose, or turn Studio on.
+
 ## Common tasks
 
 | Command | What it does |
@@ -188,6 +216,7 @@ public_host = "supabase.example.internal"   # the host name in stacks' URLs
 - Running Supermixer in a container: create `stacks_dir` and `backups_dir` owned by your user first (`sudo install -d -o $(id -u) -g $(id -g) -m 700 /var/lib/supermixer/stacks /var/lib/supermixer/backups`), then `make app-stacks`. It mounts the Docker socket, and both folders at the same paths inside the container (Compose resolves the stacks' bind mounts on the host).
 - Backups are Supabase-style dumps of each stack's database (roles, schema, data), taken every `backup_interval` and on demand; Storage files aren't included. To keep copies off the server, set `[provisioning.backup_s3]` (AWS S3, MinIO, Cloudflare R2 or another S3-compatible bucket): each backup is uploaded once it's taken, and with `keep_local = false` it then lives only in the bucket. Otherwise, back `backups_dir` up off the server yourself.
 - Run one Supermixer server per metadata database when provisioning: operations on a stack are coordinated within a server. (A stuck create or delete is still noticed across servers: a running operation keeps its status fresh, and one left untouched for three minutes is marked failed.)
+- Created stacks don't run Supabase Studio unless you turn it on: see [Supabase Studio in created stacks](#supabase-studio-in-created-stacks).
 - Each stack takes one port from each of `api_ports`, `db_ports` and `pooler_ports`; widen them for more stacks.
 - To update the bundled Supabase version, run `backend/internal/provision/sync-template.sh <commit>`, then the tests, and create a stack before committing.
 

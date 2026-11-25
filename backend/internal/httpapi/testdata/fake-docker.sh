@@ -22,7 +22,7 @@ if [ "$1" = "compose" ]; then
   shift
   while [ $# -gt 0 ]; do
     case "$1" in
-      --project-name|--project-directory|--file) shift 2 ;;
+      --project-name|--project-directory|--file|--profile) shift 2 ;;
       *) break ;;
     esac
   done
@@ -38,7 +38,11 @@ if [ "$1" = "compose" ]; then
     exit 1
   fi
   case "$cmd" in
-    ps) echo '{"Service":"db","Name":"x-db-1","State":"running","Health":"healthy","Status":"Up 1 minute (healthy)"}' ;;
+    version) echo "${FAKE_COMPOSE_VERSION-2.29.1}" ;;
+    ps)
+      echo '{"Service":"db","Name":"x-db-1","State":"running","Health":"healthy","Status":"Up 1 minute (healthy)"}'
+      [ -n "${FAKE_STUDIO_STATE-}" ] && echo '{"Service":"studio","Name":"x-studio-1","State":"'"$FAKE_STUDIO_STATE"'","Health":"","Status":"x"}'
+      ;;
     exec)
       # Stand in for the db container: its version, a dump, or a restore reading SQL.
       case "$*" in
