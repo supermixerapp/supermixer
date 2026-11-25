@@ -30,6 +30,7 @@ import { Route as AppAdminLimitsRouteImport } from './routes/_app/admin.limits'
 import { Route as AppAdminNoticeRouteImport } from './routes/_app/admin.notice'
 import { Route as AppAdminSignUpRouteImport } from './routes/_app/admin.sign-up'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
+import { Route as AppDocsApiRouteImport } from './routes/_app/docs.api'
 import { Route as AppNewSlugRouteImport } from './routes/_app/new.$slug'
 import { Route as AppOrgSlugRouteImport } from './routes/_app/org.$slug'
 import { Route as AppProjectRefRouteImport } from './routes/_app/project.$ref'
@@ -210,6 +211,11 @@ const AppAdminSignUpRoute = AppAdminSignUpRouteImport.update({
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
   id: '/admin/users',
   path: '/admin/users',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppDocsApiRoute = AppDocsApiRouteImport.update({
+  id: '/docs/api',
+  path: '/docs/api',
   getParentRoute: () => AppRoute,
 } as any)
 const AppNewSlugRoute = AppNewSlugRouteImport.update({
@@ -671,6 +677,7 @@ export interface FileRoutesByFullPath {
   '/admin/notice': typeof AppAdminNoticeRoute
   '/admin/sign-up': typeof AppAdminSignUpRoute
   '/admin/users': typeof AppAdminUsersRoute
+  '/docs/api': typeof AppDocsApiRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/org/$slug': typeof AppOrgSlugRouteWithChildren
   '/project/$ref': typeof AppProjectRefRouteWithChildren
@@ -770,6 +777,7 @@ export interface FileRoutesByTo {
   '/admin/notice': typeof AppAdminNoticeRoute
   '/admin/sign-up': typeof AppAdminSignUpRoute
   '/admin/users': typeof AppAdminUsersRoute
+  '/docs/api': typeof AppDocsApiRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/admin': typeof AppAdminIndexRoute
   '/org/$slug/$': typeof AppOrgSlugSplatRoute
@@ -867,6 +875,7 @@ export interface FileRoutesById {
   '/_app/admin/notice': typeof AppAdminNoticeRoute
   '/_app/admin/sign-up': typeof AppAdminSignUpRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
+  '/_app/docs/api': typeof AppDocsApiRoute
   '/_app/new/$slug': typeof AppNewSlugRoute
   '/_app/org/$slug': typeof AppOrgSlugRouteWithChildren
   '/_app/project/$ref': typeof AppProjectRefRouteWithChildren
@@ -968,6 +977,7 @@ export interface FileRouteTypes {
     | '/admin/notice'
     | '/admin/sign-up'
     | '/admin/users'
+    | '/docs/api'
     | '/new/$slug'
     | '/org/$slug'
     | '/project/$ref'
@@ -1067,6 +1077,7 @@ export interface FileRouteTypes {
     | '/admin/notice'
     | '/admin/sign-up'
     | '/admin/users'
+    | '/docs/api'
     | '/new/$slug'
     | '/admin'
     | '/org/$slug/$'
@@ -1163,6 +1174,7 @@ export interface FileRouteTypes {
     | '/_app/admin/notice'
     | '/_app/admin/sign-up'
     | '/_app/admin/users'
+    | '/_app/docs/api'
     | '/_app/new/$slug'
     | '/_app/org/$slug'
     | '/_app/project/$ref'
@@ -1401,6 +1413,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/users'
       fullPath: '/admin/users'
       preLoaderRoute: typeof AppAdminUsersRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/docs/api': {
+      id: '/_app/docs/api'
+      path: '/docs/api'
+      fullPath: '/docs/api'
+      preLoaderRoute: typeof AppDocsApiRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/new/$slug': {
@@ -2154,6 +2173,7 @@ interface AppRouteChildren {
   AppAdminNoticeRoute: typeof AppAdminNoticeRoute
   AppAdminSignUpRoute: typeof AppAdminSignUpRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
+  AppDocsApiRoute: typeof AppDocsApiRoute
   AppNewSlugRoute: typeof AppNewSlugRoute
   AppOrgSlugRoute: typeof AppOrgSlugRouteWithChildren
   AppProjectRefRoute: typeof AppProjectRefRouteWithChildren
@@ -2173,6 +2193,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminNoticeRoute: AppAdminNoticeRoute,
   AppAdminSignUpRoute: AppAdminSignUpRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
+  AppDocsApiRoute: AppDocsApiRoute,
   AppNewSlugRoute: AppNewSlugRoute,
   AppOrgSlugRoute: AppOrgSlugRouteWithChildren,
   AppProjectRefRoute: AppProjectRefRouteWithChildren,

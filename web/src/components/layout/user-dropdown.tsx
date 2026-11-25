@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate } from '@tanstack/react-router'
 
-import { AccountIcon, LogoutIcon, ManageAccountsIcon, TuneIcon } from '@/components/icons'
+import { AccountIcon, ApiIcon, LogoutIcon, ManageAccountsIcon, TuneIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -68,6 +68,12 @@ export function UserDropdown() {
               </Link>
             </DropdownMenuItem>
           )}
+          <DropdownMenuItem asChild>
+            <Link to="/docs/api">
+              <ApiIcon size={14} className="text-foreground-lighter" />
+              API endpoints
+            </Link>
+          </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Theme</DropdownMenuLabel>

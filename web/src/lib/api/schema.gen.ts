@@ -189,6 +189,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Change your name, email or theme */
         patch: operations["updateProfile"];
         trace?: never;
     };
@@ -304,6 +305,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Your signed-in sessions */
         get: operations["listSessions"];
         put?: never;
         post?: never;
@@ -323,6 +325,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** Sign one session out */
         delete: operations["revokeSession"];
         options?: never;
         head?: never;
@@ -449,8 +452,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** List accounts */
         get: operations["listUsers"];
         put?: never;
+        /** Create an account */
         post: operations["createUser"];
         delete?: never;
         options?: never;
@@ -471,6 +476,7 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
+        /** Change an account: disable or enable it, its email, or whether it's an instance admin */
         patch: operations["updateUser"];
         trace?: never;
     };
@@ -697,6 +703,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
+        /** Your organizations */
         get: operations["listOrganizations"];
         put?: never;
         /** Create an organization; you become its Owner */
@@ -716,6 +723,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** One organization */
         get: operations["getOrganization"];
         put?: never;
         post?: never;
@@ -723,6 +731,7 @@ export interface paths {
         delete: operations["deleteOrganization"];
         options?: never;
         head?: never;
+        /** Rename an organization or change its settings */
         patch: operations["updateOrganization"];
         trace?: never;
     };
@@ -735,6 +744,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** Members and their roles */
         get: operations["listMembers"];
         put?: never;
         post?: never;
@@ -849,6 +859,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** Delete a webhook */
         delete: operations["deleteWebhook"];
         options?: never;
         head?: never;
@@ -928,6 +939,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** Pending invitations */
         get: operations["listInvitations"];
         put?: never;
         /** Create an invitation link (valid 7 days) */
@@ -951,6 +963,7 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** Cancel an invitation */
         delete: operations["revokeInvitation"];
         options?: never;
         head?: never;
@@ -1102,6 +1115,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** One project */
         get: operations["getProject"];
         put?: never;
         post?: never;
@@ -1141,6 +1155,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** Health of each of the stack's services */
         get: operations["getProjectHealth"];
         put?: never;
         post?: never;
@@ -1874,6 +1889,7 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** The organization's audit log */
         get: operations["listAuditLogs"];
         put?: never;
         post?: never;
@@ -1944,6 +1960,7 @@ export interface paths {
         /** Your snippets and the ones shared with the project. */
         get: operations["listSnippets"];
         put?: never;
+        /** Save a SQL snippet */
         post: operations["createSnippet"];
         delete?: never;
         options?: never;
@@ -1961,12 +1978,15 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** One saved SQL snippet */
         get: operations["getSnippet"];
         put?: never;
         post?: never;
+        /** Delete a saved SQL snippet */
         delete: operations["deleteSnippet"];
         options?: never;
         head?: never;
+        /** Change a saved SQL snippet */
         patch: operations["updateSnippet"];
         trace?: never;
     };

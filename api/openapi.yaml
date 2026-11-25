@@ -32,6 +32,12 @@ tags:
   - name: Audit
   - name: Database
     description: SQL on a project's database, and saved snippets.
+  - name: Advisors
+    description: The database linter, and snapshots of what could keep an intruder in.
+  - name: Backups
+    description: Database backups of stacks Supermixer created.
+  - name: Edge Functions
+    description: Edge Functions of stacks Supermixer created, their versions, settings and secrets.
 paths:
   # ---------------------------------------------------------------- System
   /health:
@@ -245,6 +251,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     patch:
       operationId: updateProfile
+      summary: "Change your name, email or theme"
       tags: [Profile]
       requestBody:
         required: true
@@ -351,6 +358,7 @@ paths:
   /profile/sessions:
     get:
       operationId: listSessions
+      summary: "Your signed-in sessions"
       tags: [Profile]
       responses:
         "200":
@@ -364,6 +372,7 @@ paths:
   /profile/sessions/{session_id}:
     delete:
       operationId: revokeSession
+      summary: "Sign one session out"
       tags: [Profile]
       parameters:
         - { name: session_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -477,6 +486,7 @@ paths:
   /admin/users:
     get:
       operationId: listUsers
+      summary: "List accounts"
       tags: [Users]
       responses:
         "200":
@@ -489,6 +499,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     post:
       operationId: createUser
+      summary: "Create an account"
       tags: [Users]
       requestBody:
         required: true
@@ -505,6 +516,7 @@ paths:
   /admin/users/{user_id}:
     patch:
       operationId: updateUser
+      summary: "Change an account: disable or enable it, its email, or whether it's an instance admin"
       tags: [Users]
       parameters:
         - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
@@ -732,6 +744,7 @@ paths:
   /organizations:
     get:
       operationId: listOrganizations
+      summary: "Your organizations"
       tags: [Organizations]
       responses:
         "200":
@@ -763,6 +776,7 @@ paths:
       - { $ref: "#/components/parameters/Slug" }
     get:
       operationId: getOrganization
+      summary: "One organization"
       tags: [Organizations]
       responses:
         "200":
@@ -773,6 +787,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     patch:
       operationId: updateOrganization
+      summary: "Rename an organization or change its settings"
       tags: [Organizations]
       requestBody:
         required: true
@@ -800,6 +815,7 @@ paths:
       - { $ref: "#/components/parameters/Slug" }
     get:
       operationId: listMembers
+      summary: "Members and their roles"
       tags: [Members]
       responses:
         "200":
@@ -963,6 +979,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     delete:
       operationId: deleteWebhook
+      summary: "Delete a webhook"
       tags: [Webhooks]
       responses:
         "204": { description: Deleted. }
@@ -1019,6 +1036,7 @@ paths:
       - { $ref: "#/components/parameters/Slug" }
     get:
       operationId: listInvitations
+      summary: "Pending invitations"
       tags: [Invitations]
       responses:
         "200":
@@ -1051,6 +1069,7 @@ paths:
       - { name: invitation_id, in: path, required: true, schema: { type: string, format: uuid } }
     delete:
       operationId: revokeInvitation
+      summary: "Cancel an invitation"
       tags: [Invitations]
       responses:
         "204": { description: Revoked. }
@@ -1192,6 +1211,7 @@ paths:
       - { $ref: "#/components/parameters/Ref" }
     get:
       operationId: getProject
+      summary: "One project"
       tags: [Projects]
       responses:
         "200":
@@ -1247,6 +1267,7 @@ paths:
       - { $ref: "#/components/parameters/Ref" }
     get:
       operationId: getProjectHealth
+      summary: "Health of each of the stack's services"
       tags: [Projects]
       responses:
         "200":
@@ -2071,6 +2092,7 @@ paths:
       - { $ref: "#/components/parameters/Slug" }
     get:
       operationId: listAuditLogs
+      summary: "The organization's audit log"
       tags: [Audit]
       parameters:
         - { name: action, in: query, required: false, description: Action prefix, e.g. "project." , schema: { type: string } }
@@ -2164,6 +2186,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     post:
       operationId: createSnippet
+      summary: "Save a SQL snippet"
       tags: [Database]
       requestBody:
         required: true
@@ -2184,6 +2207,7 @@ paths:
       - { name: snippet_id, in: path, required: true, schema: { type: string, format: uuid } }
     get:
       operationId: getSnippet
+      summary: "One saved SQL snippet"
       tags: [Database]
       responses:
         "200":
@@ -2194,6 +2218,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     patch:
       operationId: updateSnippet
+      summary: "Change a saved SQL snippet"
       tags: [Database]
       requestBody:
         required: true
@@ -2209,6 +2234,7 @@ paths:
         default: { $ref: "#/components/responses/Error" }
     delete:
       operationId: deleteSnippet
+      summary: "Delete a saved SQL snippet"
       tags: [Database]
       responses:
         "204": { description: Deleted. }

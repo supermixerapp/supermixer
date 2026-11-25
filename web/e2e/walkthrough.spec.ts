@@ -462,6 +462,19 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(page.getByText('No sign-in providers on this instance').or(page.getByLabel('Provider'))).toBeVisible()
   })
 
+  await test.step('the user menu leads to the API endpoints, listed from the live spec', async () => {
+    await page.getByRole('button', { name: 'Account menu' }).click()
+    await page.getByRole('menuitem', { name: 'API endpoints' }).click()
+    await expect(page).toHaveURL(/\/docs\/api$/)
+    await expect(page.getByRole('heading', { name: 'API endpoints', level: 1 })).toBeVisible()
+    // From the spec, so new endpoints appear by themselves; and the hand-written ones.
+    await expect(page.getByRole('cell', { name: '/projects/{ref}/stack/logs', exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: '/v1/projects/{ref}/pause', exact: true })).toBeVisible()
+    await page.getByPlaceholder('Search endpoints').fill('backups restore')
+    await expect(page.getByRole('cell', { name: '/projects/{ref}/backups/{id}/restore', exact: true })).toBeVisible()
+    await expect(page.getByRole('cell', { name: '/projects/{ref}/stack/logs', exact: true })).toHaveCount(0)
+  })
+
   await test.step('key pages look as before, light and dark', async () => {
     // Strict enough to notice a new button; renders on one machine match exactly.
     const shot = { fullPage: true, maxDiffPixels: 100 }
