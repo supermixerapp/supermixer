@@ -1,5 +1,5 @@
 -- +goose Up
--- Stage 5.1: an account that must choose a new password before doing
+-- An account that must choose a new password before doing
 -- anything else: the bootstrap admin, accounts an instance admin creates,
 -- and passwords an instance admin resets (each can opt out).
 ALTER TABLE users ADD COLUMN password_change_required boolean NOT NULL DEFAULT false;

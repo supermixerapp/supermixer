@@ -1,5 +1,5 @@
 -- +goose Up
--- Stage 5.6: audit log drains.
+-- Audit log drains.
 --
 -- Entries are read in the order of the transaction that wrote them (txid,
 -- then id), and only once every transaction that could still add an

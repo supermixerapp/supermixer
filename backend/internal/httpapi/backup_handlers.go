@@ -22,7 +22,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Database backups of stacks Supermixer created (Stage 4.4): Supabase-style
+// Database backups of stacks Supermixer created: Supabase-style
 // (database only, as Supabase's own backups)
 // dumps (see provision/backup.go), taken on a schedule or on demand, and
 // restored into the same project or a new one.

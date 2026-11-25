@@ -1,5 +1,5 @@
 /*
- * Auth settings of stacks Supermixer created (Stage 4.3): one kit for every
+ * Auth settings of stacks Supermixer created: one kit for every
  * Authentication › Configuration page. Each section edits a few settings and
  * saves only the ones that changed; Auth restarts after a save.
  */

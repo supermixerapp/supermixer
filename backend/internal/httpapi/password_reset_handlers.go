@@ -16,7 +16,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// "Forgot your password?" (Stage 5.3): a link by email that works once, for
+// "Forgot your password?": a link by email that works once, for
 // an hour. Accounts with two-factor sign-in need a code as well, so the
 // email account alone isn't enough to take them over.
 

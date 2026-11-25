@@ -20,7 +20,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Audit log drains (Stage 5.6): entries go to each drain in order, at
+// Audit log drains: entries go to each drain in order, at
 // least once. A drain's position (audit_drains.last_txid, last_id) moves
 // only after a batch is delivered, so restarts and outages resume where
 // they stopped.

@@ -1,5 +1,5 @@
 /*
- * Settings › Log Drains for stacks Supermixer created (Stage 4.5): extra
+ * Settings › Log Drains for stacks Supermixer created: extra
  * destinations for the stack's logs, as Vector sinks.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'

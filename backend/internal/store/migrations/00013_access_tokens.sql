@@ -1,5 +1,5 @@
 -- +goose Up
--- Stage 5.4: personal access tokens, for scripts and CI. A token acts as
+-- Personal access tokens, for scripts and CI. A token acts as
 -- its owner; only its SHA-256 is kept.
 CREATE TABLE access_tokens (
     id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),

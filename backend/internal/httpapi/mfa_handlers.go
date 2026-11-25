@@ -18,7 +18,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Two-factor sign-in (Stage 5.2): an authenticator app's codes (TOTP) and
+// Two-factor sign-in: an authenticator app's codes (TOTP) and
 // single-use recovery codes. Signing in takes the password, then a code:
 // the password step returns a short-lived challenge, sealed with the
 // instance key, and only a right code turns it into a session.

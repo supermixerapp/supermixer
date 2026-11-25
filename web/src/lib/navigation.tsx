@@ -3,8 +3,8 @@
  * (NavigationBar.utils.tsx) and product menus (DatabaseMenu.utils.tsx,
  * AuthLayout.utils.ts, SettingsMenu.utils.tsx, …) as of 2026-11.
  *
- * `stage` marks when a page gets implemented.
- * Pages whose stage is later than the current one render a placeholder.
+ * `stage` marks when a page is built. Pages whose stage is later than the
+ * current one show a "Coming soon" placeholder.
  */
 import {
   AdvisorsIcon,

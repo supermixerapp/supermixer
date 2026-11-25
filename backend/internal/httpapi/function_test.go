@@ -44,7 +44,7 @@ func TestEdgeFunctionsOfCreatedStacks(t *testing.T) {
 	notStackSecrets := map[string]bool{"OPENAI_API_KEY": true, "CERTBOT_EMAIL": true, "PROXY_DOMAIN": true}
 	placeholder := regexp.MustCompile(`(?i)your-|insecure|secret1234|supabaserealtime|^eyJ|fake_`)
 	for k, example := range provision.ExampleEnv() {
-		// SMTP_* configure an outside mail server (Auth settings, Stage 4.3).
+		// SMTP_* configure an outside mail server (Auth settings).
 		if notStackSecrets[k] || strings.HasPrefix(k, "SMTP_") || example == "" {
 			continue
 		}

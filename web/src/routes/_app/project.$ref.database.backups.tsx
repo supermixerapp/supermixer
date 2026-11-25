@@ -1,5 +1,5 @@
 /*
- * Database › Backups for stacks Supermixer created (Stage 4.4): Supabase-style
+ * Database › Backups for stacks Supermixer created: Supabase-style
  * dumps (roles, schema, data) on Supermixer's server, and copied to an S3
  * bucket when one is set up, taken on a schedule or on demand, restored into
  * this project or a new one.

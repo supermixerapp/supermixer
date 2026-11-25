@@ -1,5 +1,5 @@
 -- +goose Up
--- Database backups of stacks Supermixer created (Stage 4.4): Supabase-style
+-- Database backups of stacks Supermixer created: Supabase-style
 -- dumps in provisioning.backups_dir/<ref>/<id>/.
 CREATE TYPE backup_kind AS ENUM ('scheduled', 'manual', 'pre_restore');
 CREATE TYPE backup_status AS ENUM ('running', 'completed', 'failed');

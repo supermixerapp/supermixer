@@ -16,7 +16,7 @@ import (
 	"strings"
 )
 
-// Log drains (Stage 4.5) send a stack's logs somewhere else as well, as
+// Log drains send a stack's logs somewhere else as well, as
 // Supabase's Log Drains do. Its logs already flow through Vector (to
 // Logflare); each drain adds a Vector sink, in a second config file
 // (volumes/logs/drains/drains.yml) the overlay passes to Vector. The drains

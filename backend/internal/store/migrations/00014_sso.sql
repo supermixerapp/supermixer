@@ -1,5 +1,5 @@
 -- +goose Up
--- Stage 5.5: single sign-on. An identity is an account at an OIDC provider
+-- Single sign-on. An identity is an account at an OIDC provider
 -- (its issuer's subject) connected to a Supermixer user.
 CREATE TABLE user_identities (
     id              uuid PRIMARY KEY DEFAULT gen_random_uuid(),

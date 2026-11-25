@@ -16,8 +16,8 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Upgrading a stack Supermixer created to the Supabase version it bundles
-// (Stage 4.5); see provision/upgrade.go.
+// Upgrading a stack Supermixer created to the Supabase version it bundles;
+// see provision/upgrade.go.
 
 func (h *handlers) GetStackUpgrade(ctx context.Context, req api.GetStackUpgradeRequestObject) (api.GetStackUpgradeResponseObject, error) {
 	_, p, err := h.managedStack(ctx, req.Ref, rbac.ProjectRead, "view this project")

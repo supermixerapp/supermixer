@@ -15,7 +15,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Rotating a created stack's keys (Stage 4.5); see provision/rotate.go.
+// Rotating a created stack's keys; see provision/rotate.go.
 
 func (h *handlers) RotateStackKeys(ctx context.Context, req api.RotateStackKeysRequestObject) (api.RotateStackKeysResponseObject, error) {
 	_, p, err := h.managedStack(ctx, req.Ref, rbac.ProjectUpdate, "rotate this project's keys")

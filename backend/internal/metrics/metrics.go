@@ -1,4 +1,4 @@
-// Package metrics is Supermixer's Prometheus metrics (Stage 5.6), served on
+// Package metrics is Supermixer's Prometheus metrics, served on
 // their own address ([metrics] listen). A nil *Metrics records nothing, so
 // code can call it whether or not metrics are on.
 package metrics

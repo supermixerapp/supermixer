@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-// Rotation is a stack secret that can be replaced (Stage 4.5).
+// Rotation is a stack secret that can be replaced.
 type Rotation string
 
 const (

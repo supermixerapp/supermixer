@@ -13,7 +13,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Personal access tokens (Stage 5.4): for scripts and CI, in
+// Personal access tokens: for scripts and CI, in
 // Authorization: Bearer sbp_…. A token acts as its owner, except that it
 // can't change how the account is secured (see tokenRoute).
 

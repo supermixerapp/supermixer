@@ -13,7 +13,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Emails Supermixer sends (Stage 5.3): each has a plain-text and an HTML
+// Emails Supermixer sends: each has a plain-text and an HTML
 // version from the same content.
 
 type emailContent struct {

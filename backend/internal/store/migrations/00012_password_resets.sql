@@ -1,5 +1,5 @@
 -- +goose Up
--- Stage 5.3: "Forgot your password?" links, sent by email. Each works once,
+-- "Forgot your password?" links, sent by email. Each works once,
 -- for an hour; only the token's hash is kept.
 CREATE TABLE password_resets (
     id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),

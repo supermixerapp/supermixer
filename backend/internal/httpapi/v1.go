@@ -13,7 +13,7 @@ import (
 	"supermixer/internal/api"
 )
 
-// The Supabase-style Management API (Stage 5.4), at /v1 as at
+// The Supabase-style Management API, at /v1 as at
 // api.supabase.com/v1: a subset of its paths and response shapes, for
 // scripts and tools written against Supabase's. Each route calls one of
 // Supermixer's own handlers, so permissions, checks and the audit log are

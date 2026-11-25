@@ -26,7 +26,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Single sign-on through OpenID Connect (Stage 5.5): the authorization code
+// Single sign-on through OpenID Connect: the authorization code
 // flow with PKCE and a nonce; what's needed between the two legs is in a
 // sealed, short-lived cookie. Accounts are never matched by email: an
 // identity (the provider's subject) is connected to an account by its

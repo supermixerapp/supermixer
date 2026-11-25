@@ -11,7 +11,7 @@ import (
 	"supermixer/internal/rbac"
 )
 
-// Auth settings of stacks Supermixer created (Stage 4.3). They're the auth
+// Auth settings of stacks Supermixer created. They're the auth
 // service's environment, so a change recreates that service.
 
 func (h *handlers) authConfigOut(dir string) (api.AuthConfig, error) {

@@ -1,5 +1,5 @@
 -- +goose Up
--- Stage 5.2: two-factor sign-in with an authenticator app (TOTP) and
+-- Two-factor sign-in with an authenticator app (TOTP) and
 -- single-use recovery codes, and organizations that require it.
 ALTER TABLE users
     -- The TOTP secret, encrypted with the instance key (set once confirmed).

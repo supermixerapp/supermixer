@@ -1,6 +1,6 @@
 /*
- * Upgrading a stack Supermixer created to the Supabase version it bundles
- * (Stage 4.5): Settings › Infrastructure.
+ * Upgrading a stack Supermixer created to the Supabase version it bundles:
+ * Settings › Infrastructure.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'

@@ -12,7 +12,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Log drains for stacks Supermixer created (Stage 4.5); see provision/drains.go.
+// Log drains for stacks Supermixer created; see provision/drains.go.
 
 func toDrain(d provision.LogDrain) api.LogDrain {
 	out := api.LogDrain{

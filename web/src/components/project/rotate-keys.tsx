@@ -1,5 +1,5 @@
 /*
- * Rotating a created stack's keys (Stage 4.5): Settings › API Keys.
+ * Rotating a created stack's keys: Settings › API Keys.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'

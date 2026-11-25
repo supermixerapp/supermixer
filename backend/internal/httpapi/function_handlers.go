@@ -17,7 +17,7 @@ import (
 	"supermixer/internal/store/db"
 )
 
-// Edge Functions of stacks Supermixer created (Stage 4.2): their files live
+// Edge Functions of stacks Supermixer created: their files live
 // in the stack's volumes/functions folder, their secrets in functions.env.
 // Changes take effect when the functions service is recreated, which
 // happens at once if the stack is running.
