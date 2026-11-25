@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"net/url"
 	"regexp"
@@ -478,15 +479,57 @@ func usernameBase(preferred, email string) string {
 	return b
 }
 
-// createSSOUser makes an account for someone signing in through a provider
-// for the first time. It has no password until they set one.
+// createSSOUser makes an account for someone new signing in through an
+// OpenID Connect provider with create_users. It has no password until they
+// set one. Instance › Sign-up's on/off switch doesn't apply (a company's own
+// provider can make accounts without opening the email sign-up form), but
+// approval does: the account waits for an instance admin when Instance ›
+// Sign-up requires it, or the provider's require_approval says so. That
+// defaults to true when the provider has no allowed_domains, since then
+// anyone with an account there (Google, say) could get one. A waiting
+// account needs an email address and a Supermixer that can send email, or
+// nobody would hear about it. Admins are told as Instance › Sign-up says.
 func (h *handlers) createSSOUser(ctx context.Context, p *ssoProvider, subject, email string, claims ssoClaims) (db.User, error) {
-	u, err := h.newSSOUser(ctx, p, subject, email, claims, false)
+	s, err := readSignUpSettings(ctx, h.deps.Store.Queries)
+	if err != nil {
+		return db.User{}, err
+	}
+	open := len(p.cfg.AllowedDomains) == 0
+	providerApproval := open
+	if p.cfg.RequireApproval != nil {
+		providerApproval = *p.cfg.RequireApproval
+	}
+	// Anyone can try through an open provider the admin hasn't vouched for:
+	// the same limit as the email sign-up form's, counting accounts made.
+	selfService := open && providerApproval
+	if selfService {
+		if blocked, wait := h.signUpIP.Blocked(reqInfo(ctx).IP); blocked {
+			mins := int(math.Ceil(wait.Minutes()))
+			return db.User{}, newError(http.StatusTooManyRequests, "Too many sign-up requests from here. Try again in %d minute%s.", mins, plural(mins))
+		}
+	}
+	waits := s.RequireApproval || providerApproval
+	if waits && email == "" {
+		return db.User{}, badRequest("%s didn't share a verified email address. New accounts from it wait for an instance admin's approval, and we email you when yours is ready, so it needs one. Ask an instance admin for an account.", p.cfg.Name)
+	}
+	if waits && h.mailer == nil {
+		return db.User{}, badRequest("New accounts from %s wait for an instance admin's approval, but this Supermixer can't send email to tell you or them. Ask an instance admin for an account.", p.cfg.Name)
+	}
+	u, err := h.newSSOUser(ctx, p, subject, email, claims, waits)
 	if err != nil {
 		return u, err
 	}
-	h.audit(ctx, nil, auditEntry{Action: "user.created", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
-		Metadata: map[string]any{"sso": p.cfg.ID}})
+	if selfService {
+		h.signUpIP.Fail(reqInfo(ctx).IP)
+		h.audit(ctx, nil, auditEntry{Action: "user.signed_up", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
+			Metadata: map[string]any{"email": email, "sso": p.cfg.ID, "waiting_approval": u.WaitingApproval}})
+	} else {
+		h.audit(ctx, nil, auditEntry{Action: "user.created", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
+			Metadata: map[string]any{"sso": p.cfg.ID, "waiting_approval": u.WaitingApproval}})
+	}
+	if s.NotifyAdmins {
+		h.tellAdminsAboutSignUp(ctx, u)
+	}
 	return u, nil
 }
 

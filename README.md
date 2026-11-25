@@ -166,11 +166,16 @@ name = "Okta"
 issuer = "https://example.okta.com"
 client_id = "..."
 client_secret_file = "/run/secrets/okta"
-allowed_domains = ["example.com"]   # optional
+allowed_domains = ["example.com"]   # optional, but see below
 create_users = true                 # make accounts for new people; otherwise they connect it first
 ```
 
-Accounts are never matched by email address: people connect a provider to their account under **Account › Security**, or, with `create_users`, get an account when they first sign in. Accounts with two-factor sign-in still enter their code. For local testing, `make sso` runs [Dex](https://dexidp.io); see `deploy/dev-sso/dex.yaml`.
+Accounts are never matched by email address: people connect a provider to their account under **Account › Security**, or, with `create_users`, get an account when they first sign in. That account waits for an instance admin's approval (**Instance › Users**) in two cases:
+
+- **Instance › Sign-up** requires approval.
+- The provider's `require_approval` is true. That's the default when it has no `allowed_domains`, since then anyone with an account there could sign in (Google, say). For a provider only your own people can use, list its domains or set `require_approval = false`, and they get in straight away.
+
+A waiting account needs a verified email address from the provider and `[email]` set up, so the person hears when it's approved; otherwise they're asked to get an account from an instance admin. Instance admins are emailed about new accounts unless that's turned off in **Instance › Sign-up**. Instance › Sign-up's on/off switch doesn't apply here, so a company provider can make accounts without opening the public sign-up form. Accounts with two-factor sign-in still enter their code. For local testing, `make sso` runs [Dex](https://dexidp.io); see `deploy/dev-sso/dex.yaml`.
 
 **GitHub** works too, through an OAuth App (GitHub › Settings › Developer settings › OAuth Apps). It reads only the account's verified email address and its user ID:
 

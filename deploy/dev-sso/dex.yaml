@@ -8,6 +8,7 @@
 #   issuer = "http://localhost:5556/dex"
 #   client_id = "supermixer"
 #   client_secret = "dev-only-secret"
+#   allowed_domains = ["example.test"]   # the users below; otherwise new accounts wait for approval
 #   create_users = true
 #
 # and sign in as ada@example.test (or bea@example.test) with the password

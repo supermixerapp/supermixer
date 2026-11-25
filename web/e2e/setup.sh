@@ -42,6 +42,8 @@ name = "Dex"
 issuer = "http://localhost:5556/dex"
 client_id = "supermixer"
 client_secret = "dev-only-secret"
+# Dex's test users (deploy/dev-sso/dex.yaml); without domains, new accounts would wait for approval.
+allowed_domains = ["example.test"]
 create_users = true
 TOML
   echo "e2e: Dex is running, so single sign-on is set up and tested"

@@ -116,8 +116,16 @@ type SSOProvider struct {
 	AllowedDomains []string `toml:"allowed_domains"`
 	// CreateUsers makes an account for someone signing in for the first
 	// time. Without it, people connect the provider to their account
-	// (Account › Security) first.
+	// (Account › Security) first. The account waits for an instance admin's
+	// approval when Instance › Sign-up requires approval, or RequireApproval
+	// says so.
 	CreateUsers bool `toml:"create_users"`
+	// RequireApproval makes new accounts from this provider wait for an
+	// instance admin's approval. Unset, it's true when AllowedDomains is
+	// empty (anyone with an account there could sign in); set it to false
+	// for a provider only your own people can use, such as your company's
+	// Okta or Entra ID tenant. Only with create_users; not for github.
+	RequireApproval *bool `toml:"require_approval"`
 	// AssumeEmailVerified trusts the email address of a provider that
 	// checks addresses but doesn't send email_verified (Microsoft Entra ID
 	// with only verified domains, for one). Otherwise an address without
@@ -545,6 +553,9 @@ func (c *Config) validate() error {
 			if p.CreateUsers {
 				fail("%s: GitHub sign-ups follow Instance › Sign-up; remove create_users", where)
 			}
+			if p.RequireApproval != nil {
+				fail("%s: GitHub sign-ups follow Instance › Sign-up; remove require_approval", where)
+			}
 			if p.AssumeEmailVerified {
 				fail("%s: assume_email_verified isn't for GitHub, which says which addresses it verified", where)
 			}
@@ -556,6 +567,9 @@ func (c *Config) validate() error {
 		}
 		if p.ClientID == "" {
 			fail("%s.client_id must not be empty", where)
+		}
+		if p.RequireApproval != nil && !p.CreateUsers && p.Type != "github" {
+			fail("%s.require_approval only applies with create_users", where)
 		}
 		if p.ClientSecretFile != "" {
 			if p.ClientSecret != "" {

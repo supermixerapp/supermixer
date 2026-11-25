@@ -337,6 +337,14 @@ func TestGitHubProviders(t *testing.T) {
 	if c, err := load(`issuer = "https://idp.example.com"`); err != nil || c.SSO.Providers[0].Type != "oidc" {
 		t.Fatalf("oidc default: %v", err)
 	}
+	// require_approval: unset unless given, so the default can follow allowed_domains.
+	if c, err := load("issuer = \"https://idp.example.com\"\ncreate_users = true\nrequire_approval = false"); err != nil ||
+		c.SSO.Providers[0].RequireApproval == nil || *c.SSO.Providers[0].RequireApproval {
+		t.Fatalf("require_approval = false: %v", err)
+	}
+	if c, _ := load("issuer = \"https://idp.example.com\"\ncreate_users = true"); c.SSO.Providers[0].RequireApproval != nil {
+		t.Fatal("require_approval set though not given")
+	}
 	for provider, want := range map[string]string{
 		"type = \"github\"\nissuer = \"https://github.com\"":     "has no issuer",
 		"type = \"github\"\ncreate_users = true":                 "follow Instance › Sign-up",
@@ -344,6 +352,8 @@ func TestGitHubProviders(t *testing.T) {
 		"type = \"github\"\ngithub_url = \"github.example.com\"": "github_url must be",
 		"type = \"saml\"": "type must be oidc or github",
 		"issuer = \"https://idp.example.com\"\ngithub_url = \"https://github.com\"": "only for type",
+		"type = \"github\"\nrequire_approval = false":                               "remove require_approval",
+		"issuer = \"https://idp.example.com\"\nrequire_approval = false":            "only applies with create_users",
 	} {
 		if _, err := load(provider); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%q: err = %v, want %q", provider, err, want)
