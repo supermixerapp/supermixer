@@ -89,6 +89,28 @@ To save that memory, turn a project's logs off under **Settings › Infrastructu
 
   It only sets where new projects start; existing ones keep their choice.
 
+### Room for more than about 30 stacks
+
+Each stack Supermixer creates gets its own Docker network. Out of the box, Docker only has room for about 30 networks, and some are already taken, so a server stops at about 25–30 stacks. With Studio and logs off, a 64 GB server has the memory for about 40, so this limit usually comes first. When it's reached, Supermixer refuses to create another stack and says the server has no room for another Docker network.
+
+To fix it, give Docker one large address range cut into small blocks. Add this to `/etc/docker/daemon.json` (create the file if it doesn't exist, and keep any settings already in it):
+
+```json
+{
+  "default-address-pools": [
+    { "base": "10.200.0.0/16", "size": 24 }
+  ]
+}
+```
+
+That's room for 256 networks. Then restart Docker with `sudo systemctl restart docker`. On Docker Desktop, the same JSON goes in **Settings › Docker Engine**.
+
+- **Do it before you create stacks, or in a maintenance window.** Restarting Docker stops every container, including running stacks, unless `"live-restore": true` is also set.
+- **Pick a range nothing else uses.** It mustn't overlap your office network, a VPN, or the cloud network the server is in, or the server can lose its route to them. Check with `ip route`. If `10.200.0.0/16` is taken, any free `/16` works, such as `10.201.0.0/16`.
+- **Existing stacks keep working.** Only networks created after the restart use the new range.
+- **To check it worked,** run `docker info` and look for the range under *Default Address Pools*.
+- **Paused stacks still count,** since they keep their network. Deleting a stack frees it.
+
 ## Common tasks
 
 | Command | What it does |
