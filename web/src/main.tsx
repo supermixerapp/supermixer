@@ -16,7 +16,7 @@ import './styles/globals.css'
 // disabled): drop cached data and go to sign-in.
 // Pages for people who aren't signed in, where a 401 is expected: the
 // homepage (/ exactly), and these and everything under them.
-const PUBLIC_PAGES = ['/sign-in', '/join', '/forgot-password', '/reset-password']
+const PUBLIC_PAGES = ['/sign-in', '/sign-up', '/join', '/forgot-password', '/reset-password']
 const isPublicPage = (path: string) => path === '/' || PUBLIC_PAGES.some((p) => path.startsWith(p))
 
 function onAuthError(error: unknown) {

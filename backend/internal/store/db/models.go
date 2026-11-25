@@ -499,6 +499,16 @@ type Session struct {
 	SsoProvider string    `json:"sso_provider"`
 }
 
+type SignUp struct {
+	ID        uuid.UUID  `json:"id"`
+	Email     string     `json:"email"`
+	TokenHash []byte     `json:"token_hash"`
+	Ip        string     `json:"ip"`
+	CreatedAt time.Time  `json:"created_at"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at"`
+}
+
 type SqlSnippet struct {
 	ID         uuid.UUID         `json:"id"`
 	ProjectID  uuid.UUID         `json:"project_id"`
@@ -533,6 +543,7 @@ type User struct {
 	TotpLastStep           *int64     `json:"totp_last_step"`
 	MfaEnabledAt           *time.Time `json:"mfa_enabled_at"`
 	HasPassword            bool       `json:"has_password"`
+	WaitingApproval        bool       `json:"waiting_approval"`
 }
 
 type UserIdentity struct {

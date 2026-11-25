@@ -11,6 +11,8 @@ export interface ProductMenuLink {
   label: string
   to: string
   active: boolean
+  /** Shown beside the label when above zero: things waiting there. */
+  count?: number
 }
 
 export interface ProductMenuSection {
@@ -50,7 +52,7 @@ export function ProductMenu({ title, sections }: { title: string; sections: Prod
   )
 }
 
-function MenuItem({ label, to, active }: ProductMenuLink) {
+function MenuItem({ label, to, active, count }: ProductMenuLink) {
   return (
     <li>
       <Link to={to} aria-current={active ? 'page' : undefined} className="group block rounded-md focus-ring">
@@ -68,6 +70,11 @@ function MenuItem({ label, to, active }: ProductMenuLink) {
           >
             {label}
           </span>
+          {!!count && (
+            <span className="ml-2 shrink-0 rounded-full bg-warning-300 px-1.5 text-xs leading-5 font-medium text-foreground tabular-nums">
+              {count}
+            </span>
+          )}
         </div>
       </Link>
     </li>

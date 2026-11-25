@@ -114,6 +114,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/auth/sign-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email a link to create an account (when Instance › Sign-up allows it)
+         * @description Answers the same way whether or not the address already has an
+         *     account, so it doesn't tell who has one: a new address gets a link
+         *     that works once, for a day, and an address with an account gets an
+         *     email saying so. Refused when sign-up is off (404) or the address's
+         *     domain isn't allowed (400).
+         */
+        post: operations["requestSignUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/auth/sign-up/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        /** The email address a sign-up link is for */
+        get: operations["getSignUp"];
+        put?: never;
+        /** Create the account a sign-up link is for */
+        post: operations["completeSignUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/auth/sign-out": {
         parameters: {
             query?: never;
@@ -430,6 +474,26 @@ export interface paths {
         patch: operations["updateUser"];
         trace?: never;
     };
+    "/admin/users/{user_id}/approval": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Let an account that signed up sign in (instance admins); it's told by email */
+        post: operations["approveUser"];
+        /** Decline an account that signed up, deleting it (instance admins); it's told by email */
+        delete: operations["declineUser"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/users/{user_id}/sessions": {
         parameters: {
             query?: never;
@@ -494,6 +558,24 @@ export interface paths {
          */
         get: operations["getNotice"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/sign-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whether people can create their own accounts, and how (instance admins) */
+        get: operations["getSignUpSettings"];
+        /** Change the sign-up settings (instance admins); turning it on needs email */
+        put: operations["setSignUpSettings"];
         post?: never;
         delete?: never;
         options?: never;
@@ -1941,7 +2023,7 @@ export interface components {
         };
         Error: {
             message: string;
-            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own); docker_networks_full (503), Docker on this server has no room for another stack's network. */
+            /** @description Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own); approval_pending (403), the account signed up and waits for an instance admin's approval; docker_networks_full (503), Docker on this server has no room for another stack's network. */
             code?: string;
         };
         /** @enum {string} */
@@ -1971,6 +2053,8 @@ export interface components {
             app_name: string;
             /** @description Supermixer sends email, so the sign-in page offers "Forgot your password?". */
             email_enabled: boolean;
+            /** @description People can create their own accounts, so the sign-in page offers it. */
+            sign_up_enabled: boolean;
             version: string;
             /** @description appearance.brand_color as #rrggbb */
             brand_color: string;
@@ -2582,6 +2666,8 @@ export interface components {
             /** @description False for accounts made through single sign-on until they set one. */
             has_password: boolean;
             disabled: boolean;
+            /** @description Signed up, and waits for an instance admin's approval before it can sign in. */
+            waiting_approval: boolean;
             /** @description Signed-in sessions. */
             sessions: number;
             /** Format: date-time */
@@ -2777,6 +2863,33 @@ export interface components {
             expires_at: string;
             /** @description False once accepted or expired. */
             valid: boolean;
+        };
+        SignUpRequest: {
+            email: string;
+            /** @description Leave empty. A form field people don't see; requests that fill it are dropped. */
+            website?: string;
+        };
+        SignUpInfo: {
+            email: string;
+            /** Format: date-time */
+            expires_at: string;
+            /** @description The account will wait for an instance admin's approval. */
+            approval_required: boolean;
+        };
+        SignUpComplete: {
+            username: string;
+            password: string;
+            display_name?: string;
+        };
+        SignUpSettings: {
+            /** @description People can create their own accounts. Needs email. */
+            enabled: boolean;
+            /** @description Only addresses at these domains can sign up; empty allows any. */
+            allowed_domains: string[];
+            /** @description Instance admins get an email about each new account. */
+            notify_admins: boolean;
+            /** @description New accounts wait for an instance admin's approval before they can sign in. */
+            require_approval: boolean;
         };
         InvitationSignUp: {
             username: string;
@@ -3185,6 +3298,89 @@ export interface operations {
         responses: {
             /** @description The password is changed; sign in with it. */
             204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            410: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    requestSignUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignUpRequest"];
+            };
+        };
+        responses: {
+            /** @description An email is on its way. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            429: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getSignUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The link works. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignUpInfo"];
+                };
+            };
+            410: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    completeSignUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                token: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignUpComplete"];
+            };
+        };
+        responses: {
+            /** @description Created and signed in (session cookies set). */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Profile"];
+                };
+            };
+            /** @description Created; it waits for an instance admin's approval before it can sign in. */
+            202: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -3673,6 +3869,50 @@ export interface operations {
             default: components["responses"]["Error"];
         };
     };
+    approveUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Approved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["User"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    declineUser: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                user_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Declined and deleted. */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     revokeUserSessions: {
         parameters: {
             query?: never;
@@ -3754,6 +3994,52 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["NoticeState"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getSignUpSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The settings. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignUpSettings"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setSignUpSettings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignUpSettings"];
+            };
+        };
+        responses: {
+            /** @description Saved. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SignUpSettings"];
                 };
             };
             default: components["responses"]["Error"];

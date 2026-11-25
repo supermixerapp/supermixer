@@ -87,6 +87,11 @@ func publicRoute(method, path string) bool {
 		return true
 	case strings.HasPrefix(p, "/auth/password-reset/") && strings.Count(p, "/") == 3 && (method == http.MethodGet || method == http.MethodPost):
 		return true
+	// Sign-up: asking for a link, and following it.
+	case method == http.MethodPost && p == "/auth/sign-up":
+		return true
+	case strings.HasPrefix(p, "/auth/sign-up/") && strings.Count(p, "/") == 3 && (method == http.MethodGet || method == http.MethodPost):
+		return true
 	case method == http.MethodGet && strings.HasPrefix(p, "/auth/sso/"):
 		return true
 	case strings.HasPrefix(p, "/invitations/"):

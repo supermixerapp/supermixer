@@ -22,7 +22,7 @@ func toUser(u db.User) api.User {
 		Id: u.ID, Username: u.Username, Email: u.Email, DisplayName: u.DisplayName,
 		IsInstanceAdmin: u.IsInstanceAdmin, DefaultPassword: u.DefaultPassword,
 		PasswordChangeRequired: u.PasswordChangeRequired, MfaEnabled: hasMFA(u), HasPassword: u.HasPassword, Identities: []string{},
-		Disabled: u.DisabledAt != nil, CreatedAt: u.CreatedAt,
+		Disabled: u.DisabledAt != nil, WaitingApproval: u.WaitingApproval, CreatedAt: u.CreatedAt,
 	}
 }
 
@@ -172,6 +172,9 @@ func (h *handlers) UpdateUser(ctx context.Context, req api.UpdateUserRequestObje
 			if u.Email, err = normalizeEmail(b.Email); err != nil {
 				return err
 			}
+		}
+		if b.IsInstanceAdmin != nil && *b.IsInstanceAdmin && u.WaitingApproval {
+			return conflict("%s is waiting for approval; approve the account first", u.Username)
 		}
 		removingAdmin := b.IsInstanceAdmin != nil && !*b.IsInstanceAdmin && u.IsInstanceAdmin
 		disabling := b.Disabled != nil && *b.Disabled && u.DisabledAt == nil

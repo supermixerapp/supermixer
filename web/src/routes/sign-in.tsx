@@ -35,6 +35,7 @@ function SignInPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const emailOn = useQuery(uiConfigQuery).data?.email_enabled
+  const signUpOn = useQuery(uiConfigQuery).data?.sign_up_enabled
   // Set when the account has two-factor sign-in: the password was right.
   const [challenge, setChallenge] = useState<Schemas['MfaChallenge'] | null>(null)
 
@@ -135,13 +136,22 @@ function SignInPage() {
           Sign in
         </Button>
       </form>
-      <div className="mt-8 flex flex-col gap-2 text-center text-sm text-foreground-lighter">
-        <p>No account yet? Ask your Supermixer admin, or use the invitation link you were sent.</p>
-        <p>
-          Setting up Supermixer for the first time? Sign in as <strong className="text-foreground-light">admin</strong>.
-          The password is printed in the server&apos;s log when Supermixer first starts. If a username or password was
-          set in <code className="font-mono text-xs">.env.toml</code>, use those instead.
-        </p>
+      <div className="mt-8 flex flex-col gap-5 text-center text-sm text-foreground-lighter">
+        {signUpOn ? (
+          <p>
+            Don&apos;t have an account?{' '}
+            <Link to="/sign-up" search={{ token: undefined }} className="text-link">
+              Create one
+            </Link>
+          </p>
+        ) : (
+          <p>No account yet? Ask your Supermixer admin, or use the invitation link you were sent.</p>
+        )}
+        <Alert title="Setting up Supermixer for the first time?" className="text-left">
+          Sign in as <strong className="text-foreground">admin</strong>. The password is printed in the server&apos;s
+          log when Supermixer first starts. If a username or password was set in{' '}
+          <code className="font-mono text-xs">.env.toml</code>, use those instead.
+        </Alert>
       </div>
     </AuthLayout>
   )

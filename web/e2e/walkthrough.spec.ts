@@ -163,6 +163,20 @@ test('the first admin sets up an organization, a project and a Read-only member'
   })
 
   let invite = ''
+  await test.step('sign-up stays closed without email', async () => {
+    // This Supermixer can't send email, so sign-up can't be turned on.
+    await page.goto('/admin/sign-up')
+    await expect(page.getByText("This Supermixer can't send email")).toBeVisible()
+    await expect(page.getByRole('switch', { name: 'Allow people to create accounts' })).toBeDisabled()
+    // Visitors aren't offered it, and the page says how to get an account.
+    const visitor = await page.context().browser()!.newPage()
+    await visitor.goto('/sign-in')
+    await expect(visitor.getByText('No account yet? Ask your Supermixer admin')).toBeVisible()
+    await visitor.goto('/sign-up')
+    await expect(visitor.getByText("You can't create your own account on this Supermixer")).toBeVisible()
+    await visitor.close()
+  })
+
   await test.step('resource limits: one project per organization blocks New project', async () => {
     await page.goto('/admin/limits')
     await page.getByRole('switch', { name: 'Limit projects per organization' }).click()

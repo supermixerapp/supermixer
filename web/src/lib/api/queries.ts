@@ -56,6 +56,11 @@ export const myLimitsQuery = queryOptions({
   queryFn: () => unwrap(api.GET('/profile/limits')),
 })
 
+export const signUpSettingsQuery = queryOptions({
+  queryKey: ['admin', 'sign-up'],
+  queryFn: () => unwrap(api.GET('/admin/sign-up')),
+})
+
 export const resourceLimitsQuery = queryOptions({
   queryKey: ['admin', 'limits'],
   queryFn: () => unwrap(api.GET('/admin/limits')),

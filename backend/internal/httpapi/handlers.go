@@ -31,6 +31,9 @@ type handlers struct {
 	// inviteMail and resetMail limit the emails people can have sent to
 	// others: invitations per inviter, reset links per account.
 	inviteMail, resetMail *auth.Limiter
+	// signUpIP and signUpMail limit sign-up requests per client address and
+	// sign-up emails per email address.
+	signUpIP, signUpMail *auth.Limiter
 	// pending is work in the background that shutting down waits for.
 	pending *sync.WaitGroup
 	// sso are the single sign-on providers, by id.
@@ -78,7 +81,17 @@ func (h *handlers) GetHealth(ctx context.Context, _ api.GetHealthRequestObject) 
 	return api.GetHealth200JSONResponse(out), nil
 }
 
-func (h *handlers) GetUiConfig(_ context.Context, _ api.GetUiConfigRequestObject) (api.GetUiConfigResponseObject, error) {
+func (h *handlers) GetUiConfig(ctx context.Context, _ api.GetUiConfigRequestObject) (api.GetUiConfigResponseObject, error) {
+	// Sign-up needs email, so without it there's nothing to look up. If
+	// the setting can't be read, the pages carry on as if it were off.
+	signUpOpen := false
+	if h.mailer != nil {
+		if s, err := readSignUpSettings(ctx, h.deps.Store.Queries); err != nil {
+			h.deps.Logger.Warn("ui-config: reading the sign-up settings", "err", err)
+		} else {
+			signUpOpen = h.signUpOpen(s)
+		}
+	}
 	return api.GetUiConfig200JSONResponse{
 		AppName:      "Supermixer",
 		Version:      version.Version,
@@ -88,7 +101,8 @@ func (h *handlers) GetUiConfig(_ context.Context, _ api.GetUiConfigRequestObject
 			Enabled  bool   `json:"enabled"`
 			Template string `json:"template"`
 		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion()},
-		EmailEnabled: h.mailer != nil,
-		SsoProviders: h.ssoList(),
+		EmailEnabled:  h.mailer != nil,
+		SignUpEnabled: signUpOpen,
+		SsoProviders:  h.ssoList(),
 	}, nil
 }

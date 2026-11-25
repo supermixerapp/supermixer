@@ -21,6 +21,7 @@ type Querier interface {
 	AddWebhookDelivery(ctx context.Context, arg AddWebhookDeliveryParams) error
 	AdvanceAuditDrain(ctx context.Context, arg AdvanceAuditDrainParams) error
 	AdvanceWebhook(ctx context.Context, arg AdvanceWebhookParams) error
+	ApproveUser(ctx context.Context, id uuid.UUID) (User, error)
 	AuditDrainFailed(ctx context.Context, arg AuditDrainFailedParams) error
 	AuditDrainLag(ctx context.Context, arg AuditDrainLagParams) (int64, error)
 	// Entries after the position, from transactions that have all finished.
@@ -31,6 +32,7 @@ type Querier interface {
 	ClearAnsweredRotationAdvisories(ctx context.Context, arg ClearAnsweredRotationAdvisoriesParams) (int64, error)
 	// Those recorded before a time (a rotation's start: later ones may concern its new keys).
 	ClearRotationAdvisories(ctx context.Context, arg ClearRotationAdvisoriesParams) (int64, error)
+	// Admins who can sign in: an account waiting for approval can't.
 	CountActiveInstanceAdmins(ctx context.Context) (int64, error)
 	CountOrganizationProjects(ctx context.Context, organizationID uuid.UUID) (int64, error)
 	CountOrganizationsCreatedBy(ctx context.Context, createdBy *uuid.UUID) (int64, error)
@@ -46,6 +48,7 @@ type Querier interface {
 	CreateProject(ctx context.Context, arg CreateProjectParams) (Project, error)
 	CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (User, error)
 	CreateSession(ctx context.Context, arg CreateSessionParams) (Session, error)
+	CreateSignUp(ctx context.Context, arg CreateSignUpParams) (SignUp, error)
 	CreateSnippet(ctx context.Context, arg CreateSnippetParams) (SqlSnippet, error)
 	CreateUser(ctx context.Context, arg CreateUserParams) (User, error)
 	// Starts after the organization's entries already there.
@@ -54,6 +57,7 @@ type Querier interface {
 	DeleteBackup(ctx context.Context, id uuid.UUID) error
 	DeleteBackupLeftover(ctx context.Context, arg DeleteBackupLeftoverParams) error
 	DeleteExpiredSessions(ctx context.Context) error
+	DeleteExpiredSignUps(ctx context.Context) error
 	DeleteIdentity(ctx context.Context, arg DeleteIdentityParams) (UserIdentity, error)
 	DeleteInstanceSetting(ctx context.Context, key string) (int64, error)
 	DeleteInvitation(ctx context.Context, arg DeleteInvitationParams) (int64, error)
@@ -66,10 +70,14 @@ type Querier interface {
 	DeleteProjectRoles(ctx context.Context, projectID uuid.UUID) error
 	DeleteRecoveryCodes(ctx context.Context, userID uuid.UUID) error
 	DeleteSession(ctx context.Context, id uuid.UUID) error
+	DeleteSignUpsForEmail(ctx context.Context, email string) error
 	DeleteSnippet(ctx context.Context, id uuid.UUID) error
 	DeleteUserAccessTokens(ctx context.Context, userID uuid.UUID) error
 	DeleteUserSession(ctx context.Context, arg DeleteUserSessionParams) (int64, error)
 	DeleteUserSessions(ctx context.Context, userID uuid.UUID) error
+	// Declining a sign-up: only an account still waiting for approval, which
+	// has never signed in, so nothing else is lost with it.
+	DeleteWaitingUser(ctx context.Context, id uuid.UUID) (User, error)
 	DeleteWebhook(ctx context.Context, arg DeleteWebhookParams) (OrgWebhook, error)
 	DisableMFA(ctx context.Context, id uuid.UUID) error
 	// Confirms the pending secret, remembering the step its first code used.
@@ -97,6 +105,8 @@ type Querier interface {
 	GetOrganizationBySlug(ctx context.Context, slug string) (Organization, error)
 	GetPasswordReset(ctx context.Context, tokenHash []byte) (PasswordReset, error)
 	GetProjectByRef(ctx context.Context, ref string) (GetProjectByRefRow, error)
+	// A link that still works.
+	GetSignUp(ctx context.Context, tokenHash []byte) (SignUp, error)
 	GetSnippet(ctx context.Context, arg GetSnippetParams) (GetSnippetRow, error)
 	GetUserByEmail(ctx context.Context, lower string) (User, error)
 	GetUserByID(ctx context.Context, id uuid.UUID) (User, error)
@@ -117,6 +127,7 @@ type Querier interface {
 	ListDBSnapshots(ctx context.Context, projectID uuid.UUID) ([]ListDBSnapshotsRow, error)
 	ListDefaultPasswordUsers(ctx context.Context) ([]string, error)
 	ListEnabledWebhooks(ctx context.Context) ([]ListEnabledWebhooksRow, error)
+	ListInstanceAdminEmails(ctx context.Context) ([]string, error)
 	// Entries outside any organization (accounts, sign-ins, instance settings).
 	ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAuditLogsParams) ([]AuditLog, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
@@ -214,6 +225,7 @@ type Querier interface {
 	UseChallenge(ctx context.Context, arg UseChallengeParams) (uuid.UUID, error)
 	UsePasswordReset(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	UseRecoveryCode(ctx context.Context, arg UseRecoveryCodeParams) (uuid.UUID, error)
+	UseSignUp(ctx context.Context, id uuid.UUID) (uuid.UUID, error)
 	// Accepts a code's step only once, and only after the last one accepted.
 	UseTOTPStep(ctx context.Context, arg UseTOTPStepParams) (uuid.UUID, error)
 	// When each user was last active, from their sessions.

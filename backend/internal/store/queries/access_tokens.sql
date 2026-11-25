@@ -16,7 +16,7 @@ DELETE FROM access_tokens WHERE user_id = $1;
 SELECT sqlc.embed(t), sqlc.embed(u)
 FROM access_tokens t
 JOIN users u ON u.id = t.user_id
-WHERE t.token_hash = $1 AND t.expires_at > now() AND u.disabled_at IS NULL;
+WHERE t.token_hash = $1 AND t.expires_at > now() AND u.disabled_at IS NULL AND NOT u.waiting_approval;
 
 -- name: TouchAccessToken :exec
 UPDATE access_tokens SET last_used_at = now(), last_used_ip = $2 WHERE id = $1;

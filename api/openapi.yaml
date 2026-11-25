@@ -165,6 +165,62 @@ paths:
         "204": { description: The password is changed; sign in with it. }
         "410": { $ref: "#/components/responses/Error" }
         default: { $ref: "#/components/responses/Error" }
+  /auth/sign-up:
+    post:
+      operationId: requestSignUp
+      tags: [Auth]
+      summary: Email a link to create an account (when Instance › Sign-up allows it)
+      description: |
+        Answers the same way whether or not the address already has an
+        account, so it doesn't tell who has one: a new address gets a link
+        that works once, for a day, and an address with an account gets an
+        email saying so. Refused when sign-up is off (404) or the address's
+        domain isn't allowed (400).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignUpRequest" }
+      responses:
+        "202": { description: An email is on its way. }
+        "429": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+  /auth/sign-up/{token}:
+    parameters:
+      - { name: token, in: path, required: true, schema: { type: string } }
+    get:
+      operationId: getSignUp
+      tags: [Auth]
+      summary: The email address a sign-up link is for
+      security: []
+      responses:
+        "200":
+          description: The link works.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignUpInfo" }
+        "410": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
+    post:
+      operationId: completeSignUp
+      tags: [Auth]
+      summary: Create the account a sign-up link is for
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignUpComplete" }
+      responses:
+        "201":
+          description: Created and signed in (session cookies set).
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Profile" }
+        "202": { description: "Created; it waits for an instance admin's approval before it can sign in." }
+        "410": { $ref: "#/components/responses/Error" }
+        default: { $ref: "#/components/responses/Error" }
   /auth/sign-out:
     post:
       operationId: signOut
@@ -464,6 +520,27 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/User" }
         default: { $ref: "#/components/responses/Error" }
+  /admin/users/{user_id}/approval:
+    parameters:
+      - { name: user_id, in: path, required: true, schema: { type: string, format: uuid } }
+    post:
+      operationId: approveUser
+      tags: [Users]
+      summary: Let an account that signed up sign in (instance admins); it's told by email
+      responses:
+        "200":
+          description: Approved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/User" }
+        default: { $ref: "#/components/responses/Error" }
+    delete:
+      operationId: declineUser
+      tags: [Users]
+      summary: Decline an account that signed up, deleting it (instance admins); it's told by email
+      responses:
+        "204": { description: Declined and deleted. }
+        default: { $ref: "#/components/responses/Error" }
   /admin/users/{user_id}/sessions:
     delete:
       operationId: revokeUserSessions
@@ -513,6 +590,34 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/NoticeState" }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/sign-up:
+    get:
+      operationId: getSignUpSettings
+      tags: [Users]
+      summary: Whether people can create their own accounts, and how (instance admins)
+      responses:
+        "200":
+          description: The settings.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignUpSettings" }
+        default: { $ref: "#/components/responses/Error" }
+    put:
+      operationId: setSignUpSettings
+      tags: [Users]
+      summary: Change the sign-up settings (instance admins); turning it on needs email
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/SignUpSettings" }
+      responses:
+        "200":
+          description: Saved.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/SignUpSettings" }
         default: { $ref: "#/components/responses/Error" }
   /admin/limits:
     get:
@@ -2183,7 +2288,7 @@ components:
         message: { type: string }
         code:
           type: string
-          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own); docker_networks_full (503), Docker on this server has no room for another stack's network."
+          description: "Set for errors a client handles specially: password_change_required (403), the account must choose a new password first; mfa_required (403), the organization requires two-factor sign-in, which the account hasn't turned on; sso_required (403), the organization requires signing in through its single sign-on provider, and this session (or access token) didn't; limit_reached (403), a resource limit stops it (Instance › Resource Limits, or the organization's own); approval_pending (403), the account signed up and waits for an instance admin's approval; docker_networks_full (503), Docker on this server has no room for another stack's network."
     OrgRole:
       type: string
       enum: [owner, administrator, developer, read_only, no_access]
@@ -2207,7 +2312,7 @@ components:
             error: { type: string }
     UiConfig:
       type: object
-      required: [app_name, version, brand_color, default_theme, provisioning, email_enabled, sso_providers]
+      required: [app_name, version, brand_color, default_theme, provisioning, email_enabled, sign_up_enabled, sso_providers]
       properties:
         sso_providers:
           type: array
@@ -2220,6 +2325,7 @@ components:
               name: { type: string }
         app_name: { type: string }
         email_enabled: { type: boolean, description: "Supermixer sends email, so the sign-in page offers \"Forgot your password?\"." }
+        sign_up_enabled: { type: boolean, description: "People can create their own accounts, so the sign-in page offers it." }
         version: { type: string }
         brand_color: { type: string, description: "appearance.brand_color as #rrggbb" }
         default_theme: { type: string, enum: [dark, light, system] }
@@ -2885,7 +2991,7 @@ components:
 
     User:
       type: object
-      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, identities, has_password, disabled, sessions, created_at]
+      required: [id, username, display_name, is_instance_admin, default_password, password_change_required, mfa_enabled, identities, has_password, disabled, waiting_approval, sessions, created_at]
       properties:
         id: { type: string, format: uuid }
         username: { type: string }
@@ -2898,6 +3004,7 @@ components:
         identities: { type: array, items: { type: string }, description: Sign-in providers connected to the account (their ids). }
         has_password: { type: boolean, description: False for accounts made through single sign-on until they set one. }
         disabled: { type: boolean }
+        waiting_approval: { type: boolean, description: "Signed up, and waits for an instance admin's approval before it can sign in." }
         sessions: { type: integer, description: Signed-in sessions. }
         last_seen_at: { type: string, format: date-time, nullable: true }
         created_at: { type: string, format: date-time }
@@ -3120,6 +3227,38 @@ components:
         invited_by: { type: string }
         expires_at: { type: string, format: date-time }
         valid: { type: boolean, description: False once accepted or expired. }
+    SignUpRequest:
+      type: object
+      required: [email]
+      properties:
+        email: { type: string, maxLength: 254 }
+        website: { type: string, description: "Leave empty. A form field people don't see; requests that fill it are dropped." }
+    SignUpInfo:
+      type: object
+      required: [email, expires_at, approval_required]
+      properties:
+        email: { type: string }
+        expires_at: { type: string, format: date-time }
+        approval_required: { type: boolean, description: "The account will wait for an instance admin's approval." }
+    SignUpComplete:
+      type: object
+      required: [username, password]
+      properties:
+        username: { type: string }
+        password: { type: string }
+        display_name: { type: string }
+    SignUpSettings:
+      type: object
+      required: [enabled, allowed_domains, notify_admins, require_approval]
+      properties:
+        enabled: { type: boolean, description: People can create their own accounts. Needs email. }
+        allowed_domains:
+          type: array
+          maxItems: 100
+          items: { type: string }
+          description: Only addresses at these domains can sign up; empty allows any.
+        notify_admins: { type: boolean, description: Instance admins get an email about each new account. }
+        require_approval: { type: boolean, description: "New accounts wait for an instance admin's approval before they can sign in." }
     InvitationSignUp:
       type: object
       required: [username, password]

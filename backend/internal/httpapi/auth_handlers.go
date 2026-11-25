@@ -131,6 +131,11 @@ func (h *handlers) SignIn(ctx context.Context, req api.SignInRequestObject) (api
 	if err != nil || user.DisabledAt != nil {
 		return fail()
 	}
+	if user.WaitingApproval {
+		h.limiter.Reset(ipKey)
+		h.limiter.Reset(userKey)
+		return nil, errApprovalPending
+	}
 	q := h.deps.Store.Queries
 	if rehash { // hashed before passwords were normalized
 		if hash, err := auth.HashPassword(req.Body.Password); err == nil &&

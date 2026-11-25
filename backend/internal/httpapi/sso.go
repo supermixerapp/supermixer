@@ -371,6 +371,10 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 		h.ssoFail(w, r, "", "This account is disabled; ask an instance admin")
 		return
 	}
+	if u.WaitingApproval {
+		h.ssoFail(w, r, "", errApprovalPending.(*apiError).message)
+		return
+	}
 	// The account's own two-factor sign-in still applies.
 	if hasMFA(u) {
 		c, err := h.newMFAChallenge(u, p.cfg.ID, email)

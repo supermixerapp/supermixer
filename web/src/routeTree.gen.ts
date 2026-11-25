@@ -16,6 +16,7 @@ import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as JoinRouteImport } from './routes/join'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SignInRouteImport } from './routes/sign-in'
+import { Route as SignUpRouteImport } from './routes/sign-up'
 import { Route as AppDesignSystemRouteImport } from './routes/_app/design-system'
 import { Route as AppOrganizationsRouteImport } from './routes/_app/organizations'
 import { Route as AppAccountAccessTokensRouteImport } from './routes/_app/account.access-tokens'
@@ -27,6 +28,7 @@ import { Route as AppAdminIndexRouteImport } from './routes/_app/admin.index'
 import { Route as AppAdminAuditRouteImport } from './routes/_app/admin.audit'
 import { Route as AppAdminLimitsRouteImport } from './routes/_app/admin.limits'
 import { Route as AppAdminNoticeRouteImport } from './routes/_app/admin.notice'
+import { Route as AppAdminSignUpRouteImport } from './routes/_app/admin.sign-up'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
 import { Route as AppNewSlugRouteImport } from './routes/_app/new.$slug'
 import { Route as AppOrgSlugRouteImport } from './routes/_app/org.$slug'
@@ -140,6 +142,11 @@ const SignInRoute = SignInRouteImport.update({
   path: '/sign-in',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SignUpRoute = SignUpRouteImport.update({
+  id: '/sign-up',
+  path: '/sign-up',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppDesignSystemRoute = AppDesignSystemRouteImport.update({
   id: '/design-system',
   path: '/design-system',
@@ -193,6 +200,11 @@ const AppAdminLimitsRoute = AppAdminLimitsRouteImport.update({
 const AppAdminNoticeRoute = AppAdminNoticeRouteImport.update({
   id: '/admin/notice',
   path: '/admin/notice',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminSignUpRoute = AppAdminSignUpRouteImport.update({
+  id: '/admin/sign-up',
+  path: '/admin/sign-up',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminUsersRoute = AppAdminUsersRouteImport.update({
@@ -646,6 +658,7 @@ export interface FileRoutesByFullPath {
   '/join': typeof JoinRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/design-system': typeof AppDesignSystemRoute
   '/organizations': typeof AppOrganizationsRoute
   '/account/access-tokens': typeof AppAccountAccessTokensRoute
@@ -656,6 +669,7 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/limits': typeof AppAdminLimitsRoute
   '/admin/notice': typeof AppAdminNoticeRoute
+  '/admin/sign-up': typeof AppAdminSignUpRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/org/$slug': typeof AppOrgSlugRouteWithChildren
@@ -743,6 +757,7 @@ export interface FileRoutesByTo {
   '/join': typeof JoinRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/design-system': typeof AppDesignSystemRoute
   '/organizations': typeof AppOrganizationsRoute
   '/account/access-tokens': typeof AppAccountAccessTokensRoute
@@ -753,6 +768,7 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/limits': typeof AppAdminLimitsRoute
   '/admin/notice': typeof AppAdminNoticeRoute
+  '/admin/sign-up': typeof AppAdminSignUpRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/new/$slug': typeof AppNewSlugRoute
   '/admin': typeof AppAdminIndexRoute
@@ -838,6 +854,7 @@ export interface FileRoutesById {
   '/join': typeof JoinRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sign-in': typeof SignInRoute
+  '/sign-up': typeof SignUpRoute
   '/_app/design-system': typeof AppDesignSystemRoute
   '/_app/organizations': typeof AppOrganizationsRoute
   '/_app/account/access-tokens': typeof AppAccountAccessTokensRoute
@@ -848,6 +865,7 @@ export interface FileRoutesById {
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/limits': typeof AppAdminLimitsRoute
   '/_app/admin/notice': typeof AppAdminNoticeRoute
+  '/_app/admin/sign-up': typeof AppAdminSignUpRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/new/$slug': typeof AppNewSlugRoute
   '/_app/org/$slug': typeof AppOrgSlugRouteWithChildren
@@ -937,6 +955,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/reset-password'
     | '/sign-in'
+    | '/sign-up'
     | '/design-system'
     | '/organizations'
     | '/account/access-tokens'
@@ -947,6 +966,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/limits'
     | '/admin/notice'
+    | '/admin/sign-up'
     | '/admin/users'
     | '/new/$slug'
     | '/org/$slug'
@@ -1034,6 +1054,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/reset-password'
     | '/sign-in'
+    | '/sign-up'
     | '/design-system'
     | '/organizations'
     | '/account/access-tokens'
@@ -1044,6 +1065,7 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/limits'
     | '/admin/notice'
+    | '/admin/sign-up'
     | '/admin/users'
     | '/new/$slug'
     | '/admin'
@@ -1128,6 +1150,7 @@ export interface FileRouteTypes {
     | '/join'
     | '/reset-password'
     | '/sign-in'
+    | '/sign-up'
     | '/_app/design-system'
     | '/_app/organizations'
     | '/_app/account/access-tokens'
@@ -1138,6 +1161,7 @@ export interface FileRouteTypes {
     | '/_app/admin/audit'
     | '/_app/admin/limits'
     | '/_app/admin/notice'
+    | '/_app/admin/sign-up'
     | '/_app/admin/users'
     | '/_app/new/$slug'
     | '/_app/org/$slug'
@@ -1227,6 +1251,7 @@ export interface RootRouteChildren {
   JoinRoute: typeof JoinRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SignInRoute: typeof SignInRoute
+  SignUpRoute: typeof SignUpRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1278,6 +1303,13 @@ declare module '@tanstack/react-router' {
       path: '/sign-in'
       fullPath: '/sign-in'
       preLoaderRoute: typeof SignInRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-up': {
+      id: '/sign-up'
+      path: '/sign-up'
+      fullPath: '/sign-up'
+      preLoaderRoute: typeof SignUpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app/design-system': {
@@ -1355,6 +1387,13 @@ declare module '@tanstack/react-router' {
       path: '/admin/notice'
       fullPath: '/admin/notice'
       preLoaderRoute: typeof AppAdminNoticeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/sign-up': {
+      id: '/_app/admin/sign-up'
+      path: '/admin/sign-up'
+      fullPath: '/admin/sign-up'
+      preLoaderRoute: typeof AppAdminSignUpRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/users': {
@@ -2113,6 +2152,7 @@ interface AppRouteChildren {
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminLimitsRoute: typeof AppAdminLimitsRoute
   AppAdminNoticeRoute: typeof AppAdminNoticeRoute
+  AppAdminSignUpRoute: typeof AppAdminSignUpRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppNewSlugRoute: typeof AppNewSlugRoute
   AppOrgSlugRoute: typeof AppOrgSlugRouteWithChildren
@@ -2131,6 +2171,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminLimitsRoute: AppAdminLimitsRoute,
   AppAdminNoticeRoute: AppAdminNoticeRoute,
+  AppAdminSignUpRoute: AppAdminSignUpRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppNewSlugRoute: AppNewSlugRoute,
   AppOrgSlugRoute: AppOrgSlugRouteWithChildren,
@@ -2148,6 +2189,7 @@ const rootRouteChildren: RootRouteChildren = {
   JoinRoute: JoinRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SignInRoute: SignInRoute,
+  SignUpRoute: SignUpRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -2,8 +2,8 @@
 SELECT count(*) FROM users;
 
 -- name: CreateUser :one
-INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password, password_change_required)
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password, password_change_required, waiting_approval)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING *;
 
 -- name: GetUserByID :one
@@ -30,10 +30,10 @@ RETURNING *;
 
 -- name: InstanceCounts :one
 SELECT (SELECT count(*) FROM users)::int AS users,
-       (SELECT count(*) FROM users WHERE disabled_at IS NULL)::int AS active_users,
-       (SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL)::int AS instance_admins,
-       (SELECT count(*) FROM users WHERE password_change_required AND disabled_at IS NULL)::int AS password_change_required,
-       (SELECT count(*) FROM users WHERE mfa_enabled_at IS NOT NULL AND disabled_at IS NULL)::int AS mfa_enabled,
+       (SELECT count(*) FROM users WHERE disabled_at IS NULL AND NOT waiting_approval)::int AS active_users,
+       (SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL AND NOT waiting_approval)::int AS instance_admins,
+       (SELECT count(*) FROM users WHERE password_change_required AND disabled_at IS NULL AND NOT waiting_approval)::int AS password_change_required,
+       (SELECT count(*) FROM users WHERE mfa_enabled_at IS NOT NULL AND disabled_at IS NULL AND NOT waiting_approval)::int AS mfa_enabled,
        (SELECT count(*) FROM organizations)::int AS organizations,
        (SELECT count(*) FROM projects)::int AS projects,
        (SELECT count(*) FROM projects WHERE managed)::int AS managed_projects;
@@ -44,7 +44,8 @@ SELECT user_id, max(last_seen_at)::timestamptz AS last_seen_at, count(*)::int AS
 FROM sessions WHERE expires_at > now() GROUP BY user_id;
 
 -- name: CountActiveInstanceAdmins :one
-SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL;
+-- Admins who can sign in: an account waiting for approval can't.
+SELECT count(*) FROM users WHERE is_instance_admin AND disabled_at IS NULL AND NOT waiting_approval;
 
 -- name: ListDefaultPasswordUsers :many
 SELECT username FROM users WHERE default_password AND disabled_at IS NULL;

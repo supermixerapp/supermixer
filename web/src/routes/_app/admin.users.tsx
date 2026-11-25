@@ -8,7 +8,7 @@ import { AdminLayout } from '@/components/layout/admin-layout'
 import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Card } from '@/components/ui/card'
+import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
 import {
   Dialog,
@@ -51,6 +51,32 @@ function UsersPage() {
   const [creating, setCreating] = useState(false)
   const [resetting, setResetting] = useState<User | null>(null)
   const [resettingMfa, setResettingMfa] = useState<User | null>(null)
+  // Who's being declined stays set while the dialog closes, so its title
+  // doesn't change mid-animation; declineOpen opens and closes it.
+  const [declining, setDeclining] = useState<User | null>(null)
+  const [declineOpen, setDeclineOpen] = useState(false)
+  // People who signed up and wait for approval are listed apart.
+  const waiting = users.data?.filter((u) => u.waiting_approval) ?? []
+  const active = users.data?.filter((u) => !u.waiting_approval)
+  const approve = useMutation({
+    mutationFn: (user: User) =>
+      unwrap(api.POST('/admin/users/{user_id}/approval', { params: { path: { user_id: user.id } } })),
+    onSuccess: (u) => {
+      toast.success(`Approved ${u.username}; they've been emailed that they can sign in`)
+      void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
+    },
+    onError: (e) => toast.error(e.message),
+  })
+  const decline = useMutation({
+    mutationFn: (user: User) =>
+      unwrap(api.DELETE('/admin/users/{user_id}/approval', { params: { path: { user_id: user.id } } })),
+    onSuccess: (_, u) => {
+      setDeclineOpen(false)
+      toast.success(`Declined ${u.username}; the account was removed`)
+      void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
+    },
+    onError: (e) => toast.error(e.message),
+  })
   const providerNames = new Map((useQuery(uiConfigQuery).data?.sso_providers ?? []).map((p) => [p.id, p.name]))
   const resetMfa = useMutation({
     mutationFn: (user: User) =>
@@ -92,6 +118,49 @@ function UsersPage() {
         </Button>
       }
     >
+      {waiting.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Waiting for approval ({waiting.length})</CardTitle>
+            <CardDescription>
+              They signed up and can&apos;t sign in until you approve them. Either way, they&apos;re told by email.
+            </CardDescription>
+          </CardHeader>
+          <ul className="divide-y border-t">
+            {waiting.map((u) => (
+              <li key={u.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3">
+                <span className="flex min-w-0 flex-1 flex-col">
+                  <span className="truncate text-sm text-foreground">
+                    {u.display_name || u.username}
+                    {u.display_name && <span className="ml-2 text-xs text-foreground-lighter">{u.username}</span>}
+                  </span>
+                  <span className="truncate text-xs text-foreground-lighter">
+                    {u.email} · signed up {relativeTime(u.created_at)}
+                  </span>
+                </span>
+                <span className="flex gap-2">
+                  <Button
+                    variant="default"
+                    onClick={() => {
+                      setDeclining(u)
+                      setDeclineOpen(true)
+                    }}
+                  >
+                    Decline
+                  </Button>
+                  <Button
+                    variant="primary"
+                    loading={approve.isPending && approve.variables?.id === u.id}
+                    onClick={() => approve.mutate(u)}
+                  >
+                    Approve
+                  </Button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </Card>
+      )}
       {me && (
             <Card>
               {users.isPending ? (
@@ -111,7 +180,7 @@ function UsersPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {users.data?.map((u) => (
+                    {active?.map((u) => (
                       <TableRow key={u.id}>
                         <TableCell>
                           <span className="flex flex-col">
@@ -205,6 +274,15 @@ function UsersPage() {
         confirmLabel="Reset"
         loading={resetMfa.isPending}
         onConfirm={() => resettingMfa && resetMfa.mutate(resettingMfa)}
+      />
+      <ConfirmDialog
+        open={declineOpen}
+        onOpenChange={setDeclineOpen}
+        title={`Decline ${declining?.username}?`}
+        description="Their account is removed, and they're emailed that their sign-up wasn't accepted. They could sign up again later."
+        confirmLabel="Decline"
+        loading={decline.isPending}
+        onConfirm={() => declining && decline.mutate(declining)}
       />
       {resetting && <ResetPasswordDialog user={resetting} self={resetting.id === me?.id} onClose={() => setResetting(null)} />}
     </AdminLayout>

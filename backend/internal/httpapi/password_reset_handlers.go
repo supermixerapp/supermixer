@@ -61,7 +61,7 @@ func (h *handlers) sendResetLink(ctx context.Context, login string) error {
 	} else {
 		u, err = q.GetUserByUsername(ctx, login)
 	}
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (u.DisabledAt != nil || u.Email == nil)) {
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && (u.DisabledAt != nil || u.WaitingApproval || u.Email == nil)) {
 		return nil
 	} else if err != nil {
 		return err

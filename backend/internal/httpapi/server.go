@@ -97,6 +97,8 @@ func New(deps Deps) http.Handler {
 		// Emails people can ask Supermixer to send to others.
 		inviteMail:  auth.NewLimiter(30, time.Hour), // per inviter
 		resetMail:   auth.NewLimiter(5, time.Hour),  // per account
+		signUpIP:    auth.NewLimiter(10, time.Hour), // per client address
+		signUpMail:  auth.NewLimiter(3, time.Hour),  // per email address
 		pending:     deps.Pending,
 		sso:         newSSOProviders(deps.Config.SSO),
 		webhookHTTP: webhookClient(deps.Config.Webhooks.AllowPrivateAddresses),
