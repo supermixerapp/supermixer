@@ -133,6 +133,18 @@ test('the first admin sets up an organization, a project and a Read-only member'
     ref = new URL(page.url()).pathname.split('/')[2]
   })
 
+  await test.step('Connect explains psql, with the login typed into its commands', async () => {
+    await page.getByRole('button', { name: 'Connect', exact: true }).click()
+    const sheet = page.getByRole('dialog')
+    await sheet.getByRole('tab', { name: 'Connect with psql' }).click()
+    await sheet.getByLabel("Your login's name").fill('reader')
+    await expect(sheet.getByText('grant select on all tables in schema public to "reader";')).toBeVisible()
+    await expect(sheet.getByText(/^psql "postgresql:\/\/reader(\.[a-z0-9-]+)?@/)).toBeVisible()
+    await sheet.getByRole('link', { name: 'Database › Roles' }).click()
+    await expect(page).toHaveURL(new RegExp(`/project/${ref}/database/roles$`))
+    await expect(sheet).toBeHidden()
+  })
+
   await test.step("the organization's projects show it healthy", async () => {
     const health = await (await page.request.get(`/api/v1/projects/${ref}/health`)).json()
     expect(health.status, JSON.stringify(health, null, 2)).toBe('healthy')
