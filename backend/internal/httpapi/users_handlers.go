@@ -43,7 +43,7 @@ func requireInstanceAdmin(ctx context.Context) (*principal, error) {
 		return nil, err
 	}
 	if !p.User.IsInstanceAdmin {
-		return nil, newError(http.StatusForbidden, "Only instance admins can manage users")
+		return nil, newError(http.StatusForbidden, "Only instance admins can do this")
 	}
 	return p, nil
 }

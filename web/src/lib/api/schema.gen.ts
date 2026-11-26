@@ -645,6 +645,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/admin/organizations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every organization on the instance, for reports; instance admins only
+         * @description Counts and settings only, for seeing how the instance is used. It gives no access to the organizations: their pages stay for their members.
+         */
+        get: operations["listInstanceOrganizations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/admin/projects": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Every project on the instance, for reports; instance admins only
+         * @description State, version and backups only, for seeing how the instance is used: no keys, connection details or anything inside the project, and no access to it.
+         */
+        get: operations["listInstanceProjects"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/admin/overview": {
         parameters: {
             query?: never;
@@ -2164,6 +2204,8 @@ export interface components {
         };
         /** @enum {string} */
         StackStatus: "provisioning" | "running" | "paused" | "failed" | "deleting";
+        /** @enum {string} */
+        StackOperation: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | "upgrading" | "rotating_keys";
         /** @description Set on projects Supermixer created; null for connected ones. */
         Stack: {
             status: components["schemas"]["StackStatus"];
@@ -2173,11 +2215,8 @@ export interface components {
             status_at?: string | null;
             /** @description The supabase/supabase commit the stack was made from. */
             template: string;
-            /**
-             * @description What Supermixer is doing to the stack right now.
-             * @enum {string|null}
-             */
-            operation?: "starting" | "stopping" | "restarting" | "deleting" | "updating" | "backing_up" | "restoring" | "upgrading" | "rotating_keys" | null;
+            /** @description What Supermixer is doing to the stack right now. */
+            operation?: components["schemas"]["StackOperation"] | null;
             /** @description Whether the stack runs Supabase Studio (provisioning.studio, as last applied to it). */
             studio: boolean;
             /** @description Whether the stack collects logs: runs Logflare and Vector, for Logs Explorer, the API report and log drains. */
@@ -2662,6 +2701,73 @@ export interface components {
         RecoveryCodes: {
             /** @description Single-use; each signs in once in place of a code. */
             codes: string[];
+        };
+        InstanceOrganization: {
+            /** Format: uuid */
+            id: string;
+            slug: string;
+            name: string;
+            /** Format: date-time */
+            created_at: string;
+            /** @description Username; null if unknown or the account is gone. */
+            created_by: string | null;
+            /** @description Usernames, leaving out disabled accounts. */
+            owners: string[];
+            members: number;
+            projects: number;
+            /** @description Projects whose stacks Supermixer created. */
+            managed_projects: number;
+            /** @description The most projects it may have, its own limit or the instance's; null if unlimited. */
+            project_limit: number | null;
+            mfa_required: boolean;
+            /** @description The single sign-on provider's name, if one is set. */
+            sso_provider: string | null;
+            /** @description Its provider is no longer set up on this instance, so single sign-on isn't enforced. */
+            sso_provider_missing: boolean;
+            sso_required: boolean;
+            /**
+             * Format: date-time
+             * @description Its newest audit log entry; null if none.
+             */
+            last_activity_at: string | null;
+        };
+        InstanceProject: {
+            /** Format: uuid */
+            id: string;
+            ref: string;
+            name: string;
+            organization_slug: string;
+            organization_name: string;
+            /** @description Username; null if unknown or the account is gone. */
+            created_by: string | null;
+            /** Format: date-time */
+            created_at: string;
+            /** @description Whether Supermixer created its stack; false for a connected project. */
+            managed: boolean;
+            /** @description The stack's state; null for a connected project. */
+            status: components["schemas"]["StackStatus"] | null;
+            /** @description What Supermixer is doing to the stack right now, such as upgrading it. */
+            operation: components["schemas"]["StackOperation"] | null;
+            /** @description The supabase/supabase commit its stack was made from; null for a connected project. */
+            template: string | null;
+            last_backup: {
+                /** @enum {string} */
+                status: "running" | "completed" | "failed";
+                /** Format: date-time */
+                started_at: string;
+            } | null;
+            /**
+             * Format: date-time
+             * @description When its newest completed backup started; null if it has none.
+             */
+            last_completed_backup_at: string | null;
+            /** @description Completed backups kept. */
+            backups: number;
+            /**
+             * Format: int64
+             * @description Their size together, compressed.
+             */
+            backup_bytes: number;
         };
         AdminOverview: {
             version: string;
@@ -4303,6 +4409,48 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listInstanceOrganizations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Organizations, by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceOrganization"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listInstanceProjects: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Projects, by organization and name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InstanceProject"][];
+                };
             };
             default: components["responses"]["Error"];
         };

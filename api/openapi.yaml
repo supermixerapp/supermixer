@@ -696,6 +696,41 @@ paths:
       responses:
         "204": { description: Taken down (or there was none). }
         default: { $ref: "#/components/responses/Error" }
+  /admin/organizations:
+    get:
+      operationId: listInstanceOrganizations
+      tags: [Users]
+      summary: Every organization on the instance, for reports; instance admins only
+      description: >-
+        Counts and settings only, for seeing how the instance is used. It gives
+        no access to the organizations: their pages stay for their members.
+      responses:
+        "200":
+          description: Organizations, by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InstanceOrganization" }
+        default: { $ref: "#/components/responses/Error" }
+  /admin/projects:
+    get:
+      operationId: listInstanceProjects
+      tags: [Users]
+      summary: Every project on the instance, for reports; instance admins only
+      description: >-
+        State, version and backups only, for seeing how the instance is used:
+        no keys, connection details or anything inside the project, and no
+        access to it.
+      responses:
+        "200":
+          description: Projects, by organization and name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/InstanceProject" }
+        default: { $ref: "#/components/responses/Error" }
   /admin/overview:
     get:
       operationId: getAdminOverview
@@ -2432,6 +2467,9 @@ components:
     StackStatus:
       type: string
       enum: [provisioning, running, paused, failed, deleting]
+    StackOperation:
+      type: string
+      enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring, upgrading, rotating_keys]
     Stack:
       type: object
       required: [status, error, template, studio, logs]
@@ -2442,8 +2480,7 @@ components:
         status_at: { type: string, format: date-time, nullable: true }
         template: { type: string, description: The supabase/supabase commit the stack was made from. }
         operation:
-          type: string
-          enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring, upgrading, rotating_keys]
+          allOf: [{ $ref: "#/components/schemas/StackOperation" }]
           nullable: true
           description: What Supermixer is doing to the stack right now.
         studio:
@@ -3000,6 +3037,56 @@ components:
       required: [codes]
       properties:
         codes: { type: array, items: { type: string }, description: "Single-use; each signs in once in place of a code." }
+    InstanceOrganization:
+      type: object
+      required: [id, slug, name, created_at, created_by, owners, members, projects, managed_projects, project_limit, mfa_required, sso_provider, sso_provider_missing, sso_required, last_activity_at]
+      properties:
+        id: { type: string, format: uuid }
+        slug: { type: string }
+        name: { type: string }
+        created_at: { type: string, format: date-time }
+        created_by: { type: string, nullable: true, description: "Username; null if unknown or the account is gone." }
+        owners: { type: array, items: { type: string }, description: "Usernames, leaving out disabled accounts." }
+        members: { type: integer }
+        projects: { type: integer }
+        managed_projects: { type: integer, description: Projects whose stacks Supermixer created. }
+        project_limit: { type: integer, nullable: true, description: "The most projects it may have, its own limit or the instance's; null if unlimited." }
+        mfa_required: { type: boolean }
+        sso_provider: { type: string, nullable: true, description: "The single sign-on provider's name, if one is set." }
+        sso_provider_missing: { type: boolean, description: "Its provider is no longer set up on this instance, so single sign-on isn't enforced." }
+        sso_required: { type: boolean }
+        last_activity_at: { type: string, format: date-time, nullable: true, description: "Its newest audit log entry; null if none." }
+    InstanceProject:
+      type: object
+      required: [id, ref, name, organization_slug, organization_name, created_by, created_at, managed, status, operation, template, last_backup, last_completed_backup_at, backups, backup_bytes]
+      properties:
+        id: { type: string, format: uuid }
+        ref: { type: string }
+        name: { type: string }
+        organization_slug: { type: string }
+        organization_name: { type: string }
+        created_by: { type: string, nullable: true, description: "Username; null if unknown or the account is gone." }
+        created_at: { type: string, format: date-time }
+        managed: { type: boolean, description: "Whether Supermixer created its stack; false for a connected project." }
+        status:
+          allOf: [{ $ref: "#/components/schemas/StackStatus" }]
+          nullable: true
+          description: The stack's state; null for a connected project.
+        operation:
+          allOf: [{ $ref: "#/components/schemas/StackOperation" }]
+          nullable: true
+          description: What Supermixer is doing to the stack right now, such as upgrading it.
+        template: { type: string, nullable: true, description: "The supabase/supabase commit its stack was made from; null for a connected project." }
+        last_backup:
+          type: object
+          nullable: true
+          required: [status, started_at]
+          properties:
+            status: { type: string, enum: [running, completed, failed] }
+            started_at: { type: string, format: date-time }
+        last_completed_backup_at: { type: string, format: date-time, nullable: true, description: "When its newest completed backup started; null if it has none." }
+        backups: { type: integer, description: Completed backups kept. }
+        backup_bytes: { type: integer, format: int64, description: "Their size together, compressed." }
     AdminOverview:
       type: object
       required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email, sso, audit_drains]

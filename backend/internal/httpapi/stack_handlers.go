@@ -692,11 +692,7 @@ func (h *handlers) stackDetail(ctx context.Context, p db.Project) (api.StackDeta
 	if s == nil {
 		return api.StackDetail{}, newError(http.StatusNotFound, "this project is a stack Supermixer connects to, not one it created")
 	}
-	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio, Logs: s.Logs}
-	if s.Operation != nil {
-		op := api.StackDetailOperation(*s.Operation)
-		out.Operation = &op
-	}
+	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio, Logs: s.Logs, Operation: s.Operation}
 	if p.StackApiPort != nil && p.StackDbPort != nil && p.StackPoolerPort != nil {
 		out.Ports.Api, out.Ports.Db, out.Ports.Pooler = int(*p.StackApiPort), int(*p.StackDbPort), int(*p.StackPoolerPort)
 	}

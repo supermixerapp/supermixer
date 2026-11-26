@@ -189,6 +189,22 @@ type Querier interface {
 	// The same password, hashed again (normalized); only if it hasn't changed since.
 	RehashUserPassword(ctx context.Context, arg RehashUserPasswordParams) error
 	RemoveMember(ctx context.Context, arg RemoveMemberParams) error
+	// Each project's completed backups: how many, their size together, and when
+	// the newest started.
+	ReportBackupTotals(ctx context.Context) ([]ReportBackupTotalsRow, error)
+	// Each project's newest backup, whatever became of it.
+	ReportLatestBackups(ctx context.Context) ([]ReportLatestBackupsRow, error)
+	// When anything last happened in each organization, by its audit log (one
+	// index lookup each); organizations with no entries are left out.
+	ReportOrganizationActivity(ctx context.Context) ([]ReportOrganizationActivityRow, error)
+	// Owners who can still sign in: an organization whose owners are all
+	// disabled shows none.
+	ReportOrganizationOwners(ctx context.Context) ([]ReportOrganizationOwnersRow, error)
+	// Instance › Organizations and Instance › Projects: how the instance is
+	// used, for instance admins' reports. Metadata only: no settings, keys or
+	// connection details, and nothing from inside a project.
+	ReportOrganizations(ctx context.Context) ([]ReportOrganizationsRow, error)
+	ReportProjects(ctx context.Context) ([]ReportProjectsRow, error)
 	// Upload at the next chance, not after the wait (shown as uploading meanwhile).
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
 	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
