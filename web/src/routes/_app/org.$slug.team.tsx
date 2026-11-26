@@ -263,7 +263,16 @@ function TeamPage() {
         description={
           removing?.user_id === me?.id
             ? 'You will lose access to this organization and its projects until someone invites you again.'
-            : 'They will lose access to this organization and all of its projects.'
+            : (
+                <>
+                  They will lose access to this organization and all of its projects.
+                  <span className="mt-2 block">
+                    <strong className="font-medium text-foreground">Any Postgres logins they created still work.</strong>{' '}
+                    Look for them under Database › Roles in each project, or filter Audit Logs by their name, then delete
+                    the ones they made.
+                  </span>
+                </>
+              )
         }
         confirmLabel={removing?.user_id === me?.id ? 'Leave organization' : 'Remove member'}
         loading={remove.isPending}

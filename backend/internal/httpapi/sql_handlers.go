@@ -53,7 +53,15 @@ func (h *handlers) RunQuery(ctx context.Context, req api.RunQueryRequestObject) 
 	if opt.ReadOnly && conn.ReadOnly != nil {
 		poolKey, database = poolKey+stack.ReadOnlyPoolSuffix, conn.Database.As(*conn.ReadOnly)
 	}
+	// A run that can write may create or change Postgres logins; see role_audit.go.
+	var rolesBefore *dbRoles
+	if !opt.ReadOnly {
+		rolesBefore = h.rolesBeforeRun(ctx, a, poolKey, database, body.Query)
+	}
 	results, err := h.pools.Query(ctx, poolKey, database, body.Query, opt)
+	if rolesBefore != nil {
+		h.auditRoleChanges(ctx, a, poolKey, database, body.Query, rolesBefore, err)
+	}
 	var qe *stack.QueryError
 	switch {
 	case errors.As(err, &qe):

@@ -177,6 +177,18 @@ The first account, `admin`, is an instance admin, and can make others instance a
 - **Global notice:** a message for everyone, such as planned downtime, shown as a band above the header on every page, including the sign-in pages. Choose Info, Warning or Critical and write up to 256 characters; `**bold**` and `[links](https://example.com)` work, linking to `https://`, `http://`, `mailto:` or a page in Supermixer such as `/account/security`. It reaches open pages within a minute and stays until an instance admin takes it down.
 - **Audit log:** everything recorded across the instance.
 
+## When someone leaves
+
+Removing someone from an organization ends their access through Supermixer, but not any Postgres logins they made. Those connect straight to the database, so they keep working. To find them, look under Database › Roles in each project, or open Audit Logs and choose **Database logins**.
+
+Roles created, changed or dropped through Supermixer are recorded as `project.database_role_created`, `_updated` and `_dropped`, whether on the Roles page, in the SQL Editor or through the API. Some things aren't recorded:
+
+- changes made outside Supermixer, for example from `psql`;
+- a role created by calling a function, such as `select make_login()`;
+- a password set by SQL that builds the statement as text, such as `execute format(...)` in a `DO` block.
+
+If a role changes while someone's query runs but the query doesn't name it, the entry says it may not be theirs.
+
 ## Single sign-on
 
 Supermixer can sign people in through OpenID Connect providers (Okta, Microsoft Entra ID, Google Workspace, Keycloak, Authentik, Dex, ...), with a **Continue with ...** button for each on the sign-in page. Register `<public_url>/api/v1/auth/sso/<id>/callback` as the redirect URI with the provider, then:

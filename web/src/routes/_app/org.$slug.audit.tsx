@@ -21,6 +21,7 @@ const ACTIONS = [
   { value: 'all', label: 'All actions' },
   { value: 'organization.', label: 'Organization' },
   { value: 'project.', label: 'Projects' },
+  { value: 'project.database_role_', label: 'Database logins' },
   { value: 'member.', label: 'Members' },
   { value: 'invitation.', label: 'Invitations' },
 ]
