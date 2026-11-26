@@ -441,15 +441,65 @@ test('the first admin sets up an organization, a project and a Read-only member'
     }
   })
 
+  await test.step('an owner posts the organization\'s events to a chat channel', async () => {
+    // A Mattermost-style incoming webhook: {"text": "..."} at a secret path.
+    const messages: string[] = []
+    const paths: string[] = []
+    const receiver = createServer((req, res) => {
+      let raw = ''
+      req.on('data', (c) => (raw += c))
+      req.on('end', () => {
+        paths.push(req.url ?? '')
+        messages.push(String(JSON.parse(raw).text ?? ''))
+        res.writeHead(200).end('ok')
+      })
+    })
+    await new Promise<void>((resolve) => receiver.listen(0, '127.0.0.1', resolve))
+    const host = `http://127.0.0.1:${(receiver.address() as AddressInfo).port}`
+    try {
+      await page.goto(`/org/${slug}/integrations`)
+      await expect(page.getByRole('link', { name: /Chat notifications/ })).toContainText('Not set up')
+      await expect(page.getByRole('link', { name: /Webhooks/ })).toContainText('1 webhook')
+      await page.screenshot({ path: 'e2e/.tmp/integrations.png', fullPage: true })
+      await page.getByRole('link', { name: /Chat notifications/ }).click()
+      await expect(page).toHaveURL(new RegExp(`/org/${slug}/integrations/chat$`))
+      await page.getByRole('button', { name: 'Add channel' }).click()
+      const dialog = page.getByRole('dialog')
+      await dialog.getByLabel('App').click()
+      await page.getByRole('option', { name: 'Mattermost' }).click()
+      await dialog.getByLabel('Incoming webhook URL').fill(`${host}/hooks/s3cr3t`)
+      await dialog.getByLabel('Description (optional)').fill('#ops')
+      await page.screenshot({ path: 'e2e/.tmp/chat-dialog.png' })
+      await dialog.getByRole('button', { name: 'Add channel' }).click()
+      await expect(dialog).toBeHidden()
+      // The address is a credential: only its host is shown from now on.
+      await expect(page.getByText(host, { exact: true })).toBeVisible()
+      await expect(page.getByText('s3cr3t')).toHaveCount(0)
+
+      await page.getByRole('button', { name: 'Send test message' }).click()
+      await expect.poll(() => messages.join('\n')).toContain('sent a test message')
+      expect(paths).toEqual(['/hooks/s3cr3t'])
+      // A test message doesn't count as delivering events (as for webhooks).
+      await expect(page.getByText('Waiting for events', { exact: true })).toBeVisible()
+      await page.screenshot({ path: 'e2e/.tmp/chat.png', fullPage: true })
+
+      // Chat channels aren't listed with the webhooks.
+      await page.goto(`/org/${slug}/webhooks`)
+      await expect(page.getByText(host, { exact: true })).toHaveCount(0)
+      await page.goto(`/org/${slug}/integrations`)
+      await expect(page.getByRole('link', { name: /Chat notifications/ })).toContainText('1 channel')
+    } finally {
+      receiver.close()
+    }
+  })
+
   await test.step('organization security, and pages still to come', async () => {
     await page.goto(`/org/${slug}/security`)
     await expect(page.getByLabel('Require two-factor sign-in')).toBeVisible()
     await expect(page.getByText('Members may sign in with a password.')).toBeVisible()
-    for (const path of ['apps', 'integrations']) {
-      await page.goto(`/org/${slug}/${path}`)
-      await expect(page.getByText('Coming soon', { exact: true })).toBeVisible()
-      await expect(page.getByText(/part of Stage/)).toHaveCount(0)
-    }
+    await page.goto(`/org/${slug}/apps`)
+    await expect(page.getByText('Coming soon', { exact: true })).toBeVisible()
+    await expect(page.getByText(/part of Stage/)).toHaveCount(0)
   })
 
   await test.step('Storage settings and S3 explain a stack Supermixer connects to', async () => {

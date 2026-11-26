@@ -38,7 +38,6 @@ import { Route as AppOrgSlugIndexRouteImport } from './routes/_app/org.$slug.ind
 import { Route as AppOrgSlugSplatRouteImport } from './routes/_app/org.$slug.$'
 import { Route as AppOrgSlugAuditRouteImport } from './routes/_app/org.$slug.audit'
 import { Route as AppOrgSlugGeneralRouteImport } from './routes/_app/org.$slug.general'
-import { Route as AppOrgSlugIntegrationsRouteImport } from './routes/_app/org.$slug.integrations'
 import { Route as AppOrgSlugSecurityRouteImport } from './routes/_app/org.$slug.security'
 import { Route as AppOrgSlugSsoRouteImport } from './routes/_app/org.$slug.sso'
 import { Route as AppOrgSlugTeamRouteImport } from './routes/_app/org.$slug.team'
@@ -48,6 +47,8 @@ import { Route as AppProjectRefIndexRouteImport } from './routes/_app/project.$r
 import { Route as AppProjectRefSplatRouteImport } from './routes/_app/project.$ref.$'
 import { Route as AppProjectRefEditorRouteImport } from './routes/_app/project.$ref.editor'
 import { Route as AppProjectRefSqlRouteImport } from './routes/_app/project.$ref.sql'
+import { Route as AppOrgSlugIntegrationsIndexRouteImport } from './routes/_app/org.$slug.integrations.index'
+import { Route as AppOrgSlugIntegrationsChatRouteImport } from './routes/_app/org.$slug.integrations.chat'
 import { Route as AppProjectRefAdvisorsChangesRouteImport } from './routes/_app/project.$ref.advisors.changes'
 import { Route as AppProjectRefAdvisorsPerformanceRouteImport } from './routes/_app/project.$ref.advisors.performance'
 import { Route as AppProjectRefAdvisorsQueryPerformanceRouteImport } from './routes/_app/project.$ref.advisors.query-performance'
@@ -253,11 +254,6 @@ const AppOrgSlugGeneralRoute = AppOrgSlugGeneralRouteImport.update({
   path: '/general',
   getParentRoute: () => AppOrgSlugRoute,
 } as any)
-const AppOrgSlugIntegrationsRoute = AppOrgSlugIntegrationsRouteImport.update({
-  id: '/integrations',
-  path: '/integrations',
-  getParentRoute: () => AppOrgSlugRoute,
-} as any)
 const AppOrgSlugSecurityRoute = AppOrgSlugSecurityRouteImport.update({
   id: '/security',
   path: '/security',
@@ -303,6 +299,18 @@ const AppProjectRefSqlRoute = AppProjectRefSqlRouteImport.update({
   path: '/sql',
   getParentRoute: () => AppProjectRefRoute,
 } as any)
+const AppOrgSlugIntegrationsIndexRoute =
+  AppOrgSlugIntegrationsIndexRouteImport.update({
+    id: '/integrations/',
+    path: '/integrations/',
+    getParentRoute: () => AppOrgSlugRoute,
+  } as any)
+const AppOrgSlugIntegrationsChatRoute =
+  AppOrgSlugIntegrationsChatRouteImport.update({
+    id: '/integrations/chat',
+    path: '/integrations/chat',
+    getParentRoute: () => AppOrgSlugRoute,
+  } as any)
 const AppProjectRefAdvisorsChangesRoute =
   AppProjectRefAdvisorsChangesRouteImport.update({
     id: '/advisors/changes',
@@ -685,7 +693,6 @@ export interface FileRoutesByFullPath {
   '/org/$slug/$': typeof AppOrgSlugSplatRoute
   '/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/org/$slug/general': typeof AppOrgSlugGeneralRoute
-  '/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
   '/org/$slug/security': typeof AppOrgSlugSecurityRoute
   '/org/$slug/sso': typeof AppOrgSlugSsoRoute
   '/org/$slug/team': typeof AppOrgSlugTeamRoute
@@ -696,6 +703,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/org/$slug/': typeof AppOrgSlugIndexRoute
   '/project/$ref/': typeof AppProjectRefIndexRoute
+  '/org/$slug/integrations/chat': typeof AppOrgSlugIntegrationsChatRoute
   '/project/$ref/advisors/changes': typeof AppProjectRefAdvisorsChangesRoute
   '/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
@@ -748,6 +756,7 @@ export interface FileRoutesByFullPath {
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/storage/s3': typeof AppProjectRefStorageS3Route
   '/project/$ref/storage/settings': typeof AppProjectRefStorageSettingsRoute
+  '/org/$slug/integrations/': typeof AppOrgSlugIntegrationsIndexRoute
   '/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/functions/': typeof AppProjectRefFunctionsIndexRoute
   '/project/$ref/integrations/': typeof AppProjectRefIntegrationsIndexRoute
@@ -783,7 +792,6 @@ export interface FileRoutesByTo {
   '/org/$slug/$': typeof AppOrgSlugSplatRoute
   '/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/org/$slug/general': typeof AppOrgSlugGeneralRoute
-  '/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
   '/org/$slug/security': typeof AppOrgSlugSecurityRoute
   '/org/$slug/sso': typeof AppOrgSlugSsoRoute
   '/org/$slug/team': typeof AppOrgSlugTeamRoute
@@ -792,6 +800,7 @@ export interface FileRoutesByTo {
   '/project/$ref/$': typeof AppProjectRefSplatRoute
   '/org/$slug': typeof AppOrgSlugIndexRoute
   '/project/$ref': typeof AppProjectRefIndexRoute
+  '/org/$slug/integrations/chat': typeof AppOrgSlugIntegrationsChatRoute
   '/project/$ref/advisors/changes': typeof AppProjectRefAdvisorsChangesRoute
   '/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
@@ -844,6 +853,7 @@ export interface FileRoutesByTo {
   '/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/project/$ref/storage/s3': typeof AppProjectRefStorageS3Route
   '/project/$ref/storage/settings': typeof AppProjectRefStorageSettingsRoute
+  '/org/$slug/integrations': typeof AppOrgSlugIntegrationsIndexRoute
   '/project/$ref/editor': typeof AppProjectRefEditorIndexRoute
   '/project/$ref/functions': typeof AppProjectRefFunctionsIndexRoute
   '/project/$ref/integrations': typeof AppProjectRefIntegrationsIndexRoute
@@ -883,7 +893,6 @@ export interface FileRoutesById {
   '/_app/org/$slug/$': typeof AppOrgSlugSplatRoute
   '/_app/org/$slug/audit': typeof AppOrgSlugAuditRoute
   '/_app/org/$slug/general': typeof AppOrgSlugGeneralRoute
-  '/_app/org/$slug/integrations': typeof AppOrgSlugIntegrationsRoute
   '/_app/org/$slug/security': typeof AppOrgSlugSecurityRoute
   '/_app/org/$slug/sso': typeof AppOrgSlugSsoRoute
   '/_app/org/$slug/team': typeof AppOrgSlugTeamRoute
@@ -894,6 +903,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/sql': typeof AppProjectRefSqlRouteWithChildren
   '/_app/org/$slug/': typeof AppOrgSlugIndexRoute
   '/_app/project/$ref/': typeof AppProjectRefIndexRoute
+  '/_app/org/$slug/integrations/chat': typeof AppOrgSlugIntegrationsChatRoute
   '/_app/project/$ref/advisors/changes': typeof AppProjectRefAdvisorsChangesRoute
   '/_app/project/$ref/advisors/performance': typeof AppProjectRefAdvisorsPerformanceRoute
   '/_app/project/$ref/advisors/query-performance': typeof AppProjectRefAdvisorsQueryPerformanceRoute
@@ -946,6 +956,7 @@ export interface FileRoutesById {
   '/_app/project/$ref/storage/policies': typeof AppProjectRefStoragePoliciesRoute
   '/_app/project/$ref/storage/s3': typeof AppProjectRefStorageS3Route
   '/_app/project/$ref/storage/settings': typeof AppProjectRefStorageSettingsRoute
+  '/_app/org/$slug/integrations/': typeof AppOrgSlugIntegrationsIndexRoute
   '/_app/project/$ref/editor/': typeof AppProjectRefEditorIndexRoute
   '/_app/project/$ref/functions/': typeof AppProjectRefFunctionsIndexRoute
   '/_app/project/$ref/integrations/': typeof AppProjectRefIntegrationsIndexRoute
@@ -985,7 +996,6 @@ export interface FileRouteTypes {
     | '/org/$slug/$'
     | '/org/$slug/audit'
     | '/org/$slug/general'
-    | '/org/$slug/integrations'
     | '/org/$slug/security'
     | '/org/$slug/sso'
     | '/org/$slug/team'
@@ -996,6 +1006,7 @@ export interface FileRouteTypes {
     | '/project/$ref/sql'
     | '/org/$slug/'
     | '/project/$ref/'
+    | '/org/$slug/integrations/chat'
     | '/project/$ref/advisors/changes'
     | '/project/$ref/advisors/performance'
     | '/project/$ref/advisors/query-performance'
@@ -1048,6 +1059,7 @@ export interface FileRouteTypes {
     | '/project/$ref/storage/policies'
     | '/project/$ref/storage/s3'
     | '/project/$ref/storage/settings'
+    | '/org/$slug/integrations/'
     | '/project/$ref/editor/'
     | '/project/$ref/functions/'
     | '/project/$ref/integrations/'
@@ -1083,7 +1095,6 @@ export interface FileRouteTypes {
     | '/org/$slug/$'
     | '/org/$slug/audit'
     | '/org/$slug/general'
-    | '/org/$slug/integrations'
     | '/org/$slug/security'
     | '/org/$slug/sso'
     | '/org/$slug/team'
@@ -1092,6 +1103,7 @@ export interface FileRouteTypes {
     | '/project/$ref/$'
     | '/org/$slug'
     | '/project/$ref'
+    | '/org/$slug/integrations/chat'
     | '/project/$ref/advisors/changes'
     | '/project/$ref/advisors/performance'
     | '/project/$ref/advisors/query-performance'
@@ -1144,6 +1156,7 @@ export interface FileRouteTypes {
     | '/project/$ref/storage/policies'
     | '/project/$ref/storage/s3'
     | '/project/$ref/storage/settings'
+    | '/org/$slug/integrations'
     | '/project/$ref/editor'
     | '/project/$ref/functions'
     | '/project/$ref/integrations'
@@ -1182,7 +1195,6 @@ export interface FileRouteTypes {
     | '/_app/org/$slug/$'
     | '/_app/org/$slug/audit'
     | '/_app/org/$slug/general'
-    | '/_app/org/$slug/integrations'
     | '/_app/org/$slug/security'
     | '/_app/org/$slug/sso'
     | '/_app/org/$slug/team'
@@ -1193,6 +1205,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/sql'
     | '/_app/org/$slug/'
     | '/_app/project/$ref/'
+    | '/_app/org/$slug/integrations/chat'
     | '/_app/project/$ref/advisors/changes'
     | '/_app/project/$ref/advisors/performance'
     | '/_app/project/$ref/advisors/query-performance'
@@ -1245,6 +1258,7 @@ export interface FileRouteTypes {
     | '/_app/project/$ref/storage/policies'
     | '/_app/project/$ref/storage/s3'
     | '/_app/project/$ref/storage/settings'
+    | '/_app/org/$slug/integrations/'
     | '/_app/project/$ref/editor/'
     | '/_app/project/$ref/functions/'
     | '/_app/project/$ref/integrations/'
@@ -1471,13 +1485,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppOrgSlugGeneralRouteImport
       parentRoute: typeof AppOrgSlugRoute
     }
-    '/_app/org/$slug/integrations': {
-      id: '/_app/org/$slug/integrations'
-      path: '/integrations'
-      fullPath: '/org/$slug/integrations'
-      preLoaderRoute: typeof AppOrgSlugIntegrationsRouteImport
-      parentRoute: typeof AppOrgSlugRoute
-    }
     '/_app/org/$slug/security': {
       id: '/_app/org/$slug/security'
       path: '/security'
@@ -1540,6 +1547,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/project/$ref/sql'
       preLoaderRoute: typeof AppProjectRefSqlRouteImport
       parentRoute: typeof AppProjectRefRoute
+    }
+    '/_app/org/$slug/integrations/': {
+      id: '/_app/org/$slug/integrations/'
+      path: '/integrations'
+      fullPath: '/org/$slug/integrations/'
+      preLoaderRoute: typeof AppOrgSlugIntegrationsIndexRouteImport
+      parentRoute: typeof AppOrgSlugRoute
+    }
+    '/_app/org/$slug/integrations/chat': {
+      id: '/_app/org/$slug/integrations/chat'
+      path: '/integrations/chat'
+      fullPath: '/org/$slug/integrations/chat'
+      preLoaderRoute: typeof AppOrgSlugIntegrationsChatRouteImport
+      parentRoute: typeof AppOrgSlugRoute
     }
     '/_app/project/$ref/advisors/changes': {
       id: '/_app/project/$ref/advisors/changes'
@@ -1968,26 +1989,28 @@ interface AppOrgSlugRouteChildren {
   AppOrgSlugSplatRoute: typeof AppOrgSlugSplatRoute
   AppOrgSlugAuditRoute: typeof AppOrgSlugAuditRoute
   AppOrgSlugGeneralRoute: typeof AppOrgSlugGeneralRoute
-  AppOrgSlugIntegrationsRoute: typeof AppOrgSlugIntegrationsRoute
   AppOrgSlugSecurityRoute: typeof AppOrgSlugSecurityRoute
   AppOrgSlugSsoRoute: typeof AppOrgSlugSsoRoute
   AppOrgSlugTeamRoute: typeof AppOrgSlugTeamRoute
   AppOrgSlugUsageRoute: typeof AppOrgSlugUsageRoute
   AppOrgSlugWebhooksRoute: typeof AppOrgSlugWebhooksRoute
   AppOrgSlugIndexRoute: typeof AppOrgSlugIndexRoute
+  AppOrgSlugIntegrationsChatRoute: typeof AppOrgSlugIntegrationsChatRoute
+  AppOrgSlugIntegrationsIndexRoute: typeof AppOrgSlugIntegrationsIndexRoute
 }
 
 const AppOrgSlugRouteChildren: AppOrgSlugRouteChildren = {
   AppOrgSlugSplatRoute: AppOrgSlugSplatRoute,
   AppOrgSlugAuditRoute: AppOrgSlugAuditRoute,
   AppOrgSlugGeneralRoute: AppOrgSlugGeneralRoute,
-  AppOrgSlugIntegrationsRoute: AppOrgSlugIntegrationsRoute,
   AppOrgSlugSecurityRoute: AppOrgSlugSecurityRoute,
   AppOrgSlugSsoRoute: AppOrgSlugSsoRoute,
   AppOrgSlugTeamRoute: AppOrgSlugTeamRoute,
   AppOrgSlugUsageRoute: AppOrgSlugUsageRoute,
   AppOrgSlugWebhooksRoute: AppOrgSlugWebhooksRoute,
   AppOrgSlugIndexRoute: AppOrgSlugIndexRoute,
+  AppOrgSlugIntegrationsChatRoute: AppOrgSlugIntegrationsChatRoute,
+  AppOrgSlugIntegrationsIndexRoute: AppOrgSlugIntegrationsIndexRoute,
 }
 
 const AppOrgSlugRouteWithChildren = AppOrgSlugRoute._addFileChildren(

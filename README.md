@@ -6,7 +6,7 @@ An on-premise management plane for self-hosted Supabase: organizations, projects
 
 After signing in you land on your organization's projects (or the list of organizations, if you're in several). From there, much as on supabase.com/dashboard:
 
-- **Organizations:** projects (as cards or a list) with live health, a team with Supabase's roles (Owner, Administrator, Developer, Read-only, or chosen projects only), invitations, usage, an audit log, and settings: General, Security (require two-factor sign-in), SSO and Webhooks.
+- **Organizations:** projects (as cards or a list) with live health, a team with Supabase's roles (Owner, Administrator, Developer, Read-only, or chosen projects only), invitations, usage, an audit log, Integrations (chat notifications, plus what the organization is connected to), and settings: General, Security (require two-factor sign-in), SSO and Webhooks.
 - **Projects:** connect a self-hosted Supabase stack that's already running, or have Supermixer create one ([Creating stacks](#creating-stacks)). Each project has:
   - Table Editor and SQL Editor, with saved snippets; Read-only members run SQL read-only
   - Database: tables, functions, triggers, types, extensions, indexes, publications, policies, roles, column privileges, a schema visualizer, migrations, settings and backups
@@ -118,7 +118,7 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
-| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
+| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, a chat channel receiving a test message, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
 | `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
@@ -232,6 +232,12 @@ Each organization's Owners can then, under **Organization Settings › SSO**:
 ## Webhooks
 
 Under **Organization Settings › Webhooks**, Owners can send the organization's events (what its audit log records: projects created or deleted, members joining, settings changed, ...) to URLs. Each event is one JSON POST, in order. Each request carries `X-Supermixer-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>">`, made with the webhook's secret, and `X-Supermixer-Delivery`, which stays the same on retries. A receiver that fails is retried with backoff, holding later events back. The page has a test event button and each webhook's last 100 deliveries. Webhooks may only reach public addresses unless `[webhooks] allow_private_addresses = true`.
+
+Besides their own actions, the events include two failures: `project.backup_failed` (a manual or scheduled backup; one taken before a restore or an upgrade is reported by that operation instead) and `project.operation_failed` (starting, stopping, upgrading, restoring or another stack operation; `recovered: true` when the project was left as it was).
+
+### Chat notifications
+
+Under **Organization › Integrations › Chat notifications**, Owners can post the same events to Slack, Microsoft Teams (through a Workflows webhook), Discord, Google Chat or Mattermost, as readable messages such as "alice created project Billing", with a link back to Supermixer. New channels get failures and members by default. A chat app's incoming webhook URL works like a password, so it's stored encrypted and only its host is shown or written to the audit log. Names in messages are escaped, so a project called `@channel` can't notify everyone. An organization can have up to 10 channels, besides its 10 webhooks. Delivery, retries, the test button and the private-address rule work as for webhooks: a Mattermost server on your own network needs `allow_private_addresses`.
 
 ## API and access tokens
 

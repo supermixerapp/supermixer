@@ -55,7 +55,8 @@ const INTEGRATIONS: { title: string; items: Integration[] }[] = [
       {
         key: 'chat',
         title: 'Chat notifications',
-        description: 'Post the organization’s events, such as failed backups and new members, to Slack, Microsoft Teams, Discord, Google Chat or Mattermost.',
+        description:
+          'Post the organization’s events, such as failed backups and new members, to Slack, Microsoft Teams, Discord, Google Chat or Mattermost.',
         icon: ForumIcon,
         path: 'integrations/chat',
         state: (s) => countState(s.chat, 'channel'),
@@ -63,7 +64,8 @@ const INTEGRATIONS: { title: string; items: Integration[] }[] = [
       {
         key: 'webhooks',
         title: 'Webhooks',
-        description: 'Send every event to your own service as signed JSON, in order, retried until it answers.',
+        description:
+          'Send every event to your own service as signed JSON, in order, retried until it answers.',
         icon: WebhookIcon,
         path: 'webhooks',
         state: (s) => countState(s.webhooks, 'webhook'),
@@ -76,12 +78,22 @@ const INTEGRATIONS: { title: string; items: Integration[] }[] = [
       {
         key: 'sso',
         title: 'Single sign-on',
-        description: 'Let members sign in through your identity provider, require it, and let people join by themselves.',
+        description:
+          'Let members sign in through your identity provider, require it, and let people join by themselves.',
         icon: BadgeIcon,
         path: 'sso',
         state: (s) =>
-          s.sso.provider ? { label: s.sso.required ? 'Required' : 'On', variant: 'success' } : { label: 'Not set up', variant: 'default' },
-        note: (s) => (s.sso.provider ? `Through ${s.sso.provider}` : undefined),
+          !s.sso.provider
+            ? { label: 'Not set up', variant: 'default' }
+            : s.sso.provider_missing
+              ? { label: 'Provider missing', variant: 'destructive' }
+              : { label: s.sso.required ? 'Required' : 'On', variant: 'success' },
+        note: (s) =>
+          s.sso.provider_missing
+            ? `${s.sso.provider} is no longer set up on this instance, so it isn’t enforced.`
+            : s.sso.provider
+              ? `Through ${s.sso.provider}`
+              : undefined,
       },
     ],
   },
@@ -105,10 +117,15 @@ const INTEGRATIONS: { title: string; items: Integration[] }[] = [
       {
         key: 'backup_copies',
         title: 'Backup copies in S3',
-        description: 'Copy created projects’ backups to an S3-compatible bucket, so they survive losing this server.',
+        description:
+          'Copy created projects’ backups to an S3-compatible bucket, so they survive losing this server.',
         icon: CloudUploadIcon,
-        state: (s) => (s.backup_copies.enabled ? { label: 'On', variant: 'success' } : { label: 'Off', variant: 'default' }),
-        note: () => 'Set for the whole instance in Supermixer’s config file, by whoever runs the server.',
+        state: (s) =>
+          s.backup_copies.enabled
+            ? { label: 'On', variant: 'success' }
+            : { label: 'Off', variant: 'default' },
+        note: () =>
+          'Set for the whole instance in Supermixer’s config file, by whoever runs the server.',
       },
     ],
   },
@@ -122,7 +139,7 @@ function IntegrationsPage() {
   return (
     <>
       <PageHeader
-        title="Integrations"
+        title="Organization Integrations"
         description="What this organization is connected to outside Supermixer."
         size="large"
       />
@@ -134,7 +151,12 @@ function IntegrationsPage() {
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {group.items.map((i) => (
                 <li key={i.key}>
-                  <IntegrationCard slug={slug} integration={i} summary={summary.data} />
+                  <IntegrationCard
+                    slug={slug}
+                    integration={i}
+                    summary={summary.data}
+                    failed={summary.isError}
+                  />
                 </li>
               ))}
             </ul>
@@ -145,7 +167,18 @@ function IntegrationsPage() {
   )
 }
 
-function IntegrationCard({ slug, integration: i, summary }: { slug: string; integration: Integration; summary?: Summary }) {
+function IntegrationCard({
+  slug,
+  integration: i,
+  summary,
+  failed,
+}: {
+  slug: string
+  integration: Integration
+  summary?: Summary
+  /** The summary couldn't be loaded: no state to show, rather than loading. */
+  failed: boolean
+}) {
   const IconC = i.icon
   const state = summary && i.state(summary)
   const note = summary && i.note?.(summary)
@@ -160,6 +193,8 @@ function IntegrationCard({ slug, integration: i, summary }: { slug: string; inte
           <Badge className="ml-auto" variant={state.variant}>
             {state.label}
           </Badge>
+        ) : failed ? (
+          <Badge className="ml-auto">Unavailable</Badge>
         ) : (
           <Skeleton className="ml-auto h-4 w-16" />
         )}
@@ -172,7 +207,10 @@ function IntegrationCard({ slug, integration: i, summary }: { slug: string; inte
   if (!i.path) return <div className={box}>{body}</div>
   const to: string = `/org/${slug}/${i.path}`
   return (
-    <Link to={to} className={`${box} transition-colors focus-ring hover:border-strong hover:bg-surface-200`}>
+    <Link
+      to={to}
+      className={`${box} focus-ring transition-colors hover:border-strong hover:bg-surface-200`}
+    >
       {body}
     </Link>
   )

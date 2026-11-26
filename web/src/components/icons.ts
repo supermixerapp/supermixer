@@ -92,6 +92,10 @@ import ArrowUpIconSvg from '@material-design-icons/svg/two-tone/arrow_upward.svg
 import ArrowDownIconSvg from '@material-design-icons/svg/two-tone/arrow_downward.svg?react'
 import LinkIconSvg from '@material-design-icons/svg/two-tone/link.svg?react'
 import CableIconSvg from '@material-design-icons/svg/two-tone/cable.svg?react'
+import ForumIconSvg from '@material-design-icons/svg/two-tone/forum.svg?react'
+import WebhookIconSvg from '@material-design-icons/svg/two-tone/webhook.svg?react'
+import CloudUploadIconSvg from '@material-design-icons/svg/two-tone/cloud_upload.svg?react'
+import BadgeIconSvg from '@material-design-icons/svg/two-tone/badge.svg?react'
 import SaveIconSvg from '@material-design-icons/svg/two-tone/save.svg?react'
 import VisibilityIconSvg from '@material-design-icons/svg/two-tone/visibility.svg?react'
 
@@ -229,5 +233,9 @@ export const ArrowUpIcon = createIcon(ArrowUpIconSvg, 'arrow_upward')
 export const ArrowDownIcon = createIcon(ArrowDownIconSvg, 'arrow_downward')
 export const LinkIcon = createIcon(LinkIconSvg, 'link')
 export const CableIcon = createIcon(CableIconSvg, 'cable')
+export const ForumIcon = createIcon(ForumIconSvg, 'forum')
+export const WebhookIcon = createIcon(WebhookIconSvg, 'webhook')
+export const CloudUploadIcon = createIcon(CloudUploadIconSvg, 'cloud_upload')
+export const BadgeIcon = createIcon(BadgeIconSvg, 'badge')
 export const SaveIcon = createIcon(SaveIconSvg, 'save')
 export const VisibilityIcon = createIcon(VisibilityIconSvg, 'visibility')

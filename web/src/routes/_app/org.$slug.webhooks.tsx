@@ -1,12 +1,22 @@
 /*
  * Organization Settings › Webhooks: the organization's events (its audit
- * log), POSTed to URLs as they happen, signed. Owners only.
+ * log), POSTed to URLs as they happen, signed. Owners only. Chat channels
+ * (Integrations › Chat notifications) are webhooks too, shown there.
  */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { createFileRoute } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import {
+  DeliveriesSheet,
+  EventsFieldset,
+  eventsLabel,
+  integrationsQuery,
+  type Webhook,
+  WebhookStatus,
+  webhooksQuery,
+} from '@/components/organization/webhook-parts'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { SettingsSection } from '@/components/layout/section'
 import { PermissionButton } from '@/components/permission-button'
@@ -14,7 +24,6 @@ import { Alert } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Checkbox } from '@/components/ui/checkbox'
 import { CopyField } from '@/components/ui/copy'
 import {
   Dialog,
@@ -27,51 +36,35 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetSection, SheetTitle } from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toaster'
-import { api, unwrap, type Schemas } from '@/lib/api/client'
+import { api, unwrap } from '@/lib/api/client'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
-import { relativeTime } from '@/lib/auth-users'
 
 export const Route = createFileRoute('/_app/org/$slug/webhooks')({
   component: OrgWebhooksPage,
 })
-
-type Webhook = Schemas['Webhook']
-
-/** The kinds of event to choose from: audit log action prefixes. */
-const EVENT_GROUPS = [
-  { value: 'project.', label: 'Projects', hint: 'created, changed, deleted, keys rotated, backups, functions' },
-  { value: 'member.', label: 'Members', hint: 'joined, role changed, removed' },
-  { value: 'invitation.', label: 'Invitations', hint: 'created, revoked' },
-  { value: 'organization.', label: 'Organization', hint: 'settings changed' },
-  { value: 'webhook.', label: 'Webhooks', hint: 'added, changed, deleted' },
-]
-
-const webhooksQuery = (slug: string) => ({
-  queryKey: ['organizations', slug, 'webhooks'],
-  queryFn: () => unwrap(api.GET('/organizations/{slug}/webhooks', { params: { path: { slug } } })),
-})
-
-function eventsLabel(events: string[]) {
-  if (events.includes('*')) return ['All events']
-  return events.map((e) => EVENT_GROUPS.find((g) => g.value === e)?.label ?? e)
-}
 
 function OrgWebhooksPage() {
   const org = useSelectedOrganization()
   const slug = org?.slug ?? ''
   const isOwner = can(org, 'org:update')
   const queryClient = useQueryClient()
-  const hooks = useQuery({ ...webhooksQuery(slug), enabled: !!org && isOwner })
+  // Chat channels are organization webhooks too; they're on Integrations › Chat notifications.
+  const hooks = useQuery({
+    ...webhooksQuery(slug),
+    enabled: !!org && isOwner,
+    select: (all) => all.filter((h) => h.kind === 'webhook'),
+  })
   const [editing, setEditing] = useState<Webhook | 'new' | null>(null)
   const [secret, setSecret] = useState<{ hook: Webhook; secret: string } | null>(null)
   const [deliveries, setDeliveries] = useState<Webhook | null>(null)
   const [deleting, setDeleting] = useState<Webhook | null>(null)
-  const refresh = () => queryClient.invalidateQueries({ queryKey: webhooksQuery(slug).queryKey })
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: webhooksQuery(slug).queryKey }),
+      queryClient.invalidateQueries({ queryKey: integrationsQuery(slug).queryKey }),
+    ])
   const path = (h: Webhook) => ({ params: { path: { slug, webhook_id: h.id } } })
 
   const toggle = useMutation({
@@ -211,27 +204,6 @@ function OrgWebhooksPage() {
   )
 }
 
-function WebhookStatus({ hook }: { hook: Webhook }) {
-  if (!hook.enabled) return <Badge>Off</Badge>
-  if (hook.failing_since) {
-    return (
-      <span className="flex flex-col items-end gap-1">
-        <Badge variant="destructive">Failing</Badge>
-        <span className="text-xs text-foreground-lighter">since {relativeTime(hook.failing_since)}</span>
-      </span>
-    )
-  }
-  if (hook.last_success_at) {
-    return (
-      <span className="flex flex-col items-end gap-1">
-        <Badge variant="success">Delivering</Badge>
-        <span className="text-xs text-foreground-lighter">last {relativeTime(hook.last_success_at)}</span>
-      </span>
-    )
-  }
-  return <Badge>Waiting for events</Badge>
-}
-
 function WebhookDialog({
   slug,
   hook,
@@ -246,7 +218,6 @@ function WebhookDialog({
   const [url, setUrl] = useState(hook?.url ?? '')
   const [description, setDescription] = useState(hook?.description ?? '')
   const [events, setEvents] = useState<string[]>(hook?.events ?? ['project.', 'member.'])
-  const all = events.includes('*')
   const save = useMutation({
     mutationFn: async () => {
       if (hook) {
@@ -266,8 +237,6 @@ function WebhookDialog({
       onSaved(created)
     },
   })
-  const flip = (value: string, on: boolean) =>
-    setEvents((evs) => (on ? [...evs.filter((e) => e !== '*'), value] : evs.filter((e) => e !== value)))
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="medium">
@@ -290,27 +259,7 @@ function WebhookDialog({
             <FormField label="Description (optional)" htmlFor="wh-desc">
               <Input id="wh-desc" maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} />
             </FormField>
-            <fieldset className="flex flex-col gap-3">
-              <legend className="mb-2 text-sm text-foreground-light">Events</legend>
-              <label className="flex items-center gap-2 text-sm">
-                <Checkbox checked={all} onCheckedChange={(c) => setEvents(c === true ? ['*'] : [])} />
-                All events
-              </label>
-              {EVENT_GROUPS.map((g) => (
-                <label key={g.value} className="flex items-start gap-2 text-sm">
-                  <Checkbox
-                    className="mt-0.5"
-                    checked={all || events.includes(g.value)}
-                    disabled={all}
-                    onCheckedChange={(c) => flip(g.value, c === true)}
-                  />
-                  <span className="flex flex-col">
-                    <Label className="text-foreground">{g.label}</Label>
-                    <span className="text-xs text-foreground-lighter">{g.hint}</span>
-                  </span>
-                </label>
-              ))}
-            </fieldset>
+            <EventsFieldset events={events} onChange={setEvents} />
             {save.error && <Alert variant="destructive" title={save.error.message} />}
           </DialogSection>
           <DialogFooter>
@@ -369,64 +318,5 @@ function VerifyHelp() {
         </p>
       </div>
     </details>
-  )
-}
-
-function DeliveriesSheet({ slug, hook, onClose }: { slug: string; hook: Webhook; onClose: () => void }) {
-  const list = useQuery({
-    queryKey: ['organizations', slug, 'webhooks', hook.id, 'deliveries'],
-    queryFn: () =>
-      unwrap(api.GET('/organizations/{slug}/webhooks/{webhook_id}/deliveries', { params: { path: { slug, webhook_id: hook.id } } })),
-    refetchInterval: 10_000,
-  })
-  return (
-    <Sheet open onOpenChange={(o) => !o && onClose()}>
-      <SheetContent size="lg" className="flex flex-col">
-        <SheetHeader>
-          <SheetTitle>Deliveries</SheetTitle>
-          <SheetDescription className="break-all">The latest 100 attempts to {hook.url}, newest first.</SheetDescription>
-        </SheetHeader>
-        <SheetSection className="min-h-0 flex-1 overflow-auto p-0">
-          {list.isPending ? (
-            <div className="p-4">
-              <Skeleton className="h-6" />
-            </div>
-          ) : list.isError ? (
-            <p className="p-4 text-sm text-destructive">{list.error.message}</p>
-          ) : list.data.length === 0 ? (
-            <p className="p-6 text-center text-sm text-foreground-lighter">Nothing sent yet.</p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow className="hover:bg-transparent">
-                  <TableHead>Time</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead className="text-right">Took</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {list.data.map((d) => (
-                  <TableRow key={d.id}>
-                    <TableCell className="whitespace-nowrap text-foreground-light">{new Date(d.created_at).toLocaleString()}</TableCell>
-                    <TableCell>
-                      <Badge>{d.event}</Badge>
-                    </TableCell>
-                    <TableCell>
-                      {d.error ? (
-                        <span className="text-xs break-all text-destructive">{d.error}</span>
-                      ) : (
-                        <Badge variant="success">{d.status}</Badge>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right text-foreground-light">{d.duration_ms} ms</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </SheetSection>
-      </SheetContent>
-    </Sheet>
   )
 }
