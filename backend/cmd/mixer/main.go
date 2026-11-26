@@ -79,7 +79,8 @@ connection: DNS lookup, connect, TLS handshake, first byte and total.
 ` + optionsHelp + `
 Exit status:
   0    healthy
-  1    the server answered, and isn't healthy (its database is down)
+  1    the server answered, and isn't healthy (its database is down, or it
+       answered with an error)
   2    usage error
   3    no health report: can't connect, timed out, redirected, or not a Supermixer
   130  interrupted
@@ -157,14 +158,13 @@ func run(ctx context.Context, args []string, e env) int {
 
 	name, rest := fs.Arg(0), fs.Args()[1:]
 	if name == "help" {
-		// Options don't matter to help: mixer help --json is still help.
-		var topic string
-		for _, a := range rest {
-			if !strings.HasPrefix(a, "-") {
-				topic = a
-				break
-			}
+		// Options don't matter to help (mixer help --json is still help),
+		// but they're parsed so an option's value isn't taken for the topic.
+		hfs := o.flags("mixer help")
+		if err := hfs.Parse(rest); err != nil && !errors.Is(err, flag.ErrHelp) {
+			return e.fail(exitUsage, "%v\nTry 'mixer --help'.", err)
 		}
+		topic := hfs.Arg(0)
 		switch {
 		case topic == "":
 			fmt.Fprint(e.stdout, usage)
@@ -213,6 +213,10 @@ func runHealth(ctx context.Context, o options, e env) int {
 		if ctx.Err() != nil {
 			return e.fail(exitInterrupted, "interrupted")
 		}
+		var bad *unhealthyError
+		if errors.As(err, &bad) {
+			return e.fail(exitUnhealthy, "%v", err)
+		}
 		return e.fail(exitUnreachable, "%v", err)
 	}
 
@@ -240,7 +244,12 @@ var apiSuffixes = []string{"/api/v1/health", "/api/v1", "/v1"}
 func serverURL(in string) (*url.URL, error) {
 	s := strings.TrimSpace(in)
 	if !strings.Contains(s, "://") {
-		s = "http://" + s
+		// As curl does, but https for port 443, which only speaks TLS.
+		if strings.HasSuffix(strings.SplitN(s, "/", 2)[0], ":443") {
+			s = "https://" + s
+		} else {
+			s = "http://" + s
+		}
 	}
 	u, err := url.Parse(s)
 	if err != nil || u.Host == "" {
@@ -403,13 +412,16 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
 		// Location is usually the health check's own address, perhaps
-		// relative: suggest the server it points to.
+		// relative: then suggest the server it points to. Anywhere else (a
+		// sign-in page in front of it) isn't a Supermixer to suggest.
 		loc, err := resp.Location()
 		if err != nil {
 			return nil, fmt.Errorf("%s redirects (%s) without saying where", base, resp.Status)
 		}
-		if to, err := serverURL(loc.String()); err == nil {
-			return nil, fmt.Errorf("%s redirects to %s; try --server %s", base, loc, to)
+		if strings.HasSuffix(strings.TrimSuffix(loc.Path, "/"), "/api/v1/health") {
+			if to, err := serverURL(loc.String()); err == nil {
+				return nil, fmt.Errorf("%s redirects to %s; try --server %s", base, loc, to)
+			}
 		}
 		return nil, fmt.Errorf("%s redirects to %s", base, loc)
 	}
@@ -423,9 +435,20 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 	var e api.Error
 	if json.Unmarshal(body, &e) == nil && e.Message != "" {
 		msg += ": " + e.Message
+		// Supermixer's own error, from its health check: it answered, and
+		// isn't healthy.
+		if resp.StatusCode >= 500 && strings.HasPrefix(resp.Header.Get("Content-Type"), "application/json") {
+			return nil, &unhealthyError{fmt.Sprintf("%s answered %s", base, msg)}
+		}
 	}
 	return nil, fmt.Errorf("%s didn't answer like a Supermixer (%s)", base, msg)
 }
+
+// unhealthyError is a server that answered its health check with an error
+// rather than a report: reachable, but not healthy (exit status 1).
+type unhealthyError struct{ msg string }
+
+func (e *unhealthyError) Error() string { return e.msg }
 
 // writeText prints the result as "key value" lines: one word per key,
 // aligned, so both people and awk/grep/cut can read it.

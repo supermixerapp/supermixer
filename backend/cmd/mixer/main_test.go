@@ -155,6 +155,8 @@ func TestRedirect(t *testing.T) {
 	for loc, want := range map[string]string{
 		"https://example.test/api/v1/health": "redirects to https://example.test/api/v1/health; try --server https://example.test\n",
 		"/sm/api/v1/health":                  "/sm/api/v1/health; try --server http://127.0.0.1:",
+		// A sign-in page in front of it: no suggestion.
+		"https://auth.example.test/oauth2/start?rd=x": "redirects to https://auth.example.test/oauth2/start?rd=x\n",
 	} {
 		s := httptest.NewServer(http.RedirectHandler(loc, http.StatusMovedPermanently))
 		code, _, errb := mixer(t, nil, "--server", s.URL, "health")
@@ -162,6 +164,16 @@ func TestRedirect(t *testing.T) {
 		if code != exitUnreachable || !strings.Contains(errb, want) {
 			t.Errorf("Location %s: code %d, stderr %q", loc, code, errb)
 		}
+	}
+}
+
+func TestServerError(t *testing.T) {
+	// Supermixer's own error from its health check: it answered, and isn't
+	// healthy (1), not unreachable (3).
+	s := server(t, 500, `{"message":"internal error"}`)
+	code, out, errb := mixer(t, nil, "--server", s.URL, "health")
+	if code != exitUnhealthy || out != "" || !strings.Contains(errb, "answered 500 Internal Server Error: internal error") {
+		t.Errorf("code %d, stdout %q, stderr %q", code, out, errb)
 	}
 }
 
@@ -208,13 +220,14 @@ func TestUsage(t *testing.T) {
 
 func TestHelpAndVersion(t *testing.T) {
 	for args, want := range map[string]string{
-		"--help":         "Usage: mixer [options] <command>",
-		"help":           "Usage: mixer [options] <command>",
-		"help health":    "Usage: mixer [options] health",
-		"health --help":  "Usage: mixer [options] health",
-		"health -h":      "Usage: mixer [options] health",
-		"help --json":    "Usage: mixer [options] <command>",
-		"help -q health": "Usage: mixer [options] health",
+		"--help":                         "Usage: mixer [options] <command>",
+		"help":                           "Usage: mixer [options] <command>",
+		"help health":                    "Usage: mixer [options] health",
+		"health --help":                  "Usage: mixer [options] health",
+		"health -h":                      "Usage: mixer [options] health",
+		"help --json":                    "Usage: mixer [options] <command>",
+		"help -q health":                 "Usage: mixer [options] health",
+		"help --server https://x health": "Usage: mixer [options] health",
 	} {
 		code, out, errb := mixer(t, nil, strings.Fields(args)...)
 		if code != exitOK || errb != "" || !strings.HasPrefix(out, want) {
@@ -235,6 +248,7 @@ func TestServerURL(t *testing.T) {
 		"https://sm.example.com/api/v1/health/": "https://sm.example.com",
 		"https://sm.example.com/v1":             "https://sm.example.com",
 		" sm.example.com:8080 ":                 "http://sm.example.com:8080",
+		"sm.example.com:443/api/v1":             "https://sm.example.com:443",
 		"https://example.com/supermixer/?x=1#y": "https://example.com/supermixer",
 	} {
 		u, err := serverURL(in)
