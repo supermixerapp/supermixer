@@ -938,12 +938,16 @@ paths:
     post:
       operationId: createWebhook
       tags: [Webhooks]
-      summary: Add a webhook (Owners)
+      summary: Add a webhook or a chat channel (Owners)
       description: |
         The organization's audit log entries are POSTed to the URL one at a time, in order, as JSON, from when it's
         added. Each request has `X-Supermixer-Event` (the action), `X-Supermixer-Delivery` (the entry's id, the same
         on retries) and `X-Supermixer-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>" with the secret>`.
         Answer 2xx; anything else is retried with backoff, holding back later events.
+
+        With a chat `kind` (slack, teams, discord, google_chat, mattermost), the URL is the chat app's incoming
+        webhook and each event is posted as a readable message instead. That URL is a credential: it's kept
+        sealed and only its scheme and host are returned. Chat channels have no signing secret.
       requestBody:
         required: true
         content:
@@ -951,7 +955,7 @@ paths:
             schema: { $ref: "#/components/schemas/WebhookCreate" }
       responses:
         "201":
-          description: Added. The signing secret is only returned here (and when rotated).
+          description: Added. The signing secret is only returned here (and when rotated); empty for a chat channel.
           content:
             application/json:
               schema: { $ref: "#/components/schemas/WebhookCreated" }
@@ -992,6 +996,7 @@ paths:
       operationId: rotateWebhookSecret
       tags: [Webhooks]
       summary: Replace the signing secret; the old one stops working at once
+      description: Webhooks only; chat channels have no signing secret.
       responses:
         "200":
           description: The new secret, only shown here.
@@ -1030,6 +1035,23 @@ paths:
               schema:
                 type: array
                 items: { $ref: "#/components/schemas/WebhookDelivery" }
+        default: { $ref: "#/components/responses/Error" }
+  /organizations/{slug}/integrations:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: getOrganizationIntegrations
+      tags: [Organizations]
+      summary: What the organization is connected to, for Organization › Integrations
+      description: |
+        Counts and on/off states only, for any member. Each integration's settings are on its own page, most of them
+        for Owners.
+      responses:
+        "200":
+          description: The summary.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/OrganizationIntegrations" }
         default: { $ref: "#/components/responses/Error" }
   /organizations/{slug}/invitations:
     parameters:
@@ -3169,12 +3191,17 @@ components:
           nullable: true
           allOf: [{ $ref: "#/components/schemas/OrgRole" }]
         join_domains: { type: array, items: { type: string } }
+    WebhookKind:
+      type: string
+      enum: [webhook, slack, teams, discord, google_chat, mattermost]
+      description: webhook sends signed JSON; the others post readable messages to that chat app's incoming webhook.
     Webhook:
       type: object
-      required: [id, url, description, events, enabled, created_at, last_error]
+      required: [id, kind, url, description, events, enabled, created_at, last_error]
       properties:
         id: { type: string, format: uuid }
-        url: { type: string }
+        kind: { $ref: "#/components/schemas/WebhookKind" }
+        url: { type: string, description: "For a chat channel, only the address's scheme and host." }
         description: { type: string }
         events:
           type: array
@@ -3189,6 +3216,7 @@ components:
       type: object
       required: [url, events]
       properties:
+        kind: { $ref: "#/components/schemas/WebhookKind" }
         url: { type: string }
         description: { type: string }
         events: { type: array, items: { type: string } }
@@ -3204,7 +3232,7 @@ components:
       required: [webhook, secret]
       properties:
         webhook: { $ref: "#/components/schemas/Webhook" }
-        secret: { type: string, description: "whsec_…, for checking X-Supermixer-Signature." }
+        secret: { type: string, description: "whsec_…, for checking X-Supermixer-Signature; empty for a chat channel." }
     WebhookSecret:
       type: object
       required: [secret]
@@ -3221,6 +3249,36 @@ components:
         error: { type: string }
         duration_ms: { type: integer }
         created_at: { type: string, format: date-time }
+    IntegrationCount:
+      type: object
+      required: [total, failing]
+      properties:
+        total: { type: integer }
+        failing: { type: integer, description: Turned on and failing to deliver. }
+    OrganizationIntegrations:
+      type: object
+      required: [chat, webhooks, sso, log_drains, backup_copies]
+      properties:
+        chat: { $ref: "#/components/schemas/IntegrationCount" }
+        webhooks: { $ref: "#/components/schemas/IntegrationCount" }
+        sso:
+          type: object
+          required: [provider, required, provider_missing]
+          properties:
+            provider: { type: string, nullable: true, description: "The provider's name; null when the organization doesn't use one." }
+            required: { type: boolean }
+            provider_missing: { type: boolean, description: "The provider is no longer set up on this instance, so nothing about it is enforced." }
+        log_drains:
+          type: object
+          required: [total, projects]
+          properties:
+            total: { type: integer, description: Log drains across the organization's created stacks. }
+            projects: { type: integer, description: How many projects have at least one. }
+        backup_copies:
+          type: object
+          required: [enabled]
+          properties:
+            enabled: { type: boolean, description: "Backups of created stacks are copied to an S3 bucket (set for the whole instance)." }
     OrganizationUpdate:
       type: object
       properties:

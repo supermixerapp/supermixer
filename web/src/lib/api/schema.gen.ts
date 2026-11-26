@@ -833,11 +833,15 @@ export interface paths {
         get: operations["listWebhooks"];
         put?: never;
         /**
-         * Add a webhook (Owners)
+         * Add a webhook or a chat channel (Owners)
          * @description The organization's audit log entries are POSTed to the URL one at a time, in order, as JSON, from when it's
          *     added. Each request has `X-Supermixer-Event` (the action), `X-Supermixer-Delivery` (the entry's id, the same
          *     on retries) and `X-Supermixer-Signature: t=<unix time>,v1=<hex HMAC-SHA256 of "<t>.<body>" with the secret>`.
          *     Answer 2xx; anything else is retried with backoff, holding back later events.
+         *
+         *     With a chat `kind` (slack, teams, discord, google_chat, mattermost), the URL is the chat app's incoming
+         *     webhook and each event is posted as a readable message instead. That URL is a credential: it's kept
+         *     sealed and only its scheme and host are returned. Chat channels have no signing secret.
          */
         post: operations["createWebhook"];
         delete?: never;
@@ -882,7 +886,10 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Replace the signing secret; the old one stops working at once */
+        /**
+         * Replace the signing secret; the old one stops working at once
+         * @description Webhooks only; chat channels have no signing secret.
+         */
         post: operations["rotateWebhookSecret"];
         delete?: never;
         options?: never;
@@ -922,6 +929,29 @@ export interface paths {
         };
         /** The newest 100 attempts */
         get: operations["listWebhookDeliveries"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/organizations/{slug}/integrations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * What the organization is connected to, for Organization › Integrations
+         * @description Counts and on/off states only, for any member. Each integration's settings are on its own page, most of them
+         *     for Owners.
+         */
+        get: operations["getOrganizationIntegrations"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2815,9 +2845,16 @@ export interface components {
             join_role: components["schemas"]["OrgRole"] | null;
             join_domains: string[];
         };
+        /**
+         * @description webhook sends signed JSON; the others post readable messages to that chat app's incoming webhook.
+         * @enum {string}
+         */
+        WebhookKind: "webhook" | "slack" | "teams" | "discord" | "google_chat" | "mattermost";
         Webhook: {
             /** Format: uuid */
             id: string;
+            kind: components["schemas"]["WebhookKind"];
+            /** @description For a chat channel, only the address's scheme and host. */
             url: string;
             description: string;
             /** @description Action prefixes sent ("project.", "member."), or ["*"] for every event. */
@@ -2833,6 +2870,7 @@ export interface components {
             failing_since?: string | null;
         };
         WebhookCreate: {
+            kind?: components["schemas"]["WebhookKind"];
             url: string;
             description?: string;
             events: string[];
@@ -2845,7 +2883,7 @@ export interface components {
         };
         WebhookCreated: {
             webhook: components["schemas"]["Webhook"];
-            /** @description whsec_…, for checking X-Supermixer-Signature. */
+            /** @description whsec_…, for checking X-Supermixer-Signature; empty for a chat channel. */
             secret: string;
         };
         WebhookSecret: {
@@ -2866,6 +2904,32 @@ export interface components {
             duration_ms: number;
             /** Format: date-time */
             created_at: string;
+        };
+        IntegrationCount: {
+            total: number;
+            /** @description Turned on and failing to deliver. */
+            failing: number;
+        };
+        OrganizationIntegrations: {
+            chat: components["schemas"]["IntegrationCount"];
+            webhooks: components["schemas"]["IntegrationCount"];
+            sso: {
+                /** @description The provider's name; null when the organization doesn't use one. */
+                provider: string | null;
+                required: boolean;
+                /** @description The provider is no longer set up on this instance, so nothing about it is enforced. */
+                provider_missing: boolean;
+            };
+            log_drains: {
+                /** @description Log drains across the organization's created stacks. */
+                total: number;
+                /** @description How many projects have at least one. */
+                projects: number;
+            };
+            backup_copies: {
+                /** @description Backups of created stacks are copied to an S3 bucket (set for the whole instance). */
+                enabled: boolean;
+            };
         };
         OrganizationUpdate: {
             name?: string;
@@ -4644,7 +4708,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Added. The signing secret is only returned here (and when rotated). */
+            /** @description Added. The signing secret is only returned here (and when rotated); empty for a chat channel. */
             201: {
                 headers: {
                     [name: string]: unknown;
@@ -4773,6 +4837,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["WebhookDelivery"][];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getOrganizationIntegrations: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The summary. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OrganizationIntegrations"];
                 };
             };
             default: components["responses"]["Error"];

@@ -409,6 +409,7 @@ type OrgWebhook struct {
 	LastSuccessAt  *time.Time `json:"last_success_at"`
 	LastError      string     `json:"last_error"`
 	FailingSince   *time.Time `json:"failing_since"`
+	Kind           string     `json:"kind"`
 }
 
 type OrgWebhookDelivery struct {

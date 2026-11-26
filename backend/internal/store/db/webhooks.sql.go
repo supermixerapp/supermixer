@@ -55,15 +55,16 @@ func (q *Queries) AdvanceWebhook(ctx context.Context, arg AdvanceWebhookParams) 
 }
 
 const createWebhook = `-- name: CreateWebhook :one
-INSERT INTO org_webhooks (organization_id, url, description, events, secret, created_by, last_txid, last_id)
-SELECT $1, $2, $3, $4::text[], $5, $6,
+INSERT INTO org_webhooks (organization_id, kind, url, description, events, secret, created_by, last_txid, last_id)
+SELECT $1, $2, $3, $4, $5::text[], $6, $7,
        coalesce(max(txid), 0), coalesce(max(id), 0)
 FROM audit_logs
-RETURNING id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since
+RETURNING id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since, kind
 `
 
 type CreateWebhookParams struct {
 	OrganizationID uuid.UUID  `json:"organization_id"`
+	Kind           string     `json:"kind"`
 	Url            string     `json:"url"`
 	Description    string     `json:"description"`
 	Events         []string   `json:"events"`
@@ -75,6 +76,7 @@ type CreateWebhookParams struct {
 func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (OrgWebhook, error) {
 	row := q.db.QueryRow(ctx, createWebhook,
 		arg.OrganizationID,
+		arg.Kind,
 		arg.Url,
 		arg.Description,
 		arg.Events,
@@ -97,12 +99,13 @@ func (q *Queries) CreateWebhook(ctx context.Context, arg CreateWebhookParams) (O
 		&i.LastSuccessAt,
 		&i.LastError,
 		&i.FailingSince,
+		&i.Kind,
 	)
 	return i, err
 }
 
 const deleteWebhook = `-- name: DeleteWebhook :one
-DELETE FROM org_webhooks WHERE id = $1 AND organization_id = $2 RETURNING id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since
+DELETE FROM org_webhooks WHERE id = $1 AND organization_id = $2 RETURNING id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since, kind
 `
 
 type DeleteWebhookParams struct {
@@ -128,12 +131,13 @@ func (q *Queries) DeleteWebhook(ctx context.Context, arg DeleteWebhookParams) (O
 		&i.LastSuccessAt,
 		&i.LastError,
 		&i.FailingSince,
+		&i.Kind,
 	)
 	return i, err
 }
 
 const getWebhook = `-- name: GetWebhook :one
-SELECT id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since FROM org_webhooks WHERE id = $1 AND organization_id = $2
+SELECT id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since, kind FROM org_webhooks WHERE id = $1 AND organization_id = $2
 `
 
 type GetWebhookParams struct {
@@ -159,12 +163,13 @@ func (q *Queries) GetWebhook(ctx context.Context, arg GetWebhookParams) (OrgWebh
 		&i.LastSuccessAt,
 		&i.LastError,
 		&i.FailingSince,
+		&i.Kind,
 	)
 	return i, err
 }
 
 const listEnabledWebhooks = `-- name: ListEnabledWebhooks :many
-SELECT w.id, w.organization_id, w.url, w.description, w.events, w.secret, w.enabled, w.created_by, w.created_at, w.last_txid, w.last_id, w.last_success_at, w.last_error, w.failing_since, o.slug AS organization_slug
+SELECT w.id, w.organization_id, w.url, w.description, w.events, w.secret, w.enabled, w.created_by, w.created_at, w.last_txid, w.last_id, w.last_success_at, w.last_error, w.failing_since, w.kind, o.slug AS organization_slug, o.name AS organization_name
 FROM org_webhooks w JOIN organizations o ON o.id = w.organization_id
 WHERE w.enabled ORDER BY w.id
 `
@@ -172,6 +177,7 @@ WHERE w.enabled ORDER BY w.id
 type ListEnabledWebhooksRow struct {
 	OrgWebhook       OrgWebhook `json:"org_webhook"`
 	OrganizationSlug string     `json:"organization_slug"`
+	OrganizationName string     `json:"organization_name"`
 }
 
 func (q *Queries) ListEnabledWebhooks(ctx context.Context) ([]ListEnabledWebhooksRow, error) {
@@ -198,7 +204,9 @@ func (q *Queries) ListEnabledWebhooks(ctx context.Context) ([]ListEnabledWebhook
 			&i.OrgWebhook.LastSuccessAt,
 			&i.OrgWebhook.LastError,
 			&i.OrgWebhook.FailingSince,
+			&i.OrgWebhook.Kind,
 			&i.OrganizationSlug,
+			&i.OrganizationName,
 		); err != nil {
 			return nil, err
 		}
@@ -244,7 +252,7 @@ func (q *Queries) ListWebhookDeliveries(ctx context.Context, webhookID uuid.UUID
 }
 
 const listWebhooks = `-- name: ListWebhooks :many
-SELECT id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since FROM org_webhooks WHERE organization_id = $1 ORDER BY created_at
+SELECT id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since, kind FROM org_webhooks WHERE organization_id = $1 ORDER BY created_at
 `
 
 func (q *Queries) ListWebhooks(ctx context.Context, organizationID uuid.UUID) ([]OrgWebhook, error) {
@@ -271,6 +279,7 @@ func (q *Queries) ListWebhooks(ctx context.Context, organizationID uuid.UUID) ([
 			&i.LastSuccessAt,
 			&i.LastError,
 			&i.FailingSince,
+			&i.Kind,
 		); err != nil {
 			return nil, err
 		}
@@ -309,13 +318,19 @@ func (q *Queries) SetWebhookSecret(ctx context.Context, arg SetWebhookSecretPara
 
 const updateWebhook = `-- name: UpdateWebhook :one
 UPDATE org_webhooks SET url = $1, description = $2, events = $3::text[], enabled = $4,
+    -- A chat channel's new address (sealed); NULL keeps it.
+    secret = coalesce($5, org_webhooks.secret),
     -- Turning it back on starts afresh rather than sending what it missed.
     last_txid = CASE WHEN $4 AND NOT org_webhooks.enabled THEN (SELECT coalesce(max(a.txid), 0) FROM audit_logs a) ELSE org_webhooks.last_txid END,
     last_id = CASE WHEN $4 AND NOT org_webhooks.enabled THEN (SELECT coalesce(max(a.id), 0) FROM audit_logs a) ELSE org_webhooks.last_id END,
-    last_error = CASE WHEN $4 AND NOT org_webhooks.enabled THEN '' ELSE org_webhooks.last_error END,
-    failing_since = CASE WHEN $4 AND NOT org_webhooks.enabled THEN NULL ELSE org_webhooks.failing_since END
-WHERE org_webhooks.id = $5 AND org_webhooks.organization_id = $6
-RETURNING id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since
+    -- Turning it back on, or a new address, starts without the old failure
+    -- (and the delivery loop drops its backoff when failing_since clears).
+    last_error = CASE WHEN ($4 AND NOT org_webhooks.enabled) OR $1 <> org_webhooks.url OR $5::bytea IS NOT NULL
+        THEN '' ELSE org_webhooks.last_error END,
+    failing_since = CASE WHEN ($4 AND NOT org_webhooks.enabled) OR $1 <> org_webhooks.url OR $5::bytea IS NOT NULL
+        THEN NULL ELSE org_webhooks.failing_since END
+WHERE org_webhooks.id = $6 AND org_webhooks.organization_id = $7
+RETURNING id, organization_id, url, description, events, secret, enabled, created_by, created_at, last_txid, last_id, last_success_at, last_error, failing_since, kind
 `
 
 type UpdateWebhookParams struct {
@@ -323,6 +338,7 @@ type UpdateWebhookParams struct {
 	Description    string    `json:"description"`
 	Events         []string  `json:"events"`
 	Enabled        bool      `json:"enabled"`
+	Secret         []byte    `json:"secret"`
 	ID             uuid.UUID `json:"id"`
 	OrganizationID uuid.UUID `json:"organization_id"`
 }
@@ -333,6 +349,7 @@ func (q *Queries) UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) (O
 		arg.Description,
 		arg.Events,
 		arg.Enabled,
+		arg.Secret,
 		arg.ID,
 		arg.OrganizationID,
 	)
@@ -352,6 +369,7 @@ func (q *Queries) UpdateWebhook(ctx context.Context, arg UpdateWebhookParams) (O
 		&i.LastSuccessAt,
 		&i.LastError,
 		&i.FailingSince,
+		&i.Kind,
 	)
 	return i, err
 }

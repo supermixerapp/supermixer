@@ -1,7 +1,7 @@
 -- name: CreateWebhook :one
 -- Starts after the organization's entries already there.
-INSERT INTO org_webhooks (organization_id, url, description, events, secret, created_by, last_txid, last_id)
-SELECT @organization_id, @url, @description, @events::text[], @secret, @created_by,
+INSERT INTO org_webhooks (organization_id, kind, url, description, events, secret, created_by, last_txid, last_id)
+SELECT @organization_id, @kind, @url, @description, @events::text[], @secret, @created_by,
        coalesce(max(txid), 0), coalesce(max(id), 0)
 FROM audit_logs
 RETURNING *;
@@ -14,11 +14,17 @@ SELECT * FROM org_webhooks WHERE id = $1 AND organization_id = $2;
 
 -- name: UpdateWebhook :one
 UPDATE org_webhooks SET url = @url, description = @description, events = @events::text[], enabled = @enabled,
+    -- A chat channel's new address (sealed); NULL keeps it.
+    secret = coalesce(sqlc.narg(secret), org_webhooks.secret),
     -- Turning it back on starts afresh rather than sending what it missed.
     last_txid = CASE WHEN @enabled AND NOT org_webhooks.enabled THEN (SELECT coalesce(max(a.txid), 0) FROM audit_logs a) ELSE org_webhooks.last_txid END,
     last_id = CASE WHEN @enabled AND NOT org_webhooks.enabled THEN (SELECT coalesce(max(a.id), 0) FROM audit_logs a) ELSE org_webhooks.last_id END,
-    last_error = CASE WHEN @enabled AND NOT org_webhooks.enabled THEN '' ELSE org_webhooks.last_error END,
-    failing_since = CASE WHEN @enabled AND NOT org_webhooks.enabled THEN NULL ELSE org_webhooks.failing_since END
+    -- Turning it back on, or a new address, starts without the old failure
+    -- (and the delivery loop drops its backoff when failing_since clears).
+    last_error = CASE WHEN (@enabled AND NOT org_webhooks.enabled) OR @url <> org_webhooks.url OR sqlc.narg(secret)::bytea IS NOT NULL
+        THEN '' ELSE org_webhooks.last_error END,
+    failing_since = CASE WHEN (@enabled AND NOT org_webhooks.enabled) OR @url <> org_webhooks.url OR sqlc.narg(secret)::bytea IS NOT NULL
+        THEN NULL ELSE org_webhooks.failing_since END
 WHERE org_webhooks.id = @id AND org_webhooks.organization_id = @organization_id
 RETURNING *;
 
@@ -29,7 +35,7 @@ UPDATE org_webhooks SET secret = $2 WHERE id = $1;
 DELETE FROM org_webhooks WHERE id = $1 AND organization_id = $2 RETURNING *;
 
 -- name: ListEnabledWebhooks :many
-SELECT sqlc.embed(w), o.slug AS organization_slug
+SELECT sqlc.embed(w), o.slug AS organization_slug, o.name AS organization_name
 FROM org_webhooks w JOIN organizations o ON o.id = w.organization_id
 WHERE w.enabled ORDER BY w.id;
 

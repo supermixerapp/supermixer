@@ -35,8 +35,13 @@ import (
 // at a time and in order (like audit drains, each webhook keeps its position
 // in the audit log), signed with the webhook's secret. Owners manage them
 // (org:update): they send the organization's events outside.
+//
+// A webhook whose kind is a chat app (chat.go) posts readable messages to the
+// app's incoming webhook instead. Its address is the credential, so it's
+// sealed in `secret`, and `url` keeps only its scheme and host.
 
 const (
+	// Up to this many webhooks, and as many chat channels.
 	maxWebhooksPerOrg  = 10
 	webhookBatch       = 100
 	webhookMaxDelay    = time.Hour
@@ -144,7 +149,7 @@ func (h *handlers) validWebhookURL(raw string) (string, error) {
 		return "", badRequest("the URL must be an http(s) URL")
 	}
 	if u.User != nil {
-		return "", badRequest("put credentials in the receiver's settings, not the URL: requests are signed (X-Supermixer-Signature)")
+		return "", badRequest("the URL can't hold a user name or password: webhook requests are signed (X-Supermixer-Signature), and chat apps' incoming webhook URLs don't need one")
 	}
 	if !h.deps.Config.Webhooks.AllowPrivateAddresses {
 		host := strings.ToLower(u.Hostname())
@@ -194,21 +199,35 @@ func signWebhook(secret string, t int64, body []byte) string {
 
 // sendWebhook makes one attempt: the HTTP status (0 if none), and why it
 // failed.
-func (h *handlers) sendWebhook(ctx context.Context, w db.OrgWebhook, secret string, ev webhookEvent) (int, error) {
-	body, err := json.Marshal(ev)
-	if err != nil {
-		return 0, err
+// For a chat channel, secret is the address and orgName goes in the message.
+func (h *handlers) sendWebhook(ctx context.Context, w db.OrgWebhook, secret, orgName string, ev webhookEvent) (int, error) {
+	var req *http.Request
+	if isChatKind(w.Kind) {
+		body, err := chatBody(w.Kind, toChatMessage(ev, orgName, h.deps.Config.Server.PublicURL))
+		if err != nil {
+			return 0, err
+		}
+		// The address is the credential: errors name only its host.
+		if req, err = http.NewRequestWithContext(ctx, http.MethodPost, secret, bytes.NewReader(body)); err != nil {
+			return 0, fmt.Errorf("the chat channel's address is not a URL")
+		}
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "Supermixer-Webhooks")
+	} else {
+		body, err := json.Marshal(ev)
+		if err != nil {
+			return 0, err
+		}
+		if req, err = http.NewRequestWithContext(ctx, http.MethodPost, w.Url, bytes.NewReader(body)); err != nil {
+			return 0, err
+		}
+		now := time.Now().Unix()
+		req.Header.Set("Content-Type", "application/json")
+		req.Header.Set("User-Agent", "Supermixer-Webhooks")
+		req.Header.Set("X-Supermixer-Event", ev.Type)
+		req.Header.Set("X-Supermixer-Delivery", fmt.Sprint(ev.ID))
+		req.Header.Set("X-Supermixer-Signature", fmt.Sprintf("t=%d,v1=%s", now, signWebhook(secret, now, body)))
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, w.Url, bytes.NewReader(body))
-	if err != nil {
-		return 0, err
-	}
-	now := time.Now().Unix()
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("User-Agent", "Supermixer-Webhooks")
-	req.Header.Set("X-Supermixer-Event", ev.Type)
-	req.Header.Set("X-Supermixer-Delivery", fmt.Sprint(ev.ID))
-	req.Header.Set("X-Supermixer-Signature", fmt.Sprintf("t=%d,v1=%s", now, signWebhook(secret, now, body)))
 	resp, err := h.webhookHTTP.Do(req)
 	if err != nil {
 		var ue *url.Error
@@ -230,9 +249,9 @@ func (h *handlers) sendWebhook(ctx context.Context, w db.OrgWebhook, secret stri
 }
 
 // attemptWebhook sends and records one attempt.
-func (h *handlers) attemptWebhook(ctx context.Context, w db.OrgWebhook, secret string, ev webhookEvent) (api.WebhookDelivery, error) {
+func (h *handlers) attemptWebhook(ctx context.Context, w db.OrgWebhook, secret, orgName string, ev webhookEvent) (api.WebhookDelivery, error) {
 	start := time.Now()
-	status, err := h.sendWebhook(ctx, w, secret, ev)
+	status, err := h.sendWebhook(ctx, w, secret, orgName, ev)
 	d := api.WebhookDelivery{EventId: ev.ID, Event: ev.Type, Status: status, DurationMs: int(time.Since(start).Milliseconds()), CreatedAt: time.Now()}
 	if err != nil {
 		d.Error = truncate(err.Error(), 500)
@@ -287,6 +306,11 @@ func (h *handlers) webhookLoop(ctx context.Context) {
 		for _, row := range hooks {
 			w := row.OrgWebhook
 			mu.Lock()
+			if w.FailingSince == nil && !busy[w.ID] {
+				// Not failing (fixed, or turned off and on): no backoff.
+				delete(delay, w.ID)
+				delete(next, w.ID)
+			}
 			skip := busy[w.ID] || now.Before(next[w.ID])
 			if !skip {
 				busy[w.ID] = true
@@ -301,10 +325,10 @@ func (h *handlers) webhookLoop(ctx context.Context) {
 				return
 			}
 			wg.Add(1)
-			go func(w db.OrgWebhook, org string) {
+			go func(w db.OrgWebhook, org, orgName string) {
 				defer wg.Done()
 				defer func() { <-slots }()
-				more, err := h.webhookPass(ctx, w, org)
+				more, err := h.webhookPass(ctx, w, org, orgName)
 				mu.Lock()
 				defer mu.Unlock()
 				busy[w.ID] = false
@@ -320,14 +344,14 @@ func (h *handlers) webhookLoop(ctx context.Context) {
 						pending = true
 					}
 				}
-			}(w, row.OrganizationSlug)
+			}(w, row.OrganizationSlug, row.OrganizationName)
 		}
 	}
 }
 
 // webhookPass sends what's waiting for one webhook, up to a few batches:
 // whether more may be waiting, and why it stopped if it failed.
-func (h *handlers) webhookPass(ctx context.Context, w db.OrgWebhook, org string) (bool, error) {
+func (h *handlers) webhookPass(ctx context.Context, w db.OrgWebhook, org, orgName string) (bool, error) {
 	q := h.deps.Store.Queries
 	secret, err := h.webhookSecret(w)
 	if err != nil {
@@ -352,7 +376,7 @@ func (h *handlers) webhookPass(ctx context.Context, w db.OrgWebhook, org string)
 		}
 		for _, r := range rows {
 			if webhookWants(w.Events, r.Action) {
-				if _, err := h.attemptWebhook(ctx, w, secret, toWebhookEvent(org, r)); err != nil {
+				if _, err := h.attemptWebhook(ctx, w, secret, orgName, toWebhookEvent(org, r)); err != nil {
 					_ = q.WebhookFailed(context.WithoutCancel(ctx), db.WebhookFailedParams{ID: w.ID, LastError: truncate(err.Error(), 500)})
 					return false, err
 				}
@@ -373,7 +397,7 @@ func (h *handlers) webhookPass(ctx context.Context, w db.OrgWebhook, org string)
 // --- API ----------------------------------------------------------------
 
 func toWebhook(w db.OrgWebhook) api.Webhook {
-	return api.Webhook{Id: w.ID, Url: w.Url, Description: w.Description, Events: w.Events, Enabled: w.Enabled,
+	return api.Webhook{Id: w.ID, Kind: api.WebhookKind(w.Kind), Url: w.Url, Description: w.Description, Events: w.Events, Enabled: w.Enabled,
 		CreatedAt: w.CreatedAt, LastSuccessAt: w.LastSuccessAt, LastError: w.LastError, FailingSince: w.FailingSince}
 }
 
@@ -386,6 +410,10 @@ func newWebhookSecret() (string, error) {
 }
 
 func (h *handlers) webhookAudit(ctx context.Context, a *orgAccess, action string, w db.OrgWebhook, meta map[string]any) {
+	if meta == nil {
+		meta = map[string]any{}
+	}
+	meta["kind"] = w.Kind
 	h.audit(ctx, nil, auditEntry{OrgID: &a.Org.ID, Action: action, TargetType: "webhook", TargetID: w.ID.String(),
 		TargetName: redactURL(w.Url), Metadata: meta})
 }
@@ -424,9 +452,21 @@ func (h *handlers) CreateWebhook(ctx context.Context, req api.CreateWebhookReque
 		return nil, err
 	}
 	q := h.deps.Store.Queries
+	kind := kindWebhook
+	if req.Body.Kind != nil {
+		kind = string(*req.Body.Kind)
+	}
+	if kind != kindWebhook && !isChatKind(kind) {
+		return nil, badRequest("unknown kind %q", kind)
+	}
 	u, err := h.validWebhookURL(req.Body.Url)
 	if err != nil {
 		return nil, err
+	}
+	if isChatKind(kind) {
+		if err := chatAddressCheck(u); err != nil {
+			return nil, err
+		}
 	}
 	events, err := validWebhookEvents(req.Body.Events)
 	if err != nil {
@@ -436,20 +476,38 @@ func (h *handlers) CreateWebhook(ctx context.Context, req api.CreateWebhookReque
 	if len(desc) > 200 {
 		return nil, badRequest("the description is at most 200 characters")
 	}
-	if existing, err := q.ListWebhooks(ctx, a.Org.ID); err != nil {
+	existing, err := q.ListWebhooks(ctx, a.Org.ID)
+	if err != nil {
 		return nil, err
-	} else if len(existing) >= maxWebhooksPerOrg {
+	}
+	same := 0
+	for _, w := range existing {
+		if isChatKind(w.Kind) == isChatKind(kind) {
+			same++
+		}
+	}
+	if same >= maxWebhooksPerOrg {
+		if isChatKind(kind) {
+			return nil, conflict("an organization can have up to %d chat channels", maxWebhooksPerOrg)
+		}
 		return nil, conflict("an organization can have up to %d webhooks", maxWebhooksPerOrg)
 	}
-	secret, err := newWebhookSecret()
+	// A webhook's sealed secret signs its requests; a chat channel's is its
+	// address, and only the address's host is kept in the open.
+	secret, sealedValue, shown := "", "", u
+	if isChatKind(kind) {
+		sealedValue, shown = u, chatDisplayURL(u)
+	} else {
+		if secret, err = newWebhookSecret(); err != nil {
+			return nil, err
+		}
+		sealedValue = secret
+	}
+	sealed, err := h.deps.Box.Seal([]byte(sealedValue), webhookAD(a.Org.ID))
 	if err != nil {
 		return nil, err
 	}
-	sealed, err := h.deps.Box.Seal([]byte(secret), webhookAD(a.Org.ID))
-	if err != nil {
-		return nil, err
-	}
-	w, err := q.CreateWebhook(ctx, db.CreateWebhookParams{OrganizationID: a.Org.ID, Url: u, Description: desc,
+	w, err := q.CreateWebhook(ctx, db.CreateWebhookParams{OrganizationID: a.Org.ID, Kind: kind, Url: shown, Description: desc,
 		Events: events, Secret: sealed, CreatedBy: &a.User.User.ID})
 	if err != nil {
 		return nil, err
@@ -465,9 +523,35 @@ func (h *handlers) UpdateWebhook(ctx context.Context, req api.UpdateWebhookReque
 	}
 	b := req.Body
 	p := db.UpdateWebhookParams{ID: w.ID, OrganizationID: a.Org.ID, Url: w.Url, Description: w.Description, Events: w.Events, Enabled: w.Enabled}
-	if b.Url != nil {
+	switch {
+	case b.Url == nil:
+	case !isChatKind(w.Kind):
 		if p.Url, err = h.validWebhookURL(*b.Url); err != nil {
 			return nil, err
+		}
+	case strings.TrimSpace(*b.Url) == "":
+		// A chat channel's address left empty is kept.
+	default:
+		u, err := h.validWebhookURL(*b.Url)
+		if err != nil {
+			return nil, err
+		}
+		if chatBareHost(u) && chatDisplayURL(u) == w.Url {
+			break // the host shown, sent back: kept
+		}
+		if err := chatAddressCheck(u); err != nil {
+			return nil, err
+		}
+		old, err := h.webhookSecret(w)
+		if err != nil {
+			return nil, err
+		}
+		if u != old {
+			// A new address: sealed, and only its host kept in the open.
+			if p.Secret, err = h.deps.Box.Seal([]byte(u), webhookAD(a.Org.ID)); err != nil {
+				return nil, err
+			}
+			p.Url = chatDisplayURL(u)
 		}
 	}
 	if b.Events != nil {
@@ -490,6 +574,9 @@ func (h *handlers) UpdateWebhook(ctx context.Context, req api.UpdateWebhookReque
 	meta := map[string]any{}
 	if updated.Url != w.Url {
 		meta["previous_url"] = redactURL(w.Url)
+	}
+	if p.Secret != nil && isChatKind(w.Kind) {
+		meta["address_changed"] = true
 	}
 	if !slices.Equal(updated.Events, w.Events) {
 		meta["events"] = updated.Events
@@ -517,6 +604,9 @@ func (h *handlers) RotateWebhookSecret(ctx context.Context, req api.RotateWebhoo
 	a, w, err := h.loadWebhook(ctx, req.Slug, req.WebhookId)
 	if err != nil {
 		return nil, err
+	}
+	if isChatKind(w.Kind) {
+		return nil, badRequest("chat channels have no signing secret; to change the address, edit the channel")
 	}
 	secret, err := newWebhookSecret()
 	if err != nil {
@@ -548,7 +638,7 @@ func (h *handlers) TestWebhook(ctx context.Context, req api.TestWebhookRequestOb
 		Username string `json:"username"`
 	}{a.User.User.ID.String(), a.User.User.Username}
 	ev.Target.Type, ev.Target.ID, ev.Target.Name = "webhook", w.ID.String(), redactURL(w.Url)
-	d, _ := h.attemptWebhook(ctx, w, secret, ev)
+	d, _ := h.attemptWebhook(ctx, w, secret, a.Org.Name, ev)
 	return api.TestWebhook200JSONResponse(d), nil
 }
 
