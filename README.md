@@ -116,6 +116,7 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | Command | What it does |
 |---|---|
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
+| `make mixer` | `bin/mixer`, the command-line link test ([Testing the link](#testing-the-link-with-mixer)) |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
 | `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, a chat channel receiving a test message, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
@@ -253,6 +254,36 @@ curl -X POST https://supermixer.example.com/v1/projects/<ref>/database/query \
   -d '{"query": "select count(*) from auth.users"}'
 ```
 
+### Testing the link with mixer
+
+`mixer` (`make mixer`, then `bin/mixer`) checks that a Supermixer server can be reached through its API, and how the connection went:
+
+```sh
+$ bin/mixer --server https://supermixer.example.com health
+status          healthy
+version         v1.4.0
+database        healthy
+schema_version  22
+installed_at    2026-11-23T09:46:16Z
+server          https://supermixer.example.com
+address         203.0.113.10:443
+protocol        HTTP/2.0
+tls             TLS1.3
+http_status     200
+dns             2.1ms
+connect         11.8ms
+tls_handshake   24.0ms
+first_byte      61.3ms
+total           61.5ms
+```
+
+- **Output:** each line is a one-word key and its value, so `grep`, `awk` and `cut` can read it, for example `mixer health | awk '$1 == "total" { print $2 }'`.
+  - Use `--json` for one JSON object instead, to pipe to `jq`.
+  - Use `-q` to print nothing and use only the exit status.
+- **Exit status:** 0 is healthy, and 1 means the server answered but isn't healthy. 2 is a usage error. 3 means there was no health report: it can't connect, it timed out, or the server isn't a Supermixer.
+- **Errors and colour:** errors go to stderr. Colour is used only on a terminal, and never when `NO_COLOR` is set.
+- **Defaults:** `--server` defaults to `$SUPERMIXER_URL`, and `--timeout` to 10s. Options go before or after the command (`mixer health --server URL` works too); `mixer help health` has the rest.
+
 ## Creating stacks
 
 Besides connecting to Supabase stacks that already run, Supermixer can create them: **New project › Create a new stack**. It runs Supabase's official compose files (bundled at a pinned commit, see `backend/internal/provision/template/VERSION`) with the `docker compose` CLI, generates every secret, gives each stack its own ports, and can pause, restart and delete them from **Settings › Infrastructure**.
@@ -327,7 +358,7 @@ Counters are per replica; the database-backed gauges are the same on every repli
 | Path | Contents |
 |---|---|
 | `api/openapi.yaml` | REST contract. Go handlers and the TypeScript client are generated from it. |
-| `backend/` | Go server: chi, pgx, sqlc, goose. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config` and `bootstrap` (the first admin). |
+| `backend/` | Go server: chi, pgx, sqlc, goose; `cmd/supermixer` is the server and `cmd/mixer` the link test. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config` and `bootstrap` (the first admin). |
 | `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. End-to-end tests and their screenshots are in `web/e2e/`. |
 | `deploy/` | Docker Compose for Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`) and Dex (`dev-sso/`). |
 

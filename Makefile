@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build test test-integration lint stack stack-down stack-check-logs image helm-lint e2e
+.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build mixer test test-integration lint stack stack-down stack-check-logs image helm-lint e2e
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -87,6 +87,12 @@ build: ## Build a single binary with the web UI embedded (bin/supermixer)
 		-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
 		-o ../bin/supermixer ./cmd/supermixer
 	@echo "built bin/supermixer ($(VERSION))"
+
+mixer: ## Build mixer, the command-line link test for a Supermixer server (bin/mixer)
+	cd backend && CGO_ENABLED=0 go build -trimpath \
+		-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
+		-o ../bin/mixer ./cmd/mixer
+	@echo "built bin/mixer ($(VERSION))"
 
 image: ## Build the container image, tagged with the version; IMAGE=registry/name to name it for a registry
 	docker build --build-arg VERSION=$(VERSION) -t $(or $(IMAGE),supermixer):$(VERSION) .
