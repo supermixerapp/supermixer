@@ -280,8 +280,9 @@ total           61.5ms
 - **Output:** each line is a one-word key and its value, so `grep`, `awk` and `cut` can read it, for example `mixer health | awk '$1 == "total" { print $2 }'`.
   - Use `--json` for one JSON object instead, to pipe to `jq`.
   - Use `-q` to print nothing and use only the exit status.
-- **Exit status:** 0 is healthy, and 1 means the server answered but isn't healthy. 2 is a usage error. 3 means there was no health report: it can't connect, it timed out, or the server isn't a Supermixer.
+- **Exit status:** 0 is healthy, and 1 means the server answered but isn't healthy. 2 is a usage error. 3 means there was no health report: it can't connect, it timed out, it was redirected (the message suggests the address to use), or the server isn't a Supermixer.
 - **Errors and colour:** errors go to stderr. Colour is used only on a terminal, and never when `NO_COLOR` is set.
+- **Proxies:** through a proxy (`HTTPS_PROXY` and so on), a `proxy` line names it, and the address and timings are the proxy's.
 - **Defaults:** `--server` defaults to `$SUPERMIXER_URL`, and `--timeout` to 10s. Options go before or after the command (`mixer health --server URL` works too); `mixer help health` has the rest.
 
 ## Creating stacks

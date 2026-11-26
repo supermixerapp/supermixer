@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/signal"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -156,15 +157,23 @@ func run(ctx context.Context, args []string, e env) int {
 
 	name, rest := fs.Arg(0), fs.Args()[1:]
 	if name == "help" {
+		// Options don't matter to help: mixer help --json is still help.
+		var topic string
+		for _, a := range rest {
+			if !strings.HasPrefix(a, "-") {
+				topic = a
+				break
+			}
+		}
 		switch {
-		case len(rest) == 0:
+		case topic == "":
 			fmt.Fprint(e.stdout, usage)
 			return exitOK
-		case commands[rest[0]].run != nil:
-			fmt.Fprint(e.stdout, commands[rest[0]].usage)
+		case commands[topic].run != nil:
+			fmt.Fprint(e.stdout, commands[topic].usage)
 			return exitOK
 		}
-		name = rest[0]
+		name = topic
 	}
 	cmd, ok := commands[name]
 	if !ok {
@@ -179,6 +188,7 @@ func run(ctx context.Context, args []string, e env) int {
 		}
 		return e.fail(exitUsage, "%v\nTry 'mixer help %s'.", err, name)
 	}
+	o.server = strings.TrimSpace(o.server)
 	switch {
 	case fs.NArg() > 0:
 		return e.fail(exitUsage, "unexpected argument %q\nTry 'mixer help %s'.", fs.Arg(0), name)
@@ -221,22 +231,31 @@ func runHealth(ctx context.Context, o options, e env) int {
 	return exitOK
 }
 
+// apiSuffixes are API addresses people paste for --server, longest first:
+// the health check's, Supermixer's API and the Management API.
+var apiSuffixes = []string{"/api/v1/health", "/api/v1", "/v1"}
+
 // serverURL turns what was given for --server into the server's base URL:
-// http:// if there's no scheme, and without a trailing /api/v1 if it was
-// pasted from the API's address.
-func serverURL(s string) (*url.URL, error) {
-	s = strings.TrimSpace(s)
+// http:// if there's no scheme, and without an API path pasted with it.
+func serverURL(in string) (*url.URL, error) {
+	s := strings.TrimSpace(in)
 	if !strings.Contains(s, "://") {
 		s = "http://" + s
 	}
 	u, err := url.Parse(s)
 	if err != nil || u.Host == "" {
-		return nil, fmt.Errorf("--server %q isn't a URL", s)
+		return nil, fmt.Errorf("--server %q isn't a URL", in)
 	}
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, fmt.Errorf("--server must be an http:// or https:// URL")
 	}
-	u.Path = strings.TrimSuffix(strings.TrimSuffix(u.Path, "/"), "/api/v1")
+	u.Path = strings.TrimSuffix(u.Path, "/")
+	for _, suffix := range apiSuffixes {
+		if strings.HasSuffix(u.Path, suffix) {
+			u.Path = strings.TrimSuffix(u.Path, suffix)
+			break
+		}
+	}
 	u.RawPath, u.RawQuery, u.Fragment = "", "", ""
 	return u, nil
 }
@@ -251,6 +270,9 @@ type result struct {
 }
 
 type link struct {
+	// The proxy the request went through (HTTPS_PROXY and so on), without
+	// its password; the address and timings are then the proxy's.
+	Proxy    string  `json:"proxy,omitempty"`
 	Address  string  `json:"address,omitempty"` // the server's IP and port
 	Protocol string  `json:"protocol"`          // HTTP/1.1, HTTP/2.0
 	TLS      string  `json:"tls,omitempty"`     // TLS1.3
@@ -271,24 +293,48 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 	target := base.JoinPath("api/v1/health")
 	res := &result{Server: base.String()}
 
-	var dnsStart, connStart, tlsStart, firstByte time.Time
-	var dns, conn, tlsDur time.Duration
+	// The dialer may try IPv6 and IPv4 addresses at once (Happy Eyeballs),
+	// so connects are timed per address, and the one reported is the
+	// connection the request used. The callbacks can run on other
+	// goroutines, even after the request is done, hence the lock.
+	var (
+		mu                            sync.Mutex
+		dnsStart, tlsStart, firstByte time.Time
+		dns, tlsDur                   time.Duration
+		connStart                     = map[string]time.Time{}
+		connected                     = map[string]time.Duration{}
+	)
+	locked := func(f func()) { mu.Lock(); defer mu.Unlock(); f() }
 	trace := &httptrace.ClientTrace{
-		DNSStart:          func(httptrace.DNSStartInfo) { dnsStart = time.Now() },
-		DNSDone:           func(httptrace.DNSDoneInfo) { dns = time.Since(dnsStart) },
-		ConnectStart:      func(string, string) { connStart = time.Now() },
-		ConnectDone:       func(string, string, error) { conn = time.Since(connStart) },
-		TLSHandshakeStart: func() { tlsStart = time.Now() },
-		TLSHandshakeDone: func(cs tls.ConnectionState, _ error) {
-			tlsDur = time.Since(tlsStart)
-			res.Link.TLS = strings.ReplaceAll(tls.VersionName(cs.Version), " ", "")
+		DNSStart: func(httptrace.DNSStartInfo) { locked(func() { dnsStart = time.Now() }) },
+		DNSDone:  func(httptrace.DNSDoneInfo) { locked(func() { dns = time.Since(dnsStart) }) },
+		ConnectStart: func(_, addr string) {
+			locked(func() { connStart[addr] = time.Now() })
+		},
+		ConnectDone: func(_, addr string, err error) {
+			locked(func() {
+				if err == nil {
+					connected[addr] = time.Since(connStart[addr])
+				}
+			})
+		},
+		TLSHandshakeStart: func() { locked(func() { tlsStart = time.Now() }) },
+		TLSHandshakeDone: func(cs tls.ConnectionState, err error) {
+			locked(func() {
+				if err == nil {
+					tlsDur = time.Since(tlsStart)
+					res.Link.TLS = strings.ReplaceAll(tls.VersionName(cs.Version), " ", "")
+				}
+			})
 		},
 		GotConn: func(i httptrace.GotConnInfo) {
-			if a, ok := i.Conn.RemoteAddr().(*net.TCPAddr); ok {
-				res.Link.Address = a.String()
-			}
+			locked(func() {
+				if a, ok := i.Conn.RemoteAddr().(*net.TCPAddr); ok {
+					res.Link.Address = a.String()
+				}
+			})
 		},
-		GotFirstResponseByte: func() { firstByte = time.Now() },
+		GotFirstResponseByte: func() { locked(func() { firstByte = time.Now() }) },
 	}
 
 	req, err := http.NewRequestWithContext(httptrace.WithClientTrace(ctx, trace), http.MethodGet, target.String(), nil)
@@ -297,6 +343,13 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 	}
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("User-Agent", "mixer/"+version.Version)
+	// The default transport goes through the proxy the environment names;
+	// say so, since the link measured is then the proxy's.
+	via := ""
+	if p, err := http.ProxyFromEnvironment(req); err == nil && p != nil {
+		res.Link.Proxy = p.Redacted()
+		via = " through proxy " + res.Link.Proxy
+	}
 
 	client := &http.Client{
 		Timeout: timeout,
@@ -305,23 +358,33 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 	}
 	start := time.Now()
+	timedOut := func(err error) bool {
+		var ne net.Error
+		return errors.Is(err, context.DeadlineExceeded) || errors.As(err, &ne) && ne.Timeout()
+	}
 	resp, err := client.Do(req)
 	if err != nil {
-		var ue *url.Error
-		if errors.As(err, &ue) && ue.Timeout() {
-			return nil, fmt.Errorf("%s: no answer within %s", base, timeout)
+		if timedOut(err) {
+			return nil, fmt.Errorf("%s: no answer within %s%s", base, timeout, via)
 		}
+		var ue *url.Error
 		if errors.As(err, &ue) {
 			err = ue.Err
 		}
-		return nil, fmt.Errorf("can't reach %s: %v", base, err)
+		return nil, fmt.Errorf("can't reach %s%s: %v", base, via, err)
 	}
 	defer resp.Body.Close()
+	// The client's timeout covers reading the body too.
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if err != nil {
+		if timedOut(err) {
+			return nil, fmt.Errorf("%s: no answer within %s%s", base, timeout, via)
+		}
 		return nil, fmt.Errorf("%s: reading the response: %v", base, err)
 	}
 	total := time.Since(start)
+	mu.Lock()
+	defer mu.Unlock()
 
 	res.HTTPStatus = resp.StatusCode
 	res.Link.Protocol = resp.Proto
@@ -333,10 +396,22 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 		v := ms(d)
 		return &v
 	}
-	res.Link.Timings = timings{DNS: opt(dns), Connect: opt(conn), TLS: opt(tlsDur), FirstByte: ms(firstByte.Sub(start)), Total: ms(total)}
+	res.Link.Timings = timings{
+		DNS: opt(dns), Connect: opt(connected[res.Link.Address]), TLS: opt(tlsDur),
+		FirstByte: ms(firstByte.Sub(start)), Total: ms(total),
+	}
 
 	if resp.StatusCode >= 300 && resp.StatusCode < 400 {
-		return nil, fmt.Errorf("%s redirects to %s; use that as --server", base, resp.Header.Get("Location"))
+		// Location is usually the health check's own address, perhaps
+		// relative: suggest the server it points to.
+		loc, err := resp.Location()
+		if err != nil {
+			return nil, fmt.Errorf("%s redirects (%s) without saying where", base, resp.Status)
+		}
+		if to, err := serverURL(loc.String()); err == nil {
+			return nil, fmt.Errorf("%s redirects to %s; try --server %s", base, loc, to)
+		}
+		return nil, fmt.Errorf("%s redirects to %s", base, loc)
 	}
 	// 503 still carries a report: the server is up, its database isn't.
 	if resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusServiceUnavailable {
@@ -381,6 +456,9 @@ func writeText(w io.Writer, r *result, color bool) {
 		line("database_error", *h.Database.Error)
 	}
 	line("server", r.Server)
+	if r.Link.Proxy != "" {
+		line("proxy", r.Link.Proxy)
+	}
 	if r.Link.Address != "" {
 		line("address", r.Link.Address)
 	}

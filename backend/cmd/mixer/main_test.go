@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 const healthy = `{"status":"healthy","version":"v1.2.3","database":{"status":"healthy","schema_version":42,"installed_at":"2026-07-01T10:00:00Z"}}`
@@ -149,10 +150,34 @@ func TestNotSupermixer(t *testing.T) {
 }
 
 func TestRedirect(t *testing.T) {
-	s := httptest.NewServer(http.RedirectHandler("https://example.test/api/v1/health", http.StatusMovedPermanently))
+	// The address to try instead is the server the redirect points to, not
+	// the health check's own address, even when Location is relative.
+	for loc, want := range map[string]string{
+		"https://example.test/api/v1/health": "redirects to https://example.test/api/v1/health; try --server https://example.test\n",
+		"/sm/api/v1/health":                  "/sm/api/v1/health; try --server http://127.0.0.1:",
+	} {
+		s := httptest.NewServer(http.RedirectHandler(loc, http.StatusMovedPermanently))
+		code, _, errb := mixer(t, nil, "--server", s.URL, "health")
+		s.Close()
+		if code != exitUnreachable || !strings.Contains(errb, want) {
+			t.Errorf("Location %s: code %d, stderr %q", loc, code, errb)
+		}
+	}
+}
+
+func TestSlowBody(t *testing.T) {
+	// Headers at once, then the body too late: still a timeout.
+	s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(200)
+		w.(http.Flusher).Flush()
+		select {
+		case <-r.Context().Done():
+		case <-time.After(5 * time.Second):
+		}
+	}))
 	defer s.Close()
-	code, _, errb := mixer(t, nil, "--server", s.URL, "health")
-	if code != exitUnreachable || !strings.Contains(errb, "redirects to https://example.test") {
+	code, _, errb := mixer(t, nil, "--server", s.URL, "--timeout", "200ms", "health")
+	if code != exitUnreachable || !strings.Contains(errb, "no answer within 200ms") {
 		t.Errorf("code %d, stderr %q", code, errb)
 	}
 }
@@ -166,6 +191,7 @@ func TestUsage(t *testing.T) {
 		{[]string{"healthz"}, `unknown command "healthz"`},
 		{[]string{"help", "healthz"}, `unknown command "healthz"`},
 		{[]string{"health"}, "no server"},
+		{[]string{"--server", "  ", "health"}, "no server"},
 		{[]string{"health", "--server", "ftp://x"}, "http:// or https://"},
 		{[]string{"--json", "health", "--server", "http://x", "-q"}, "can't be used together"},
 		{[]string{"--server", "http://x", "health", "extra"}, `unexpected argument "extra"`},
@@ -182,11 +208,13 @@ func TestUsage(t *testing.T) {
 
 func TestHelpAndVersion(t *testing.T) {
 	for args, want := range map[string]string{
-		"--help":        "Usage: mixer [options] <command>",
-		"help":          "Usage: mixer [options] <command>",
-		"help health":   "Usage: mixer [options] health",
-		"health --help": "Usage: mixer [options] health",
-		"health -h":     "Usage: mixer [options] health",
+		"--help":         "Usage: mixer [options] <command>",
+		"help":           "Usage: mixer [options] <command>",
+		"help health":    "Usage: mixer [options] health",
+		"health --help":  "Usage: mixer [options] health",
+		"health -h":      "Usage: mixer [options] health",
+		"help --json":    "Usage: mixer [options] <command>",
+		"help -q health": "Usage: mixer [options] health",
 	} {
 		code, out, errb := mixer(t, nil, strings.Fields(args)...)
 		if code != exitOK || errb != "" || !strings.HasPrefix(out, want) {
@@ -204,6 +232,9 @@ func TestServerURL(t *testing.T) {
 		"localhost:8080":                        "http://localhost:8080",
 		"https://sm.example.com/":               "https://sm.example.com",
 		"https://sm.example.com/api/v1":         "https://sm.example.com",
+		"https://sm.example.com/api/v1/health/": "https://sm.example.com",
+		"https://sm.example.com/v1":             "https://sm.example.com",
+		" sm.example.com:8080 ":                 "http://sm.example.com:8080",
 		"https://example.com/supermixer/?x=1#y": "https://example.com/supermixer",
 	} {
 		u, err := serverURL(in)
