@@ -6,7 +6,7 @@ import { SearchBox } from '@/components/database/catalog-page'
 import { AppShell } from '@/components/layout/app-shell'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { Alert } from '@/components/ui/alert'
-import { Badge, type BadgeProps } from '@/components/ui/badge'
+import { Badge, badgeVariants, type BadgeProps } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -243,7 +243,7 @@ function ApiDocsPage() {
               and send it with each request as{' '}
               <code className="text-xs">Authorization: Bearer sbp_…</code>. Paths start with{' '}
               <code className="text-xs">/api/v1</code>, unless a section says otherwise. Endpoints
-              marked <Badge variant="success">public</Badge> work without signing in. The others
+              marked <span className={badgeVariants({ variant: 'success' })}>public</span> work without signing in. The others
               need you to be signed in or to use a token. The API enforces role-based access
               control.
             </>
