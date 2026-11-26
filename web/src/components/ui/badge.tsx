@@ -12,6 +12,8 @@ export const badgeVariants = cva(
         default: 'border border-strong bg-surface-75 text-foreground-light',
         warning: 'border border-warning-500 bg-warning/10 text-warning-600',
         success: 'border border-brand-500 bg-brand-default/10 text-brand-600',
+        // Always green, unlike success, which follows the brand colour.
+        green: 'border border-green-500 bg-green/10 text-green-600',
         destructive: 'border border-border-destructive bg-destructive/10 text-destructive',
         secondary: 'border-transparent bg-secondary/50 text-secondary-foreground hover:bg-secondary/80',
       },

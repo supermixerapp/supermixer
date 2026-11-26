@@ -31,6 +31,11 @@
   --brand-300: var(--sm-dark-brand-300, hsl(155.1deg 100% 8%));
   --brand-200: var(--sm-dark-brand-200, hsl(162deg 100% 2%));
 
+  /* Studio's green, whatever the brand colour: for labels that mean green. */
+  --green-default: hsl(153.1deg 60.2% 52.7%);
+  --green-600: hsl(154.9deg 59.5% 70%);
+  --green-500: hsl(154.9deg 100% 19.2%);
+
   --warning-default: hsl(38.9deg 100% 42.9%);
   --warning-600: hsl(38.9deg 100% 42.9%);
   --warning-500: hsl(34.8deg 90.9% 21.6%);
@@ -84,6 +89,10 @@
   --brand-400: var(--sm-light-brand-400, hsl(151.3deg 66.9% 66.9%));
   --brand-300: var(--sm-light-brand-300, hsl(147.5deg 72% 80.4%));
   --brand-200: var(--sm-light-brand-200, hsl(147.6deg 72.5% 90%));
+
+  --green-default: hsl(152.9deg 60% 52.9%);
+  --green-600: hsl(156.5deg 86.5% 26.1%);
+  --green-500: hsl(155.3deg 78.4% 40%);
 
   --warning-default: hsl(30.3deg 80.3% 47.8%);
   --warning-600: hsl(30.3deg 80.3% 47.8%);

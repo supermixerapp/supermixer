@@ -258,6 +258,23 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(reader.getByRole('heading', { name: 'Projects' })).toBeVisible()
   })
 
+  await test.step('the account menu shows each person their role where they are', async () => {
+    await reader.getByRole('button', { name: 'Account menu' }).click()
+    const readerMenu = reader.getByRole('menu')
+    await expect(readerMenu.getByText('Read-only', { exact: true })).toBeVisible()
+    await expect(readerMenu.getByText('Instance admin', { exact: true })).toHaveCount(0)
+    await reader.keyboard.press('Escape')
+
+    await page.goto(`/project/${ref}`)
+    await page.getByRole('button', { name: 'Account menu' }).click()
+    const menu = page.getByRole('menu')
+    await expect(menu.getByText('Owner', { exact: true })).toBeVisible()
+    await expect(menu.getByText('in Dev stack')).toBeVisible()
+    // The badge, and the menu item leading to Instance.
+    await expect(menu.getByText('Instance admin', { exact: true })).toHaveCount(2)
+    await page.keyboard.press('Escape')
+  })
+
   await test.step("they can't see secret keys", async () => {
     await reader.goto(`/project/${ref}/settings/api-keys`)
     const reveal = reader.getByRole('button', { name: 'Reveal' })

@@ -72,6 +72,9 @@
   --color-brand-400: var(--brand-400);
   --color-brand-500: var(--brand-500);
   --color-brand-600: var(--brand-600);
+  --color-green: var(--green-default);
+  --color-green-500: var(--green-500);
+  --color-green-600: var(--green-600);
   --color-brand: var(--brand-default);
   --color-brand-default: var(--brand-default);
   --color-_secondary-200: var(--secondary-200);
