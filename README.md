@@ -176,6 +176,7 @@ The first account, `admin`, is an instance admin, and can make others instance a
 - **Users:** create accounts, reset passwords or two-factor sign-in, sign accounts out, disable them, and make instance admins.
 - **Global notice:** a message for everyone, such as planned downtime, shown as a band above the header on every page, including the sign-in pages. Choose Info, Warning or Critical and write up to 256 characters; `**bold**` and `[links](https://example.com)` work, linking to `https://`, `http://`, `mailto:` or a page in Supermixer such as `/account/security`. It reaches open pages within a minute and stays until an instance admin takes it down.
 - **Audit log:** everything recorded across the instance.
+- **Organizations** and **Projects** (under Usage): every organization and project on the instance, for reports on how it's used. Organizations show owners, members, projects against their limit, sign-in requirements and last activity; projects show their organization, state, Supabase version, creator and backups. Search, filter, and export what's shown as CSV. These are read-only and give no access: an instance admin sees an organization's own pages, or a project's, only as a member, and the lists leave out project URLs, connection details and keys.
 
 ## When someone leaves
 

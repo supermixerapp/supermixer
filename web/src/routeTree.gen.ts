@@ -28,6 +28,8 @@ import { Route as AppAdminIndexRouteImport } from './routes/_app/admin.index'
 import { Route as AppAdminAuditRouteImport } from './routes/_app/admin.audit'
 import { Route as AppAdminLimitsRouteImport } from './routes/_app/admin.limits'
 import { Route as AppAdminNoticeRouteImport } from './routes/_app/admin.notice'
+import { Route as AppAdminOrganizationsRouteImport } from './routes/_app/admin.organizations'
+import { Route as AppAdminProjectsRouteImport } from './routes/_app/admin.projects'
 import { Route as AppAdminSignUpRouteImport } from './routes/_app/admin.sign-up'
 import { Route as AppAdminUsersRouteImport } from './routes/_app/admin.users'
 import { Route as AppDocsApiRouteImport } from './routes/_app/docs.api'
@@ -202,6 +204,16 @@ const AppAdminLimitsRoute = AppAdminLimitsRouteImport.update({
 const AppAdminNoticeRoute = AppAdminNoticeRouteImport.update({
   id: '/admin/notice',
   path: '/admin/notice',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminOrganizationsRoute = AppAdminOrganizationsRouteImport.update({
+  id: '/admin/organizations',
+  path: '/admin/organizations',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAdminProjectsRoute = AppAdminProjectsRouteImport.update({
+  id: '/admin/projects',
+  path: '/admin/projects',
   getParentRoute: () => AppRoute,
 } as any)
 const AppAdminSignUpRoute = AppAdminSignUpRouteImport.update({
@@ -683,6 +695,8 @@ export interface FileRoutesByFullPath {
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/limits': typeof AppAdminLimitsRoute
   '/admin/notice': typeof AppAdminNoticeRoute
+  '/admin/organizations': typeof AppAdminOrganizationsRoute
+  '/admin/projects': typeof AppAdminProjectsRoute
   '/admin/sign-up': typeof AppAdminSignUpRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/docs/api': typeof AppDocsApiRoute
@@ -784,6 +798,8 @@ export interface FileRoutesByTo {
   '/admin/audit': typeof AppAdminAuditRoute
   '/admin/limits': typeof AppAdminLimitsRoute
   '/admin/notice': typeof AppAdminNoticeRoute
+  '/admin/organizations': typeof AppAdminOrganizationsRoute
+  '/admin/projects': typeof AppAdminProjectsRoute
   '/admin/sign-up': typeof AppAdminSignUpRoute
   '/admin/users': typeof AppAdminUsersRoute
   '/docs/api': typeof AppDocsApiRoute
@@ -883,6 +899,8 @@ export interface FileRoutesById {
   '/_app/admin/audit': typeof AppAdminAuditRoute
   '/_app/admin/limits': typeof AppAdminLimitsRoute
   '/_app/admin/notice': typeof AppAdminNoticeRoute
+  '/_app/admin/organizations': typeof AppAdminOrganizationsRoute
+  '/_app/admin/projects': typeof AppAdminProjectsRoute
   '/_app/admin/sign-up': typeof AppAdminSignUpRoute
   '/_app/admin/users': typeof AppAdminUsersRoute
   '/_app/docs/api': typeof AppDocsApiRoute
@@ -986,6 +1004,8 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/limits'
     | '/admin/notice'
+    | '/admin/organizations'
+    | '/admin/projects'
     | '/admin/sign-up'
     | '/admin/users'
     | '/docs/api'
@@ -1087,6 +1107,8 @@ export interface FileRouteTypes {
     | '/admin/audit'
     | '/admin/limits'
     | '/admin/notice'
+    | '/admin/organizations'
+    | '/admin/projects'
     | '/admin/sign-up'
     | '/admin/users'
     | '/docs/api'
@@ -1185,6 +1207,8 @@ export interface FileRouteTypes {
     | '/_app/admin/audit'
     | '/_app/admin/limits'
     | '/_app/admin/notice'
+    | '/_app/admin/organizations'
+    | '/_app/admin/projects'
     | '/_app/admin/sign-up'
     | '/_app/admin/users'
     | '/_app/docs/api'
@@ -1413,6 +1437,20 @@ declare module '@tanstack/react-router' {
       path: '/admin/notice'
       fullPath: '/admin/notice'
       preLoaderRoute: typeof AppAdminNoticeRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/organizations': {
+      id: '/_app/admin/organizations'
+      path: '/admin/organizations'
+      fullPath: '/admin/organizations'
+      preLoaderRoute: typeof AppAdminOrganizationsRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/admin/projects': {
+      id: '/_app/admin/projects'
+      path: '/admin/projects'
+      fullPath: '/admin/projects'
+      preLoaderRoute: typeof AppAdminProjectsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/admin/sign-up': {
@@ -2194,6 +2232,8 @@ interface AppRouteChildren {
   AppAdminAuditRoute: typeof AppAdminAuditRoute
   AppAdminLimitsRoute: typeof AppAdminLimitsRoute
   AppAdminNoticeRoute: typeof AppAdminNoticeRoute
+  AppAdminOrganizationsRoute: typeof AppAdminOrganizationsRoute
+  AppAdminProjectsRoute: typeof AppAdminProjectsRoute
   AppAdminSignUpRoute: typeof AppAdminSignUpRoute
   AppAdminUsersRoute: typeof AppAdminUsersRoute
   AppDocsApiRoute: typeof AppDocsApiRoute
@@ -2214,6 +2254,8 @@ const AppRouteChildren: AppRouteChildren = {
   AppAdminAuditRoute: AppAdminAuditRoute,
   AppAdminLimitsRoute: AppAdminLimitsRoute,
   AppAdminNoticeRoute: AppAdminNoticeRoute,
+  AppAdminOrganizationsRoute: AppAdminOrganizationsRoute,
+  AppAdminProjectsRoute: AppAdminProjectsRoute,
   AppAdminSignUpRoute: AppAdminSignUpRoute,
   AppAdminUsersRoute: AppAdminUsersRoute,
   AppDocsApiRoute: AppDocsApiRoute,

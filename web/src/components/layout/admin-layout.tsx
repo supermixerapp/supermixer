@@ -9,6 +9,12 @@ import { Alert } from '@/components/ui/alert'
 import { useProfile } from '@/lib/api/hooks'
 import { usersQuery } from '@/lib/api/queries'
 
+// Reports on how the instance is used: read-only, and no access to what they list.
+const USAGE = [
+  { label: 'Organizations', to: '/admin/organizations' },
+  { label: 'Projects', to: '/admin/projects' },
+]
+
 const LINKS = [
   { label: 'Overview', to: '/admin' },
   { label: 'Users', to: '/admin/users' },
@@ -50,6 +56,7 @@ export function AdminLayout({
                   count: l.to === '/admin/users' ? waiting : undefined,
                 })),
               },
+              { title: 'Usage', links: USAGE.map((l) => ({ ...l, active: pathname === l.to })) },
             ]}
           />
         }

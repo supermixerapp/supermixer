@@ -3,24 +3,9 @@ import { useMemo, useState } from 'react'
 import { CopyIcon, DownloadIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { CellValue, Grid } from '@/components/ui/data-grid'
+import { downloadText, toCsv } from '@/lib/csv'
 import { cn } from '@/lib/utils'
 import type { QueryResponse, QueryResult, SqlError } from '@/lib/pg/run'
-
-function toCsv(r: QueryResult): string {
-  const esc = (v: unknown) => {
-    if (v === null || v === undefined) return ''
-    const s = typeof v === 'object' ? JSON.stringify(v) : String(v)
-    return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
-  }
-  return [r.columns.map((c) => esc(c.name)).join(','), ...r.rows.map((row) => row.map(esc).join(','))].join('\n')
-}
-
-function download(name: string, text: string, type: string) {
-  const url = URL.createObjectURL(new Blob([text], { type }))
-  const a = Object.assign(document.createElement('a'), { href: url, download: name })
-  a.click()
-  URL.revokeObjectURL(url)
-}
 
 function summary(r: QueryResult): string {
   if (r.columns.length > 0) return `${r.row_count} row${r.row_count === 1 ? '' : 's'}`
@@ -137,7 +122,7 @@ export function ResultsPanel({
             >
               Copy as JSON
             </Button>
-            <Button variant="text" size="tiny" icon={<DownloadIcon />} onClick={() => download('results.csv', toCsv(current), 'text/csv')}>
+            <Button variant="text" size="tiny" icon={<DownloadIcon />} onClick={() => downloadText('results.csv', toCsv(current.columns.map((c) => c.name), current.rows))}>
               CSV
             </Button>
           </>

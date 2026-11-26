@@ -366,6 +366,35 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(rows.filter({ hasText: 'reader' })).toHaveCount(1)
   })
 
+  await test.step('instance reports list every organization and project, without a way into them', async () => {
+    await page.goto('/admin/organizations')
+    const org = page.getByRole('table').getByRole('row').filter({ hasText: slug })
+    await expect(org).toHaveCount(1)
+    await expect(org.getByText('admin', { exact: true })).toBeVisible() // its owner
+
+    await page.goto('/admin/projects')
+    const rows = page.getByRole('table').getByRole('row')
+    const dev = rows.filter({ hasText: 'Dev stack' })
+    await expect(dev.getByText('Connected', { exact: true })).toBeVisible()
+    await expect(page.getByRole('table').getByRole('link')).toHaveCount(0)
+    await page.getByRole('combobox', { name: 'State' }).click()
+    await page.getByRole('option', { name: 'Paused' }).click()
+    await expect(page.getByText('No projects match these filters.')).toBeVisible()
+    await page.getByRole('button', { name: 'Clear filters' }).click()
+    await page.getByPlaceholder('Search projects').fill(slug)
+    await expect(dev).toHaveCount(1)
+
+    const download = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Export CSV' }).click()
+    const file = await download
+    expect(file.suggestedFilename()).toMatch(/^supermixer-projects-\d{4}-\d{2}-\d{2}\.csv$/)
+    const text = readFileSync(await file.path(), 'utf8')
+    expect(text.startsWith('\uFEFF')).toBe(true) // so Excel reads it as UTF-8
+    const csv = text.slice(1).split('\n')
+    expect(csv[0]).toMatch(/^Project,Ref,Organization,/)
+    expect(csv.find((l) => l.startsWith('Dev stack,'))).toContain(',Connected,')
+  })
+
   await test.step('the audit log recorded each step', async () => {
     await page.goto(`/org/${slug}/audit`)
     const table = page.getByRole('table')

@@ -5,6 +5,7 @@ import { useMutation, useQuery } from '@tanstack/react-query'
 import { createFileRoute, Link } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 
+import { Stat } from '@/components/admin/report-parts'
 import { AdminLayout } from '@/components/layout/admin-layout'
 import { SettingsSection } from '@/components/layout/section'
 import { Alert } from '@/components/ui/alert'
@@ -51,8 +52,13 @@ function OverviewPage() {
             <Stat label="Users" value={o.active_users} detail={`${o.users - o.active_users} disabled`} />
             <Stat label="Instance admins" value={o.instance_admins} />
             <Stat label="Two-factor sign-in" value={o.mfa_enabled} detail={`of ${o.active_users} active users`} />
-            <Stat label="Organizations" value={o.organizations} />
-            <Stat label="Projects" value={o.projects} detail={`${o.managed_projects} created by Supermixer`} />
+            <Stat label="Organizations" value={o.organizations} to="/admin/organizations" />
+            <Stat
+              label="Projects"
+              value={o.projects}
+              detail={`${o.managed_projects} created by Supermixer`}
+              to="/admin/projects"
+            />
           </div>
           <SettingsSection title="Settings" description="From the server's configuration file (.env.toml); restart Supermixer after changing them.">
             <Card className="flex flex-col divide-y text-sm">
@@ -175,16 +181,6 @@ function every(hours: number) {
   const minutes = Math.round(hours * 60)
   if (minutes < 60) return minutes === 1 ? 'Every minute' : `Every ${minutes} minutes`
   return `Every ${Math.floor(minutes / 60)} h ${minutes % 60} min`
-}
-
-function Stat({ label, value, detail }: { label: string; value: number; detail?: string }) {
-  return (
-    <Card className="flex flex-col gap-1 px-5 py-4">
-      <span className="text-xs text-foreground-lighter">{label}</span>
-      <span className="text-2xl text-foreground">{value}</span>
-      {detail && <span className="text-xs text-foreground-lighter">{detail}</span>}
-    </Card>
-  )
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {

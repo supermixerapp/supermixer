@@ -60,7 +60,7 @@ export function useKeyRotationDone(ref: string, onDone: () => void, enabled = tr
   }
 }
 
-const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
+export const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
   starting: 'Starting…',
   stopping: 'Stopping…',
   restarting: 'Restarting…',
@@ -72,7 +72,7 @@ const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
   rotating_keys: 'Rotating keys…',
 }
 
-const STATUS: Record<
+export const STACK_STATUS: Record<
   Stack['status'],
   { label: string; variant: 'success' | 'warning' | 'destructive' | 'default' }
 > = {
@@ -85,7 +85,7 @@ const STATUS: Record<
 
 export function StackBadge({ stack }: { stack: Pick<Stack, 'status' | 'operation'> }) {
   if (stack.operation) return <Badge variant="warning">{OPERATION_LABELS[stack.operation]}</Badge>
-  const s = STATUS[stack.status]
+  const s = STACK_STATUS[stack.status]
   return <Badge variant={s.variant}>{s.label}</Badge>
 }
 
