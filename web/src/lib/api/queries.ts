@@ -108,6 +108,13 @@ export const invitationsQuery = (slug: string) =>
     queryFn: () => unwrap(api.GET('/organizations/{slug}/invitations', { params: { path: { slug } } })),
   })
 
+/** Everyone in the organization's audit log, former members too, for filtering by person. */
+export const auditActorsQuery = (slug: string) =>
+  queryOptions({
+    queryKey: ['organizations', slug, 'audit-logs', 'actors'],
+    queryFn: () => unwrap(api.GET('/organizations/{slug}/audit-logs/actors', { params: { path: { slug } } })),
+  })
+
 export interface AuditFilters {
   action?: string
   actor_id?: string

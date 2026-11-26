@@ -13,6 +13,17 @@ WHERE organization_id = @organization_id
 ORDER BY id DESC
 LIMIT @row_limit;
 
+-- name: ListAuditActors :many
+-- Everyone who appears in an organization's log, with the name they last had there.
+SELECT a.actor_id::uuid AS actor_id, a.actor_username,
+       EXISTS (SELECT 1 FROM org_members m WHERE m.organization_id = @organization_id AND m.user_id = a.actor_id) AS member
+FROM (SELECT DISTINCT ON (actor_id) actor_id, actor_username
+      FROM audit_logs
+      WHERE organization_id = @organization_id AND actor_id IS NOT NULL
+      ORDER BY actor_id, id DESC) a
+ORDER BY lower(a.actor_username)
+LIMIT 1000;
+
 -- name: ListInstanceAuditLogs :many
 -- Entries outside any organization (accounts, sign-ins, instance settings).
 SELECT * FROM audit_logs

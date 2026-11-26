@@ -179,7 +179,7 @@ The first account, `admin`, is an instance admin, and can make others instance a
 
 ## When someone leaves
 
-Removing someone from an organization ends their access through Supermixer, but not any Postgres logins they made. Those connect straight to the database, so they keep working. To find them, look under Database › Roles in each project, or open Audit Logs and choose **Database logins**.
+Removing someone from an organization ends their access through Supermixer, but not any Postgres logins they made. Those connect straight to the database, so they keep working. To find them, look under Database › Roles in each project, or open Audit Logs, choose **Database logins** and pick the person (people who have left are still listed).
 
 Roles created, changed or dropped through Supermixer are recorded as `project.database_role_created`, `_updated` and `_dropped`, whether on the Roles page, in the SQL Editor or through the API. Some things aren't recorded:
 

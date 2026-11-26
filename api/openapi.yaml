@@ -2108,6 +2108,26 @@ paths:
               schema: { $ref: "#/components/schemas/AuditLogPage" }
         default: { $ref: "#/components/responses/Error" }
 
+  /organizations/{slug}/audit-logs/actors:
+    parameters:
+      - { $ref: "#/components/parameters/Slug" }
+    get:
+      operationId: listAuditActors
+      summary: People who appear in the organization's audit log, including former members
+      tags: [Audit]
+      description: |
+        For filtering the audit log by person, including someone who has since left
+        the organization (members alone wouldn't list them). Names are as last recorded.
+      responses:
+        "200":
+          description: The people, by name.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/AuditActor" }
+        default: { $ref: "#/components/responses/Error" }
+
   /projects/{ref}/read-only-user:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -3545,6 +3565,13 @@ components:
         metadata: { type: object, additionalProperties: true }
         ip: { type: string }
         created_at: { type: string, format: date-time }
+    AuditActor:
+      type: object
+      required: [id, username, member]
+      properties:
+        id: { type: string, format: uuid }
+        username: { type: string }
+        member: { type: boolean, description: Still a member of the organization }
     AuditLogPage:
       type: object
       required: [entries]

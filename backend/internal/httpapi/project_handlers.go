@@ -555,6 +555,24 @@ func (h *handlers) ListAuditLogs(ctx context.Context, req api.ListAuditLogsReque
 	return api.ListAuditLogs200JSONResponse(toAuditPage(rows, limit)), nil
 }
 
+// ListAuditActors lists who appears in the log, so it can be filtered by
+// someone who has left the organization.
+func (h *handlers) ListAuditActors(ctx context.Context, req api.ListAuditActorsRequestObject) (api.ListAuditActorsResponseObject, error) {
+	a, err := h.loadOrg(ctx, req.Slug, rbac.AuditRead, "view audit logs")
+	if err != nil {
+		return nil, err
+	}
+	rows, err := h.deps.Store.Queries.ListAuditActors(ctx, a.Org.ID)
+	if err != nil {
+		return nil, err
+	}
+	out := make(api.ListAuditActors200JSONResponse, len(rows))
+	for i, r := range rows {
+		out[i] = api.AuditActor{Id: r.ActorID, Username: r.ActorUsername, Member: r.Member}
+	}
+	return out, nil
+}
+
 // toAuditPage is a page of entries; rows holds up to one more than limit,
 // which says there's a next page.
 func toAuditPage(rows []db.AuditLog, limit int) api.AuditLogPage {

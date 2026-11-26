@@ -138,4 +138,32 @@ func TestRoleChangesAreAudited(t *testing.T) {
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Errorf("audited\n%s\nwant\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
 	}
+
+	t.Run("people who left can still be picked in the audit log", func(t *testing.T) {
+		var members []struct {
+			UserID   string `json:"user_id"`
+			Username string
+		}
+		admin.must(200, "GET", "/organizations/logins/members", nil, &members)
+		for _, m := range members {
+			if m.Username == "dev" {
+				admin.must(204, "DELETE", "/organizations/logins/members/"+m.UserID, nil, nil)
+			}
+		}
+		var actors []struct {
+			Username string
+			Member   bool
+		}
+		admin.must(200, "GET", "/organizations/logins/audit-logs/actors", nil, &actors)
+		var listed []string
+		for _, a := range actors {
+			listed = append(listed, fmt.Sprintf("%s:%v", a.Username, a.Member))
+		}
+		if s := strings.Join(listed, " "); s != "admin:true dev:false reader:true" {
+			t.Errorf("actors = %s", s)
+		}
+		if got := reader.do("GET", "/organizations/logins/audit-logs/actors", nil, nil); got != 403 {
+			t.Errorf("read-only member listed actors: %d", got)
+		}
+	})
 }

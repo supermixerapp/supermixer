@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
-import { auditLogsQuery, membersQuery } from '@/lib/api/queries'
+import { auditActorsQuery, auditLogsQuery } from '@/lib/api/queries'
 
 export const Route = createFileRoute('/_app/org/$slug/audit')({
   component: AuditPage,
@@ -48,7 +48,8 @@ function AuditPage() {
     since: range === 'all' ? undefined : new Date(since - Number(range) * 86400000).toISOString(),
   }
   const logs = useInfiniteQuery({ ...auditLogsQuery(slug, filters), enabled: allowed })
-  const members = useQuery({ ...membersQuery(slug), enabled: allowed })
+  // Not just current members: someone who left can still be looked up.
+  const actors = useQuery({ ...auditActorsQuery(slug), enabled: allowed })
   const entries = logs.data?.pages.flatMap((p) => p.entries) ?? []
 
   return (
@@ -71,8 +72,11 @@ function AuditPage() {
                 value={actor}
                 onChange={setActor}
                 options={[
-                  { value: 'all', label: 'All members' },
-                  ...(members.data ?? []).map((m) => ({ value: m.user_id, label: m.username })),
+                  { value: 'all', label: 'Everyone' },
+                  ...(actors.data ?? []).map((a) => ({
+                    value: a.id,
+                    label: a.member ? a.username : `${a.username} (no longer a member)`,
+                  })),
                 ]}
               />
               <FilterSelect value={range} onChange={setRange} options={RANGES} />

@@ -1899,6 +1899,29 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/organizations/{slug}/audit-logs/actors": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        /**
+         * People who appear in the organization's audit log, including former members
+         * @description For filtering the audit log by person, including someone who has since left
+         *     the organization (members alone wouldn't list them). Names are as last recorded.
+         */
+        get: operations["listAuditActors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/read-only-user": {
         parameters: {
             query?: never;
@@ -3144,6 +3167,13 @@ export interface components {
             ip: string;
             /** Format: date-time */
             created_at: string;
+        };
+        AuditActor: {
+            /** Format: uuid */
+            id: string;
+            username: string;
+            /** @description Still a member of the organization */
+            member: boolean;
         };
         AuditLogPage: {
             entries: components["schemas"]["AuditLogEntry"][];
@@ -6271,6 +6301,29 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["AuditLogPage"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    listAuditActors: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                slug: components["parameters"]["Slug"];
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description The people, by name. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditActor"][];
                 };
             };
             default: components["responses"]["Error"];

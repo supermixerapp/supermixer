@@ -121,6 +121,8 @@ type Querier interface {
 	LatestDBSnapshotData(ctx context.Context, projectID uuid.UUID) ([]byte, error)
 	ListAccessTokens(ctx context.Context, userID uuid.UUID) ([]AccessToken, error)
 	ListAllIdentities(ctx context.Context) ([]ListAllIdentitiesRow, error)
+	// Everyone who appears in an organization's log, with the name they last had there.
+	ListAuditActors(ctx context.Context, organizationID uuid.UUID) ([]ListAuditActorsRow, error)
 	ListAuditLogs(ctx context.Context, arg ListAuditLogsParams) ([]AuditLog, error)
 	ListBackupLeftovers(ctx context.Context, bucket string) ([]BackupLeftover, error)
 	ListBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)

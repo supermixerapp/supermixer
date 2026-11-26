@@ -49,6 +49,44 @@ func (q *Queries) InsertAuditLog(ctx context.Context, arg InsertAuditLogParams) 
 	return err
 }
 
+const listAuditActors = `-- name: ListAuditActors :many
+SELECT a.actor_id::uuid AS actor_id, a.actor_username,
+       EXISTS (SELECT 1 FROM org_members m WHERE m.organization_id = $1 AND m.user_id = a.actor_id) AS member
+FROM (SELECT DISTINCT ON (actor_id) actor_id, actor_username
+      FROM audit_logs
+      WHERE organization_id = $1 AND actor_id IS NOT NULL
+      ORDER BY actor_id, id DESC) a
+ORDER BY lower(a.actor_username)
+LIMIT 1000
+`
+
+type ListAuditActorsRow struct {
+	ActorID       uuid.UUID `json:"actor_id"`
+	ActorUsername string    `json:"actor_username"`
+	Member        bool      `json:"member"`
+}
+
+// Everyone who appears in an organization's log, with the name they last had there.
+func (q *Queries) ListAuditActors(ctx context.Context, organizationID uuid.UUID) ([]ListAuditActorsRow, error) {
+	rows, err := q.db.Query(ctx, listAuditActors, organizationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListAuditActorsRow
+	for rows.Next() {
+		var i ListAuditActorsRow
+		if err := rows.Scan(&i.ActorID, &i.ActorUsername, &i.Member); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listAuditLogs = `-- name: ListAuditLogs :many
 SELECT id, organization_id, project_id, actor_id, actor_username, action, target_type, target_id, target_name, metadata, ip, user_agent, created_at, txid FROM audit_logs
 WHERE organization_id = $1
