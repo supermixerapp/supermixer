@@ -73,8 +73,8 @@ func (h *handlers) startBackup(ctx context.Context, p db.Project, kind db.Backup
 
 // dump takes a recorded backup and saves its outcome. It has start_timeout
 // at most, so a backup still running after that was cut short (failStaleBackups).
-func (h *handlers) dump(ctx context.Context, p db.Project, b db.Backup, log io.Writer) (db.Backup, error) {
-	ctx, cancel := context.WithTimeout(ctx, h.deps.Config.Provisioning.StartTimeout)
+func (h *handlers) dump(parent context.Context, p db.Project, b db.Backup, log io.Writer) (db.Backup, error) {
+	ctx, cancel := context.WithTimeout(parent, h.deps.Config.Provisioning.StartTimeout)
 	defer cancel()
 	dir := h.backupDir(p.Ref, b.ID)
 	fmt.Fprintf(nopLog(log), "\n== %s: backing up (%s) ==\n", time.Now().UTC().Format(time.RFC3339), b.Kind)
@@ -90,6 +90,14 @@ func (h *handlers) dump(ctx context.Context, p db.Project, b db.Backup, log io.W
 	done, ferr := h.deps.Store.Queries.FinishBackup(context.WithoutCancel(ctx), db.FinishBackupParams{
 		ID: b.ID, Status: status, Error: msg, SizeBytes: size, PostgresVersion: m.PostgresVersion,
 	})
+	// In the audit log, so webhooks and chat channels hear of it; not when
+	// Supermixer is stopping. A backup before a restore or an upgrade is
+	// reported once, by that operation (project.operation_failed).
+	if err != nil && !h.stopping(parent) && b.Kind != db.BackupKindPreRestore && b.Kind != db.BackupKindPreUpgrade {
+		h.audit(context.WithoutCancel(ctx), nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID,
+			Action: "project.backup_failed", TargetType: "project", TargetID: p.Ref, TargetName: p.Name,
+			Metadata: map[string]any{"backup": b.ID, "backup_kind": string(b.Kind), "error": msg}})
+	}
 	if ferr != nil {
 		return b, errors.Join(err, ferr)
 	}
@@ -97,6 +105,12 @@ func (h *handlers) dump(ctx context.Context, p db.Project, b db.Backup, log io.W
 		h.uploads.poke()
 	}
 	return done, err
+}
+
+// stopping reports whether Supermixer is shutting down: ctx ended, or the
+// server's own lifetime (manual backups run detached from their request).
+func (h *handlers) stopping(ctx context.Context) bool {
+	return ctx.Err() != nil || (h.deps.Background != nil && h.deps.Background.Err() != nil)
 }
 
 func nopLog(w io.Writer) io.Writer {

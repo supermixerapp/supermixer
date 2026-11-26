@@ -532,6 +532,15 @@ func (h *handlers) runStackHeld(reqCtx context.Context, p db.Project, op api.Sta
 		}
 		stopBeat()
 		h.health.forget(p.Ref)
+		if err != nil {
+			// In the audit log, so webhooks and chat channels hear of it.
+			meta := map[string]any{"operation": string(op), "error": firstLine(msg)}
+			if recovered != nil {
+				meta["recovered"] = true
+			}
+			h.audit(context.WithoutCancel(reqCtx), nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID,
+				Action: "project.operation_failed", TargetType: "project", TargetID: p.Ref, TargetName: p.Name, Metadata: meta})
+		}
 		if op == api.StackOperationDeleting && err == nil {
 			return // the project row is gone
 		}
