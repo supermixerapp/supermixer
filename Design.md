@@ -286,6 +286,7 @@ Larger buttons get proportionally rounder corners: `radius-md × (1 + (h/26 − 
 | Logs | List | `receipt_long` |
 | Integrations | Blocks | `extension` |
 | Settings | Settings | `settings` |
+| Infrastructure (a project's stack) | Server | `dns` |
 | Org projects | Boxes | `widgets` |
 | Team | Users | `groups` |
 | Usage | ChartArea | `data_usage` |

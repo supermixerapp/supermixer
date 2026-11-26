@@ -166,6 +166,10 @@ test('the first admin sets up an organization, a project and a Read-only member'
     await expect(page.getByRole('link').filter({ hasText: 'Dev stack' })).toBeVisible()
     // So does each card's menu.
     await page.getByRole('button', { name: 'Actions for Dev stack' }).click()
+    // Manage (Settings › Infrastructure) is for stacks Supermixer created;
+    // this one is connected. (Settings first, so the menu is open.)
+    await expect(page.getByRole('menuitem', { name: 'Settings' })).toBeVisible()
+    await expect(page.getByRole('menuitem', { name: 'Manage' })).toHaveCount(0)
     await page.getByRole('menuitem', { name: 'Settings' }).click()
     await expect(page).toHaveURL(new RegExp(`/project/${ref}/settings/general$`))
     await page.goto(`/org/${slug}`)

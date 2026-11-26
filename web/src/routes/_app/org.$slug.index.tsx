@@ -3,7 +3,7 @@ import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 
 import { BlockedButton } from '@/components/blocked-button'
-import { AddIcon, DatabaseIcon, GridViewIcon, MoreIcon, SearchIcon, SettingsIcon, ViewListIcon } from '@/components/icons'
+import { AddIcon, DatabaseIcon, GridViewIcon, MoreIcon, SearchIcon, ServerIcon, SettingsIcon, ViewListIcon } from '@/components/icons'
 import { PageContainer, PageHeader } from '@/components/layout/page'
 import { PermissionButton } from '@/components/permission-button'
 import { Button } from '@/components/ui/button'
@@ -265,8 +265,19 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
             <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${project.name}`} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
+            {/* Starting, pausing and restarting: only for stacks Supermixer
+                created; a connected one is managed where it runs. */}
+            {project.stack && (
+              <DropdownMenuItem asChild>
+                <Link to="/project/$ref/settings/infrastructure" params={{ ref: project.ref }}>
+                  <ServerIcon size={14} className="text-foreground-lighter" />
+                  Manage
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link to="/project/$ref/settings/general" params={{ ref: project.ref }}>
+                <SettingsIcon size={14} className="text-foreground-lighter" />
                 Settings
               </Link>
             </DropdownMenuItem>

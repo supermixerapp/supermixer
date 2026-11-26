@@ -51,6 +51,7 @@ import ConstructionIconSvg from '@material-design-icons/svg/two-tone/constructio
 import ApiIconSvg from '@material-design-icons/svg/two-tone/api.svg?react'
 import ArticleIconSvg from '@material-design-icons/svg/two-tone/article.svg?react'
 import TuneIconSvg from '@material-design-icons/svg/two-tone/tune.svg?react'
+import ServerIconSvg from '@material-design-icons/svg/two-tone/dns.svg?react'
 import ManageAccountsIconSvg from '@material-design-icons/svg/two-tone/manage_accounts.svg?react'
 import AppIconSvg from '@/assets/icons/graphic_eq.svg?react'
 import PlayIconSvg from '@material-design-icons/svg/two-tone/play_arrow.svg?react'
@@ -187,6 +188,8 @@ export const ApiIcon = createIcon(ApiIconSvg, 'api')
 export const ArticleIcon = createIcon(ArticleIconSvg, 'article')
 /** Preferences (`tune`) */
 export const TuneIcon = createIcon(TuneIconSvg, 'tune')
+/** A project's stack: Settings › Infrastructure (`dns`) */
+export const ServerIcon = createIcon(ServerIconSvg, 'dns')
 /** Users admin (`manage_accounts`) */
 export const ManageAccountsIcon = createIcon(ManageAccountsIconSvg, 'manage_accounts')
 /** Supermixer app icon (`graphic_eq`) */
