@@ -91,7 +91,7 @@ function IntegrationsPage() {
   const has = new Set((installed.data ?? []).map((r) => r.name))
 
   return (
-    <DatabasePage title="Integrations" description="Extend the database with Supabase's Postgres modules. Each one runs inside this project's stack.">
+    <DatabasePage title="Project Integrations" description="Extend the database with Supabase's Postgres modules. Each one runs inside this project's stack.">
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {INTEGRATIONS.map((i) => {
           const on = i.extensions.every((e) => has.has(e))
