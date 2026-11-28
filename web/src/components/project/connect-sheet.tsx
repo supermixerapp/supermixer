@@ -41,7 +41,19 @@ export function ConnectSheet({ project }: { project: Schemas['Project'] }) {
               <TabsTrigger value="psql">Connect with psql</TabsTrigger>
             </TabsList>
             <TabsContent value="direct" className="flex flex-col gap-4">
-              <FormField label="URI" description="Replace [YOUR-PASSWORD] with the database password.">
+              <FormField
+                label="URI"
+                description={
+                  project.database.sslrootcert === 'download' ? (
+                    <>
+                      Replace [YOUR-PASSWORD] with the database password. Your tools also need{' '}
+                      <CACertLink />: add <code className="font-mono">sslrootcert=</code> and where you saved it.
+                    </>
+                  ) : (
+                    'Replace [YOUR-PASSWORD] with the database password.'
+                  )
+                }
+              >
                 <CopyField value={project.database.uri} />
               </FormField>
               <div className="grid gap-4 sm:grid-cols-2">
@@ -61,6 +73,7 @@ export function ConnectSheet({ project }: { project: Schemas['Project'] }) {
             </TabsContent>
             <TabsContent value="app" className="flex flex-col gap-3">
               <p className="text-sm text-foreground-light">Install the client, then create it with your project URL and public key.</p>
+              {project.database.sslrootcert === 'download' && <TrustNote />}
               <CodeBlock code="npm install @supabase/supabase-js" />
               <CodeBlock
                 code={`import { createClient } from '@supabase/supabase-js'
@@ -88,6 +101,26 @@ const supabase = createClient(
   )
 }
 
+/** Where to download Supermixer's own CA certificate. */
+function CACertLink() {
+  return (
+    <a href="/api/v1/tls/ca.pem" download className="text-foreground underline underline-offset-2">
+      Supermixer’s certificate
+    </a>
+  )
+}
+
+/** For a private CA: computers have to trust it before HTTPS works. */
+function TrustNote() {
+  return (
+    <p className="text-sm text-foreground-light">
+      This project uses Supermixer’s own certificate, which computers don’t trust until you tell them to. Download{' '}
+      <CACertLink /> and add it to your computer’s trusted certificates. For Node.js, set{' '}
+      <code className="font-mono text-xs">NODE_EXTRA_CA_CERTS</code> to where you saved it.
+    </p>
+  )
+}
+
 /**
  * Connect with psql: make a login of your own, let it read the tables, and
  * connect. The commands fill in the login's name as it's typed.
@@ -103,9 +136,11 @@ function PsqlSteps({ project, onNavigate }: { project: Schemas['Project']; onNav
   const sqlName = ident(login)
   // As the API's connection string: an IPv6 host in brackets, sslmode only when set.
   const host = db.host.includes(':') && !db.host.startsWith('[') ? `[${db.host}]` : db.host
+  const root = db.sslrootcert === 'system' ? 'system' : db.sslrootcert === 'download' ? 'supermixer-ca.pem' : null
   const url =
     `postgresql://${encodeURIComponent(login + suffix)}@${host}:${db.port}/${encodeURIComponent(db.name)}` +
-    (db.sslmode ? `?sslmode=${encodeURIComponent(db.sslmode)}` : '')
+    (db.sslmode ? `?sslmode=${encodeURIComponent(db.sslmode)}` : '') +
+    (root ? `&sslrootcert=${root}` : '')
   const paused = project.stack?.status === 'paused'
 
   const link = (to: '/project/$ref/database/roles' | '/project/$ref/sql' | '/project/$ref/settings/infrastructure', label: ReactNode) => (
@@ -138,12 +173,29 @@ function PsqlSteps({ project, onNavigate }: { project: Schemas['Project']; onNav
           </p>
           <CodeBlock code={`grant usage on schema public to ${sqlName};\ngrant select on all tables in schema public to ${sqlName};`} />
         </li>
+        {db.sslrootcert === 'download' && (
+          <li className={step}>
+            <p>
+              <span className={lead}>Get the certificate.</span> Your connection is encrypted with Supermixer&apos;s own certificate.
+              Download <CACertLink /> and save it as <code className="font-mono text-xs text-foreground">supermixer-ca.pem</code> in
+              the folder you&apos;ll run psql from.
+            </p>
+          </li>
+        )}
         <li className={step}>
           <p>
             <span className={lead}>Connect.</span> Run this in a terminal. psql asks for your password, so it doesn&apos;t end up in your
             terminal&apos;s history.
           </p>
           <CodeBlock code={`psql "${url}"`} />
+          {db.sslrootcert === 'system' && (
+            <p>
+              If psql says <code className="font-mono text-xs text-foreground">sslrootcert=system</code> isn&apos;t valid, it&apos;s older
+              than version 16. Update it, or swap <code className="font-mono text-xs text-foreground">system</code> for your
+              computer&apos;s list of trusted certificates: <code className="font-mono text-xs text-foreground">/etc/ssl/cert.pem</code> on
+              a Mac, <code className="font-mono text-xs text-foreground">/etc/ssl/certs/ca-certificates.crt</code> on Ubuntu or Debian.
+            </p>
+          )}
           {suffix && (
             <p>
               The <code className="font-mono text-xs text-foreground">{suffix}</code> after your login&apos;s name tells the server which

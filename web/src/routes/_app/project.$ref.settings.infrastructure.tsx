@@ -32,6 +32,7 @@ import {
 import { CopyField } from '@/components/ui/copy'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
+import { uiConfigQuery } from '@/lib/api/queries'
 import { relativeTime } from '@/lib/auth-users'
 
 export const Route = createFileRoute('/_app/project/$ref/settings/infrastructure')({
@@ -158,6 +159,8 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
       <StudioLogin project={project} studio={s.studio_state ?? null} stackRunning={s.status === 'running'} />
 
       <StackLogs projectRef={projectRef} stack={s} allowed={allowed} />
+
+      <StackTLS project={project} stack={s} allowed={allowed} />
 
       <SettingsSection
         title="Containers"
@@ -291,6 +294,77 @@ function StackLogs({ projectRef, stack: s, allowed }: { projectRef: string; stac
           (running ? ' Your project stays online.' : ' This applies the next time you start the stack.')
         }
         confirmLabel={on ? 'Turn logs off' : 'Turn logs on'}
+        loading={change.isPending}
+        onConfirm={() => change.mutate(!on)}
+      />
+    </SettingsSection>
+  )
+}
+
+/** HTTPS and encrypted database connections, on or off per project. */
+function StackTLS({ project, stack: s, allowed }: { project: Schemas['Project']; stack: Schemas['StackDetail']; allowed: boolean }) {
+  const queryClient = useQueryClient()
+  const ui = useQuery(uiConfigQuery)
+  const [confirm, setConfirm] = useState(false)
+  const change = useMutation({
+    mutationFn: (enabled: boolean) =>
+      unwrap(api.PUT('/projects/{ref}/stack/tls', { params: { path: { ref: project.ref } }, body: { enabled } })),
+    onSuccess: (data) => {
+      queryClient.setQueryData(['projects', project.ref, 'stack'], data)
+      // The project's addresses change with it.
+      void queryClient.invalidateQueries({ queryKey: ['projects', project.ref], exact: true })
+    },
+    onError: (e) => toast.error(e.message),
+    onSettled: () => setConfirm(false),
+  })
+  const on = s.tls
+  const available = on || !!ui.data?.provisioning.tls
+  const busy = !!s.operation || s.status === 'provisioning' || s.status === 'deleting'
+  const running = s.status === 'running'
+  const newURL = project.api_url.replace(/^https?:/, on ? 'http:' : 'https:')
+  return (
+    <SettingsSection
+      title="Encryption"
+      description="Whether people and apps reach this project's API over HTTPS and its database over an encrypted connection, using Supermixer's certificate."
+    >
+      <Card className="flex flex-col divide-y text-sm">
+        <Row label="Status">
+          <Badge variant={on ? 'success' : 'default'}>{on ? 'On' : 'Off'}</Badge>
+        </Row>
+        <Row label="Project URL">
+          <span className="font-mono text-xs break-all">{project.api_url}</span>
+        </Row>
+        {!available && (
+          <div className="px-5 py-3 text-foreground-lighter">
+            Supermixer doesn’t have a certificate yet. An instance admin sets one up in its settings first.
+          </div>
+        )}
+        <div className="flex items-center justify-end gap-2 px-5 py-3">
+          <PermissionButton
+            allowed={allowed}
+            action="turn encryption on or off for this project"
+            variant={on ? 'warning' : 'default'}
+            disabled={busy || !available}
+            onClick={() => setConfirm(true)}
+          >
+            {on ? 'Turn encryption off' : 'Turn encryption on'}
+          </PermissionButton>
+        </div>
+      </Card>
+      <ConfirmDialog
+        open={confirm}
+        onOpenChange={setConfirm}
+        variant="warning"
+        title={on ? 'Turn encryption off?' : 'Turn encryption on?'}
+        description={
+          (on
+            ? `Connections to this project won’t be encrypted any more, and its URL becomes ${newURL}. `
+            : `Its URL becomes ${newURL}, and the database only accepts encrypted connections. `) +
+          'Update the URL in your apps, and any sign-in callback URLs you’ve given GitHub, Google and the like. ' +
+          'Database tools need the new connection string from Connect. People signed in to your apps may have to sign in again.' +
+          (running ? ' The API and database restart briefly.' : ' This applies the next time you start the stack.')
+        }
+        confirmLabel={on ? 'Turn encryption off' : 'Turn encryption on'}
         loading={change.isPending}
         onConfirm={() => change.mutate(!on)}
       />

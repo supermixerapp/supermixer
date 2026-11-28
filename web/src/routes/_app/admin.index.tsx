@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
-import { api, unwrap } from '@/lib/api/client'
+import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { relativeTime } from '@/lib/auth-users'
 
@@ -168,10 +168,106 @@ function OverviewPage() {
               </Row>
             </Card>
           </SettingsSection>
+          <Certificates tls={o.tls} />
         </>
       )}
     </AdminLayout>
   )
+}
+
+const MODES = { off: 'Off (tls.mode)', files: 'Your own files (tls.mode = "files")', acme: 'Let’s Encrypt (tls.mode = "acme")' }
+
+/** Where the certificate comes from, when it expires, and where it's used. */
+function Certificates({ tls }: { tls: Schemas['TlsStatus'] }) {
+  return (
+    <SettingsSection
+      title="Certificate"
+      description="Encrypts Supermixer’s own address and the stacks it creates ([tls] in the configuration file)."
+    >
+      <Card className="flex flex-col divide-y text-sm">
+        <Row label="Source">{MODES[tls.mode]}</Row>
+        {tls.mode !== 'off' && (
+          <>
+            <Row label="Host names">
+              <span className="font-mono text-xs">{tls.names.join(', ')}</span>
+            </Row>
+            {tls.certificates.map((c) => (
+              <Row key={c.names.join(',')} label="Certificate">
+                <span className="flex flex-col">
+                  <span className="text-foreground">
+                    {c.issuer}
+                    {tls.private_ca && <span className="text-xs text-foreground-lighter"> · your own CA</span>}
+                  </span>
+                  <span className={`text-xs ${expiresSoon(c.not_after) ? 'text-warning-600' : 'text-foreground-lighter'}`}>
+                    Expires {new Date(c.not_after).toLocaleDateString()}
+                    {expiresSoon(c.not_after) && (
+                      <>
+                        {' '}
+                        ({relativeTime(c.not_after)}):{' '}
+                        {tls.mode === 'acme' ? 'it should have been renewed by now; see the server’s log' : 'replace the files soon'}
+                      </>
+                    )}
+                  </span>
+                </span>
+              </Row>
+            ))}
+            {tls.missing.length > 0 && (
+              <Row label="Waiting for">
+                <span className="font-mono text-xs">{tls.missing.join(', ')}</span>
+              </Row>
+            )}
+            {tls.last_error && (
+              <Row label="Last problem">
+                <span className="text-xs text-destructive">
+                  {tls.last_error}
+                  {tls.last_error_at && <> ({relativeTime(tls.last_error_at)})</>}
+                </span>
+              </Row>
+            )}
+          </>
+        )}
+        <Row label="HTTPS">
+          {tls.https_listen ? (
+            <span>
+              Served on <span className="font-mono text-xs">{tls.https_listen}</span>
+            </span>
+          ) : (
+            'Not served by Supermixer (server.https_listen): plain HTTP, or HTTPS from a proxy in front'
+          )}
+        </Row>
+        <Row label="HSTS">
+          {tls.hsts ? (
+            <span className="font-mono text-xs">{tls.hsts}</span>
+          ) : tls.hsts_blocked ? (
+            'Held back: a project on the same host name is still reached over plain HTTP'
+          ) : (
+            'Not sent'
+          )}
+        </Row>
+        {tls.stacks_tls + tls.stacks_plain > 0 && (
+          <Row label="Stacks">
+            <span className="flex flex-wrap items-center gap-2">
+              {/* Design.md › Badge: success (brand) for a good state, warning for a risk, default (outline) for none. */}
+              <Badge variant={tls.stacks_tls > 0 ? 'success' : 'default'}>{tls.stacks_tls} encrypted</Badge>
+              <Badge variant={tls.stacks_plain > 0 ? 'warning' : 'default'}>
+                {tls.stacks_plain} unencrypted
+              </Badge>
+              {tls.stacks_plain > 0 && tls.mode !== 'off' && (
+                <span className="text-xs text-foreground-lighter">
+                  each project turns it on under Settings › Infrastructure
+                </span>
+              )}
+            </span>
+          </Row>
+        )}
+      </Card>
+    </SettingsSection>
+  )
+}
+
+/** Within 21 days: renewal should have happened by then. */
+function expiresSoon(at: string) {
+  return new Date(at).getTime() - Date.now() < 21 * 24 * 3600 * 1000
 }
 
 /** "Every hour", "Every 6 hours", "Every 30 minutes". */
