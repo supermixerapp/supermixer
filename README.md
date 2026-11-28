@@ -119,7 +119,7 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | `make mixer` | `bin/mixer`, the command-line link test ([Testing the link](#testing-the-link-with-mixer)) |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
-| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, a chat channel receiving a test message, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots |
+| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, a chat channel receiving a test message, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots. `E2E_TLS=1 make e2e` runs them all over HTTPS, with a throwaway CA, plus the TLS checks in `web/e2e/tls.spec.ts` |
 | `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
@@ -147,6 +147,41 @@ lockout = "15m"
 
 - `supermixer --config path/to/file.toml` picks another file; so does `SUPERMIXER_CONFIG`.
 - Any setting can be overridden by an environment variable named after its key: `SUPERMIXER_<SECTION>_<KEY>`, for example `SUPERMIXER_DATABASE_URL` or `SUPERMIXER_SECURITY_SIGN_IN_LOCKOUT`. Containers can inject secrets this way without a file.
+
+## HTTPS and TLS
+
+Supermixer can encrypt its own address and the stacks it creates with one certificate, set in `[tls]`. Out of the box everything is plain HTTP, which is fine on a developer's machine but sends passwords, keys and data in the clear over a network.
+
+**Where the certificate comes from** (`tls.mode`):
+
+- `acme`: Let's Encrypt (or another ACME CA) issues it and Supermixer renews it, with no one stepping in. The host names need public DNS records pointing at the server, and ports 80 and 443 open to the internet: Let's Encrypt only ever checks those two. Run one replica: the certificate is kept on that server's disk (`tls.acme.storage_dir`). While trying it out, use Let's Encrypt's staging CA (`tls.acme.ca_url`), whose limits are generous.
+- `files`: your own certificate and key, from any CA. Supermixer reads them again when they change (checked every 30 seconds, or at once on `SIGHUP`), so renewing them needs no restart. Point `cert_file` and `key_file` at `/etc/letsencrypt/live/<name>/fullchain.pem` and `privkey.pem`, or a mounted secret; in a container, mount the whole folder, not single files, or renewals aren't seen. For a certificate from your own CA (or a self-signed one), also set `ca_file`: Supermixer trusts it, and anyone can download it from `/api/v1/tls/ca.pem` to trust it too.
+
+The certificate must cover `server.public_url`'s host name (when it's `https://`) and, with provisioning, `provisioning.public_host`. Supermixer checks this at start-up, and that a `files` certificate traces back to a CA it trusts, and stops with a message saying what to fix.
+
+```toml
+[server]
+public_url = "https://supermixer.example.com"
+https_listen = ":8443"        # published as 443; listen (8080, published as 80) then redirects
+
+[tls]
+mode = "acme"
+[tls.acme]
+email = "ops@example.com"
+agree_tos = true
+```
+
+With Docker, `SUPERMIXER_HTTP_PORT=80 SUPERMIXER_HTTPS_PORT=443 make app` publishes the ports Let's Encrypt needs; its account and certificates live in the `supermixer-acme` volume.
+
+**Supermixer itself.** With `https_listen`, Supermixer serves HTTPS there (TLS 1.2 or later, HTTP/2), and its plain `listen` port only redirects to `public_url`, answers Let's Encrypt's checks, and serves `/api/v1/health` for probes. Behind a proxy or Kubernetes Ingress that ends TLS instead, leave `https_listen` empty and set `trust_proxy = true`: Supermixer then redirects requests the proxy says came over plain HTTP, and treats the rest as secure. Either way, sign-in cookies are marked `Secure`.
+
+**HSTS** tells browsers to use only HTTPS for Supermixer's host name, for `server.hsts_max_age` (a year by default). It's sent only over HTTPS, never for an IP address or `localhost`, and not while any project on the same host name is still reached over plain HTTP, since browsers apply it to every port of the host (**Instance › Overview › Certificate** says when it's held back). To turn TLS off later, first set `hsts_max_age = "0s"` and keep HTTPS on for as long as it was, or browsers that remember it can't reach Supermixer.
+
+**Stacks.** With a certificate, new stacks Supermixer creates are encrypted from the start: their API is `https://<public_host>:<port>` (plain HTTP on that port is redirected), and their Postgres ports only accept encrypted connections, with `sslmode=verify-full`. **Settings › Infrastructure › Encryption** turns it on or off for an existing project. That changes the project's URL, so its apps, sign-in callback URLs (GitHub, Google and the like) and database tools need updating, and people signed in to its apps may have to sign in again. Stacks need Docker Compose 2.24.4 or later for this. A new certificate reaches running stacks by itself; any still serving the old one a few minutes later get their gateway or pooler restarted. If `[tls]` is turned off, stacks go back to plain HTTP when Supermixer next starts them.
+
+**Connected stacks** (ones Supermixer didn't create) are encrypted where they run: give the project an `https://` API URL and `sslmode=verify-full`.
+
+**Trying it in development:** `deploy/dev-tls/gen.sh` makes a CA and a certificate for `localhost`, `127.0.0.1` and `host.docker.internal`, and prints the settings to use.
 
 ## Email
 
@@ -283,6 +318,7 @@ total           61.5ms
 - **Exit status:** 0 is healthy, and 1 means the server answered but isn't healthy. 2 is a usage error. 3 means there was no health report: it can't connect, it timed out, it was redirected (the message suggests the address to use), or the server isn't a Supermixer.
 - **Errors and colour:** errors go to stderr. Colour is used only on a terminal, and never when `NO_COLOR` is set.
 - **Proxies:** through a proxy (`HTTPS_PROXY` and so on), a `proxy` line names it, and the address and timings are the proxy's.
+- **Your own CA:** for a server whose certificate is from its own CA ([HTTPS and TLS](#https-and-tls)), pass it with `--cacert ca.pem` (or set `$SUPERMIXER_CACERT`). It's trusted along with the system's CAs. Supermixer offers its CA at `/api/v1/tls/ca.pem`, and without `--cacert` the error says so. This matters most on macOS, where Go ignores `SSL_CERT_FILE`.
 - **Defaults:** `--server` defaults to `$SUPERMIXER_URL`, and `--timeout` to 10s. Options go before or after the command (`mixer health --server URL` works too); `mixer help health` has the rest.
 
 ## Creating stacks
@@ -333,7 +369,7 @@ helm install supermixer deploy/helm/supermixer \
   --set image.repository=registry.example.com/supermixer --set-file config=prod.env.toml
 ```
 
-Provisioning isn't supported there; register existing stacks instead.
+Provisioning isn't supported there; register existing stacks instead. TLS ends at the Ingress (with cert-manager, say); the chart's settings set `trust_proxy = true` so Supermixer can tell HTTPS requests from plain ones. Leave `[tls]` off with replicas.
 
 ### Metrics
 
@@ -347,6 +383,7 @@ With `[metrics] listen = "127.0.0.1:9100"` (or `":9100"` in a pod), Prometheus m
 | `supermixer_audit_drain_entries_total`, `_errors_total`, `_lag_entries` | per drain |
 | `supermixer_users`, `_organizations`, `_projects`, `_stacks` | read from the database at each scrape |
 | `supermixer_backup_last_success_timestamp_seconds`, `supermixer_backups_failed_last_day` | per stack, for alerts like `time() - supermixer_backup_last_success_timestamp_seconds > 2 * 86400` |
+| `supermixer_tls_certificate_expiry_timestamp_seconds` | per host name ([HTTPS and TLS](#https-and-tls)), for alerts like `... - time() < 14 * 86400` |
 
 Counters are per replica; the database-backed gauges are the same on every replica, so use `max` rather than `sum` across them.
 
@@ -359,9 +396,9 @@ Counters are per replica; the database-backed gauges are the same on every repli
 | Path | Contents |
 |---|---|
 | `api/openapi.yaml` | REST contract. Go handlers and the TypeScript client are generated from it. |
-| `backend/` | Go server: chi, pgx, sqlc, goose; `cmd/supermixer` is the server and `cmd/mixer` the link test. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config` and `bootstrap` (the first admin). |
+| `backend/` | Go server: chi, pgx, sqlc, goose; `cmd/supermixer` is the server and `cmd/mixer` the link test. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config`, `tlscert` (the certificate: files or ACME) and `bootstrap` (the first admin). |
 | `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. End-to-end tests and their screenshots are in `web/e2e/`. |
-| `deploy/` | Docker Compose for Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`) and Dex (`dev-sso/`). |
+| `deploy/` | Docker Compose for Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`), Dex (`dev-sso/`) and a dev CA (`dev-tls/`). |
 
 ## License
 
