@@ -119,7 +119,7 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | `make mixer` | `bin/mixer`, the command-line link test ([Testing the link](#testing-the-link-with-mixer)) |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
-| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, a chat channel receiving a test message, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots. `E2E_TLS=1 make e2e` runs them all over HTTPS, with a throwaway CA, plus the TLS checks in `web/e2e/tls.spec.ts` |
+| `make e2e` | End-to-end tests in your installed Chrome (Playwright). The walk-through covers first sign-in, an organization, registering the dev stack (`make stack` first), the projects' grid and list views, a Read-only member who can't see keys or change settings, a global notice, the audit log, a webhook receiving signed events, a chat channel receiving a test message, the organization Security page, the Storage pages, and that nothing loads from outside Supermixer, then compares key pages with screenshots in light and dark. Other tests: the app in Japanese (language menu, the choice following the account, no missing text on the main pages; screenshots in `web/e2e/.tmp/i18n/`), `brand_color` taking effect on restart, and per-organization SSO through Dex if `make sso` is running. Uses its own Supermixer (:8091), web app (:5176) and `supermixer_e2e` database, so `make dev` is untouched. A failure leaves a trace in `web/test-results/`; `make e2e ARGS=--update-snapshots` accepts new screenshots. `E2E_TLS=1 make e2e` runs them all over HTTPS, with a throwaway CA, plus the TLS checks in `web/e2e/tls.spec.ts` |
 | `make stack` / `make stack-down` | Start or stop a dev self-hosted Supabase stack; it can run next to other Supabase stacks |
 | `make lint` | go vet, ESLint and the TypeScript type check |
 | `make generate` | Regenerates code after editing `api/openapi.yaml` or SQL queries |
@@ -131,6 +131,18 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | `make sso` | Dex, for trying single sign-on ([Single sign-on](#single-sign-on)) |
 | `make env` | Creates `.env.toml` with a fresh encryption key, if it doesn't exist (`make setup` does this too) |
 | `make image` / `make helm-lint` | Build the container image; check the Helm chart ([Kubernetes](#kubernetes)) |
+
+## Languages
+
+The web app speaks English, Japanese (日本語), French, Spanish and German. The flag menu, next to Sign in or the account menu, switches it in place, without reloading the page. The choice is saved in the browser and, when signed in, on the account, so it follows you to other browsers. Until someone chooses, the browser's language is used, falling back to English. Server messages and API responses stay in English.
+
+For contributors:
+
+- Text lives in `web/src/locales/<language>/<area>.json`; components use `t('area:group.key')`, or `<Trans>` when a sentence has a link or code inside. Dates and numbers go through `web/src/lib/i18n/format.ts`.
+- Never translate when a module loads: a list kept outside a component goes in `localized(() => [...])` and is read as `LIST()`, so it follows a language switch. `make test` fails on a `t()` call at module level.
+- **Every new or changed string goes into all five languages in the same change.** `make test` fails if a language is missing a key, a `{{variable}}`, a tag or a plural form, and ESLint fails on hard-coded text in JSX.
+- After changing the English catalogs, run `pnpm generate:i18n` in `web/` so keys type-check.
+- `web/src/locales/GLOSSARY.md` fixes the tone and the word for each product term per language.
 
 ## Configuration
 
@@ -397,7 +409,7 @@ Counters are per replica; the database-backed gauges are the same on every repli
 |---|---|
 | `api/openapi.yaml` | REST contract. Go handlers and the TypeScript client are generated from it. |
 | `backend/` | Go server: chi, pgx, sqlc, goose; `cmd/supermixer` is the server and `cmd/mixer` the link test. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config`, `tlscert` (the certificate: files or ACME) and `bootstrap` (the first admin). |
-| `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. End-to-end tests and their screenshots are in `web/e2e/`. |
+| `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. Translations are in `web/src/locales/` ([Languages](#languages)). End-to-end tests and their screenshots are in `web/e2e/`. |
 | `deploy/` | Docker Compose for Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`), Dex (`dev-sso/`) and a dev CA (`dev-tls/`). |
 
 ## License
