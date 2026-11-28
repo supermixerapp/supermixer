@@ -46,7 +46,9 @@ Then use **New project** in Supermixer. **Fill from Supabase .env** fills the fo
 
 ## Installation
 
-To run Supermixer on a server with Docker:
+**On a server, follow [DEPLOY.md](DEPLOY.md):** Supermixer and its own database in Docker (`deploy/production/`), behind nginx with a Let's Encrypt certificate. It also covers installing the binary under systemd instead.
+
+To try it on one machine from this repository:
 
 1. **Configure it.** `make env` writes `.env.toml` from `.env.example.toml` with a fresh encryption key. Set at least `server.public_url` (the address people reach Supermixer at), and `[email]` to send invitations and sign-up links. Every setting is explained in `.env.example.toml`.
 2. **Start it.** `make app` runs Supermixer and its Postgres in containers, on port 8080. Use `make app-stacks` instead if Supermixer should create Supabase stacks itself (see [Creating stacks](#creating-stacks)); that needs Docker Compose 2.24 or later on the server.
@@ -116,7 +118,8 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | Command | What it does |
 |---|---|
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
-| `make release` | Linux release archives (amd64, arm64) in `bin/release`: the binaries, an example config, a systemd unit and an nginx config. Deploying them: [DEPLOY.md](DEPLOY.md) |
+| `make image-push` | Build the container image for amd64 and arm64 and push it to Docker Hub (`supermixer/supermixer`); a `v*` tag does this in GitHub Actions. [DEPLOY.md](DEPLOY.md) |
+| `make release` | Linux release archives (amd64, arm64) in `bin/release`, for installing without Docker: the binaries, an example config, a systemd unit and an nginx config. [DEPLOY.md](DEPLOY.md) |
 | `make mixer` | `bin/mixer`, the command-line link test ([Testing the link](#testing-the-link-with-mixer)) |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
@@ -411,7 +414,7 @@ Counters are per replica; the database-backed gauges are the same on every repli
 | `api/openapi.yaml` | REST contract. Go handlers and the TypeScript client are generated from it. |
 | `backend/` | Go server: chi, pgx, sqlc, goose; `cmd/supermixer` is the server and `cmd/mixer` the link test. Under `internal/`: `httpapi` (the API), `store` (database, migrations and queries), `auth`, `rbac` (roles), `secrets` (encrypting stack credentials), `stack` (talking to a project's stack), `provision` (creating and changing stacks), `advisors`, `mail`, `metrics`, `theme` (brand palette), `config`, `tlscert` (the certificate: files or ACME) and `bootstrap` (the first admin). |
 | `web/` | React 19 + Vite + TanStack Router/Query + Tailwind v4, with components ported from Supabase's UI library. Translations are in `web/src/locales/` ([Languages](#languages)). End-to-end tests and their screenshots are in `web/e2e/`. |
-| `deploy/` | Docker Compose for Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`), Dex (`dev-sso/`) and a dev CA (`dev-tls/`). |
+| `deploy/` | The production install (`production/`: compose file, certbot hook), nginx and systemd configs, Docker Compose for trying Supermixer and its database (`docker-compose.provisioning.yml` for creating stacks), the Helm chart (`helm/`), the dev Supabase stack (`dev-stacks/`), Dex (`dev-sso/`) and a dev CA (`dev-tls/`). |
 
 ## License
 
