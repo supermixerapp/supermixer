@@ -25,7 +25,10 @@ test('the brand colour comes from the settings, read at start-up', async ({ page
   const config = base.replace(/\.toml$/, '-brand.toml')
   writeFileSync(
     config,
-    readFileSync(base, 'utf8').replace('listen = "127.0.0.1:8091"', 'listen = "127.0.0.1:8092"') +
+    readFileSync(base, 'utf8')
+      .replace('listen = "127.0.0.1:8091"', 'listen = "127.0.0.1:8092"')
+      // With E2E_TLS: plain HTTP on 8092, not a second HTTPS server.
+      .replace(/^https_listen = .*$/m, '') +
       `\n[appearance]\nbrand_color = "${OTHER.hex.toUpperCase()}"\n`,
     { mode: 0o600 }
   )

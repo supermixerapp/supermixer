@@ -12,6 +12,13 @@ import svgr from 'vite-plugin-svgr'
 // The Go backend serves the API, the generated /theme.css and /favicon.svg.
 const backend = process.env.SUPERMIXER_DEV_BACKEND ?? 'http://localhost:8080'
 
+// HTTPS for the dev server, when given a certificate (E2E_TLS=1 make e2e).
+// An https:// backend's CA comes from NODE_EXTRA_CA_CERTS.
+const https =
+  process.env.SUPERMIXER_DEV_HTTPS_CERT && process.env.SUPERMIXER_DEV_HTTPS_KEY
+    ? { cert: readFileSync(process.env.SUPERMIXER_DEV_HTTPS_CERT), key: readFileSync(process.env.SUPERMIXER_DEV_HTTPS_KEY) }
+    : undefined
+
 /**
  * In production the Go server replaces %SM_DEFAULT_THEME% in index.html with
  * appearance.default_theme. Do the same in dev, reading the repo-root
@@ -75,6 +82,7 @@ export default defineConfig({
   },
   server: {
     ...devPort(),
+    https,
     proxy: {
       // ws: the Realtime Inspector's socket goes through the gateway too.
       '/api': { target: backend, ws: true },
