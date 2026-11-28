@@ -61,7 +61,7 @@ services:
   studio:
     volumes:
       - studio-snippets:/app/snippets
-{{STUDIO_OFF}}  functions:
+{{STUDIO_OFF}}{{API_GW}}  functions:
     env_file:
       - ./functions.env
     environment:
@@ -98,7 +98,14 @@ services:
   imgproxy:
     volumes:
       - storage-files:/var/lib/storage
-{{VECTOR}}
+  supavisor:
+    volumes:
+      # pooler.exs plus enforce_ssl (envoy_tls.go): TLS is required of
+      # clients exactly when the stack uses it.
+      - ./` + poolerScriptFile + `:/etc/pooler/pooler.exs:ro,z
+{{SUPAVISOR_TLS_VOLUME}}    environment:
+      SUPERMIXER_POOLER_ENFORCE_SSL: ${` + TLSEnv + `:-false}
+{{SUPAVISOR_TLS_ENV}}{{VECTOR}}
 volumes:
   db-data:
     # Restores start a new database in a fresh volume (DB_DATA_VOLUME), so a
@@ -391,8 +398,10 @@ const templateServer = `const h=require('http'),f=require('fs'),p=require('path'
 // Supabase's compose file, doesn't (!reset needs Compose 2.24 or later).
 // The gateway's routes to Studio then answer 503.
 const studioOff = `    profiles: ["studio"]
-  api-gw:
-    depends_on: !reset []
+`
+
+// gatewayNoStudio is the gateway's part of studioOff.
+const gatewayNoStudio = `    depends_on: !reset []
 `
 
 // StudioEnv is the stack .env setting that says whether it runs Studio
@@ -408,6 +417,14 @@ func StudioOf(env map[string]string) bool { return env[StudioEnv] == "true" }
 const LogsEnv = "SUPERMIXER_LOGS"
 
 const logsFile = "docker-compose.logs.yml"
+
+// TLSEnv is the stack .env setting that says whether its API and Postgres
+// ports use TLS, with the certificate Supermixer exports to
+// <stacks_dir>/.tls. Missing means they don't, as stacks did before it.
+const TLSEnv = "SUPERMIXER_TLS"
+
+// TLSOf reports whether a stack uses TLS, from its .env.
+func TLSOf(env map[string]string) bool { return env[TLSEnv] == "true" }
 
 // LogsOf reports whether a stack collects logs, from its .env.
 func LogsOf(env map[string]string) bool { return env[LogsEnv] != "false" }
@@ -461,9 +478,35 @@ func SetLogs(dir string, on bool) error {
 	return nil
 }
 
+// SetTLS records whether a stack uses TLS in its .env, with env (its new
+// public URLs), and rewrites its overlay and TLS files. Starting the stack
+// then serves TLS, or stops. On failure the .env goes back.
+func SetTLS(dir string, on bool, env map[string]string) error {
+	old, err := ReadEnv(dir)
+	if err != nil {
+		return err
+	}
+	update := map[string]string{TLSEnv: strconv.FormatBool(on)}
+	for k, v := range env {
+		update[k] = v
+	}
+	if err := UpdateEnv(dir, update); err != nil {
+		return err
+	}
+	if err := RefreshOverlay(dir); err != nil {
+		before := map[string]string{}
+		for k := range update {
+			before[k] = old[k]
+		}
+		_ = UpdateEnv(dir, before)
+		return err
+	}
+	return nil
+}
+
 // renderOverlay is the overlay for a stack, with its Studio image, Studio
 // left out unless studio, and Vector's part only if it collects logs.
-func renderOverlay(stackDir string, studio, logs bool) (string, error) {
+func renderOverlay(stackDir string, studio, logs, tls bool) (string, error) {
 	image, err := serviceImage(stackDir, "studio")
 	if err != nil {
 		// A hand-edited compose file: use the bundled template's Studio image.
@@ -478,16 +521,25 @@ func renderOverlay(stackDir string, studio, logs bool) (string, error) {
 	for _, p := range OAuthProviders {
 		env.WriteString("      GOTRUE_EXTERNAL_" + strings.ToUpper(p) + "_REDIRECT_URI: ${API_EXTERNAL_URL}/callback\n")
 	}
-	off := studioOff
+	off, gateway := studioOff, gatewayNoStudio
 	if studio {
-		off = ""
+		off, gateway = "", ""
+	}
+	supavisorVolume, supavisorEnv := "", ""
+	if tls {
+		gateway += gatewayTLS
+		supavisorVolume, supavisorEnv = supavisorTLSVolume, supavisorTLSEnv
+	}
+	if gateway != "" {
+		gateway = "  api-gw:\n" + gateway
 	}
 	vector := ""
 	if logs {
 		vector = vectorOverlay
 	}
 	return strings.NewReplacer("{{STUDIO_IMAGE}}", image, "{{TEMPLATE_SERVER}}", string(server),
-		"{{AUTH_ENVIRONMENT}}\n", env.String(), "{{STUDIO_OFF}}", off, "{{VECTOR}}", vector).Replace(overlay), nil
+		"{{AUTH_ENVIRONMENT}}\n", env.String(), "{{STUDIO_OFF}}", off, "{{API_GW}}", gateway,
+		"{{SUPAVISOR_TLS_VOLUME}}", supavisorVolume, "{{SUPAVISOR_TLS_ENV}}", supavisorEnv, "{{VECTOR}}", vector).Replace(overlay), nil
 }
 
 // serviceImage is a service's image, from the stack's compose file.

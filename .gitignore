@@ -32,3 +32,6 @@ __pycache__/
 /web/e2e/.tmp/
 /web/test-results/
 /web/playwright-report/
+
+# Development certificates (deploy/dev-tls/gen.sh)
+/deploy/dev-tls/out/

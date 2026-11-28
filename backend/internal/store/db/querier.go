@@ -132,10 +132,14 @@ type Querier interface {
 	ListInstanceAdminEmails(ctx context.Context) ([]string, error)
 	// Entries outside any organization (accounts, sign-ins, instance settings).
 	ListInstanceAuditLogs(ctx context.Context, arg ListInstanceAuditLogsParams) ([]AuditLog, error)
+	ListManagedProjects(ctx context.Context) ([]Project, error)
 	ListMembers(ctx context.Context, organizationID uuid.UUID) ([]ListMembersRow, error)
 	ListOrganizationProjectRoles(ctx context.Context, organizationID uuid.UUID) ([]ListOrganizationProjectRolesRow, error)
 	ListOrganizationsForUser(ctx context.Context, userID uuid.UUID) ([]ListOrganizationsForUserRow, error)
 	ListPendingInvitations(ctx context.Context, organizationID uuid.UUID) ([]ListPendingInvitationsRow, error)
+	// Projects' plain-HTTP addresses: HSTS on Supermixer's host name would cut
+	// browsers off from any on the same host.
+	ListPlainHTTPURLs(ctx context.Context) ([]ListPlainHTTPURLsRow, error)
 	// A project's backups with a copy in a bucket (to remove when it's deleted).
 	ListProjectRemoteBackups(ctx context.Context, projectID uuid.UUID) ([]Backup, error)
 	ListProjectsByOrganization(ctx context.Context, organizationID uuid.UUID) ([]Project, error)
@@ -209,6 +213,9 @@ type Querier interface {
 	RetryBackupUpload(ctx context.Context, arg RetryBackupUploadParams) (Backup, error)
 	SetBackupLocal(ctx context.Context, arg SetBackupLocalParams) error
 	SetInstanceSetting(ctx context.Context, arg SetInstanceSettingParams) error
+	// A created stack's addresses, as users reach them: recomputed from the
+	// configuration and its ports (provisioning.public_host, TLS).
+	SetManagedAddresses(ctx context.Context, arg SetManagedAddressesParams) (Project, error)
 	SetOrganizationMaxProjects(ctx context.Context, arg SetOrganizationMaxProjectsParams) error
 	SetOrganizationSSO(ctx context.Context, arg SetOrganizationSSOParams) (Organization, error)
 	SetPasswordChangeRequired(ctx context.Context, arg SetPasswordChangeRequiredParams) (User, error)

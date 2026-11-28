@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -357,6 +358,48 @@ func TestGitHubProviders(t *testing.T) {
 	} {
 		if _, err := load(provider); err == nil || !strings.Contains(err.Error(), want) {
 			t.Errorf("%q: err = %v, want %q", provider, err, want)
+		}
+	}
+}
+
+func TestTLS(t *testing.T) {
+	const files = "[tls]\nmode = \"files\"\ncert_file = \"/c.pem\"\nkey_file = \"/k.pem\"\n"
+	const httpsURL = "[server]\npublic_url = \"https://sm.example.com\"\n"
+	const acme = "[tls]\nmode = \"acme\"\n[tls.acme]\nagree_tos = true\n"
+	const prov = "[provisioning]\nenabled = true\npublic_host = \"db.example.com\"\n"
+	for _, tc := range []struct {
+		name, toml, want string // want: "" loads
+	}{
+		{"off", "", ""},
+		{"bad mode", "[tls]\nmode = \"on\"\n", "tls.mode must be off, files or acme"},
+		{"https without certificate", "[server]\npublic_url = \"https://sm.example.com\"\nhttps_listen = \":8443\"\n", "https_listen needs a certificate"},
+		{"https with http public_url", "[server]\nhttps_listen = \":8443\"\n" + files, "public_url to be https://"},
+		{"https on listen's port", "[server]\npublic_url = \"https://sm.example.com\"\nhttps_listen = \":8080\"\n" + files, "different port from server.listen"},
+		{"https on metrics' port", "[server]\npublic_url = \"https://sm.example.com\"\nhttps_listen = \":8443\"\n[metrics]\nlisten = \"127.0.0.1:8443\"\n" + files, "different port from metrics.listen"},
+		{"files", "[server]\npublic_url = \"https://sm.example.com\"\nhttps_listen = \":8443\"\n" + files, ""},
+		{"files for stacks only", prov + files, ""},
+		{"files without names", files, "nothing to cover"},
+		{"files without key", httpsURL + "[tls]\nmode = \"files\"\ncert_file = \"/c.pem\"\n", "tls.key_file is required"},
+		{"acme", httpsURL + acme, ""},
+		{"acme without agreeing", httpsURL + "[tls]\nmode = \"acme\"\n", "agree_tos must be true"},
+		{"acme for localhost", "[server]\npublic_url = \"https://localhost:8443\"\n" + acme, "needs public DNS names, but localhost"},
+		{"acme for an IP", "[server]\npublic_url = \"https://192.0.2.1\"\n" + acme, "but 192.0.2.1 isn't one"},
+		{"acme for stacks on localhost", httpsURL + acme + "[provisioning]\nenabled = true\n", "but localhost isn't one"},
+		{"acme tls-alpn without https", httpsURL + acme + "challenges = \"tls-alpn-01\"\n", "tls-alpn-01 needs server.https_listen"},
+		{"acme unknown challenge", httpsURL + acme + "challenges = \"dns-01\"\n", `"dns-01" isn't http-01 or tls-alpn-01`},
+		{"acme bad email", httpsURL + acme + "email = \"nope\"\n", "tls.acme.email must be an email address"},
+		{"acme http CA", httpsURL + acme + "ca_url = \"http://ca.test/dir\"\n", "ca_url must be the CA's https://"},
+		{"negative hsts", "[server]\nhsts_max_age = \"-1s\"\n", "hsts_max_age must not be negative"},
+	} {
+		cfg, err := Load(write(t, minimal+tc.toml), true)
+		switch {
+		case tc.want == "" && err != nil:
+			t.Errorf("%s: %v", tc.name, err)
+		case tc.want != "" && (err == nil || !strings.Contains(err.Error(), tc.want)):
+			t.Errorf("%s: got %v, want %q", tc.name, err, tc.want)
+		case tc.name == "acme" && (cfg.TLS.ACME.StorageDir != "/var/lib/supermixer/acme" || !slices.Equal(cfg.ACMEChallenges(), []string{"http-01"})):
+			// Without https_listen, only http-01 can be answered.
+			t.Errorf("acme defaults: %+v, %v", cfg.TLS.ACME, cfg.ACMEChallenges())
 		}
 	}
 }

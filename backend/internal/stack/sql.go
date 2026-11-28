@@ -74,6 +74,7 @@ type Pools struct {
 	size  int32
 	// notices collects RAISE NOTICE output per connection while it runs a query.
 	notices sync.Map // *pgconn.PgConn → *[]string
+	network *Network
 }
 
 type poolEntry struct {
@@ -81,12 +82,13 @@ type poolEntry struct {
 	pool *pgxpool.Pool
 }
 
-// NewPools keeps up to size connections per project database (0 means 4).
-func NewPools(size int) *Pools {
+// NewPools keeps up to size connections per project database (0 means
+// 4), connecting through n.
+func NewPools(size int, n *Network) *Pools {
 	if size <= 0 {
 		size = 4
 	}
-	return &Pools{pools: map[string]*poolEntry{}, size: int32(size)}
+	return &Pools{pools: map[string]*poolEntry{}, size: int32(size), network: n}
 }
 
 // Close closes every pool.
@@ -142,6 +144,7 @@ func (p *Pools) get(ref string, d Database) (*pgxpool.Pool, error) {
 	cfg.MaxConnIdleTime = 5 * time.Minute
 	cfg.ConnConfig.ConnectTimeout = 5 * time.Second
 	cfg.ConnConfig.RuntimeParams["application_name"] = "supermixer"
+	p.network.ConfigurePg(&cfg.ConnConfig.Config)
 	// No prepared-statement cache: connections are reset with DISCARD ALL.
 	cfg.ConnConfig.DefaultQueryExecMode = pgx.QueryExecModeExec
 	cfg.ConnConfig.OnNotice = func(pc *pgconn.PgConn, n *pgconn.Notice) {

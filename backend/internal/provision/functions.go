@@ -540,7 +540,10 @@ func RefreshOverlay(stackDir string) error {
 	if err := ensureRouterPatch(stackDir, FunctionsAdminAccessOf(env)); err != nil {
 		return err
 	}
-	o, err := renderOverlay(stackDir, StudioOf(env), LogsOf(env))
+	if err := writeTLSFiles(stackDir, TLSOf(env)); err != nil {
+		return err
+	}
+	o, err := renderOverlay(stackDir, StudioOf(env), LogsOf(env), TLSOf(env))
 	if err != nil {
 		return err
 	}

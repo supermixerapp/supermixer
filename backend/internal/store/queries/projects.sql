@@ -67,3 +67,18 @@ UPDATE projects SET stack_status_at = now() WHERE id = $1 AND managed;
 -- name: SetStackTemplate :exec
 -- After an upgrade: the template the stack's files now come from.
 UPDATE projects SET stack_template = $2 WHERE id = $1 AND managed;
+
+-- name: ListPlainHTTPURLs :many
+-- Projects' plain-HTTP addresses: HSTS on Supermixer's host name would cut
+-- browsers off from any on the same host.
+SELECT api_url, studio_url FROM projects WHERE api_url LIKE 'http:%' OR studio_url LIKE 'http:%';
+
+-- name: ListManagedProjects :many
+SELECT * FROM projects WHERE managed AND stack_api_port IS NOT NULL ORDER BY created_at;
+
+-- name: SetManagedAddresses :one
+-- A created stack's addresses, as users reach them: recomputed from the
+-- configuration and its ports (provisioning.public_host, TLS).
+UPDATE projects SET api_url = $2, studio_url = $3, db_host = $4, db_sslmode = $5, updated_at = now()
+WHERE id = $1 AND managed
+RETURNING *;

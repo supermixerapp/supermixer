@@ -181,3 +181,25 @@ func (c *stateCollector) Collect(ch chan<- prometheus.Metric) {
 		ch <- prometheus.MustNewConstMetric(failedDesc, prometheus.GaugeValue, float64(n), ref)
 	}
 }
+
+var certExpiryDesc = prometheus.NewDesc("supermixer_tls_certificate_expiry_timestamp_seconds",
+	"When the certificate for each host name expires ([tls]).", []string{"name"}, nil)
+
+type certCollector struct{ read func() map[string]time.Time }
+
+func (c certCollector) Describe(ch chan<- *prometheus.Desc) { ch <- certExpiryDesc }
+
+func (c certCollector) Collect(ch chan<- prometheus.Metric) {
+	for name, t := range c.read() {
+		ch <- prometheus.MustNewConstMetric(certExpiryDesc, prometheus.GaugeValue, float64(t.Unix()), name)
+	}
+}
+
+// CertificateExpiry reports, at each scrape, when each host name's
+// certificate expires.
+func (m *Metrics) CertificateExpiry(read func() map[string]time.Time) {
+	if m == nil {
+		return
+	}
+	m.reg.MustRegister(certCollector{read: read})
+}

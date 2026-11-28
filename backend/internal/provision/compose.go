@@ -359,6 +359,10 @@ func StudioRunning(services []Service) (exists, running bool) {
 // Studio: its overlay resets the gateway's dependency on it with !reset.
 const MinCompose = "2.24"
 
+// MinComposeTLS is the oldest that can run a stack with TLS: its overlay
+// replaces the gateway's published port with !override.
+const MinComposeTLS = "2.24.4"
+
 // ComposeVersion is the docker compose plugin's version, such as 2.29.1.
 func ComposeVersion(ctx context.Context, docker string) (string, error) {
 	out, err := exec.CommandContext(ctx, docker, "compose", "version", "--short").Output()
@@ -370,16 +374,23 @@ func ComposeVersion(ctx context.Context, docker string) (string, error) {
 
 // ComposeAtLeast reports whether version is min or later (major.minor).
 func ComposeAtLeast(version, min string) bool {
-	num := func(v string) (int, int) {
-		parts := strings.SplitN(v, ".", 3)
-		major, _ := strconv.Atoi(parts[0])
-		minor := 0
-		if len(parts) > 1 {
-			minor, _ = strconv.Atoi(strings.TrimFunc(parts[1], func(r rune) bool { return r < '0' || r > '9' }))
+	num := func(v string) [3]int {
+		var out [3]int
+		for i, p := range strings.SplitN(strings.TrimPrefix(v, "v"), ".", 3) {
+			// "29.1-desktop.1": the digits it starts with.
+			end := strings.IndexFunc(p, func(r rune) bool { return r < '0' || r > '9' })
+			if end >= 0 {
+				p = p[:end]
+			}
+			out[i], _ = strconv.Atoi(p)
 		}
-		return major, minor
+		return out
 	}
-	a, b := num(version)
-	x, y := num(min)
-	return a > x || (a == x && b >= y)
+	a, b := num(version), num(min)
+	for i := range a {
+		if a[i] != b[i] {
+			return a[i] > b[i]
+		}
+	}
+	return true
 }

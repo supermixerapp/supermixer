@@ -89,6 +89,7 @@ func (h *handlers) stackOf(p db.Project) *api.Stack {
 		Template: p.StackTemplate, Operation: h.stacks.current(p.Ref),
 	}
 	s.Studio, s.Logs = h.stackFeatures(p.Ref)
+	s.Tls = h.stackTLS(p.Ref)
 	return s
 }
 
@@ -137,6 +138,11 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 	if err := checkNetworkRoom(ctx, pv.Docker); err != nil {
 		return api.Project{}, err
 	}
+	// With a certificate, new stacks use TLS from the start.
+	tlsOn := h.deps.TLS.Enabled()
+	if err := h.checkStackTLS(ctx, tlsOn); err != nil {
+		return api.Project{}, err
+	}
 	now := time.Now()
 	secrets, err := provision.GenerateSecrets(now)
 	if err != nil {
@@ -155,7 +161,7 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 		if err != nil {
 			return err
 		}
-		conn := managedConnection(pv, ref, ports, secrets, apiKeys)
+		conn := managedConnection(pv, ref, ports, secrets, apiKeys, tlsOn)
 		sealed, err := h.seal(ref, conn)
 		if err != nil {
 			return err
@@ -164,7 +170,7 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 			return err
 		}
 		created, err := q.CreateProject(ctx, db.CreateProjectParams{
-			Ref: ref, OrganizationID: a.Org.ID, Name: name, ApiUrl: conn.APIURL, StudioUrl: publicURL(pv, ports.API),
+			Ref: ref, OrganizationID: a.Org.ID, Name: name, ApiUrl: conn.APIURL, StudioUrl: publicURL(pv, ports.API, tlsOn),
 			DbHost: conn.Database.Host, DbPort: int32(conn.Database.Port), DbName: conn.Database.Name,
 			DbUser: conn.Database.User, DbSslmode: conn.Database.SSLMode, Secrets: sealed, CreatedBy: &a.User.User.ID,
 		})
@@ -192,7 +198,7 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 		for k, v := range apiKeys.Env() {
 			env[k] = v
 		}
-		for k, v := range stackEnv(pv, ref, ports) {
+		for k, v := range stackEnv(pv, ref, ports, tlsOn) {
 			env[k] = v
 		}
 		layout = h.stackLayout(ref)
@@ -246,8 +252,22 @@ func i32(n int) *int32 {
 	return &v
 }
 
-func publicURL(pv config.Provisioning, port int) string {
+// publicURL is a created stack's API address, as users reach it.
+func publicURL(pv config.Provisioning, port int, tls bool) string {
+	if tls {
+		return "https://" + hostPort(pv.PublicHost, port)
+	}
 	return "http://" + hostPort(pv.PublicHost, port)
+}
+
+// stackSSLMode is how clients connect to a created stack's Postgres ports:
+// checking the certificate with TLS, and in plain text without (the
+// pooler doesn't offer TLS then).
+func stackSSLMode(tls bool) string {
+	if tls {
+		return "verify-full"
+	}
+	return "disable"
 }
 
 func hostPort(host string, port int) string {
@@ -259,11 +279,12 @@ func hostPort(host string, port int) string {
 
 // stackEnv is the .env settings Supermixer chooses for a stack, on top of
 // its generated secrets.
-func stackEnv(pv config.Provisioning, ref string, p provision.Ports) map[string]string {
-	public := publicURL(pv, p.API)
+func stackEnv(pv config.Provisioning, ref string, p provision.Ports, tls bool) map[string]string {
+	public := publicURL(pv, p.API, tls)
 	return map[string]string{
 		provision.StudioEnv:             strconv.FormatBool(pv.Studio),
 		provision.LogsEnv:               strconv.FormatBool(pv.Logs),
+		provision.TLSEnv:                strconv.FormatBool(tls),
 		"API_GW_HTTP_PORT":              strconv.Itoa(p.API),
 		"KONG_HTTP_PORT":                strconv.Itoa(p.API),
 		"POSTGRES_PORT":                 strconv.Itoa(p.DB),
@@ -277,13 +298,14 @@ func stackEnv(pv config.Provisioning, ref string, p provision.Ports) map[string]
 	}
 }
 
-// managedConnection is how Supermixer reaches a stack it created.
-func managedConnection(pv config.Provisioning, ref string, p provision.Ports, s provision.Secrets, k provision.APIKeys) stack.Connection {
-	host := pv.StackHost()
+// managedConnection is a stack Supermixer created, at the addresses users
+// reach it at (Supermixer itself may dial connect_host: see StackNetwork).
+func managedConnection(pv config.Provisioning, ref string, p provision.Ports, s provision.Secrets, k provision.APIKeys, tls bool) stack.Connection {
 	return stack.Connection{
-		APIURL: "http://" + hostPort(host, p.API),
+		APIURL: publicURL(pv, p.API, tls),
 		Database: stack.Database{
-			Host: host, Port: p.DB, Name: "postgres", User: "postgres." + ref, Password: s.PostgresPassword, SSLMode: "disable",
+			Host: strings.Trim(pv.PublicHost, "[]"), Port: p.DB, Name: "postgres", User: "postgres." + ref,
+			Password: s.PostgresPassword, SSLMode: stackSSLMode(tls),
 		},
 		Keys: stack.Keys{
 			Anon: s.AnonKey, ServiceRole: s.ServiceRoleKey, JWTSecret: s.JWTSecret,
@@ -416,6 +438,9 @@ func (h *handlers) bringUp(ctx context.Context, ref string, log io.Writer) error
 		if err := h.checkCompose(ctx); err != nil {
 			return err
 		}
+	}
+	if err := h.prepareStackTLS(ctx, ref, log); err != nil {
+		return err
 	}
 	if err := provision.UpdateEnv(dir, map[string]string{provision.StudioEnv: strconv.FormatBool(studio)}); err != nil {
 		return fmt.Errorf("updating the stack's files: %w", err)
@@ -692,7 +717,7 @@ func (h *handlers) stackDetail(ctx context.Context, p db.Project) (api.StackDeta
 	if s == nil {
 		return api.StackDetail{}, newError(http.StatusNotFound, "this project is a stack Supermixer connects to, not one it created")
 	}
-	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio, Logs: s.Logs, Operation: s.Operation}
+	out := api.StackDetail{Status: s.Status, Error: s.Error, StatusAt: s.StatusAt, Template: s.Template, Studio: s.Studio, Logs: s.Logs, Tls: s.Tls, Operation: s.Operation}
 	if p.StackApiPort != nil && p.StackDbPort != nil && p.StackPoolerPort != nil {
 		out.Ports.Api, out.Ports.Db, out.Ports.Pooler = int(*p.StackApiPort), int(*p.StackDbPort), int(*p.StackPoolerPort)
 	}

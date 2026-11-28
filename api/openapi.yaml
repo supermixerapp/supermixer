@@ -1593,6 +1593,35 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/StackDetail" }
         default: { $ref: "#/components/responses/Error" }
+  /projects/{ref}/stack/tls:
+    parameters:
+      - { $ref: "#/components/parameters/Ref" }
+    put:
+      operationId: setStackTls
+      tags: [Projects]
+      summary: Turn TLS on or off for the stack
+      description: |
+        With TLS, the stack's API port serves HTTPS (plain HTTP there is redirected) and its Postgres ports
+        require TLS, with the certificate from Supermixer's [tls] settings. Its URLs change scheme, so its
+        clients need updating: CORS preflights don't follow redirects, OAuth callback URLs change, and
+        Postgres clients need sslmode=verify-full. On a running stack this runs in the background, bringing
+        the stack up with its new files; otherwise it takes effect when the stack next starts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [enabled]
+              properties:
+                enabled: { type: boolean }
+      responses:
+        "202":
+          description: Changed, or started on a running stack.
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StackDetail" }
+        default: { $ref: "#/components/responses/Error" }
   /projects/{ref}/stack/upgrade:
     parameters:
       - { $ref: "#/components/parameters/Ref" }
@@ -2458,11 +2487,14 @@ components:
         default_theme: { type: string, enum: [dark, light, system] }
         provisioning:
           type: object
-          required: [enabled, template]
+          required: [enabled, template, tls]
           description: Whether this server can create stacks, and from which supabase/docker commit.
           properties:
             enabled: { type: boolean }
             template: { type: string }
+            tls:
+              type: boolean
+              description: Supermixer has a certificate ([tls]) for stacks, so they can use TLS.
 
     StackStatus:
       type: string
@@ -2472,7 +2504,7 @@ components:
       enum: [starting, stopping, restarting, deleting, updating, backing_up, restoring, upgrading, rotating_keys]
     Stack:
       type: object
-      required: [status, error, template, studio, logs]
+      required: [status, error, template, studio, logs, tls]
       description: Set on projects Supermixer created; null for connected ones.
       properties:
         status: { $ref: "#/components/schemas/StackStatus" }
@@ -2490,6 +2522,11 @@ components:
           type: boolean
           description: >-
             Whether the stack collects logs: runs Logflare and Vector, for Logs Explorer, the API report and log drains.
+        tls:
+          type: boolean
+          description: >-
+            Whether the stack's API and Postgres ports use TLS (HTTPS, and sslmode=verify-full), with the certificate
+            from Supermixer's [tls] settings.
     EdgeFunction:
       type: object
       required: [name, url, updated_at, files, size, entrypoint]
@@ -3089,7 +3126,7 @@ components:
         backup_bytes: { type: integer, format: int64, description: "Their size together, compressed." }
     AdminOverview:
       type: object
-      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email, sso, audit_drains]
+      required: [version, users, active_users, instance_admins, password_change_required, mfa_enabled, organizations, projects, managed_projects, provisioning, backups, email, sso, audit_drains, tls]
       properties:
         version: { type: string }
         users: { type: integer }
@@ -3138,6 +3175,38 @@ components:
         audit_drains:
           type: array
           items: { $ref: '#/components/schemas/AuditDrainStatus' }
+        tls: { $ref: '#/components/schemas/TlsStatus' }
+    TlsStatus:
+      type: object
+      description: The certificate ([tls]) and where it's used.
+      required: [mode, names, private_ca, https_listen, hsts, hsts_blocked, certificates, missing, stacks_tls, stacks_plain]
+      properties:
+        mode: { type: string, enum: ["off", files, acme] }
+        names: { type: array, items: { type: string }, description: The host names the certificate must cover. }
+        private_ca: { type: boolean, description: "The certificate is from Supermixer's own CA (tls.ca_file)." }
+        https_listen: { type: string, nullable: true, description: "Where Supermixer serves HTTPS (server.https_listen); null if it doesn't." }
+        hsts:
+          type: string
+          nullable: true
+          description: The Strict-Transport-Security header sent over HTTPS; null when none is.
+        hsts_blocked:
+          type: boolean
+          description: >-
+            HSTS is held back because a project on Supermixer's host name is still reached over plain HTTP.
+        certificates:
+          type: array
+          items:
+            type: object
+            required: [names, issuer, not_after]
+            properties:
+              names: { type: array, items: { type: string } }
+              issuer: { type: string }
+              not_after: { type: string, format: date-time }
+        missing: { type: array, items: { type: string }, description: Names without a certificate yet (acme mode, obtaining one). }
+        last_error: { type: string, nullable: true }
+        last_error_at: { type: string, format: date-time, nullable: true }
+        stacks_tls: { type: integer, description: Stacks Supermixer created that use TLS. }
+        stacks_plain: { type: integer, description: Stacks Supermixer created that don't. }
     AuditDrainStatus:
       type: object
       description: Where audit log entries are sent ([[audit.drains]]), and how that's going.
@@ -3569,6 +3638,14 @@ components:
             name: { type: string }
             user: { type: string }
             sslmode: { type: string }
+            sslrootcert:
+              type: string
+              enum: [system, download]
+              nullable: true
+              description: >-
+                For sslmode=verify-full on a stack Supermixer created: system when its certificate is from a public CA
+                (libpq's sslrootcert=system), download when it's from Supermixer's own CA, which is at
+                /api/v1/tls/ca.pem. Null otherwise.
             uri: { type: string, description: Connection string with a password placeholder. }
             read_only_user:
               type: string

@@ -87,7 +87,7 @@ func TestSplinterRuns(t *testing.T) {
 	pw, _ := u.User.Password()
 	port, _ := strconv.Atoi(u.Port())
 	db := stack.Database{Host: u.Hostname(), Port: port, Name: u.Path[1:], User: u.User.Username(), Password: pw, SSLMode: "disable"}
-	p := stack.NewPools(2)
+	p := stack.NewPools(2, nil)
 	t.Cleanup(p.Close)
 	res, err := p.Query(ctx, "advisors-test", db, SQL, stack.QueryOptions{ReadOnly: true, Trusted: true, MaxRows: 10000})
 	if err != nil {

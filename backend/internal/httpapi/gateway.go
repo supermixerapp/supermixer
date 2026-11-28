@@ -111,6 +111,9 @@ type gatewayTarget struct {
 // gateway proxies /api/v1/projects/{ref}/gateway/<path> to the stack's API
 // gateway with its admin key. Browsers never see the key.
 func (h *handlers) gateway() http.Handler {
+	transport := h.network.Transport()
+	transport.ResponseHeaderTimeout = h.deps.Config.Projects.GatewayTimeout
+	transport.IdleConnTimeout = 90 * time.Second
 	proxy := &httputil.ReverseProxy{
 		Rewrite: func(pr *httputil.ProxyRequest) {
 			t := pr.In.Context().Value(gatewayKey{}).(gatewayTarget)
@@ -138,11 +141,7 @@ func (h *handlers) gateway() http.Handler {
 			res.Header.Set("X-Content-Type-Options", "nosniff")
 			return nil
 		},
-		Transport: &http.Transport{
-			Proxy:                 http.ProxyFromEnvironment,
-			ResponseHeaderTimeout: h.deps.Config.Projects.GatewayTimeout,
-			IdleConnTimeout:       90 * time.Second,
-		},
+		Transport: transport,
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			if errors.Is(err, context.Canceled) {
 				return

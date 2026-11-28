@@ -83,6 +83,9 @@ func publicRoute(method, path string) bool {
 	// The global notice is for everyone, the homepage's visitors too.
 	case method == http.MethodGet && (p == "/health" || p == "/ui-config" || p == "/notice"):
 		return true
+	// The private CA, to trust before signing in.
+	case method == http.MethodGet && p == "/tls/ca.pem":
+		return true
 	case method == http.MethodPost && (p == "/auth/sign-in" || p == "/auth/mfa" || p == "/auth/sign-out" || p == "/auth/password-reset"):
 		return true
 	case strings.HasPrefix(p, "/auth/password-reset/") && strings.Count(p, "/") == 3 && (method == http.MethodGet || method == http.MethodPost):
@@ -229,19 +232,30 @@ func (h *handlers) sessionMiddleware(next http.Handler) http.Handler {
 // sessionCookies are set on sign-in. The CSRF cookie is readable by
 // JavaScript so the web app can echo it in the X-CSRF-Token header.
 func (h *handlers) sessionCookies(token string, expires time.Time) []*http.Cookie {
-	secure := strings.HasPrefix(h.deps.Config.Server.PublicURL, "https://")
 	maxAge := int(time.Until(expires).Seconds())
 	return []*http.Cookie{
-		{Name: sessionCookie, Value: token, Path: "/", MaxAge: maxAge, HttpOnly: true, Secure: secure, SameSite: http.SameSiteLaxMode},
-		{Name: csrfCookie, Value: h.csrf.Token(token), Path: "/", MaxAge: maxAge, Secure: secure, SameSite: http.SameSiteLaxMode},
+		h.cookie(&http.Cookie{Name: sessionCookie, Value: token, Path: "/", MaxAge: maxAge, HttpOnly: true}),
+		h.cookie(&http.Cookie{Name: csrfCookie, Value: h.csrf.Token(token), Path: "/", MaxAge: maxAge}),
 	}
 }
 
-func clearedCookies() []*http.Cookie {
+func (h *handlers) clearedCookies() []*http.Cookie {
 	return []*http.Cookie{
-		{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteLaxMode},
-		{Name: csrfCookie, Value: "", Path: "/", MaxAge: -1, SameSite: http.SameSiteLaxMode},
+		h.cookie(&http.Cookie{Name: sessionCookie, Value: "", Path: "/", MaxAge: -1, HttpOnly: true}),
+		h.cookie(&http.Cookie{Name: csrfCookie, Value: "", Path: "/", MaxAge: -1}),
 	}
+}
+
+// cookie fills in what Supermixer's cookies share: Secure when it's reached
+// over HTTPS, and SameSite=Lax unless the cookie says otherwise. A cookie
+// is cleared with the same attributes it was set with, or browsers may keep
+// it.
+func (h *handlers) cookie(c *http.Cookie) *http.Cookie {
+	c.Secure = strings.HasPrefix(h.deps.Config.Server.PublicURL, "https://")
+	if c.SameSite == 0 {
+		c.SameSite = http.SameSiteLaxMode
+	}
+	return c
 }
 
 // startSession creates a session row and returns the cookies to set.

@@ -369,6 +369,7 @@ func (h *handlers) GetAdminOverview(ctx context.Context, _ api.GetAdminOverviewR
 		out.MetricsListen = &l
 	}
 	out.AuditDrains = h.drainStatuses(ctx)
+	out.Tls = h.tlsStatus(ctx)
 	return out, nil
 }
 

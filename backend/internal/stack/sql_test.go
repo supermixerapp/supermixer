@@ -36,7 +36,7 @@ func testDB(t *testing.T) Database {
 
 func TestQuery(t *testing.T) {
 	d := testDB(t)
-	p := NewPools(4)
+	p := NewPools(4, nil)
 	t.Cleanup(p.Close)
 	ctx := context.Background()
 	run := func(sql string, opt QueryOptions) ([]Result, error) {

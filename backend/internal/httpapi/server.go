@@ -28,6 +28,7 @@ import (
 	"supermixer/internal/stack"
 	"supermixer/internal/store"
 	"supermixer/internal/theme"
+	"supermixer/internal/tlscert"
 )
 
 // DB is what the HTTP layer needs from the store.
@@ -56,6 +57,8 @@ type Deps struct {
 	Pending *sync.WaitGroup
 	// Metrics records Prometheus metrics; nil records nothing.
 	Metrics *metrics.Metrics
+	// TLS is the certificate ([tls]); nil while TLS is off.
+	TLS *tlscert.Manager
 	// LeaderRetry is how often an instance that isn't doing the background
 	// work checks whether it should (10s if zero).
 	LeaderRetry time.Duration
@@ -81,15 +84,17 @@ func New(deps Deps) http.Handler {
 	r.Use(middleware.Recoverer)
 
 	pc := deps.Config.Projects
+	network := StackNetwork(deps.Config, deps.TLS)
 	if deps.Pools == nil {
-		deps.Pools = stack.NewPools(pc.DBPoolSize)
+		deps.Pools = stack.NewPools(pc.DBPoolSize, network)
 	}
 	signIn := deps.Config.Security.SignIn
 	h := &handlers{
 		deps:    deps,
 		csrf:    auth.NewCSRF([]byte(deps.Config.Security.EncryptionKey)),
 		limiter: auth.NewLimiter(signIn.MaxFailures, signIn.Lockout),
-		checker: stack.NewChecker(pc.HealthCheckTimeout),
+		checker: stack.NewChecker(pc.HealthCheckTimeout, network),
+		network: network,
 		health:  &healthCache{ttl: pc.HealthCacheTTL},
 		pools:   deps.Pools,
 		stacks:  &stackJobs{},
@@ -106,6 +111,14 @@ func New(deps Deps) http.Handler {
 	if h.pending == nil {
 		h.pending = &sync.WaitGroup{}
 	}
+	r.Use(h.transportSecurity)
+	h.certChanged = make(chan struct{}, 1)
+	deps.TLS.OnChange(func() {
+		select {
+		case h.certChanged <- struct{}{}:
+		default:
+		}
+	})
 	if pv := deps.Config.Provisioning; deps.BackupStore != nil {
 		h.s3 = deps.BackupStore
 	} else if pv.Enabled && pv.BackupS3.Enabled() {
@@ -132,6 +145,7 @@ func New(deps Deps) http.Handler {
 			}
 			go deps.Store.RunAsLeader(deps.Background, deps.Logger, retry, h.backgroundWork)
 		} else {
+			h.syncManagedRows(context.Background())
 			h.recoverStacks(context.Background(), time.Now().Add(-stackStale))
 		}
 	}
@@ -158,6 +172,8 @@ func New(deps Deps) http.Handler {
 		r.Get("/auth/sso/{provider}/start", h.ssoStart)
 		r.Get("/auth/sso/{provider}/callback", h.ssoCallback)
 		r.Post("/profile/identities/{provider}/connect", h.ssoConnect)
+		// The private CA ([tls] ca_file), for clients to trust; public.
+		r.Get("/tls/ca.pem", h.caCertificate)
 		// This API's OpenAPI description, for docs and client generators.
 		r.Get("/openapi.json", func(w http.ResponseWriter, _ *http.Request) {
 			spec, err := api.GetSwagger()
@@ -190,6 +206,20 @@ func New(deps Deps) http.Handler {
 
 	r.NotFound(newSPAHandler(deps.WebUI, deps.Config.Appearance.DefaultTheme, deps.Config.Server.DevWebURL).ServeHTTP)
 	return r
+}
+
+// StackNetwork is how Supermixer reaches projects' stacks: the ones it
+// created at connect_host when that's set (their rows say public_host, as
+// users see them), trusting [tls]'s CA and its own certificate.
+func StackNetwork(cfg *config.Config, certs *tlscert.Manager) *stack.Network {
+	aliases := map[string]string{}
+	if pv := cfg.Provisioning; pv.Enabled && pv.ConnectHost != "" {
+		aliases[pv.PublicHost] = pv.ConnectHost
+	}
+	if certs == nil {
+		return stack.NewNetwork(aliases, nil, nil)
+	}
+	return stack.NewNetwork(aliases, certs.RootCAs(), certs.Issued)
 }
 
 // staticBytes serves generated content with an ETag so browsers revalidate
@@ -264,8 +294,10 @@ func (h *handlers) backgroundWork(ctx context.Context) {
 		wg.Add(1)
 		go func() { defer wg.Done(); f(ctx) }()
 	}
+	h.syncManagedRows(ctx) // before anything uses the addresses
 	run(h.watchStacks)
 	run(h.applyStudio)
+	run(h.applyTLS)
 	run(h.backupLoop)
 	if h.s3 != nil {
 		run(h.uploadLoop)

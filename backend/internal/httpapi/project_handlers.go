@@ -167,6 +167,14 @@ func (h *handlers) toProject(p db.Project, orgSlug, orgName string, role rbac.Ro
 	out.Database.Host, out.Database.Port, out.Database.Name = p.DbHost, int(p.DbPort), p.DbName
 	out.Database.User, out.Database.Sslmode = p.DbUser, p.DbSslmode
 	out.Database.Uri = conn.Database.URI(false)
+	if root := h.sslRootCert(p); root != nil {
+		out.Database.Sslrootcert = root
+		if *root == api.ProjectDatabaseSslrootcertSystem {
+			// libpq needs it to check a public CA's certificate (psql 16
+			// or later); other clients use the system's CAs anyway.
+			out.Database.Uri += "&sslrootcert=system"
+		}
+	}
 	if conn.ReadOnly != nil {
 		out.Database.ReadOnlyUser = &conn.ReadOnly.User
 	}
@@ -594,4 +602,17 @@ func toAuditPage(rows []db.AuditLog, limit int) api.AuditLogPage {
 		page.Entries = append(page.Entries, e)
 	}
 	return page
+}
+
+// sslRootCert says, for a stack Supermixer created that requires TLS, where
+// clients find the CA to check its certificate against.
+func (h *handlers) sslRootCert(p db.Project) *api.ProjectDatabaseSslrootcert {
+	if !p.Managed || p.DbSslmode != "verify-full" || !h.deps.TLS.Enabled() {
+		return nil
+	}
+	v := api.ProjectDatabaseSslrootcertSystem
+	if h.deps.TLS.PrivateCA() {
+		v = api.ProjectDatabaseSslrootcertDownload
+	}
+	return &v
 }

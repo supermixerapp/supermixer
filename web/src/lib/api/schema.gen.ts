@@ -1487,6 +1487,32 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/projects/{ref}/stack/tls": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Turn TLS on or off for the stack
+         * @description With TLS, the stack's API port serves HTTPS (plain HTTP there is redirected) and its Postgres ports
+         *     require TLS, with the certificate from Supermixer's [tls] settings. Its URLs change scheme, so its
+         *     clients need updating: CORS preflights don't follow redirects, OAuth callback URLs change, and
+         *     Postgres clients need sslmode=verify-full. On a running stack this runs in the background, bringing
+         *     the stack up with its new files; otherwise it takes effect when the stack next starts.
+         */
+        put: operations["setStackTls"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/projects/{ref}/stack/upgrade": {
         parameters: {
             query?: never;
@@ -2200,6 +2226,8 @@ export interface components {
             provisioning: {
                 enabled: boolean;
                 template: string;
+                /** @description Supermixer has a certificate ([tls]) for stacks, so they can use TLS. */
+                tls: boolean;
             };
         };
         /** @enum {string} */
@@ -2221,6 +2249,8 @@ export interface components {
             studio: boolean;
             /** @description Whether the stack collects logs: runs Logflare and Vector, for Logs Explorer, the API report and log drains. */
             logs: boolean;
+            /** @description Whether the stack's API and Postgres ports use TLS (HTTPS, and sslmode=verify-full), with the certificate from Supermixer's [tls] settings. */
+            tls: boolean;
         };
         EdgeFunction: {
             name: string;
@@ -2813,6 +2843,37 @@ export interface components {
             /** @description Where Prometheus metrics are served ([metrics] listen); null if off. */
             metrics_listen?: string | null;
             audit_drains: components["schemas"]["AuditDrainStatus"][];
+            tls: components["schemas"]["TlsStatus"];
+        };
+        /** @description The certificate ([tls]) and where it's used. */
+        TlsStatus: {
+            /** @enum {string} */
+            mode: "off" | "files" | "acme";
+            /** @description The host names the certificate must cover. */
+            names: string[];
+            /** @description The certificate is from Supermixer's own CA (tls.ca_file). */
+            private_ca: boolean;
+            /** @description Where Supermixer serves HTTPS (server.https_listen); null if it doesn't. */
+            https_listen: string | null;
+            /** @description The Strict-Transport-Security header sent over HTTPS; null when none is. */
+            hsts: string | null;
+            /** @description HSTS is held back because a project on Supermixer's host name is still reached over plain HTTP. */
+            hsts_blocked: boolean;
+            certificates: {
+                names: string[];
+                issuer: string;
+                /** Format: date-time */
+                not_after: string;
+            }[];
+            /** @description Names without a certificate yet (acme mode */
+            missing: string[];
+            last_error?: string | null;
+            /** Format: date-time */
+            last_error_at?: string | null;
+            /** @description Stacks Supermixer created that use TLS. */
+            stacks_tls: number;
+            /** @description Stacks Supermixer created that don't. */
+            stacks_plain: number;
         };
         /** @description Where audit log entries are sent ([[audit.drains]]), and how that's going. */
         AuditDrainStatus: {
@@ -3199,6 +3260,11 @@ export interface components {
                 name: string;
                 user: string;
                 sslmode: string;
+                /**
+                 * @description For sslmode=verify-full on a stack Supermixer created: system when its certificate is from a public CA (libpq's sslrootcert=system), download when it's from Supermixer's own CA, which is at /api/v1/tls/ca.pem. Null otherwise.
+                 * @enum {string|null}
+                 */
+                sslrootcert?: "system" | "download" | null;
                 /** @description Connection string with a password placeholder. */
                 uri: string;
                 /** @description Login that Read-only members' queries use, when one was created. */
@@ -5725,6 +5791,35 @@ export interface operations {
         };
     };
     setStackLogs: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                ref: components["parameters"]["Ref"];
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enabled: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Changed, or started on a running stack. */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StackDetail"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    setStackTls: {
         parameters: {
             query?: never;
             header?: never;

@@ -79,6 +79,12 @@ const EXTRA: Section[] = [
         public: true,
       },
       {
+        methods: ['GET'],
+        path: '/tls/ca.pem',
+        purpose: 'Supermixer’s own CA certificate, to trust its HTTPS and Postgres connections (only when it uses a private CA)',
+        public: true,
+      },
+      {
         methods: ['POST'],
         path: '/profile/identities/{provider}/connect',
         purpose: 'Connect a sign-in provider to your account',

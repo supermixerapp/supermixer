@@ -59,7 +59,7 @@ func TestCheckReportsEachService(t *testing.T) {
 	}))
 	defer gw.Close()
 
-	c := NewChecker(2 * time.Second)
+	c := NewChecker(2*time.Second, nil)
 	r := c.Check(context.Background(), Connection{
 		APIURL:   gw.URL,
 		Keys:     Keys{Anon: "anon.k.ey", ServiceRole: "service.k.ey"},

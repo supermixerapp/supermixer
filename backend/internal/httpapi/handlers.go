@@ -23,6 +23,8 @@ type handlers struct {
 	checker *stack.Checker
 	health  *healthCache
 	pools   *stack.Pools
+	// network reaches stacks (see StackNetwork).
+	network *stack.Network
 	stacks  *stackJobs
 	// s3 is the bucket backups are copied to, nil without one.
 	s3      provision.ObjectStore
@@ -47,6 +49,12 @@ type handlers struct {
 	// composeOK is set once Docker Compose is known to be new enough for
 	// stacks without Studio (checkCompose).
 	composeOK atomic.Bool
+	// composeTLSOK: new enough for stacks with TLS (checkStackTLS).
+	composeTLSOK atomic.Bool
+	// hsts decides whether HSTS is safe to send yet.
+	hsts hstsGate
+	// certChanged wakes applyTLS when there's a new certificate.
+	certChanged chan struct{}
 }
 
 var _ api.StrictServerInterface = (*handlers)(nil)
@@ -104,7 +112,8 @@ func (h *handlers) GetUiConfig(ctx context.Context, _ api.GetUiConfigRequestObje
 		Provisioning: struct {
 			Enabled  bool   `json:"enabled"`
 			Template string `json:"template"`
-		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion()},
+			Tls      bool   `json:"tls"`
+		}{Enabled: h.deps.Config.Provisioning.Enabled, Template: provision.TemplateVersion(), Tls: h.deps.TLS.Enabled()},
 		EmailEnabled:  h.mailer != nil,
 		SignUpEnabled: signUpOpen,
 		SsoProviders:  h.ssoList(signUpOpen),

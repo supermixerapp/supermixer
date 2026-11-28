@@ -14,10 +14,16 @@ imagePullSecrets: []
 # Supermixer's settings, as the .env.toml file (see .env.example.toml). It
 # holds secrets (the database URL, security.encryption_key), so it's stored
 # in a Secret. Every replica must have the same encryption_key.
+#
+# TLS ends at the Ingress (cert-manager, say): Supermixer serves plain HTTP
+# behind it, and trust_proxy lets it tell HTTPS requests (for HSTS) from
+# plain ones (redirected). Leave [tls] off here: acme mode keeps its
+# certificates on one pod's disk.
 config: |
   [server]
   listen = ":8080"
   public_url = "https://supermixer.example.com"
+  trust_proxy = true
 
   [database]
   url = "postgres://supermixer:CHANGE-ME@postgres:5432/supermixer"

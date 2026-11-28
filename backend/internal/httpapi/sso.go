@@ -130,11 +130,10 @@ func (h *handlers) beginSSO(w http.ResponseWriter, p *ssoProvider, redirect, lin
 	if err != nil {
 		return "", err
 	}
-	http.SetCookie(w, &http.Cookie{
+	http.SetCookie(w, h.cookie(&http.Cookie{
 		Name: ssoCookie, Value: base64.RawURLEncoding.EncodeToString(sealed), Path: "/api/v1/auth/sso/",
-		MaxAge: int(ssoStateTTL.Seconds()), HttpOnly: true, SameSite: http.SameSiteLaxMode,
-		Secure: strings.HasPrefix(h.deps.Config.Server.PublicURL, "https://"),
-	})
+		MaxAge: int(ssoStateTTL.Seconds()), HttpOnly: true,
+	}))
 	var opts []oauth2.AuthCodeOption
 	if !p.isGitHub() {
 		opts = append(opts, oidc.Nonce(st.Nonce))
@@ -202,7 +201,7 @@ func (h *handlers) ssoFail(w http.ResponseWriter, r *http.Request, page, msg str
 	if page == "" { // a sign-in, not connecting a provider
 		h.deps.Metrics.SignIn("sso", false)
 	}
-	http.SetCookie(w, &http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true})
+	http.SetCookie(w, h.cookie(&http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true}))
 	if page == "" {
 		page = "/sign-in"
 	}
@@ -430,13 +429,13 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 			return
 		}
 		h.deps.Metrics.SignIn("sso", true) // the code step counts as mfa
-		http.SetCookie(w, &http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true})
+		http.SetCookie(w, h.cookie(&http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true}))
 		// The challenge stands in for the first factor: in a cookie only
 		// POST /auth/mfa gets, not the URL (history, proxy logs).
-		http.SetCookie(w, &http.Cookie{
+		http.SetCookie(w, h.cookie(&http.Cookie{
 			Name: mfaCookie, Value: c.Challenge, Path: "/api/v1/auth/mfa", MaxAge: int(mfaChallengeTTL.Seconds()),
-			HttpOnly: true, SameSite: http.SameSiteStrictMode, Secure: strings.HasPrefix(h.deps.Config.Server.PublicURL, "https://"),
-		})
+			HttpOnly: true, SameSite: http.SameSiteStrictMode,
+		}))
 		http.Redirect(w, r, h.joinURL("/sign-in", url.Values{"mfa": {"1"}, "redirect": {st.Redirect}}), http.StatusFound)
 		return
 	}
@@ -450,7 +449,7 @@ func (h *handlers) ssoSignIn(w http.ResponseWriter, r *http.Request, p *ssoProvi
 	h.ssoAutoJoin(ctx, u, p.cfg.ID, email)
 	h.audit(ctx, nil, auditEntry{Action: "user.signed_in", TargetType: "user", TargetID: u.ID.String(), TargetName: u.Username,
 		Metadata: map[string]any{"sso": p.cfg.ID}})
-	http.SetCookie(w, &http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true})
+	http.SetCookie(w, h.cookie(&http.Cookie{Name: ssoCookie, Value: "", Path: "/api/v1/auth/sso/", MaxAge: -1, HttpOnly: true}))
 	for _, c := range cookies {
 		http.SetCookie(w, c)
 	}

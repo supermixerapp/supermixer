@@ -165,13 +165,17 @@ type Report struct {
 type Checker struct {
 	client  *http.Client
 	timeout time.Duration
+	network *Network
 }
 
-// NewChecker returns a Checker with per-check timeout.
-func NewChecker(timeout time.Duration) *Checker {
+// NewChecker returns a Checker with per-check timeout, connecting
+// through n.
+func NewChecker(timeout time.Duration, n *Network) *Checker {
 	return &Checker{
+		network: n,
 		client: &http.Client{
-			Timeout: timeout,
+			Timeout:   timeout,
+			Transport: n.Transport(),
 			// A redirect from the gateway usually means a wrong URL; report it.
 			CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
 		},
@@ -314,6 +318,7 @@ func (c *Checker) postgresVersion(ctx context.Context, d Database) (string, erro
 	}
 	cfg.ConnectTimeout = c.timeout
 	cfg.RuntimeParams["application_name"] = "supermixer"
+	c.network.ConfigurePg(&cfg.Config)
 	conn, err := pgx.ConnectConfig(ctx, cfg)
 	if err != nil {
 		return "", err

@@ -16,6 +16,7 @@ type stackView struct {
 	Error     string
 	Operation *string
 	Template  string
+	TLS       bool
 	Ports     struct{ Api, Db, Pooler int }
 	Services  *[]struct{ Service, State, Health string }
 	Log       string
@@ -270,4 +271,57 @@ func TestInterruptedStacksAreMarkedFailed(t *testing.T) {
 	if s.Status != "failed" || !strings.Contains(s.Error, "stopped") {
 		t.Fatalf("after restart: %+v", s)
 	}
+}
+
+// A created stack's row has the addresses its users reach it at, never
+// connect_host (how Supermixer reaches it), and rows from before are fixed.
+func TestStackAddresses(t *testing.T) {
+	stacks := t.TempDir()
+	t.Setenv("FAKE_DOCKER_LOG", filepath.Join(t.TempDir(), "docker.log"))
+	fake, _ := filepath.Abs("testdata/fake-docker.sh")
+	configure := func(c *config.Config) {
+		c.Provisioning.Enabled = true
+		c.Provisioning.StacksDir = stacks
+		c.Provisioning.Docker = fake
+		c.Provisioning.PublicHost = "stacks.example"
+		c.Provisioning.ConnectHost = "127.0.0.1"
+		c.Provisioning.APIPorts = "8200-8203"
+		c.Provisioning.DBPorts = "54400-54403"
+		c.Provisioning.PoolerPorts = "64400-64403"
+	}
+	env := newTestEnvWith(t, configure)
+	admin := env.client(t)
+	admin.signIn("admin", adminPassword)
+	admin.must(201, "POST", "/organizations", map[string]string{"name": "Stacks"}, nil)
+
+	type project struct {
+		Ref      string
+		APIURL   string `json:"api_url"`
+		Studio   string `json:"studio_url"`
+		Database struct{ Host, Sslmode, URI string }
+	}
+	var p project
+	admin.must(202, "POST", "/organizations/stacks/projects/new-stack", map[string]string{"name": "Addresses"}, &p)
+	waitStack(t, admin, p.Ref)
+	check := func(when string) {
+		t.Helper()
+		var got project
+		admin.must(200, "GET", "/projects/"+p.Ref, nil, &got)
+		if got.APIURL != "http://stacks.example:8201" || got.Studio != got.APIURL || got.Database.Host != "stacks.example" ||
+			got.Database.Sslmode != "disable" {
+			t.Errorf("%s: %+v", when, got)
+		}
+	}
+	check("created")
+
+	// As Supermixer saved them before: connect_host.
+	conn := openTestDB(t, env.dbURL)
+	if _, err := conn.Exec(context.Background(), `update projects set api_url = 'http://127.0.0.1:8201',
+		studio_url = 'http://127.0.0.1:8201', db_host = '127.0.0.1' where ref = $1`, p.Ref); err != nil {
+		t.Fatal(err)
+	}
+	env2 := newTestEnvSharing(t, env, configure) // restarting puts them right
+	admin = env2.client(t)
+	admin.signIn("admin", adminPassword)
+	check("after restarting")
 }

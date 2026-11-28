@@ -179,7 +179,7 @@ func (h *handlers) SignOut(ctx context.Context, _ api.SignOutRequestObject) (api
 			return nil, err
 		}
 	}
-	return signOutResponse{withCookies{status: http.StatusNoContent, cookies: clearedCookies()}}, nil
+	return signOutResponse{withCookies{status: http.StatusNoContent, cookies: h.clearedCookies()}}, nil
 }
 
 func (h *handlers) GetProfile(ctx context.Context, _ api.GetProfileRequestObject) (api.GetProfileResponseObject, error) {

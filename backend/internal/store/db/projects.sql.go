@@ -140,6 +140,85 @@ func (q *Queries) GetProjectByRef(ctx context.Context, ref string) (GetProjectBy
 	return i, err
 }
 
+const listManagedProjects = `-- name: ListManagedProjects :many
+SELECT id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port FROM projects WHERE managed AND stack_api_port IS NOT NULL ORDER BY created_at
+`
+
+func (q *Queries) ListManagedProjects(ctx context.Context) ([]Project, error) {
+	rows, err := q.db.Query(ctx, listManagedProjects)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Project
+	for rows.Next() {
+		var i Project
+		if err := rows.Scan(
+			&i.ID,
+			&i.Ref,
+			&i.OrganizationID,
+			&i.Name,
+			&i.ApiUrl,
+			&i.StudioUrl,
+			&i.DbHost,
+			&i.DbPort,
+			&i.DbName,
+			&i.DbUser,
+			&i.DbSslmode,
+			&i.Secrets,
+			&i.CreatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.Managed,
+			&i.StackStatus,
+			&i.StackError,
+			&i.StackStatusAt,
+			&i.StackTemplate,
+			&i.StackApiPort,
+			&i.StackDbPort,
+			&i.StackPoolerPort,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPlainHTTPURLs = `-- name: ListPlainHTTPURLs :many
+SELECT api_url, studio_url FROM projects WHERE api_url LIKE 'http:%' OR studio_url LIKE 'http:%'
+`
+
+type ListPlainHTTPURLsRow struct {
+	ApiUrl    string `json:"api_url"`
+	StudioUrl string `json:"studio_url"`
+}
+
+// Projects' plain-HTTP addresses: HSTS on Supermixer's host name would cut
+// browsers off from any on the same host.
+func (q *Queries) ListPlainHTTPURLs(ctx context.Context) ([]ListPlainHTTPURLsRow, error) {
+	rows, err := q.db.Query(ctx, listPlainHTTPURLs)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPlainHTTPURLsRow
+	for rows.Next() {
+		var i ListPlainHTTPURLsRow
+		if err := rows.Scan(&i.ApiUrl, &i.StudioUrl); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listProjectsByOrganization = `-- name: ListProjectsByOrganization :many
 SELECT id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port FROM projects WHERE organization_id = $1 ORDER BY name
 `
@@ -359,6 +438,59 @@ func (q *Queries) ProjectRefExists(ctx context.Context, ref string) (bool, error
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const setManagedAddresses = `-- name: SetManagedAddresses :one
+UPDATE projects SET api_url = $2, studio_url = $3, db_host = $4, db_sslmode = $5, updated_at = now()
+WHERE id = $1 AND managed
+RETURNING id, ref, organization_id, name, api_url, studio_url, db_host, db_port, db_name, db_user, db_sslmode, secrets, created_by, created_at, updated_at, managed, stack_status, stack_error, stack_status_at, stack_template, stack_api_port, stack_db_port, stack_pooler_port
+`
+
+type SetManagedAddressesParams struct {
+	ID        uuid.UUID `json:"id"`
+	ApiUrl    string    `json:"api_url"`
+	StudioUrl string    `json:"studio_url"`
+	DbHost    string    `json:"db_host"`
+	DbSslmode string    `json:"db_sslmode"`
+}
+
+// A created stack's addresses, as users reach them: recomputed from the
+// configuration and its ports (provisioning.public_host, TLS).
+func (q *Queries) SetManagedAddresses(ctx context.Context, arg SetManagedAddressesParams) (Project, error) {
+	row := q.db.QueryRow(ctx, setManagedAddresses,
+		arg.ID,
+		arg.ApiUrl,
+		arg.StudioUrl,
+		arg.DbHost,
+		arg.DbSslmode,
+	)
+	var i Project
+	err := row.Scan(
+		&i.ID,
+		&i.Ref,
+		&i.OrganizationID,
+		&i.Name,
+		&i.ApiUrl,
+		&i.StudioUrl,
+		&i.DbHost,
+		&i.DbPort,
+		&i.DbName,
+		&i.DbUser,
+		&i.DbSslmode,
+		&i.Secrets,
+		&i.CreatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Managed,
+		&i.StackStatus,
+		&i.StackError,
+		&i.StackStatusAt,
+		&i.StackTemplate,
+		&i.StackApiPort,
+		&i.StackDbPort,
+		&i.StackPoolerPort,
+	)
+	return i, err
 }
 
 const setProjectStack = `-- name: SetProjectStack :one

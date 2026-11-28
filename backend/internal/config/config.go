@@ -45,6 +45,75 @@ type Config struct {
 	Metrics        Metrics        `toml:"metrics"`
 	Audit          Audit          `toml:"audit"`
 	Webhooks       Webhooks       `toml:"webhooks"`
+	TLS            TLS            `toml:"tls"`
+}
+
+// TLS is where Supermixer's certificate comes from: one source for its own
+// HTTPS (server.https_listen) and for the stacks it creates. The names it
+// must cover follow from the other settings (see TLSNames).
+type TLS struct {
+	// Mode is off, files (the operator's own certificate and key) or acme
+	// (Let's Encrypt, or another ACME CA, obtained and renewed automatically).
+	Mode string `toml:"mode"`
+	// CertFile and KeyFile, for files mode, are PEM files: the certificate
+	// with its intermediates, and its private key. They're read again when
+	// they change, so renewing them needs no restart.
+	CertFile string `toml:"cert_file"`
+	KeyFile  string `toml:"key_file"`
+	// CAFile, for files mode, is the private CA that issued the certificate
+	// (for a self-signed one, the certificate itself). Supermixer trusts it
+	// and offers it for download; empty means a public CA.
+	CAFile string `toml:"ca_file"`
+	ACME   ACME   `toml:"acme"`
+}
+
+// ACME configures acme mode.
+type ACME struct {
+	// Email is given to the CA for the account; optional.
+	Email string `toml:"email"`
+	// AgreeTOS accepts the CA's terms of service, which it requires.
+	AgreeTOS bool `toml:"agree_tos"`
+	// CAURL is the CA's ACME directory. For testing, Let's Encrypt's staging
+	// CA is https://acme-staging-v02.api.letsencrypt.org/directory.
+	CAURL string `toml:"ca_url"`
+	// StorageDir keeps the account and certificates across restarts.
+	StorageDir string `toml:"storage_dir"`
+	// Challenges is how the CA checks this server holds the names: http-01
+	// (port 80, served by server.listen) and tls-alpn-01 (port 443, served
+	// by server.https_listen), comma-separated. Empty means http-01, and
+	// tls-alpn-01 too with https_listen.
+	Challenges string `toml:"challenges"`
+}
+
+// TLS modes.
+const (
+	TLSOff   = "off"
+	TLSFiles = "files"
+	TLSACME  = "acme"
+)
+
+// Enabled reports whether Supermixer has a certificate source.
+func (t TLS) Enabled() bool { return t.Mode != TLSOff }
+
+// PrivateCA reports whether the certificate is from a CA that browsers and
+// clients don't already trust.
+func (t TLS) PrivateCA() bool { return t.Mode == TLSFiles && t.CAFile != "" }
+
+// ACMEChallenges lists acme mode's challenge types.
+func (c *Config) ACMEChallenges() []string {
+	var out []string
+	for _, x := range strings.Split(c.TLS.ACME.Challenges, ",") {
+		if x = strings.TrimSpace(x); x != "" {
+			out = append(out, x)
+		}
+	}
+	if len(out) == 0 {
+		out = []string{"http-01"}
+		if c.Server.HTTPSListen != "" {
+			out = append(out, "tls-alpn-01")
+		}
+	}
+	return out
 }
 
 // Webhooks are organizations' outgoing webhooks (Organization Settings ›
@@ -169,6 +238,14 @@ type Server struct {
 	// public_url (emails, single sign-on) open the web app being worked on,
 	// not the copy built into the binary. The API stays here.
 	DevWebURL string `toml:"dev_web_url"`
+	// HTTPSListen is the address Supermixer serves HTTPS on, e.g. ":8443",
+	// with the certificate from [tls]; off while empty. Then listen only
+	// redirects to public_url (and answers ACME challenges and health checks).
+	HTTPSListen string `toml:"https_listen"`
+	// HSTSMaxAge is how long browsers keep to HTTPS once they've seen it
+	// (Strict-Transport-Security); 0 sends no HSTS. Before turning TLS off,
+	// set it to 0 and keep HTTPS on for as long as it was.
+	HSTSMaxAge time.Duration `toml:"hsts_max_age"`
 }
 
 type Log struct {
@@ -310,7 +387,7 @@ func (r PortRange) overlaps(o PortRange) bool { return r.First <= o.Last && o.Fi
 // Default returns the settings used for anything the file leaves out.
 func Default() Config {
 	return Config{
-		Server:         Server{Listen: ":8080", PublicURL: "http://localhost:8080"},
+		Server:         Server{Listen: ":8080", PublicURL: "http://localhost:8080", HSTSMaxAge: 8760 * time.Hour},
 		Log:            Log{Level: "info", Format: "text"},
 		Security:       Security{SessionTTL: 168 * time.Hour, SignIn: SignIn{MaxFailures: 10, Lockout: 15 * time.Minute}},
 		BootstrapAdmin: BootstrapAdmin{Username: "admin"},
@@ -326,6 +403,9 @@ func Default() Config {
 			BackupS3: BackupS3{Prefix: "supermixer", KeepLocal: true},
 		},
 		Email: Email{SMTPPort: 587, Security: "starttls", Timeout: 15 * time.Second},
+		TLS: TLS{Mode: TLSOff, ACME: ACME{
+			CAURL: "https://acme-v02.api.letsencrypt.org/directory", StorageDir: "/var/lib/supermixer/acme",
+		}},
 	}
 }
 
@@ -593,16 +673,13 @@ func (c *Config) validate() error {
 		}
 	}
 	if c.Metrics.Listen != "" {
-		mh, mp, err := net.SplitHostPort(c.Metrics.Listen)
-		if err != nil {
+		if _, _, err := net.SplitHostPort(c.Metrics.Listen); err != nil {
 			fail("metrics.listen must be host:port, like 127.0.0.1:9100, got %q", c.Metrics.Listen)
-		} else if sh, sp, err := net.SplitHostPort(c.Server.Listen); err == nil && sp == mp {
-			wildcard := func(h string) bool { return h == "" || h == "0.0.0.0" || h == "::" }
-			if mh == sh || wildcard(mh) || wildcard(sh) {
-				fail("metrics.listen (%s) must be a different port from server.listen (%s)", c.Metrics.Listen, c.Server.Listen)
-			}
+		} else if sameAddress(c.Metrics.Listen, c.Server.Listen) {
+			fail("metrics.listen (%s) must be a different port from server.listen (%s)", c.Metrics.Listen, c.Server.Listen)
 		}
 	}
+	c.validateTLS(fail)
 	drains := map[string]bool{}
 	for i, d := range c.Audit.Drains {
 		where := fmt.Sprintf("audit.drains[%d]", i)
@@ -759,6 +836,126 @@ func (c *Config) validate() error {
 	}
 	sort.Slice(errs, func(i, j int) bool { return errs[i].Error() < errs[j].Error() })
 	return errors.Join(errs...)
+}
+
+// validateTLS checks [tls] and server.https_listen. The certificate files
+// themselves are checked when they're loaded (package tlscert).
+func (c *Config) validateTLS(fail func(string, ...any)) {
+	t, srv := c.TLS, c.Server
+	switch t.Mode {
+	case TLSOff, TLSFiles, TLSACME:
+	default:
+		fail("tls.mode must be off, files or acme, got %q", t.Mode)
+		return
+	}
+	pu, _ := url.Parse(srv.PublicURL)
+	https := pu != nil && pu.Scheme == "https"
+	if srv.HSTSMaxAge < 0 {
+		fail("server.hsts_max_age must not be negative")
+	}
+	if srv.HTTPSListen != "" {
+		switch {
+		case !t.Enabled():
+			fail("server.https_listen needs a certificate: set tls.mode to files or acme")
+		case !https:
+			fail("server.https_listen needs server.public_url to be https://, got %q", srv.PublicURL)
+		}
+		if _, _, err := net.SplitHostPort(srv.HTTPSListen); err != nil {
+			fail("server.https_listen must be host:port, like :8443, got %q", srv.HTTPSListen)
+		} else {
+			if sameAddress(srv.HTTPSListen, srv.Listen) {
+				fail("server.https_listen (%s) must be a different port from server.listen (%s)", srv.HTTPSListen, srv.Listen)
+			}
+			if c.Metrics.Listen != "" && sameAddress(srv.HTTPSListen, c.Metrics.Listen) {
+				fail("server.https_listen (%s) must be a different port from metrics.listen (%s)", srv.HTTPSListen, c.Metrics.Listen)
+			}
+		}
+	}
+	if !t.Enabled() {
+		if t.CertFile != "" || t.KeyFile != "" || t.CAFile != "" {
+			c.Notes = append(c.Notes, "tls.cert_file, key_file and ca_file are ignored while tls.mode is off")
+		}
+		if https && !srv.TrustProxy {
+			c.Notes = append(c.Notes, "server.public_url is https:// but Supermixer serves plain HTTP: behind a proxy that ends TLS, set server.trust_proxy = true")
+		}
+		return
+	}
+	names := c.TLSNames()
+	if len(names) == 0 {
+		fail("tls.mode = %q has nothing to cover: set server.public_url to https:// or turn on provisioning", t.Mode)
+	}
+	switch t.Mode {
+	case TLSFiles:
+		for key, path := range map[string]string{"cert_file": t.CertFile, "key_file": t.KeyFile} {
+			if path == "" {
+				fail("tls.%s is required with tls.mode = \"files\"", key)
+			}
+		}
+	case TLSACME:
+		a := t.ACME
+		if !a.AgreeTOS {
+			fail("tls.acme.agree_tos must be true: the CA requires agreeing to its terms of service")
+		}
+		if a.Email != "" {
+			if m, err := mail.ParseAddress(a.Email); err != nil || m.Name != "" {
+				fail("tls.acme.email must be an email address, got %q", a.Email)
+			}
+		}
+		if u, err := url.Parse(a.CAURL); err != nil || u.Scheme != "https" || u.Host == "" {
+			fail("tls.acme.ca_url must be the CA's https:// directory URL, got %q", a.CAURL)
+		}
+		if !filepath.IsAbs(a.StorageDir) {
+			fail("tls.acme.storage_dir must be an absolute path, got %q", a.StorageDir)
+		}
+		for _, x := range c.ACMEChallenges() {
+			switch x {
+			case "http-01":
+			case "tls-alpn-01":
+				if srv.HTTPSListen == "" {
+					fail("tls.acme.challenges: tls-alpn-01 needs server.https_listen; use http-01")
+				}
+			default:
+				fail("tls.acme.challenges: %q isn't http-01 or tls-alpn-01", x)
+			}
+		}
+		for _, n := range names {
+			if net.ParseIP(n) != nil || n == "localhost" || strings.HasSuffix(n, ".localhost") || !strings.Contains(n, ".") {
+				fail("tls.mode = \"acme\" needs public DNS names, but %s isn't one; use tls.mode = \"files\" for it", n)
+			}
+		}
+		c.Notes = append(c.Notes, "tls.mode = \"acme\" keeps its certificates in "+a.StorageDir+": run a single Supermixer replica, and let the CA reach ports 80 and 443")
+	}
+	if https && srv.HTTPSListen == "" && !srv.TrustProxy {
+		c.Notes = append(c.Notes, "server.public_url is https:// but server.https_listen is empty: behind a proxy that ends TLS, set server.trust_proxy = true")
+	}
+}
+
+// TLSNames are the host names the certificate must cover: public_url's
+// host when it's https://, and the stacks' public_host when provisioning.
+func (c *Config) TLSNames() []string {
+	var names []string
+	if u, err := url.Parse(c.Server.PublicURL); err == nil && u.Scheme == "https" && u.Hostname() != "" {
+		names = append(names, strings.ToLower(u.Hostname()))
+	}
+	if c.Provisioning.Enabled {
+		h := strings.ToLower(strings.Trim(c.Provisioning.PublicHost, "[]"))
+		if h != "" && !slices.Contains(names, h) {
+			names = append(names, h)
+		}
+	}
+	return names
+}
+
+// sameAddress reports whether two listen addresses would clash: the same
+// port, on the same host or where either is every address.
+func sameAddress(a, b string) bool {
+	ah, ap, err1 := net.SplitHostPort(a)
+	bh, bp, err2 := net.SplitHostPort(b)
+	if err1 != nil || err2 != nil || ap != bp {
+		return false
+	}
+	wildcard := func(h string) bool { return h == "" || h == "0.0.0.0" || h == "::" }
+	return ah == bh || wildcard(ah) || wildcard(bh)
 }
 
 // StackHost is how Supermixer reaches the stacks it creates.

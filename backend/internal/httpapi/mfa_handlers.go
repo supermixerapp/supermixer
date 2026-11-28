@@ -196,7 +196,7 @@ func (h *handlers) VerifyMfa(ctx context.Context, req api.VerifyMfaRequestObject
 	if c.SSO != "" { // single sign-on came first
 		h.ssoAutoJoin(ctx, u, c.SSO, c.Email)
 	}
-	cookies = append(cookies, &http.Cookie{Name: mfaCookie, Value: "", Path: "/api/v1/auth/mfa", MaxAge: -1, HttpOnly: true})
+	cookies = append(cookies, h.cookie(&http.Cookie{Name: mfaCookie, Value: "", Path: "/api/v1/auth/mfa", MaxAge: -1, HttpOnly: true, SameSite: http.SameSiteStrictMode}))
 	return verifyMfaResponse{withCookies{status: http.StatusOK, body: toProfile(u), cookies: cookies}}, nil
 }
 
