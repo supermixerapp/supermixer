@@ -28,6 +28,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { BYTE_UNITS, joinBytes, splitBytes, type ByteUnit } from '@/lib/byte-units'
 import { t, Trans } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/_app/project/$ref/storage/settings')({
   component: StorageSettingsPage,
@@ -89,6 +90,7 @@ function StorageSettingsForm({
     image_transformation: transform !== saved.image_transformation,
   }
   const anyEdited = edited.file_size_limit || edited.image_transformation
+  useUnsavedChanges(anyEdited)
   // Sent: the settings changed here; with none, those whose .env value can't
   // be read (saving them as shown replaces it). Others are left as they are.
   const sending = anyEdited

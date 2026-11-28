@@ -131,8 +131,8 @@
     "fileCount_one": "{{count}} file",
     "fileCount_other": "{{count}} files",
     "files": "Files",
-    "everyFileCounted_one": "Every file in it is deleted now ({{count}} file). This can't be undone.",
-    "everyFileCounted_other": "Every file in it is deleted now ({{count}} files). This can't be undone."
+    "everyFileCounted_one": "Every file in it is deleted now ({{count, number}} file). This can't be undone.",
+    "everyFileCounted_other": "Every file in it is deleted now ({{count, number}} files). This can't be undone."
   },
   "storagePolicies": {
     "policiesOnStorageSTablesDecide": "Policies on Storage's tables decide who can read, upload, change and delete files through the API. Without any, only the service key can."

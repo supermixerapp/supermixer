@@ -61,7 +61,7 @@ export function describe(m: Message, id: number, at: number): LogEntry | null {
       return { id, at, kind: 'postgres', title: t('realtime:realtime.postgresChange', { type: String(d.type ?? t('realtime:realtime.change')), table: `${String(d.schema ?? '')}.${String(d.table ?? '')}` }), payload: d }
     }
     case 'broadcast':
-      return { id, at, kind: 'broadcast', title: `Broadcast: ${String(p.event ?? '')}`, payload: p.payload }
+      return { id, at, kind: 'broadcast', title: t('realtime:realtime.broadcast', { event: String(p.event ?? '') }), payload: p.payload }
     case 'presence_state':
     case 'presence_diff':
       return { id, at, kind: 'presence', title: m.event === 'presence_state' ? t('realtime:realtime.presenceState') : t('realtime:realtime.presenceChange'), payload: p }

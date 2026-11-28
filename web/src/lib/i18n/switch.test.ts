@@ -1,7 +1,18 @@
 import i18next from 'i18next'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { inEnglish, language, localized, rememberChosenSignedOut, STORAGE_KEY, switchLanguage, t, takeChosenSignedOut } from '.'
+import {
+  inEnglish,
+  language,
+  localized,
+  rememberChosenSignedOut,
+  rememberUnsaved,
+  STORAGE_KEY,
+  switchLanguage,
+  t,
+  takeChosenSignedOut,
+  takeUnsaved,
+} from '.'
 
 afterEach(async () => {
   vi.restoreAllMocks()
@@ -55,5 +66,27 @@ describe('a choice made while signed out', () => {
   it("isn't the language an account set in this browser", async () => {
     await switchLanguage('de') // as when an account's language is taken up
     expect(takeChosenSignedOut()).toBeNull()
+  })
+})
+
+describe('a choice the account has yet to save', () => {
+  it('goes only to that account, once', () => {
+    rememberUnsaved('a', 'fr')
+    expect(takeUnsaved('a')).toBe('fr')
+    expect(takeUnsaved('a')).toBeNull()
+  })
+
+  it('is dropped when someone else signs in', () => {
+    rememberUnsaved('a', 'fr')
+    expect(takeUnsaved('b')).toBeNull()
+    expect(takeUnsaved('a')).toBeNull()
+  })
+})
+
+describe('counts', () => {
+  it('are written with the language’s separators', async () => {
+    expect(t('database:editor.records', { count: 1234567 })).toBe('1,234,567 records')
+    await switchLanguage('de')
+    expect(t('database:editor.records', { count: 1234567 })).toBe('1.234.567 Datensätze')
   })
 })

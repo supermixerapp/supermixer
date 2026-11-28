@@ -22,6 +22,7 @@ import { api, isApiError, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { cn } from '@/lib/utils'
 import { t } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export type AuthConfig = Schemas['AuthConfig']
 type Value = boolean | number | string | null
@@ -140,6 +141,7 @@ export function AuthSection({
   const save = useSaveAuthConfig(ctx.projectRef)
   const [draft, setDraft] = useState<Record<string, Value>>({})
   const dirty = Object.keys(draft).length > 0
+  useUnsavedChanges(dirty)
   const api: DraftApi = {
     get: (name) => (name in draft ? draft[name]! : valueOf(ctx.config, name)),
     set: (name, v) => setDraft((d) => ({ ...d, [name]: v })),

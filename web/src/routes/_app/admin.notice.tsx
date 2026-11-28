@@ -37,6 +37,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { relativeTime } from '@/lib/auth-users'
 import { cn } from '@/lib/utils'
 import { t as tr, Trans } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/_app/admin/notice')({
   component: NoticePage,
@@ -101,6 +102,7 @@ function NoticeForm({
   const tooLong = length > MAX_NOTICE_MESSAGE
   const empty = message.trim() === ''
   const dirty = !current || type !== current.type || message !== current.message
+  useUnsavedChanges(current ? dirty : !empty)
 
   const post = useMutation({
     mutationFn: () => unwrap(api.PUT('/admin/notice', { body: { type, message } })),

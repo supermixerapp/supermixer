@@ -17,6 +17,7 @@ import { useProfile } from '@/lib/api/hooks'
 import { healthQuery, profileQuery, sessionsQuery } from '@/lib/api/queries'
 import { passwordRule } from '@/lib/passwords'
 import { t, language } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/_app/account/me')({
   component: PreferencesPage,
@@ -104,6 +105,7 @@ function ProfileForm({ me }: { me: Schemas['Profile'] }) {
     },
   })
   const dirty = displayName !== me.display_name || email !== (me.email ?? '')
+  useUnsavedChanges(dirty)
   return (
     <SettingsSection title={t('account:me.profile')}>
       <Card>

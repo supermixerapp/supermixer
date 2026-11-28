@@ -45,6 +45,7 @@
     "theSocketFailedCheckThatThe": "Le socket a échoué. Vérifiez que le stack exécute Realtime.",
     "joined": "Rejoint",
     "postgresChange": "{{type}} sur {{table}}",
-    "change": "modification"
+    "change": "modification",
+    "broadcast": "Broadcast : {{event}}"
   }
 }

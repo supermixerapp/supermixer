@@ -21,6 +21,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { resourceLimitsQuery, signUpSettingsQuery, uiConfigQuery } from '@/lib/api/queries'
 import { t, Trans } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/_app/admin/sign-up')({
   component: SignUpSettingsPage,
@@ -74,6 +75,7 @@ function SignUpForm({ saved }: { saved: Schemas['SignUpSettings'] }) {
     domainsText(body.allowed_domains) !== domainsText(saved.allowed_domains) ||
     notify !== saved.notify_admins ||
     approval !== saved.require_approval
+  useUnsavedChanges(dirty)
   const reset = () => {
     setEnabled(saved.enabled)
     setDomains(domainsText(saved.allowed_domains))

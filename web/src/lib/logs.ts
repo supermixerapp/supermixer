@@ -20,16 +20,16 @@ export const LOG_COLLECTIONS = localized((): Record<string, { title: string; sou
   'pgcron-logs': { title: 'Cron', source: 'postgres', search: 'cron job', description: t('observability:logs.pgCronSLinesInThe') },
 }))
 
-export const SOURCE_LABELS: Record<LogSource, string> = {
-  api_gateway: 'API Gateway',
+export const SOURCE_LABELS = localized((): Record<LogSource, string> => ({
+  api_gateway: t('observability:logs.apiGateway'),
   auth: 'Auth',
   postgres: 'Postgres',
   postgrest: 'PostgREST',
   pooler: 'Pooler',
   storage: 'Storage',
   realtime: 'Realtime',
-  functions: 'Edge Functions',
-}
+  functions: t('observability:logs.edgeFunctions'),
+}))
 
 export const TIME_RANGES = localized((): { label: string; minutes: number }[] => [
   { label: t('observability:logs.last15Minutes'), minutes: 15 },

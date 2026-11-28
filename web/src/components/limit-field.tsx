@@ -8,6 +8,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { t, language } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 /** "1 project", "3 projects". */
 export const countOf = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
@@ -23,6 +24,7 @@ export function useLimitDraft(saved: number | null | undefined, max = MAX_LIMIT)
   const valid = !on || (text.trim() !== '' && Number.isInteger(n) && n >= 1 && n <= max)
   const value = on ? n : null
   const dirty = on !== (saved != null) || (on && n !== saved)
+  useUnsavedChanges(dirty)
   const reset = () => {
     setOn(saved != null)
     setText(saved != null ? String(saved) : '')

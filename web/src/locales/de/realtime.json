@@ -44,6 +44,7 @@
     "theSocketFailedCheckThatThe": "Der Socket ist fehlgeschlagen. Prüfen Sie, ob der Stack Realtime ausführt.",
     "joined": "Beigetreten",
     "postgresChange": "{{type}} in {{table}}",
-    "change": "Änderung"
+    "change": "Änderung",
+    "broadcast": "Broadcast: {{event}}"
   }
 }

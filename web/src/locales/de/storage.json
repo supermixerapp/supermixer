@@ -131,8 +131,8 @@
     "fileCount_one": "{{count}} Datei",
     "fileCount_other": "{{count}} Dateien",
     "files": "Dateien",
-    "everyFileCounted_one": "Alle Dateien darin werden jetzt gelöscht ({{count}} Datei). Dies kann nicht rückgängig gemacht werden.",
-    "everyFileCounted_other": "Alle Dateien darin werden jetzt gelöscht ({{count}} Dateien). Dies kann nicht rückgängig gemacht werden."
+    "everyFileCounted_one": "Alle Dateien darin werden jetzt gelöscht ({{count, number}} Datei). Dies kann nicht rückgängig gemacht werden.",
+    "everyFileCounted_other": "Alle Dateien darin werden jetzt gelöscht ({{count, number}} Dateien). Dies kann nicht rückgängig gemacht werden."
   },
   "storagePolicies": {
     "policiesOnStorageSTablesDecide": "Richtlinien auf den Storage-Tabellen legen fest, wer über die API Dateien lesen, hochladen, ändern und löschen darf. Ohne Richtlinien kann das nur der Service-Schlüssel."

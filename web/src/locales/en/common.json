@@ -3,8 +3,9 @@
     "label": "Language",
     "switched": "The app is now in English",
     "notLoaded": "That language didn't load. Check your connection and try again.",
+    "notSaved": "Couldn't save the language to your account. This browser keeps it, and Supermixer saves it the next time it loads.",
     "unsavedTitle": "Switch to {{name}}?",
-    "unsavedText": "This page has changes that aren't saved yet. Switching language draws the page again, and they'll be lost.",
+    "unsavedText": "Switching language draws this page again, and anything you've entered but not saved yet is lost.",
     "switchAnyway": "Switch anyway"
   },
   "confirmDialog": {
@@ -266,5 +267,9 @@
     "singleTheir": "At least {{min}} characters ({{mfaMin}} with two-factor sign-in on), and not a common password or their username",
     "unknownYour": "At least {{min}} characters, or {{mfaMin}} if two-factor sign-in is on; not a common password or your username",
     "unknownTheir": "At least {{min}} characters, or {{mfaMin}} if two-factor sign-in is on; not a common password or their username"
+  },
+  "startup": {
+    "couldNotLoad": "Supermixer couldn't load. Reload the page to try again.",
+    "reload": "Reload"
   }
 }

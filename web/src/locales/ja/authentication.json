@@ -344,7 +344,7 @@
     "invited": "招待済み",
     "previous": "前へ",
     "next": "次へ",
-    "ofUsers_other": "{{count}} 人中 {{from}}–{{to}} 人",
+    "ofUsers_other": "{{count, number}} 人中 {{from}}–{{to}} 人",
     "permanently100Years": "無期限（100 年）",
     "permanently100Years2": "無期限（100 年）",
     "for1Hour": "1 時間",

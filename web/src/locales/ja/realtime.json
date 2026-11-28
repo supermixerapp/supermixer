@@ -43,6 +43,7 @@
     "theSocketFailedCheckThatThe": "ソケットが失敗しました。スタックで Realtime が動いているか確認してください。",
     "joined": "参加しました",
     "postgresChange": "{{table}} の {{type}}",
-    "change": "変更"
+    "change": "変更",
+    "broadcast": "Broadcast: {{event}}"
   }
 }

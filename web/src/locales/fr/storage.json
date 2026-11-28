@@ -131,8 +131,8 @@
     "fileCount_one": "{{count}} fichier",
     "fileCount_other": "{{count}} fichiers",
     "files": "Fichiers",
-    "everyFileCounted_one": "Tous ses fichiers sont supprimés maintenant ({{count}} fichier). Cette action est irréversible.",
-    "everyFileCounted_other": "Tous ses fichiers sont supprimés maintenant ({{count}} fichiers). Cette action est irréversible.",
+    "everyFileCounted_one": "Tous ses fichiers sont supprimés maintenant ({{count, number}} fichier). Cette action est irréversible.",
+    "everyFileCounted_other": "Tous ses fichiers sont supprimés maintenant ({{count, number}} fichiers). Cette action est irréversible.",
     "deletedFilesFrom_many": "{{count}} fichiers supprimés de {{name}}",
     "uploadingFiles_many": "Envoi de {{count}} fichiers…",
     "uploadedFiles_many": "{{count}} fichiers envoyés",
@@ -141,7 +141,7 @@
     "folders_many": "{{count}} dossiers",
     "selectedCount_many": "{{count}} sélectionnés",
     "fileCount_many": "{{count}} fichiers",
-    "everyFileCounted_many": "Tous ses fichiers sont supprimés maintenant ({{count}} fichiers). Cette action est irréversible."
+    "everyFileCounted_many": "Tous ses fichiers sont supprimés maintenant ({{count, number}} fichiers). Cette action est irréversible."
   },
   "storagePolicies": {
     "policiesOnStorageSTablesDecide": "Les politiques des tables de Storage décident qui peut lire, envoyer, modifier et supprimer des fichiers via l’API. Sans politique, seule la clé de service le peut."

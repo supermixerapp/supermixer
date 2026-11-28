@@ -3,8 +3,9 @@
     "label": "Sprache",
     "switched": "Die App ist jetzt auf Deutsch",
     "notLoaded": "Die Sprache konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "notSaved": "Die Sprache konnte nicht in Ihrem Konto gespeichert werden. Dieser Browser behält sie, und Supermixer speichert sie beim nächsten Laden.",
     "unsavedTitle": "Zu {{name}} wechseln?",
-    "unsavedText": "Diese Seite hat nicht gespeicherte Änderungen. Beim Wechsel der Sprache wird die Seite neu aufgebaut, und sie gehen verloren.",
+    "unsavedText": "Beim Wechsel der Sprache wird diese Seite neu aufgebaut, und nicht gespeicherte Eingaben gehen verloren.",
     "switchAnyway": "Trotzdem wechseln"
   },
   "confirmDialog": {
@@ -266,5 +267,9 @@
     "singleTheir": "Mindestens {{min}} Zeichen ({{mfaMin}} mit eingeschalteter Zwei-Faktor-Anmeldung), kein gängiges Passwort und nicht der eigene Benutzername",
     "unknownYour": "Mindestens {{min}} Zeichen, oder {{mfaMin}}, wenn die Zwei-Faktor-Anmeldung an ist; kein gängiges Passwort und nicht Ihr Benutzername",
     "unknownTheir": "Mindestens {{min}} Zeichen, oder {{mfaMin}}, wenn die Zwei-Faktor-Anmeldung an ist; kein gängiges Passwort und nicht der eigene Benutzername"
+  },
+  "startup": {
+    "couldNotLoad": "Supermixer konnte nicht geladen werden. Laden Sie die Seite neu, um es erneut zu versuchen.",
+    "reload": "Neu laden"
   }
 }

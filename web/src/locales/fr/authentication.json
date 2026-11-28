@@ -344,8 +344,8 @@
     "invited": "Invité",
     "previous": "Précédent",
     "next": "Suivant",
-    "ofUsers_one": "{{from}}–{{to}} sur {{count}} utilisateur",
-    "ofUsers_other": "{{from}}–{{to}} sur {{count}} utilisateurs",
+    "ofUsers_one": "{{from}}–{{to}} sur {{count, number}} utilisateur",
+    "ofUsers_other": "{{from}}–{{to}} sur {{count, number}} utilisateurs",
     "permanently100Years": "Définitivement (100 ans)",
     "permanently100Years2": "définitivement (100 ans)",
     "for1Hour": "pendant 1 heure",
@@ -356,6 +356,6 @@
     "hours24": "24 heures",
     "days7": "7 jours",
     "days30": "30 jours",
-    "ofUsers_many": "{{from}}–{{to}} sur {{count}} utilisateurs"
+    "ofUsers_many": "{{from}}–{{to}} sur {{count, number}} utilisateurs"
   }
 }

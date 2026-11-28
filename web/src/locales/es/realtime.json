@@ -45,6 +45,7 @@
     "theSocketFailedCheckThatThe": "El socket falló. Comprueba que el stack ejecuta Realtime.",
     "joined": "Unido",
     "postgresChange": "{{type}} en {{table}}",
-    "change": "cambio"
+    "change": "cambio",
+    "broadcast": "Broadcast: {{event}}"
   }
 }

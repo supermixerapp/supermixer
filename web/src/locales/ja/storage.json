@@ -123,7 +123,7 @@
     "selectedCount_other": "{{count}} 件選択中",
     "fileCount_other": "{{count}} 個のファイル",
     "files": "ファイル",
-    "everyFileCounted_other": "中のファイル（{{count}} 個）がすべて今すぐ削除されます。元に戻せません。"
+    "everyFileCounted_other": "中のファイル（{{count, number}} 個）がすべて今すぐ削除されます。元に戻せません。"
   },
   "storagePolicies": {
     "policiesOnStorageSTablesDecide": "Storage のテーブルのポリシーで、API からファイルを読み取り、アップロード、変更、削除できる人が決まります。ポリシーがなければ service キーだけが操作できます。"

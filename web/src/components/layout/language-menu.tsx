@@ -28,9 +28,11 @@ import {
   language,
   LANGUAGES,
   rememberChosenSignedOut,
+  rememberUnsaved,
   switchLanguage,
   t,
   takeChosenSignedOut,
+  takeUnsaved,
   type Language,
 } from '@/lib/i18n'
 import { hasUnsavedChanges } from '@/lib/unsaved'
@@ -60,12 +62,22 @@ export function LanguageMenu({ saveToAccount = false }: { saveToAccount?: boolea
       rememberChosenSignedOut(lng)
       return
     }
+    const me = queryClient.getQueryData<Schemas['Profile']>(profileQuery.queryKey)
+    if (!me) return
+    // Until a new password is chosen the server takes nothing else; it's
+    // saved right after (LanguageSync).
+    if (me.password_change_required) {
+      rememberUnsaved(me.id, lng)
+      return
+    }
     try {
       const p = await unwrap(api.PATCH('/profile', { body: { language: lng } }))
       queryClient.setQueryData(profileQuery.queryKey, p)
     } catch (e) {
-      // This browser keeps it; the account keeps its own for other browsers.
+      // Kept in this browser, and saved the next time the app loads.
       console.warn('saving the language', e)
+      rememberUnsaved(me.id, lng)
+      toast.error(t('common:language.notSaved'))
     }
   }
 
@@ -130,32 +142,30 @@ export function forgetLanguageSync() {
 }
 
 /**
- * Keeps the language in step with the signed-in account, once per sign-in:
- * a language saved there wins (the app switches to it); a choice made from
- * the menu while signed out is saved to an account that has none. Later
- * profile reloads don't switch, so the page never changes language under
- * someone's unsaved work.
+ * Keeps the language in step with the signed-in account, once per sign-in.
+ * What wins, first to last: a choice made here while signed in that the
+ * account doesn't have yet; the account's own language; a choice made from
+ * the menu while signed out, which only an account without a language
+ * takes. Whatever wins is saved on the account if it differs. Nothing
+ * happens while the account must choose a new password (the server takes
+ * no changes then), and later profile reloads never switch, so the page
+ * doesn't change language under someone's unsaved work.
  */
 export function LanguageSync() {
   const { data: me } = useProfile()
   const queryClient = useQueryClient()
 
   useEffect(() => {
-    if (!me || syncedFor === me.id) return
+    if (!me || me.password_change_required || syncedFor === me.id) return
     syncedFor = me.id
     const chosen = takeChosenSignedOut()
-    const saved = me.language ?? null
-    if (saved) {
-      if (saved !== language()) void switchLanguage(saved).catch((e) => console.warn('switching the language', e))
-      return
-    }
-    if (chosen) {
-      unwrap(api.PATCH('/profile', { body: { language: chosen } }))
-        .then((p: Schemas['Profile']) => queryClient.setQueryData(profileQuery.queryKey, p))
-        .catch(() => {
-          // kept in this browser anyway
-        })
-    }
+    const want = takeUnsaved(me.id) ?? me.language ?? chosen
+    if (!want) return
+    if (want !== language()) void switchLanguage(want).catch((e) => console.warn('switching the language', e))
+    if (want === me.language) return
+    unwrap(api.PATCH('/profile', { body: { language: want } }))
+      .then((p: Schemas['Profile']) => queryClient.setQueryData(profileQuery.queryKey, p))
+      .catch(() => rememberUnsaved(me.id, want))
   }, [me, queryClient])
 
   return null

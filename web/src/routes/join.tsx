@@ -28,7 +28,7 @@ function JoinPage() {
   const profile = useQuery({ ...profileQuery, retry: false })
 
   return (
-    <AuthLayout>
+    <AuthLayout signedIn={!!profile.data}>
       {!token || invitation.isError ? (
         <div className="flex flex-col gap-4">
           <h1 className="text-2xl">{t('auth:join.invitationNotFound')}</h1>

@@ -93,7 +93,7 @@ export function LogsView({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Object.entries(SOURCE_LABELS).map(([k, label]) => (
+                {Object.entries(SOURCE_LABELS()).map(([k, label]) => (
                   <SelectItem key={k} value={k}>
                     {label}
                   </SelectItem>

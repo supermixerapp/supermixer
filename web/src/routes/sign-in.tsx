@@ -12,7 +12,13 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { profileQuery, uiConfigQuery } from '@/lib/api/queries'
 import { safeRedirect } from '@/lib/redirect'
 import { localized, t, Trans } from '@/lib/i18n'
+import { useForgetOnLeave } from '@/lib/unsaved'
 
+
+// The two-factor step, kept outside the page so a language switch, which
+// draws the page again, doesn't send the user back to the password.
+let keptChallenge: Schemas['MfaChallenge'] | null = null
+const forgetChallenge = () => (keptChallenge = null)
 
 export const Route = createFileRoute('/sign-in')({
   validateSearch: (search: Record<string, unknown>): { redirect?: string; sso_error?: string; mfa?: string } => ({
@@ -54,7 +60,12 @@ function SignInPage() {
   // Chosen once per visit, so it doesn't change while they type.
   const [greeting] = useState(() => GREETINGS()[Math.floor(Math.random() * GREETINGS().length)])
   // Set when the account has two-factor sign-in: the password was right.
-  const [challenge, setChallenge] = useState<Schemas['MfaChallenge'] | null>(null)
+  const [challenge, setChallengeState] = useState(keptChallenge)
+  useForgetOnLeave(forgetChallenge)
+  const setChallenge = (c: Schemas['MfaChallenge'] | null) => {
+    keptChallenge = c
+    setChallengeState(c)
+  }
 
   const signedIn = (profile: Schemas['Profile']) => {
     queryClient.clear()

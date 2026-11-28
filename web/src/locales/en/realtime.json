@@ -44,6 +44,7 @@
     "theSocketFailedCheckThatThe": "The socket failed. Check that the stack runs Realtime.",
     "joined": "Joined",
     "postgresChange": "{{type}} on {{table}}",
-    "change": "change"
+    "change": "change",
+    "broadcast": "Broadcast: {{event}}"
   }
 }

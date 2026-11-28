@@ -131,8 +131,8 @@
     "fileCount_one": "{{count}} archivo",
     "fileCount_other": "{{count}} archivos",
     "files": "Archivos",
-    "everyFileCounted_one": "Todos sus archivos se eliminan ahora ({{count}} archivo). No se puede deshacer.",
-    "everyFileCounted_other": "Todos sus archivos se eliminan ahora ({{count}} archivos). No se puede deshacer.",
+    "everyFileCounted_one": "Todos sus archivos se eliminan ahora ({{count, number}} archivo). No se puede deshacer.",
+    "everyFileCounted_other": "Todos sus archivos se eliminan ahora ({{count, number}} archivos). No se puede deshacer.",
     "deletedFilesFrom_many": "Se eliminaron {{count}} archivos de {{name}}",
     "uploadingFiles_many": "Subiendo {{count}} archivos…",
     "uploadedFiles_many": "Se subieron {{count}} archivos",
@@ -141,7 +141,7 @@
     "folders_many": "{{count}} carpetas",
     "selectedCount_many": "{{count}} seleccionados",
     "fileCount_many": "{{count}} archivos",
-    "everyFileCounted_many": "Todos sus archivos se eliminan ahora ({{count}} archivos). No se puede deshacer."
+    "everyFileCounted_many": "Todos sus archivos se eliminan ahora ({{count, number}} archivos). No se puede deshacer."
   },
   "storagePolicies": {
     "policiesOnStorageSTablesDecide": "Las políticas de las tablas de Storage deciden quién puede leer, subir, cambiar y eliminar archivos a través de la API. Sin ninguna, solo puede la clave de servicio."

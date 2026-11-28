@@ -219,5 +219,33 @@ export function takeChosenSignedOut(): Language | null {
   }
 }
 
+/**
+ * A language chosen while signed in that the account doesn't have yet: the
+ * save failed, or the account must choose a new password first (when the
+ * server takes nothing else). It wins over the account's own language when
+ * LanguageSync next runs for that account, which saves it then.
+ */
+const UNSAVED_KEY = 'supermixer.language-unsaved'
+
+export function rememberUnsaved(account: string, lng: Language) {
+  try {
+    localStorage.setItem(UNSAVED_KEY, JSON.stringify({ account, lng }))
+  } catch {
+    // ignore
+  }
+}
+
+/** account's unsaved language, if any; forgotten either way. */
+export function takeUnsaved(account: string): Language | null {
+  try {
+    const raw = localStorage.getItem(UNSAVED_KEY)
+    localStorage.removeItem(UNSAVED_KEY)
+    const v = raw ? (JSON.parse(raw) as { account?: unknown; lng?: unknown }) : null
+    return v?.account === account && isLanguage(v.lng) ? v.lng : null
+  } catch {
+    return null
+  }
+}
+
 export default i18next
 export { Trans } from './trans'

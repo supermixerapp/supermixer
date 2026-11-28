@@ -19,6 +19,7 @@ import { api, unwrap } from '@/lib/api/client'
 import { profileQuery, uiConfigQuery } from '@/lib/api/queries'
 import { passwordRule } from '@/lib/passwords'
 import { t, Trans } from '@/lib/i18n'
+import { useForgetOnLeave } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/sign-up')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -55,12 +56,22 @@ function BackToSignIn() {
   )
 }
 
+// Where the sign-up link went, and the sign-up waiting for approval: kept
+// outside the components so a language switch, which draws the page again,
+// doesn't lose them.
+let linkSentTo: string | null = null
+let waitingFor: string | null = null
+const forgetLinkSent = () => (linkSentTo = null)
+const forgetWaiting = () => (waitingFor = null)
+
 /** Step 1: an email address, which gets a link. */
 function AskForLink() {
   const ui = useQuery(uiConfigQuery).data
   const [email, setEmail] = useState('')
   // Hidden from people; bots that fill it in are quietly ignored.
   const [website, setWebsite] = useState('')
+  const [sentTo, setSentTo] = useState(linkSentTo)
+  useForgetOnLeave(forgetLinkSent)
   const request = useMutation({
     mutationFn: () =>
       unwrap(
@@ -68,6 +79,10 @@ function AskForLink() {
           body: { email, ...(website && { website }) },
         })
       ),
+    onSuccess: () => {
+      linkSentTo = email.trim()
+      setSentTo(linkSentTo)
+    },
   })
   // Providers that make an account for someone new (GitHub, while sign-up is on).
   const providers = ui?.sso_providers.filter((p) => p.creates_accounts) ?? []
@@ -101,14 +116,14 @@ function AskForLink() {
       <Heading
         title={t('auth:signUp.createYourAccount')}
         subtitle={
-          request.isSuccess
+          sentTo !== null
             ? t('auth:signUp.checkYourEmail')
             : !ui?.sign_up_enabled
               ? t('auth:signUp.signInWithOneOfThese')
               : t('auth:signUp.enterYourEmailAddressAndWe')
         }
       />
-      {providers.length > 0 && !request.isSuccess && (
+      {providers.length > 0 && sentTo === null && (
         <>
           <div className="flex flex-col gap-2">
             {providers.map((p) => (
@@ -135,8 +150,8 @@ function AskForLink() {
           )}
         </>
       )}
-      {!ui?.sign_up_enabled ? null : request.isSuccess ? (
-        <Alert title={t('auth:signUp.weVeSentAnEmailTo', { trim: email.trim() })}>
+      {!ui?.sign_up_enabled ? null : sentTo !== null ? (
+        <Alert title={t('auth:signUp.weVeSentAnEmailTo', { trim: sentTo })}>
           {t('auth:signUp.itHasALinkToChoose')}
         </Alert>
       ) : (
@@ -205,7 +220,8 @@ function ChooseAccount({ token }: { token: string }) {
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) =>
     setForm((f) => ({ ...f, [k]: e.target.value }))
   const mismatch = form.confirm !== '' && form.password !== form.confirm
-  const [waiting, setWaiting] = useState(false)
+  const [waiting, setWaiting] = useState(waitingFor === token)
+  useForgetOnLeave(forgetWaiting)
 
   const create = useMutation({
     mutationFn: () =>
@@ -222,6 +238,7 @@ function ChooseAccount({ token }: { token: string }) {
     onSuccess: (profile) => {
       // No profile: the account waits for an instance admin's approval.
       if (!profile) {
+        waitingFor = token
         setWaiting(true)
         return
       }

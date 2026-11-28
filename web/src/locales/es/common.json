@@ -3,8 +3,9 @@
     "label": "Idioma",
     "switched": "La aplicación ahora está en español",
     "notLoaded": "No se pudo cargar ese idioma. Revisa tu conexión e inténtalo de nuevo.",
+    "notSaved": "No se pudo guardar el idioma en tu cuenta. Este navegador lo conserva y Supermixer lo guardará la próxima vez que se cargue.",
     "unsavedTitle": "¿Cambiar a {{name}}?",
-    "unsavedText": "Esta página tiene cambios sin guardar. Al cambiar de idioma, la página se vuelve a mostrar y se perderán.",
+    "unsavedText": "Al cambiar de idioma, esta página se vuelve a mostrar y se perderá lo que hayas escrito sin guardar.",
     "switchAnyway": "Cambiar de todos modos"
   },
   "confirmDialog": {
@@ -266,5 +267,9 @@
     "singleTheir": "Al menos {{min}} caracteres ({{mfaMin}} con el inicio de sesión en dos pasos activado), y que no sea una contraseña común ni su nombre de usuario",
     "unknownYour": "Al menos {{min}} caracteres, o {{mfaMin}} si el inicio de sesión en dos pasos está activado; que no sea una contraseña común ni tu nombre de usuario",
     "unknownTheir": "Al menos {{min}} caracteres, o {{mfaMin}} si el inicio de sesión en dos pasos está activado; que no sea una contraseña común ni su nombre de usuario"
+  },
+  "startup": {
+    "couldNotLoad": "Supermixer no se pudo cargar. Recarga la página para intentarlo de nuevo.",
+    "reload": "Recargar"
   }
 }
