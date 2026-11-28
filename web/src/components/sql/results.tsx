@@ -6,13 +6,14 @@ import { CellValue, Grid } from '@/components/ui/data-grid'
 import { downloadText, toCsv } from '@/lib/csv'
 import { cn } from '@/lib/utils'
 import type { QueryResponse, QueryResult, SqlError } from '@/lib/pg/run'
+import { t } from '@/lib/i18n'
 
 function summary(r: QueryResult): string {
-  if (r.columns.length > 0) return `${r.row_count} row${r.row_count === 1 ? '' : 's'}`
+  if (r.columns.length > 0) return t('database:results.rows', { count: r.row_count })
   if (['INSERT', 'UPDATE', 'DELETE', 'MERGE', 'COPY'].includes(r.command)) {
-    return `${r.command}: ${r.row_count} row${r.row_count === 1 ? '' : 's'} affected`
+    return t('database:results.rowsAffected', { command: r.command, count: r.row_count })
   }
-  return r.command || 'Done'
+  return r.command || t('database:results.done')
 }
 
 export function ResultTable({ result }: { result: QueryResult }) {
@@ -53,22 +54,22 @@ export function ResultsPanel({
   const current = results[index]
 
   if (running && !response) {
-    return <Empty>Running…</Empty>
+    return <Empty>{t('database:results.running')}</Empty>
   }
   if (error) {
     const e = error as SqlError
     return (
       <div className="h-full overflow-auto p-4 font-mono text-xs leading-5">
         <p className="text-destructive">
-          ERROR: {e.code ? `${e.code}: ` : ''}
+          {t('database:results.error')} {e.code ? `${e.code}: ` : ''}
           {e.message}
         </p>
-        {e.detail && <p className="text-foreground-light">DETAIL: {e.detail}</p>}
-        {e.hint && <p className="text-foreground-light">HINT: {e.hint}</p>}
+        {e.detail && <p className="text-foreground-light">{t('database:results.detail', { detail: e.detail })}</p>}
+        {e.hint && <p className="text-foreground-light">{t('database:results.hint', { hint: e.hint })}</p>}
       </div>
     )
   }
-  if (!response) return <Empty>Click Run or press ⌘↵ to execute your query.</Empty>
+  if (!response) return <Empty>{t('database:results.clickRunOrPressToExecute')}</Empty>
 
   return (
     <div className="flex h-full min-h-0 flex-col">
@@ -83,7 +84,7 @@ export function ResultsPanel({
                 i === index ? 'bg-surface-300 text-foreground' : 'text-foreground-lighter hover:text-foreground'
               )}
             >
-              {i + 1}. {r.command || 'Statement'}
+              {i + 1}. {r.command || t('database:results.statement')}
             </button>
           ))}
         </div>
@@ -92,7 +93,7 @@ export function ResultsPanel({
         {current && current.columns.length > 0 ? (
           <ResultTable result={current} />
         ) : (
-          <Empty>Success. {current ? summary(current) : 'No rows returned'}.</Empty>
+          <Empty>{t('database:results.success')} {current ? summary(current) : t('database:results.noRowsReturned')}.</Empty>
         )}
       </div>
       {current?.notices && current.notices.length > 0 && (
@@ -105,10 +106,10 @@ export function ResultsPanel({
       <div className="flex shrink-0 items-center gap-3 border-t px-3 py-1.5 text-xs text-foreground-lighter">
         <span>{current ? summary(current) : ''}</span>
         {current?.truncated && (
-          <span className="text-warning">Showing the first {current.rows.length} rows</span>
+          <span className="text-warning">{t('database:results.showingTheFirstRows', { length: current.rows.length })}</span>
         )}
-        {response.read_only && <span>read-only</span>}
-        <span className="ml-auto">{response.duration_ms} ms</span>
+        {response.read_only && <span>{t('database:results.readOnly')}</span>}
+        <span className="ml-auto">{t('database:results.ms', { durationMs: response.duration_ms })}</span>
         {current && current.columns.length > 0 && (
           <>
             <Button
@@ -120,7 +121,7 @@ export function ResultsPanel({
                 void navigator.clipboard.writeText(JSON.stringify(rows, null, 2))
               }}
             >
-              Copy as JSON
+              {t('database:results.copyAsJson')}
             </Button>
             <Button variant="text" size="tiny" icon={<DownloadIcon />} onClick={() => downloadText('results.csv', toCsv(current.columns.map((c) => c.name), current.rows))}>
               CSV

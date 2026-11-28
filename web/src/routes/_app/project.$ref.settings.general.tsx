@@ -24,6 +24,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useOrganizations, useSelectedProject } from '@/lib/api/hooks'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/settings/general')({
   component: ProjectGeneralSettings,
@@ -53,7 +54,7 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
   const rename = useMutation({
     mutationFn: () => unwrap(api.PATCH('/projects/{ref}', { params: { path: { ref } }, body: { name } })),
     onSuccess: async () => {
-      toast.success('Project renamed')
+      toast.success(t('project:settingsGeneral.projectRenamed'))
       await refresh()
     },
   })
@@ -61,7 +62,7 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
     mutationFn: () =>
       unwrap(api.PATCH('/projects/{ref}', { params: { path: { ref } }, body: { connection: toConnectionPayload(conn) } })),
     onSuccess: async () => {
-      toast.success('Connection details saved')
+      toast.success(t('project:settingsGeneral.connectionDetailsSaved'))
       await refresh()
     },
   })
@@ -79,7 +80,7 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
       unwrap(api.POST('/projects/{ref}/transfer', { params: { path: { ref } }, body: { organization_slug: target } })),
     onSuccess: async (p) => {
       setConfirmTransfer(false)
-      toast.success(`Moved to ${p.organization_name}`)
+      toast.success(t('project:settingsGeneral.movedTo', { organizationName: p.organization_name }))
       await refresh()
     },
     onError: (e) => {
@@ -91,7 +92,7 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
     mutationFn: () => unwrap(api.DELETE('/projects/{ref}', { params: { path: { ref } } })),
     onSuccess: async () => {
       const slug = project.organization_slug
-      toast.success(project.stack ? `Deleting ${project.name} and its stack` : `Removed ${project.name} from Supermixer`)
+      toast.success(project.stack ? t('project:settingsGeneral.deletingAndItsStack', { name: project.name }) : t('project:settingsGeneral.removedFromSupermixer', { name: project.name }))
       await refresh()
       void navigate({ to: '/org/$slug', params: { slug } })
     },
@@ -110,32 +111,32 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
 
   return (
     <>
-      <PageHeader title="General" size="small" />
+      <PageHeader title={t('project:settingsGeneral.general')} size="small" />
       <PageContainer size="small" className="flex flex-col gap-10 pb-16">
-        <SettingsSection title="Project details">
+        <SettingsSection title={t('project:settingsGeneral.projectDetails')}>
           <Card>
             <CardContent className="flex flex-col gap-6">
-              <FormField label="Project name" htmlFor="project-name" layout="horizontal">
+              <FormField label={t('project:settingsGeneral.projectName')} htmlFor="project-name" layout="horizontal">
                 <Input id="project-name" value={name} maxLength={64} disabled={!canUpdate} onChange={(e) => setName(e.target.value)} />
               </FormField>
-              <FormField label="Reference ID" layout="horizontal">
+              <FormField label={t('project:settingsGeneral.referenceId')} layout="horizontal">
                 <CopyField value={project.ref} />
               </FormField>
               {rename.error && <Alert variant="destructive" title={rename.error.message} />}
             </CardContent>
             <CardFooter>
               <Button variant="default" disabled={name === project.name} onClick={() => setName(project.name)}>
-                Cancel
+                {t('project:settingsGeneral.cancel')}
               </Button>
               <PermissionButton
                 allowed={canUpdate}
-                action="change project settings"
+                action={t('project:settingsGeneral.changeProjectSettings')}
                 variant="primary"
                 loading={rename.isPending}
                 disabled={!name.trim() || name === project.name}
                 onClick={() => rename.mutate()}
               >
-                Save
+                {t('project:settingsGeneral.save')}
               </PermissionButton>
             </CardFooter>
           </Card>
@@ -143,8 +144,8 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
 
         {canUpdate && !project.stack && (
           <SettingsSection
-            title="Connection"
-            description="Where Supermixer reaches this stack. Leave secret fields blank to keep their current values."
+            title={t('project:settingsGeneral.connection')}
+            description={t('project:settingsGeneral.whereSupermixerReachesThisStackLeave')}
           >
             <Card>
               <ConnectionFields value={conn} onChange={setConn} editing keysPresent={project.keys_present} />
@@ -162,12 +163,12 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
                   loading={test.isPending}
                   disabled={testSecretsNeeded}
                   onClick={() => test.mutate()}
-                  title={testSecretsNeeded ? 'Enter the database password and an admin key to test' : undefined}
+                  title={testSecretsNeeded ? t('project:settingsGeneral.enterTheDatabasePasswordAndAn') : undefined}
                 >
-                  Test connection
+                  {t('project:settingsGeneral.testConnection')}
                 </Button>
                 <Button variant="primary" loading={saveConnection.isPending} onClick={() => saveConnection.mutate()}>
-                  Save connection
+                  {t('project:settingsGeneral.saveConnection')}
                 </Button>
               </CardFooter>
             </Card>
@@ -177,20 +178,20 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
         <ReadOnlyAccess project={project} />
 
         <SettingsSection
-          title="Transfer project"
-          description="Move this project to another organization where you are an Owner. Project-scoped roles are removed."
+          title={t('project:settingsGeneral.transferProject')}
+          description={t('project:settingsGeneral.moveThisProjectToAnotherOrganization')}
         >
           <Card>
             <CardContent className="flex flex-col gap-4">
               {sourceOrg?.role !== 'owner' ? (
-                <p className="text-sm text-foreground-lighter">Only Owners of {project.organization_name} can transfer its projects.</p>
+                <p className="text-sm text-foreground-lighter">{t('project:settingsGeneral.onlyOwnersOfCanTransferIts', { organizationName: project.organization_name })}</p>
               ) : transferTargets.length === 0 ? (
-                <p className="text-sm text-foreground-lighter">You are not an Owner of any other organization.</p>
+                <p className="text-sm text-foreground-lighter">{t('project:settingsGeneral.youAreNotAnOwnerOf')}</p>
               ) : (
-                <FormField label="Destination organization" layout="horizontal">
+                <FormField label={t('project:settingsGeneral.destinationOrganization')} layout="horizontal">
                   <Select value={target} onValueChange={setTarget}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Choose an organization" />
+                      <SelectValue placeholder={t('project:settingsGeneral.chooseAnOrganization')} />
                     </SelectTrigger>
                     <SelectContent>
                       {transferTargets.map((o) => (
@@ -205,38 +206,36 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
             </CardContent>
             <CardFooter>
               <Button variant="default" disabled={!target} onClick={() => setConfirmTransfer(true)}>
-                Transfer project
+                {t('project:settingsGeneral.transferProject')}
               </Button>
             </CardFooter>
           </Card>
         </SettingsSection>
 
-        <SettingsSection title="Danger zone">
+        <SettingsSection title={t('project:settingsGeneral.dangerZone')}>
           {project.stack ? (
             <Alert
               variant="destructive"
-              title="Delete this project and its stack"
+              title={t('project:settingsGeneral.deleteThisProjectAndItsStack')}
               actions={
-                <PermissionButton allowed={canDelete} action="delete this project" variant="danger" onClick={() => setDeleting(true)}>
-                  Delete project
+                <PermissionButton allowed={canDelete} action={t('project:settingsGeneral.deleteThisProject')} variant="danger" onClick={() => setDeleting(true)}>
+                  {t('project:settingsGeneral.deleteProject')}
                 </PermissionButton>
               }
             >
-              Supermixer created this stack, so deleting the project removes it: its containers, database, stored files
-              and keys. This can’t be undone.
+              {t('project:settingsGeneral.supermixerCreatedThisStackSoDeleting')}
             </Alert>
           ) : (
             <Alert
               variant="destructive"
-              title="Remove this project from Supermixer"
+              title={t('project:settingsGeneral.removeThisProjectFromSupermixer')}
               actions={
-                <PermissionButton allowed={canDelete} action="remove this project" variant="danger" onClick={() => setDeleting(true)}>
-                  Remove project
+                <PermissionButton allowed={canDelete} action={t('project:settingsGeneral.removeThisProject')} variant="danger" onClick={() => setDeleting(true)}>
+                  {t('project:settingsGeneral.removeProject')}
                 </PermissionButton>
               }
             >
-              Supermixer forgets this project and its stored credentials. The Supabase stack itself keeps running and is
-              not changed.
+              {t('project:settingsGeneral.supermixerForgetsThisProjectAndIts')}
             </Alert>
           )}
         </SettingsSection>
@@ -246,22 +245,22 @@ function ProjectSettings({ project }: { project: Schemas['Project'] }) {
         open={confirmTransfer}
         onOpenChange={setConfirmTransfer}
         variant="warning"
-        title={`Transfer ${project.name}?`}
-        description={`It will move to ${orgs.find((o) => o.slug === target)?.name}. Members of ${project.organization_name} lose access unless they also belong there.`}
-        confirmLabel="Transfer project"
+        title={t('project:settingsGeneral.transfer', { name: project.name })}
+        description={t('project:settingsGeneral.itWillMoveToMembersOf', { name: orgs.find((o) => o.slug === target)?.name, organizationName: project.organization_name })}
+        confirmLabel={t('project:settingsGeneral.transferProject')}
         loading={transfer.isPending}
         onConfirm={() => transfer.mutate()}
       />
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title={project.stack ? `Delete ${project.name} and its stack?` : `Remove ${project.name}?`}
+        title={project.stack ? t('project:settingsGeneral.deleteAndItsStack', { name: project.name }) : t('project:settingsGeneral.remove', { name: project.name })}
         description={
           project.stack
-            ? 'Its containers, database, stored files and keys are deleted. This can’t be undone.'
-            : 'The Supabase stack is not affected. You can register it again later.'
+            ? t('project:settingsGeneral.itsContainersDatabaseStoredFilesAnd')
+            : t('project:settingsGeneral.theSupabaseStackIsNotAffected')
         }
-        confirmLabel={project.stack ? 'Delete project' : 'Remove project'}
+        confirmLabel={project.stack ? t('project:settingsGeneral.deleteProject') : t('project:settingsGeneral.removeProject')}
         confirmText={project.name}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}

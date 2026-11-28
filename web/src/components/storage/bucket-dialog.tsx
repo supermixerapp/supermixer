@@ -29,6 +29,7 @@ import {
   type Bucket,
   type SizeUnit,
 } from '@/lib/storage-api'
+import { t as tr, Trans } from '@/lib/i18n'
 
 export const bucketsKey = (ref: string) => ['projects', ref, 'storage', 'buckets'] as const
 
@@ -60,7 +61,7 @@ export function BucketDialog({ projectRef, bucket, onClose, onCreated }: { proje
       return bucket ? updateBucket(projectRef, bucket.id, settings) : createBucket(projectRef, name.trim(), settings)
     },
     onSuccess: async () => {
-      toast.success(bucket ? `Updated ${bucket.name}` : `Created ${name.trim()}`)
+      toast.success(bucket ? tr('storage:bucketDialog.updated', { name: bucket.name }) : tr('storage:bucketDialog.created', { trim: name.trim() }))
       await queryClient.invalidateQueries({ queryKey: bucketsKey(projectRef) })
       onClose()
       if (!bucket) onCreated?.(name.trim())
@@ -77,51 +78,47 @@ export function BucketDialog({ projectRef, bucket, onClose, onCreated }: { proje
           }}
         >
           <DialogHeader>
-            <DialogTitle>{bucket ? `Edit bucket ${bucket.name}` : 'Create a storage bucket'}</DialogTitle>
-            <DialogDescription>Buckets hold files. Who may use them is set by Storage policies.</DialogDescription>
+            <DialogTitle>{bucket ? tr('storage:bucketDialog.editBucket', { name: bucket.name }) : tr('storage:bucketDialog.createAStorageBucket')}</DialogTitle>
+            <DialogDescription>{tr('storage:bucketDialog.bucketsHoldFilesWhoMayUse')}</DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-5 border-t">
             {save.error && <Alert variant="destructive" title={save.error.message} />}
             {!bucket && (
               <FormField
-                label="Name"
+                label={tr('storage:bucketDialog.name')}
                 htmlFor="bucket-name"
-                description={problem && name ? <span className="text-destructive">{problem}</span> : "Can't be changed later."}
+                description={problem && name ? <span className="text-destructive">{problem}</span> : tr('storage:bucketDialog.canTBeChangedLater')}
               >
                 <Input id="bucket-name" autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} placeholder="avatars" />
               </FormField>
             )}
             <label className="flex items-start gap-3 text-sm">
-              <Switch checked={isPublic} onCheckedChange={setPublic} aria-label="Public bucket" />
+              <Switch checked={isPublic} onCheckedChange={setPublic} aria-label={tr('storage:bucketDialog.publicBucket')} />
               <span>
-                Public bucket
-                <span className="block text-xs text-foreground-lighter">
-                  Anyone can read files by URL without signing in. Uploads, changes and deletes still follow your policies.
-                </span>
+                <Trans i18nKey="storage:bucketDialog.publicBucketAnyoneCanReadFiles" components={{ span: <span className="block text-xs text-foreground-lighter" /> }} />
               </span>
             </label>
             {isPublic && !bucket?.public && (
-              <Alert variant="warning" title="Everything in this bucket will be readable by anyone with its URL." />
+              <Alert variant="warning" title={tr('storage:bucketDialog.everythingInThisBucketWillBe')} />
             )}
             <div className="flex flex-col gap-2">
               <label className="flex items-start gap-3 text-sm">
                 <Checkbox checked={limitOn} onCheckedChange={(c) => setLimitOn(c === true)} className="mt-0.5" />
                 <span>
-                  Restrict file size
-                  <span className="block text-xs text-foreground-lighter">Otherwise the stack&apos;s own limit (FILE_SIZE_LIMIT) applies.</span>
+                  <Trans i18nKey="storage:bucketDialog.restrictFileSizeOtherwiseTheStack" components={{ span: <span className="block text-xs text-foreground-lighter" /> }} />
                 </span>
               </label>
               {limitOn && (
                 <div className="ml-7 flex gap-2">
                   <Input
-                    aria-label="Size limit"
+                    aria-label={tr('storage:bucketDialog.sizeLimit')}
                     inputMode="decimal"
                     className="w-32"
                     value={limitValue}
                     onChange={(e) => setLimitValue(e.target.value)}
                   />
                   <Select value={limitUnit} onValueChange={(v) => setLimitUnit(v as SizeUnit)}>
-                    <SelectTrigger className="w-28" aria-label="Size unit">
+                    <SelectTrigger className="w-28" aria-label={tr('storage:bucketDialog.sizeUnit')}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -139,18 +136,17 @@ export function BucketDialog({ projectRef, bucket, onClose, onCreated }: { proje
               <label className="flex items-start gap-3 text-sm">
                 <Checkbox checked={typesOn} onCheckedChange={(c) => setTypesOn(c === true)} className="mt-0.5" />
                 <span>
-                  Restrict file types
-                  <span className="block text-xs text-foreground-lighter">Only these MIME types can be uploaded.</span>
+                  <Trans i18nKey="storage:bucketDialog.restrictFileTypesOnlyTheseMime" components={{ span: <span className="block text-xs text-foreground-lighter" /> }} />
                 </span>
               </label>
               {typesOn && (
                 <div className="ml-7">
                   <FormField
-                    label="Allowed MIME types"
+                    label={tr('storage:bucketDialog.allowedMimeTypes')}
                     htmlFor="bucket-types"
-                    description={!typesOk && types ? <span className="text-destructive">Use types like image/png or image/*, separated by commas.</span> : 'e.g. image/*, application/pdf'}
+                    description={!typesOk && types ? <span className="text-destructive">{tr('storage:bucketDialog.useTypesLikeImagePngOr')}</span> : 'e.g. image/*, application/pdf'}
                   >
-                    <Input id="bucket-types" value={types} onChange={(e) => setTypes(e.target.value)} placeholder="image/*, application/pdf" />
+                    <Input id="bucket-types" value={types} onChange={(e) => setTypes(e.target.value)} placeholder={'image/*, application/pdf'} />
                   </FormField>
                 </div>
               )}
@@ -158,10 +154,10 @@ export function BucketDialog({ projectRef, bucket, onClose, onCreated }: { proje
           </DialogSection>
           <DialogFooter>
             <Button type="button" variant="default" onClick={onClose}>
-              Cancel
+              {tr('storage:bucketDialog.cancel')}
             </Button>
             <Button type="submit" variant="primary" disabled={!!problem || !limitOk || !typesOk} loading={save.isPending}>
-              {bucket ? 'Save' : 'Create bucket'}
+              {bucket ? tr('storage:bucketDialog.save') : tr('storage:bucketDialog.createBucket')}
             </Button>
           </DialogFooter>
         </form>

@@ -22,13 +22,14 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
 import { ORG_ROLES, type OrgRole } from '@/lib/roles'
+import { localized, t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/sso')({
   component: OrgSsoPage,
 })
 
 const NONE = 'none'
-const JOIN_ROLES = ORG_ROLES.filter((r) => r.value !== 'owner')
+const JOIN_ROLES = localized(() => ORG_ROLES().filter((r) => r.value !== 'owner'))
 
 const ssoQuery = (slug: string) => ({
   queryKey: ['organizations', slug, 'sso'],
@@ -42,10 +43,10 @@ function OrgSsoPage() {
   if (!org) return null
   return (
     <>
-      <PageHeader title="SSO" size="small" />
+      <PageHeader title={t('org:sso.sso')} size="small" />
       <PageContainer size="small" className="flex flex-col gap-10 pb-16">
         {!isOwner ? (
-          <Alert title="Only Owners change single sign-on" />
+          <Alert title={t('org:sso.onlyOwnersChangeSingleSignOn')} />
         ) : settings.isPending ? (
           <Skeleton className="h-40" />
         ) : settings.isError ? (
@@ -86,38 +87,37 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
         })
       ),
     onSuccess: async () => {
-      toast.success('Single sign-on settings saved')
+      toast.success(t('org:sso.singleSignOnSettingsSaved'))
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
   })
 
   if (saved.providers.length === 0) {
     return (
-      <Alert title="No sign-in providers on this instance">
-        An instance admin adds them in the server&apos;s settings (<code className="font-mono text-xs">[[sso.providers]]</code>
-        ); then you can choose one here.
+      <Alert title={t('org:sso.noSignInProvidersOnThis')}>
+        <Trans i18nKey="org:sso.anInstanceAdminAddsThemIn" components={{ code: <code className="font-mono text-xs" /> }} />
       </Alert>
     )
   }
   return (
     <SettingsSection
-      title="Single sign-on"
-      description="Use one of this instance's sign-in providers for this organization. Members still need their account connected to it (Account › Security), unless they join through it."
+      title={t('org:sso.singleSignOn')}
+      description={t('org:sso.useOneOfThisInstanceS')}
     >
       {saved.provider_missing && (
-        <Alert variant="warning" title={`“${saved.provider}” is no longer set up on this instance`}>
-          Nothing about it is enforced until an instance admin adds it back, or you choose another.
+        <Alert variant="warning" title={t('org:sso.isNoLongerSetUpOn', { provider: saved.provider })}>
+          {t('org:sso.nothingAboutItIsEnforcedUntil')}
         </Alert>
       )}
       <Card>
         <CardContent className="flex flex-col gap-6">
-          <FormField label="Provider" layout="horizontal">
+          <FormField label={t('org:sso.provider')} layout="horizontal">
             <Select value={provider} onValueChange={setProvider}>
-              <SelectTrigger aria-label="Provider">
+              <SelectTrigger aria-label={t('org:sso.provider')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value={NONE}>None</SelectItem>
+                <SelectItem value={NONE}>{t('org:sso.none')}</SelectItem>
                 {saved.providers.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
@@ -129,17 +129,17 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
           {chosen && (
             <>
               <FormField
-                label="Require it"
+                label={t('org:sso.requireIt')}
                 layout="horizontal"
                 description={
                   signedInWithIt || required
-                    ? `Members can only open this organization after signing in with ${chosen.name}; password sessions and their access tokens are refused.`
-                    : `Sign in with ${chosen.name} yourself first, so you don't lock yourself out.`
+                    ? t('org:sso.membersCanOnlyOpenThisOrganization', { name: chosen.name })
+                    : t('org:sso.signInWithYourselfFirstSo', { name: chosen.name })
                 }
               >
                 <div className="flex flex-wrap items-center gap-3">
                   <Switch
-                    aria-label="Require signing in with the provider"
+                    aria-label={t('org:sso.requireSigningInWithTheProvider')}
                     checked={required}
                     disabled={!required && !signedInWithIt}
                     onCheckedChange={setRequired}
@@ -147,37 +147,36 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
                   {!signedInWithIt && !required && (
                     <Button asChild size="tiny" variant="default">
                       <a href={`/api/v1/auth/sso/${encodeURIComponent(chosen.id)}/start?redirect=${encodeURIComponent(pathname)}`}>
-                        Sign in with {chosen.name}
+                        {t('org:sso.signInWith', { name: chosen.name })}
                       </a>
                     </Button>
                   )}
                 </div>
               </FormField>
               {!canJoin ? (
-                <FormField label="Join by signing in" layout="horizontal">
+                <FormField label={t('org:sso.joinBySigningIn')} layout="horizontal">
                   <p className="pt-2 text-sm text-foreground-light">
-                    Not with {chosen.name}: anyone can have an account there, and the addresses it has verified may be
-                    years old. Invite people from the Team page instead.
+                    {t('org:sso.notWithAnyoneCanHaveAn', { name: chosen.name })}
                   </p>
                 </FormField>
               ) : (
                 <FormField
-                  label="Join by signing in"
+                  label={t('org:sso.joinBySigningIn')}
                   layout="horizontal"
-                  description={`People signing in with ${chosen.name} become members by themselves.`}
+                  description={t('org:sso.peopleSigningInWithBecomeMembers', { name: chosen.name })}
                 >
-                  <Switch aria-label="Let people join by signing in" checked={joins} onCheckedChange={setJoins} />
+                  <Switch aria-label={t('org:sso.letPeopleJoinBySigningIn')} checked={joins} onCheckedChange={setJoins} />
                 </FormField>
               )}
               {canJoin && joins && (
                 <>
-                  <FormField label="As" layout="horizontal" description={JOIN_ROLES.find((r) => r.value === role)?.description}>
+                  <FormField label={t('org:sso.as')} layout="horizontal" description={JOIN_ROLES().find((r) => r.value === role)?.description}>
                     <Select value={role} onValueChange={(v) => setRole(v as OrgRole)}>
-                      <SelectTrigger aria-label="Role for people who join">
+                      <SelectTrigger aria-label={t('org:sso.roleForPeopleWhoJoin')}>
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {JOIN_ROLES.map((r) => (
+                        {JOIN_ROLES().map((r) => (
                           <SelectItem key={r.value} value={r.value}>
                             {r.label}
                           </SelectItem>
@@ -186,10 +185,10 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
                     </Select>
                   </FormField>
                   <FormField
-                    label="Email domains"
+                    label={t('org:sso.emailDomains')}
                     htmlFor="sso-domains"
                     layout="horizontal"
-                    description={`Only people whose email (as ${chosen.name} vouches for it) is at one of these; leave empty for anyone ${chosen.name} signs in.`}
+                    description={t('org:sso.onlyPeopleWhoseEmailAsVouches', { name: chosen.name, name2: chosen.name })}
                   >
                     <Input id="sso-domains" placeholder="example.com" value={domains} onChange={(e) => setDomains(e.target.value)} />
                   </FormField>
@@ -200,8 +199,8 @@ function SsoForm({ slug, saved }: { slug: string; saved: Schemas['OrganizationSs
           {save.error && <Alert variant="destructive" title={save.error.message} />}
         </CardContent>
         <CardFooter>
-          <PermissionButton allowed action="change single sign-on settings" variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
-            Save
+          <PermissionButton allowed action={t('org:sso.changeSingleSignOnSettings')} variant="primary" loading={save.isPending} onClick={() => save.mutate()}>
+            {t('org:sso.save')}
           </PermissionButton>
         </CardFooter>
       </Card>

@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { AdvisorPage } from '@/components/advisors/advisor-page'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/advisors/performance')({
   component: PerformanceAdvisorPage,
@@ -12,8 +13,8 @@ function PerformanceAdvisorPage() {
     <AdvisorPage
       projectRef={ref}
       category="PERFORMANCE"
-      title="Performance Advisor"
-      description="Missing and unused indexes, slow policies and other things that make queries slower than they need to be."
+      title={t('observability:advisorsPerformance.performanceAdvisor')}
+      description={t('observability:advisorsPerformance.missingAndUnusedIndexesSlowPolicies')}
     />
   )
 }

@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
+import { t, Trans } from '@/lib/i18n'
 
 const short = (commit: string) => commit.slice(0, 7)
 
@@ -28,7 +29,7 @@ function TemplateLink({ commit }: { commit: string }) {
       className="font-mono text-xs text-foreground-light hover:text-foreground"
       title={commit}
     >
-      supabase/docker @ {short(commit)}
+      {t('project:upgrade.supabaseDocker', { short: short(commit) })}
     </a>
   )
 }
@@ -58,7 +59,7 @@ export function StackUpgrade({
   const run = useMutation({
     mutationFn: () =>
       unwrap(api.POST('/projects/{ref}/stack/upgrade', { params: { path: { ref: projectRef } } })),
-    onSuccess: () => toast.success('Upgrading the stack'),
+    onSuccess: () => toast.success(t('project:upgrade.upgradingTheStack')),
     onError: (e) => toast.error(e.message),
     onSettled: () => {
       setConfirming(false)
@@ -69,15 +70,15 @@ export function StackUpgrade({
   const u = upgrade.data
   const notReady =
     stack.status !== 'running'
-      ? 'Start the stack to upgrade it'
+      ? t('project:upgrade.startTheStackToUpgradeIt')
       : stack.operation
-        ? 'The stack is busy; wait for it to finish'
+        ? t('project:upgrade.theStackIsBusyWaitFor')
         : null
 
   return (
     <SettingsSection
-      title="Supabase version"
-      description="The version of Supabase's self-hosting files this stack runs, and the one this Supermixer server bundles."
+      title={t('project:upgrade.supabaseVersion')}
+      description={t('project:upgrade.theVersionOfSupabaseSSelf')}
     >
       {upgrade.error ? (
         <Alert variant="destructive" title={upgrade.error.message} />
@@ -86,20 +87,20 @@ export function StackUpgrade({
       ) : (
         <Card className="flex flex-col divide-y text-sm">
           <div className="grid grid-cols-3 items-center gap-4 px-5 py-3">
-            <span className="text-foreground-lighter">This stack</span>
+            <span className="text-foreground-lighter">{t('project:upgrade.thisStack')}</span>
             <span className="col-span-2 flex items-center gap-2">
               <TemplateLink commit={u.current} />
               {u.up_to_date ? (
-                <Badge variant="success">Up to date</Badge>
+                <Badge variant="success">{t('project:upgrade.upToDate')}</Badge>
               ) : (
-                <Badge variant="warning">Upgrade available</Badge>
+                <Badge variant="warning">{t('project:upgrade.upgradeAvailable')}</Badge>
               )}
             </span>
           </div>
           {!u.up_to_date && (
             <>
               <div className="grid grid-cols-3 items-center gap-4 px-5 py-3">
-                <span className="text-foreground-lighter">Bundled</span>
+                <span className="text-foreground-lighter">{t('project:upgrade.bundled')}</span>
                 <span className="col-span-2">
                   <TemplateLink commit={u.latest} />
                 </span>
@@ -108,9 +109,9 @@ export function StackUpgrade({
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>Service</TableHead>
-                      <TableHead>Now</TableHead>
-                      <TableHead>After upgrading</TableHead>
+                      <TableHead>{t('project:upgrade.service')}</TableHead>
+                      <TableHead>{t('project:upgrade.now')}</TableHead>
+                      <TableHead>{t('project:upgrade.afterUpgrading')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -118,10 +119,10 @@ export function StackUpgrade({
                       <TableRow key={i.service}>
                         <TableCell className="font-mono text-xs text-foreground">{i.service}</TableCell>
                         <TableCell className="font-mono text-xs text-foreground-lighter">
-                          {i.from || 'new service'}
+                          {i.from || t('project:upgrade.newService')}
                         </TableCell>
                         <TableCell className="font-mono text-xs text-foreground-light">
-                          {i.to || 'removed'}
+                          {i.to || t('project:upgrade.removed')}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -130,26 +131,25 @@ export function StackUpgrade({
               )}
               {u.new_keys.length > 0 && (
                 <div className="px-5 py-3 text-xs text-foreground-lighter">
-                  New settings, added to the stack’s .env:{' '}
-                  <span className="font-mono text-foreground-light">{u.new_keys.join(', ')}</span>
+                  <Trans i18nKey="project:upgrade.newSettingsAddedToTheStack" values={{ join: u.new_keys.join(', ') }} components={{ span: <span className="font-mono text-foreground-light" /> }} />
                 </div>
               )}
               <div className="flex items-center justify-between gap-4 px-5 py-3">
                 <span className="text-xs text-foreground-lighter">
                   {u.blocked ??
-                    'The database is backed up first. Services whose image changes restart; the rest keep running.'}
+                    t('project:upgrade.theDatabaseIsBackedUpFirst')}
                 </span>
                 {!u.blocked && (
                   <PermissionButton
                     allowed={allowed}
-                    action="upgrade this stack"
+                    action={t('project:upgrade.upgradeThisStack')}
                     variant="primary"
                     disabled={!!notReady}
                     title={notReady ?? undefined}
                     loading={run.isPending}
                     onClick={() => setConfirming(true)}
                   >
-                    Upgrade
+                    {t('project:upgrade.upgrade')}
                   </PermissionButton>
                 )}
               </div>
@@ -162,17 +162,15 @@ export function StackUpgrade({
         open={confirming}
         onOpenChange={setConfirming}
         variant="warning"
-        title="Upgrade this stack?"
+        title={t('project:upgrade.upgradeThisStack2')}
         description={
           u && (
             <>
-              Supermixer backs the database up, moves the stack to supabase/docker @ {short(u.latest)}, pulls
-              the new images and restarts the services that change, which are briefly unavailable. If the
-              stack doesn’t come up, it goes back to its current version.
+              {t('project:upgrade.supermixerBacksTheDatabaseUpMoves', { short: short(u.latest) })}
             </>
           )
         }
-        confirmLabel="Upgrade"
+        confirmLabel={t('project:upgrade.upgrade')}
         loading={run.isPending}
         onConfirm={() => run.mutate()}
       />

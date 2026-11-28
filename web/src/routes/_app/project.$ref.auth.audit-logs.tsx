@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { AUDIT_ACTIONS_SQL, AUDIT_LOG_SQL, auditActionLabel, containsPattern, relativeTime, type AuditEntry } from '@/lib/auth-users'
 import { pgQuery, usePg } from '@/lib/pg/run'
+import { t as tr, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/auth/audit-logs')({
   component: AuthAuditLogsPage,
@@ -57,11 +58,11 @@ function AuthAuditLogsPage() {
 
   return (
     <DatabasePage
-      title="Audit Logs"
-      description="What happened in Auth: sign-ups, sign-ins, changes to users and more, from Auth's own audit table."
+      title={tr('authentication:authAuditLogs.auditLogs')}
+      description={tr('authentication:authAuditLogs.whatHappenedInAuthSignUps')}
       toolbar={
         <>
-          <SearchBox value={typed} onChange={setTyped} placeholder="Search email, user ID or IP" />
+          <SearchBox value={typed} onChange={setTyped} placeholder={tr('authentication:authAuditLogs.searchEmailUserIdOrIp')} />
           <Select
             value={action}
             onValueChange={(v) => {
@@ -69,11 +70,11 @@ function AuthAuditLogsPage() {
               setPage(0)
             }}
           >
-            <SelectTrigger size="tiny" className="w-48" aria-label="Action">
+            <SelectTrigger size="tiny" className="w-48" aria-label={tr('authentication:authAuditLogs.action')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All actions</SelectItem>
+              <SelectItem value={ALL}>{tr('authentication:authAuditLogs.allActions')}</SelectItem>
               {(actions.data ?? []).map((a) => (
                 <SelectItem key={a.action} value={a.action}>
                   {auditActionLabel(a.action)}
@@ -82,7 +83,7 @@ function AuthAuditLogsPage() {
             </SelectContent>
           </Select>
           <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={entries.isFetching && !entries.isPending} onClick={() => void entries.refetch()}>
-            Refresh
+            {tr('authentication:authAuditLogs.refresh')}
           </Button>
         </>
       }
@@ -100,18 +101,18 @@ function AuthAuditLogsPage() {
           ) : rows.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-foreground-lighter">
               {search || action !== ALL
-                ? 'No entries match'
-                : 'No audit entries yet. If Auth runs with GOTRUE_AUDIT_LOG_DISABLE_POSTGRES, it doesn’t write them here.'}
+                ? tr('authentication:authAuditLogs.noEntriesMatch')
+                : tr('authentication:authAuditLogs.noAuditEntriesYetIfAuth')}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="whitespace-nowrap">Time</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Actor</TableHead>
-                  <TableHead>User</TableHead>
-                  <TableHead>IP address</TableHead>
+                  <TableHead className="whitespace-nowrap">{tr('authentication:authAuditLogs.time')}</TableHead>
+                  <TableHead>{tr('authentication:authAuditLogs.action')}</TableHead>
+                  <TableHead>{tr('authentication:authAuditLogs.actor')}</TableHead>
+                  <TableHead>{tr('authentication:authAuditLogs.user')}</TableHead>
+                  <TableHead>{tr('authentication:authAuditLogs.ipAddress')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -128,7 +129,7 @@ function AuthAuditLogsPage() {
                       }
                     }}
                   >
-                    <TableCell className="whitespace-nowrap text-foreground-light" title={new Date(e.created_at).toLocaleString()}>
+                    <TableCell className="whitespace-nowrap text-foreground-light" title={new Date(e.created_at).toLocaleString(language())}>
                       {relativeTime(e.created_at)}
                     </TableCell>
                     <TableCell>
@@ -144,13 +145,13 @@ function AuthAuditLogsPage() {
           )}
           {(total > 0 || page > 0) && (
             <div className="flex items-center gap-2 border-t px-4 py-2 text-xs text-foreground-light">
-              <span>{rows.length > 0 && `${from + 1}–${from + rows.length} of ${total.toLocaleString()}`}</span>
+              <span>{rows.length > 0 && tr('authentication:authAuditLogs.of', { from: from + 1, from2: from + rows.length, value: total.toLocaleString(language()) })}</span>
               <span className="ml-auto flex gap-1">
                 <Button variant="default" size="tiny" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                  Previous
+                  {tr('authentication:authAuditLogs.previous')}
                 </Button>
                 <Button variant="default" size="tiny" disabled={from + rows.length >= total} onClick={() => setPage((p) => p + 1)}>
-                  Next
+                  {tr('authentication:authAuditLogs.next')}
                 </Button>
               </span>
             </div>
@@ -163,7 +164,7 @@ function AuthAuditLogsPage() {
             <>
               <SheetHeader>
                 <SheetTitle>{auditActionLabel(open.action)}</SheetTitle>
-                <SheetDescription>{new Date(open.created_at).toLocaleString()}</SheetDescription>
+                <SheetDescription>{new Date(open.created_at).toLocaleString(language())}</SheetDescription>
               </SheetHeader>
               <SheetSection>
                 <CodeBlock

@@ -4,6 +4,7 @@
  * show up in Postgres's statement logs or pg_stat_activity.
  */
 import { ident, literal } from './sql'
+import { t } from '@/lib/i18n'
 
 export interface RoleDef {
   name: string
@@ -79,9 +80,9 @@ export function dropRole(name: string): string {
 
 /** Why a role can't be given this name, or null if it can. */
 export function roleNameProblem(name: string): string | null {
-  if (!name) return 'Enter a name.'
-  if (new TextEncoder().encode(name).length > 63) return 'Names can be at most 63 bytes long.'
-  if (/^pg_/i.test(name)) return 'Names starting with pg_ are reserved by Postgres.'
+  if (!name) return t('database:roles.enterAName')
+  if (new TextEncoder().encode(name).length > 63) return t('database:roles.namesCanBeAtMost63')
+  if (/^pg_/i.test(name)) return t('database:roles.namesStartingWithPgAreReserved')
   return null
 }
 
@@ -135,7 +136,7 @@ export function canHashPasswords(): boolean {
  */
 export async function scramVerifier(password: string, salt?: Uint8Array, iterations = 4096): Promise<string> {
   if (!canHashPasswords()) {
-    throw new Error('This browser only hashes passwords on HTTPS or localhost. Open Supermixer over HTTPS to set a password.')
+    throw new Error(t('database:roles.thisBrowserOnlyHashesPasswordsOn'))
   }
   const s = new Uint8Array(salt ?? crypto.getRandomValues(new Uint8Array(16))) // a plain ArrayBuffer copy
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(saslPrep(password)), 'PBKDF2', false, ['deriveBits'])

@@ -10,6 +10,7 @@ import { projectQuery } from '@/lib/api/queries'
 import { productMenus, projectNavGroups } from '@/lib/navigation'
 
 import { NotFound } from '../__root'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref')({
   loader: async ({ context, params }) => {
@@ -35,7 +36,7 @@ export const Route = createFileRoute('/_app/project/$ref')({
     if (isApiError(error, 403) && error.code === 'sso_required') {
       return (
         <AppShell>
-          <SsoRequired message={`${error.message}. Open the organization to sign in with it.`} />
+          <SsoRequired message={t('project:project.openTheOrganizationToSignIn', { message: error.message })} />
         </AppShell>
       )
     }
@@ -50,12 +51,12 @@ function ProjectLayout() {
   const subPath = pathname.slice(base.length).replace(/^\/+|\/+$/g, '')
   // A page belongs to the product menu that lists it (Settings › Vault lives at
   // integrations/vault); otherwise fall back to the first path segment.
-  const owningMenu = Object.entries(productMenus).find(([, m]) =>
+  const owningMenu = Object.entries(productMenus()).find(([, m]) =>
     m.groups.some((g) => g.items.some((i) => subPath === i.path || subPath.startsWith(`${i.path}/`)))
   )?.[0]
   const section = owningMenu ?? (subPath.split('/')[0] || 'home')
 
-  const groups: SidebarLink[][] = projectNavGroups.map((group) =>
+  const groups: SidebarLink[][] = projectNavGroups().map((group) =>
     group.map((r) => ({
       key: r.key,
       label: r.label,
@@ -65,7 +66,7 @@ function ProjectLayout() {
     }))
   )
 
-  const menu = productMenus[section]
+  const menu = productMenus()[section]
   // Only the most specific match is active: observability/api, not also observability.
   const matches = (path: string) => subPath === path || subPath.startsWith(`${path}/`)
   const activePath = menu?.groups

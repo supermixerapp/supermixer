@@ -2,6 +2,7 @@
  * Data API docs: reads PostgREST's OpenAPI (Swagger 2.0) description and
  * writes supabase-js and curl examples for each table, view and function.
  */
+import { t as tr } from '@/lib/i18n'
 
 /** The parts of PostgREST's OpenAPI output the docs use. */
 export interface PostgrestSpec {
@@ -269,26 +270,26 @@ export function resourceExamples(r: DocResource, c: Client, { schema = 'public',
   if (r.read) {
     out.push(
       {
-        title: 'Read all rows',
+        title: tr('integrations:apiDocsExamples.readAllRows'),
         js: `let { data: ${v}, error } = await ${from}\n  .select('*')`,
         bash: curl(c, 'GET', restUrl(c, `${path}?select=*`)),
       },
       {
-        title: 'Read specific columns',
+        title: tr('integrations:apiDocsExamples.readSpecificColumns'),
         js: `let { data: ${v}, error } = await ${from}\n  .select(${jsString(pick.map((x) => x.name).join(','))})`,
         bash: curl(c, 'GET', restUrl(c, `${path}?select=${pick.map((x) => encodeURIComponent(x.name)).join(',')}`)),
       },
       {
-        title: 'With pagination',
-        description: 'Rows 0 to 9. PostgREST also caps every response at its max-rows setting.',
+        title: tr('integrations:apiDocsExamples.withPagination'),
+        description: tr('integrations:apiDocsExamples.withPaginationDescription'),
         js: `let { data: ${v}, error } = await ${from}\n  .select('*')\n  .range(0, 9)`,
         bash: curl(c, 'GET', restUrl(c, `${path}?select=*`), [`-H 'Range: 0-9'`]),
       }
     )
     if (f) {
       out.push({
-        title: 'Filtering',
-        description: 'Combine filters by chaining them. Others include neq, gt, gte, lt, lte, like, ilike, is and in.',
+        title: tr('integrations:apiDocsExamples.filtering'),
+        description: tr('integrations:apiDocsExamples.filteringDescription'),
         js: `let { data: ${v}, error } = await ${from}\n  .select('*')\n  .eq(${jsString(f.name)}, ${jsValue(fv)})`,
         bash: curl(c, 'GET', restUrl(c, `${path}?select=*&${fq}`)),
       })
@@ -297,20 +298,20 @@ export function resourceExamples(r: DocResource, c: Client, { schema = 'public',
   if (r.insert) {
     out.push(
       {
-        title: 'Insert a row',
+        title: tr('integrations:apiDocsExamples.insertARow'),
         js: `const { data, error } = await ${from}\n  .insert([\n    ${jsObject(w)},\n  ])\n  .select()`,
         bash: curl(c, 'POST', restUrl(c, path), [`-H 'Prefer: return=minimal'`], jsonBody(w)),
       },
       {
-        title: 'Insert many rows',
+        title: tr('integrations:apiDocsExamples.insertManyRows'),
         js: `const { data, error } = await ${from}\n  .insert([\n    ${jsObject(w)},\n    ${jsObject(w, true)},\n  ])\n  .select()`,
         bash: curl(c, 'POST', restUrl(c, path), [], `[${jsonBody(w)}, ${jsonBody(w, true)}]`),
       }
     )
     if (pk.length) {
       out.push({
-        title: 'Upsert',
-        description: 'Inserts, or updates the row with the same primary key.',
+        title: tr('integrations:apiDocsExamples.upsert'),
+        description: tr('integrations:apiDocsExamples.upsertDescription'),
         js: `const { data, error } = await ${from}\n  .upsert(${jsObject(upsertCols)})\n  .select()`,
         bash: curl(c, 'POST', restUrl(c, path), [`-H 'Prefer: resolution=merge-duplicates'`], jsonBody(upsertCols)),
       })
@@ -318,24 +319,24 @@ export function resourceExamples(r: DocResource, c: Client, { schema = 'public',
   }
   if (r.update && f && u.length) {
     out.push({
-      title: 'Update matching rows',
-      description: 'Always filter an update, or every row the role can see changes.',
+      title: tr('integrations:apiDocsExamples.updateMatchingRows'),
+      description: tr('integrations:apiDocsExamples.updateDescription'),
       js: `const { data, error } = await ${from}\n  .update(${jsObject(u)})\n  .eq(${jsString(f.name)}, ${jsValue(fv)})\n  .select()`,
       bash: curl(c, 'PATCH', restUrl(c, `${path}?${fq}`), [`-H 'Prefer: return=minimal'`], jsonBody(u)),
     })
   }
   if (r.delete && f) {
     out.push({
-      title: 'Delete matching rows',
-      description: 'Always filter a delete, or every row the role can see goes.',
+      title: tr('integrations:apiDocsExamples.deleteMatchingRows'),
+      description: tr('integrations:apiDocsExamples.deleteDescription'),
       js: `const { error } = await ${from}\n  .delete()\n  .eq(${jsString(f.name)}, ${jsValue(fv)})`,
       bash: curl(c, 'DELETE', restUrl(c, `${path}?${fq}`)),
     })
   }
   if (kind !== undefined && kind !== 'r' && kind !== 'p') return out
   out.push({
-    title: 'Subscribe to changes',
-    description: `Needs the table in the supabase_realtime publication (Database › Publications). There's no curl equivalent: Realtime uses WebSockets.`,
+    title: tr('integrations:apiDocsExamples.subscribeToChanges'),
+    description: tr('integrations:apiDocsExamples.subscribeDescription'),
     js: `const channel = supabase\n  .channel(${jsString(`${r.name}-changes`)})\n  .on(\n    'postgres_changes',\n    { event: '*', schema: ${jsString(schema)}, table: ${jsString(r.name)} },\n    (payload) => console.log('Change received!', payload)\n  )\n  .subscribe()`,
     bash: '# Realtime uses WebSockets; use a client library.',
   })
@@ -346,7 +347,7 @@ export function functionExample(fn: DocFunction, c: Client): Example {
   const args = fn.params.map((p) => ({ name: p.name, value: example(p) }))
   const jsArgs = args.length ? `, {\n${args.map((a) => `    ${jsKey(a.name)}: ${jsValue(a.value)}`).join(',\n')},\n  }` : ''
   return {
-    title: 'Call the function',
+    title: tr('integrations:apiDocsExamples.callTheFunction'),
     js: `let { data, error } = await supabase\n  .rpc(${jsString(fn.name)}${jsArgs})`,
     bash: curl(c, 'POST', restUrl(c, `rpc/${encodeURIComponent(fn.name)}`), [], JSON.stringify(Object.fromEntries(args.map((a) => [a.name, a.value])))),
   }
@@ -363,51 +364,51 @@ export function authExamples(c: Client): Example[] {
   }
   return [
     {
-      title: 'Sign up',
-      description: 'Creates a user. Unless email confirmation is off, they must confirm before signing in.',
+      title: tr('integrations:apiDocsExamples.signUp'),
+      description: tr('integrations:apiDocsExamples.signUpDescription'),
       js: `let { data, error } = await supabase.auth.signUp({\n  email: 'someone@email.com',\n  password: 'a-strong-password',\n})`,
       bash: base('POST', auth('signup'), JSON.stringify({ email: 'someone@email.com', password: 'a-strong-password' })),
     },
     {
-      title: 'Sign in with password',
+      title: tr('integrations:apiDocsExamples.signInWithPassword'),
       js: `let { data, error } = await supabase.auth.signInWithPassword({\n  email: 'someone@email.com',\n  password: 'a-strong-password',\n})`,
       bash: base('POST', auth('token?grant_type=password'), JSON.stringify({ email: 'someone@email.com', password: 'a-strong-password' })),
     },
     {
-      title: 'Sign in with a magic link',
-      description: 'Emails a sign-in link. Needs SMTP set up on the stack.',
+      title: tr('integrations:apiDocsExamples.signInWithMagicLink'),
+      description: tr('integrations:apiDocsExamples.magicLinkDescription'),
       js: `let { data, error } = await supabase.auth.signInWithOtp({\n  email: 'someone@email.com',\n})`,
       bash: base('POST', auth('magiclink'), JSON.stringify({ email: 'someone@email.com' })),
     },
     {
-      title: 'Sign in with a phone code',
-      description: 'Texts a one-time code. Needs an SMS provider set up on the stack.',
+      title: tr('integrations:apiDocsExamples.signInWithPhoneCode'),
+      description: tr('integrations:apiDocsExamples.phoneCodeDescription'),
       js: `let { data, error } = await supabase.auth.signInWithOtp({\n  phone: '+13334445555',\n})\n\n// then, with the code they received:\nlet { data: session, error: verifyError } = await supabase.auth.verifyOtp({\n  phone: '+13334445555',\n  token: '123456',\n  type: 'sms',\n})`,
       bash: `${base('POST', auth('otp'), JSON.stringify({ phone: '+13334445555' }))}\n\n# then, with the code they received:\n${base('POST', auth('verify'), JSON.stringify({ type: 'sms', phone: '+13334445555', token: '123456' }))}`,
     },
     {
-      title: 'Sign in with a provider',
-      description: 'Redirects to an OAuth provider configured on the stack, such as GitHub.',
+      title: tr('integrations:apiDocsExamples.signInWithProvider'),
+      description: tr('integrations:apiDocsExamples.providerDescription'),
       js: `let { data, error } = await supabase.auth.signInWithOAuth({\n  provider: 'github',\n})`,
       bash: `# Open in a browser:\n${auth('authorize?provider=github')}`,
     },
     {
-      title: 'Get the signed-in user',
+      title: tr('integrations:apiDocsExamples.getSignedInUser'),
       js: `const { data: { user } } = await supabase.auth.getUser()`,
       bash: base('GET', auth('user'), undefined, true),
     },
     {
-      title: 'Send a password reset email',
+      title: tr('integrations:apiDocsExamples.sendPasswordReset'),
       js: `let { data, error } = await supabase.auth.resetPasswordForEmail('someone@email.com')`,
       bash: base('POST', auth('recover'), JSON.stringify({ email: 'someone@email.com' })),
     },
     {
-      title: 'Update the user',
+      title: tr('integrations:apiDocsExamples.updateTheUser'),
       js: `const { data, error } = await supabase.auth.updateUser({\n  data: { hello: 'world' },\n})`,
       bash: base('PUT', auth('user'), JSON.stringify({ data: { hello: 'world' } }), true),
     },
     {
-      title: 'Sign out',
+      title: tr('integrations:apiDocsExamples.signOut'),
       js: `let { error } = await supabase.auth.signOut()`,
       bash: base('POST', auth('logout'), undefined, true),
     },

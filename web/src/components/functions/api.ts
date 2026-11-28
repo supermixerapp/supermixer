@@ -3,6 +3,7 @@
  * the list, function and secrets pages.
  */
 import { api, unwrap, type Schemas } from '@/lib/api/client'
+import { t } from '@/lib/i18n'
 
 export type EdgeFunction = Schemas['EdgeFunction']
 export type FunctionFile = Schemas['EdgeFunctionFile']
@@ -34,7 +35,7 @@ export const functionSettingsQuery = (ref: string) => ({
 /** Why name can't be a new function's name, or null (as the server checks, plus
  * names Supermixer's own pages use). */
 export function functionNameProblem(name: string): string | null {
-  if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(name)) return 'Start with a letter; up to 64 letters, digits, - and _'
+  if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(name)) return t('functions:api.startWithALetterUpTo')
   if (name === 'main') return 'main is the edge runtime’s router'
   if (name === 'secrets') return 'secrets is the name of the Secrets page'
   return null
@@ -44,11 +45,11 @@ const SEGMENT = /^[A-Za-z0-9_@+=,-][A-Za-z0-9_.@+=, -]*$/
 
 /** Why p can't be a file's path in a function, or null. */
 export function filePathProblem(p: string): string | null {
-  if (!p || p.length > 255) return 'Use 1 to 255 characters'
+  if (!p || p.length > 255) return t('functions:api.use1To255Characters')
   const parts = p.split('/')
-  if (parts.length > 10) return 'Folders nest at most 10 deep'
+  if (parts.length > 10) return t('functions:api.foldersNestAtMost10Deep')
   if (parts.some((s) => !SEGMENT.test(s) || s.endsWith(' ')))
-    return 'A relative path of letters, digits, spaces and . _ - @ + = , with no leading dots'
+    return t('functions:api.aRelativePathOfLettersDigits')
   return null
 }
 

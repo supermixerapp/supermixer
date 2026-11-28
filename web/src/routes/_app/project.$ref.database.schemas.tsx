@@ -8,6 +8,7 @@ import { Alert } from '@/components/ui/alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { usePg } from '@/lib/pg/run'
 import { GRAPH_FKS_SQL, GRAPH_TABLES_SQL, type GraphForeignKey, type GraphTable } from '@/lib/pg/schema-graph'
+import { t as tr } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/schemas')({
   validateSearch: schemaSearch,
@@ -33,13 +34,13 @@ function SchemaVisualizerPage() {
   return (
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-(--header-height) shrink-0 flex-wrap items-center gap-3 border-b px-4 py-2">
-        <h1 className="text-sm text-foreground">Schema Visualizer</h1>
+        <h1 className="text-sm text-foreground">{tr('database:databaseSchemas.schemaVisualizer')}</h1>
         <SchemaPicker projectRef={ref} value={schema} onChange={(s) => void navigate({ to: '.', search: { schema: s } })} />
         {tables.data && (
           <span className="text-xs text-foreground-lighter">
-            {plural(counts.tables, 'table')}
-            {counts.other > 0 && ` · ${plural(counts.other, 'view or foreign table', 'views or foreign tables')}`} ·{' '}
-            {plural(fks.data?.length ?? 0, 'foreign key')}
+            {tr('database:databaseSchemas.tables', { count: counts.tables })}
+            {counts.other > 0 && ` · ${tr('database:databaseSchemas.views', { count: counts.other })}`} ·{' '}
+            {tr('database:databaseSchemas.foreignKeys', { count: fks.data?.length ?? 0 })}
           </span>
         )}
       </div>
@@ -55,8 +56,8 @@ function SchemaVisualizerPage() {
         ) : tables.data.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center gap-2 text-center">
             <SchemaIcon size={28} className="text-foreground-lighter" />
-            <p className="text-sm text-foreground">No tables or views in {schema}</p>
-            <p className="text-xs text-foreground-lighter">Create one in the Table Editor to see it here.</p>
+            <p className="text-sm text-foreground">{tr('database:databaseSchemas.noTablesOrViewsIn', { schema })}</p>
+            <p className="text-xs text-foreground-lighter">{tr('database:databaseSchemas.createOneInTheTableEditor')}</p>
           </div>
         ) : (
           // Remount on new data so the diagram starts from it.
@@ -67,7 +68,6 @@ function SchemaVisualizerPage() {
   )
 }
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
 
 /** A short, stable fingerprint of a string. */
 function hash(s: string): string {

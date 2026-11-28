@@ -33,6 +33,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { relativeTime } from '@/lib/auth-users'
+import { localized, t as tr, Trans, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/account/access-tokens')({
   component: AccessTokensPage,
@@ -47,7 +48,7 @@ type Token = Schemas['AccessToken']
 
 function AccessTokensPage() {
   return (
-    <AccountLayout title="Access Tokens">
+    <AccountLayout title={tr('account:accessTokens.accessTokens')}>
       <TokensSection />
       <UsageSection />
     </AccountLayout>
@@ -62,7 +63,7 @@ function TokensSection() {
   const revoke = useMutation({
     mutationFn: (t: Token) => unwrap(api.DELETE('/profile/access-tokens/{token_id}', { params: { path: { token_id: t.id } } })),
     onSuccess: (_, t) => {
-      toast.success(`Revoked ${t.name}`)
+      toast.success(tr('account:accessTokens.revoked', { name: t.name }))
       setRevoking(null)
       void queryClient.invalidateQueries({ queryKey: tokensQuery.queryKey })
     },
@@ -71,12 +72,12 @@ function TokensSection() {
   const [now] = useState(() => Date.now())
   return (
     <SettingsSection
-      title="Personal access tokens"
-      description="For scripts and CI. A token can do what you can in Supermixer, except change your password, two-factor sign-in, sessions or tokens. Keep them secret like passwords. Changing your password or turning on two-factor sign-in revokes them all."
+      title={tr('account:accessTokens.personalAccessTokens')}
+      description={tr('account:accessTokens.forScriptsAndCiAToken')}
     >
       <div className="flex justify-end">
         <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-          Generate new token
+          {tr('account:accessTokens.generateNewToken')}
         </Button>
       </div>
       <Card>
@@ -87,14 +88,14 @@ function TokensSection() {
             <Skeleton className="h-10" />
           </div>
         ) : tokens.data.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-foreground-lighter">No tokens yet.</p>
+          <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{tr('account:accessTokens.noTokensYet')}</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Last used</TableHead>
-                <TableHead>Expires</TableHead>
+                <TableHead>{tr('account:accessTokens.name')}</TableHead>
+                <TableHead>{tr('account:accessTokens.lastUsed')}</TableHead>
+                <TableHead>{tr('account:accessTokens.expires')}</TableHead>
                 <TableHead className="w-24" />
               </TableRow>
             </TableHeader>
@@ -116,15 +117,15 @@ function TokensSection() {
                           {t.last_used_ip && <span className="font-mono text-xs text-foreground-lighter">{t.last_used_ip}</span>}
                         </span>
                       ) : (
-                        <span className="text-foreground-lighter">Never</span>
+                        <span className="text-foreground-lighter">{tr('account:accessTokens.never')}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-foreground-light">
-                      {expired ? <Badge variant="warning">Expired</Badge> : new Date(t.expires_at).toLocaleDateString()}
+                      {expired ? <Badge variant="warning">{tr('account:accessTokens.expired')}</Badge> : new Date(t.expires_at).toLocaleDateString(language())}
                     </TableCell>
                     <TableCell className="text-right">
                       <Button size="tiny" variant="default" onClick={() => setRevoking(t)}>
-                        {expired ? 'Remove' : 'Revoke'}
+                        {expired ? tr('account:accessTokens.remove') : tr('account:accessTokens.revoke')}
                       </Button>
                     </TableCell>
                   </TableRow>
@@ -138,9 +139,9 @@ function TokensSection() {
       <ConfirmDialog
         open={revoking !== null}
         onOpenChange={(o) => !o && setRevoking(null)}
-        title={`Revoke ${revoking?.name}?`}
-        description="Anything using it stops working straight away. This can't be undone."
-        confirmLabel="Revoke"
+        title={tr('account:accessTokens.revoke2', { name: revoking?.name })}
+        description={tr('account:accessTokens.anythingUsingItStopsWorkingStraight')}
+        confirmLabel={tr('account:accessTokens.revoke')}
         loading={revoke.isPending}
         onConfirm={() => revoking && revoke.mutate(revoking)}
       />
@@ -148,12 +149,12 @@ function TokensSection() {
   )
 }
 
-const EXPIRY = [
-  { days: 7, label: '7 days' },
-  { days: 30, label: '30 days' },
-  { days: 90, label: '90 days' },
-  { days: 365, label: '1 year' },
-]
+const EXPIRY = localized(() => [
+  { days: 7, label: tr('account:accessTokens.n7Days') },
+  { days: 30, label: tr('account:accessTokens.n30Days') },
+  { days: 90, label: tr('account:accessTokens.n90Days') },
+  { days: 365, label: tr('account:accessTokens.n1Year') },
+])
 
 function CreateTokenDialog({ onClose }: { onClose: () => void }) {
   const queryClient = useQueryClient()
@@ -170,8 +171,8 @@ function CreateTokenDialog({ onClose }: { onClose: () => void }) {
         {token ? (
           <>
             <DialogHeader>
-              <DialogTitle>Copy your token</DialogTitle>
-              <DialogDescription>It isn&apos;t shown again. If you lose it, revoke it and make another.</DialogDescription>
+              <DialogTitle>{tr('account:accessTokens.copyYourToken')}</DialogTitle>
+              <DialogDescription>{tr('account:accessTokens.itIsnTShownAgainIf')}</DialogDescription>
             </DialogHeader>
             <DialogSection className="flex flex-col gap-4 border-t">
               <CopyField value={token} />
@@ -179,7 +180,7 @@ function CreateTokenDialog({ onClose }: { onClose: () => void }) {
             </DialogSection>
             <DialogFooter>
               <Button variant="primary" onClick={onClose}>
-                Done
+                {tr('account:accessTokens.done')}
               </Button>
             </DialogFooter>
           </>
@@ -191,20 +192,20 @@ function CreateTokenDialog({ onClose }: { onClose: () => void }) {
             }}
           >
             <DialogHeader>
-              <DialogTitle>Generate a new token</DialogTitle>
-              <DialogDescription>Give each script or service its own, so you can revoke one without the others.</DialogDescription>
+              <DialogTitle>{tr('account:accessTokens.generateANewToken')}</DialogTitle>
+              <DialogDescription>{tr('account:accessTokens.giveEachScriptOrServiceIts')}</DialogDescription>
             </DialogHeader>
             <DialogSection className="flex flex-col gap-4 border-t">
-              <FormField label="Name" htmlFor="tok-name" description="What will use it, like “GitHub Actions deploys”.">
+              <FormField label={tr('account:accessTokens.name')} htmlFor="tok-name" description={tr('account:accessTokens.whatWillUseItLikeGithub')}>
                 <Input id="tok-name" autoFocus required maxLength={64} value={name} onChange={(e) => setName(e.target.value)} />
               </FormField>
-              <FormField label="Expires after" htmlFor="tok-expiry">
+              <FormField label={tr('account:accessTokens.expiresAfter')} htmlFor="tok-expiry">
                 <Select value={days} onValueChange={setDays}>
                   <SelectTrigger id="tok-expiry">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {EXPIRY.map((e) => (
+                    {EXPIRY().map((e) => (
                       <SelectItem key={e.days} value={String(e.days)}>
                         {e.label}
                       </SelectItem>
@@ -216,10 +217,10 @@ function CreateTokenDialog({ onClose }: { onClose: () => void }) {
             </DialogSection>
             <DialogFooter>
               <Button variant="default" onClick={onClose}>
-                Cancel
+                {tr('account:accessTokens.cancel')}
               </Button>
               <Button type="submit" variant="primary" loading={create.isPending} disabled={!name.trim()}>
-                Generate token
+                {tr('account:accessTokens.generateToken')}
               </Button>
             </DialogFooter>
           </form>
@@ -229,44 +230,43 @@ function CreateTokenDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-const V1_ENDPOINTS: [string, string, string][] = [
-  ['GET', '/v1/organizations', 'Your organizations'],
-  ['GET', '/v1/organizations/{slug}', 'An organization'],
-  ['GET', '/v1/organizations/{slug}/members', 'Its members'],
-  ['GET', '/v1/projects', 'Projects you can see'],
-  ['GET', '/v1/projects/{ref}', 'A project'],
-  ['GET', '/v1/projects/{ref}/health', "Its services' health (?services=auth,db,rest,storage)"],
-  ['GET', '/v1/projects/{ref}/api-keys', 'Its API keys (secret ones if you may see them)'],
-  ['POST', '/v1/projects/{ref}/database/query', 'Run SQL: {"query": "..."}; answers with the rows'],
-  ['GET', '/v1/projects/{ref}/database/backups', 'Its backups'],
-  ['GET', '/v1/projects/{ref}/functions', 'Its Edge Functions'],
-  ['GET', '/v1/projects/{ref}/functions/{slug}', 'An Edge Function'],
-  ['DELETE', '/v1/projects/{ref}/functions/{slug}', 'Delete an Edge Function'],
-  ['GET', '/v1/projects/{ref}/secrets', 'Edge Function secrets (values as SHA-256 digests)'],
-  ['POST', '/v1/projects/{ref}/secrets', 'Add or replace secrets: [{"name": "...", "value": "..."}]'],
-  ['DELETE', '/v1/projects/{ref}/secrets', 'Remove secrets: ["NAME", ...]'],
-  ['POST', '/v1/projects/{ref}/pause', 'Pause a stack Supermixer created'],
-  ['POST', '/v1/projects/{ref}/restore', 'Start it again'],
-]
+const V1_ENDPOINTS = localized((): [string, string, string][] => [
+  ['GET', '/v1/organizations', tr('account:accessTokens.yourOrganizations')],
+  ['GET', '/v1/organizations/{slug}', tr('account:accessTokens.anOrganization')],
+  ['GET', '/v1/organizations/{slug}/members', tr('account:accessTokens.itsMembers')],
+  ['GET', '/v1/projects', tr('account:accessTokens.projectsYouCanSee')],
+  ['GET', '/v1/projects/{ref}', tr('account:accessTokens.aProject')],
+  ['GET', '/v1/projects/{ref}/health', tr('account:accessTokens.itsServicesHealthServicesAuthDb')],
+  ['GET', '/v1/projects/{ref}/api-keys', tr('account:accessTokens.itsApiKeysSecretOnesIf')],
+  ['POST', '/v1/projects/{ref}/database/query', tr('account:accessTokens.runSqlQueryAnswersWithThe')],
+  ['GET', '/v1/projects/{ref}/database/backups', tr('account:accessTokens.itsBackups')],
+  ['GET', '/v1/projects/{ref}/functions', tr('account:accessTokens.itsEdgeFunctions')],
+  ['GET', '/v1/projects/{ref}/functions/{slug}', tr('account:accessTokens.anEdgeFunction')],
+  ['DELETE', '/v1/projects/{ref}/functions/{slug}', tr('account:accountAccessTokens.deleteAnEdgeFunction')],
+  ['GET', '/v1/projects/{ref}/secrets', tr('account:accessTokens.edgeFunctionSecretsValuesAsSha')],
+  ['POST', '/v1/projects/{ref}/secrets', tr('account:accessTokens.addOrReplaceSecretsNameValue')],
+  ['DELETE', '/v1/projects/{ref}/secrets', tr('account:accessTokens.removeSecretsName')],
+  ['POST', '/v1/projects/{ref}/pause', tr('account:accessTokens.pauseAStackSupermixerCreated')],
+  ['POST', '/v1/projects/{ref}/restore', tr('account:accessTokens.startItAgain')],
+])
 
 function UsageSection() {
   const origin = window.location.origin
   return (
     <SettingsSection
-      title="Using the API"
-      description="Send the token as Authorization: Bearer. Requests act as you, with your roles in each organization, and appear in the audit logs with the token's name."
+      title={tr('account:accessTokens.usingTheApi')}
+      description={tr('account:accessTokens.sendTheTokenAsAuthorizationBearer')}
     >
       <Card className="flex flex-col gap-4 p-5 text-sm">
         <div className="flex flex-col gap-1">
-          <span className="text-foreground">Supabase-style Management API</span>
+          <span className="text-foreground">{tr('account:accessTokens.supabaseStyleManagementApi')}</span>
           <span className="text-foreground-light">
-            A subset of Supabase&apos;s Management API (api.supabase.com/v1), with its paths and responses, for scripts
-            written for it. Base URL:
+            {tr('account:accessTokens.aSubsetOfSupabaseSManagement')}
           </span>
           <CopyField value={`${origin}/v1`} />
         </div>
         <ul className="flex flex-col divide-y rounded-md border">
-          {V1_ENDPOINTS.map(([method, path, what]) => (
+          {V1_ENDPOINTS().map(([method, path, what]) => (
             <li key={method + path} className="flex flex-col gap-0.5 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3">
               <span className="flex min-w-0 items-baseline gap-2 font-mono text-xs sm:w-96 sm:shrink-0">
                 <span className="w-12 shrink-0 text-foreground-lighter">{method}</span>
@@ -283,17 +283,13 @@ function UsageSection() {
   -d '{"query": "select count(*) from auth.users"}'`}
         />
         <div className="flex flex-col gap-1">
-          <span className="text-foreground">Supermixer&apos;s API</span>
+          <span className="text-foreground">{tr('account:accessTokens.supermixerSApi')}</span>
           <span className="text-foreground-light">
-            Everything the app does, such as deploying Edge Functions, backups and Auth settings. Base URL:
+            {tr('account:accessTokens.everythingTheAppDoesSuchAs')}
           </span>
           <CopyField value={`${origin}/api/v1`} />
           <span className="text-foreground-light">
-            Described in{' '}
-            <a href="/api/v1/openapi.json" target="_blank" rel="noreferrer" className="text-link">
-              openapi.json
-            </a>{' '}
-            (OpenAPI 3), for docs viewers and client generators.
+            <Trans i18nKey="account:accessTokens.describedInOpenapiJsonOpenapi3" components={{ a: <a href="/api/v1/openapi.json" target="_blank" rel="noreferrer" className="text-link" /> }} />
           </span>
         </div>
         <CodeBlock

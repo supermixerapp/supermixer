@@ -13,6 +13,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
+import { t, Trans } from '@/lib/i18n'
 
 export function CreateStackForm({
   org,
@@ -35,7 +36,7 @@ export function CreateStackForm({
         })
       ),
     onSuccess: async (project) => {
-      toast.success(`Creating ${project.name}`)
+      toast.success(t('project:createStack.creating', { name: project.name }))
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
       void navigate({ to: '/project/$ref', params: { ref: project.ref } })
@@ -49,27 +50,26 @@ export function CreateStackForm({
     <form onSubmit={submit}>
       <Card>
         <div className="border-b px-card py-4">
-          <h3 className="font-sans text-base font-normal text-foreground">Create a new stack</h3>
+          <h3 className="font-sans text-base font-normal text-foreground">{t('project:createStack.createANewStack')}</h3>
           <p className="mt-1 text-sm text-foreground-lighter">
-            Supermixer starts a new self-hosted Supabase stack on this server&apos;s Docker, with
-            its own database, keys and ports.
+            {t('project:createStack.supermixerStartsANewSelfHosted')}
           </p>
         </div>
         <div className="grid gap-4 border-b px-card py-6 md:grid-cols-12 md:gap-x-6">
           <div className="md:col-span-4">
-            <h4 className="font-sans text-sm font-normal text-foreground">Project</h4>
+            <h4 className="font-sans text-sm font-normal text-foreground">{t('project:createStack.project')}</h4>
           </div>
           <div className="flex flex-col gap-4 md:col-span-8">
-            <FormField label="Organization">
+            <FormField label={t('project:createStack.organization')}>
               <Input value={org.name} readOnly />
             </FormField>
-            <FormField label="Project name" htmlFor="stack-name">
+            <FormField label={t('project:createStack.projectName')} htmlFor="stack-name">
               <Input
                 id="stack-name"
                 required
                 maxLength={64}
                 autoFocus
-                placeholder="Production"
+                placeholder={t('project:createStack.production')}
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
@@ -78,23 +78,17 @@ export function CreateStackForm({
         </div>
         <div className="grid gap-4 px-card py-6 md:grid-cols-12 md:gap-x-6">
           <div className="md:col-span-4">
-            <h4 className="font-sans text-sm font-normal text-foreground">What happens</h4>
+            <h4 className="font-sans text-sm font-normal text-foreground">{t('project:createStack.whatHappens')}</h4>
           </div>
           <ul className="flex list-disc flex-col gap-1.5 pl-4 text-sm text-foreground-light md:col-span-8">
             <li>
-              Every secret is generated for this stack: database password, JWT secret, API keys and
-              encryption keys.
+              {t('project:createStack.everySecretIsGeneratedForThis')}
             </li>
             <li>
-              It gets its own ports for the API and Postgres from the ranges this server is
-              configured with.
+              {t('project:createStack.itGetsItsOwnPortsFor')}
             </li>
             <li>
-              It runs Supabase&apos;s official Docker setup at{' '}
-              <span className="font-mono text-xs" title={template}>
-                {template.slice(0, 7)}
-              </span>
-              , with log analytics. The first stack can take several minutes while images download.
+              <Trans i18nKey="project:createStack.itRunsSupabaseSOfficialDocker" values={{ slice: template.slice(0, 7) }} components={{ span: <span className="font-mono text-xs" title={template} /> }} />
             </li>
           </ul>
         </div>
@@ -105,7 +99,7 @@ export function CreateStackForm({
         )}
         <div className="flex items-center justify-between gap-2 border-t px-card py-4">
           <Button variant="default" onClick={onCancel}>
-            Cancel
+            {t('project:createStack.cancel')}
           </Button>
           <Button
             type="submit"
@@ -113,7 +107,7 @@ export function CreateStackForm({
             loading={create.isPending}
             disabled={!name.trim()}
           >
-            Create stack
+            {t('project:createStack.createStack')}
           </Button>
         </div>
       </Card>

@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import type { Schemas } from '@/lib/api/client'
 import { useSelectedOrganization } from '@/lib/api/hooks'
+import { localized, t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/integrations/')({
   component: IntegrationsPage,
@@ -40,96 +41,94 @@ interface Integration {
   note?: (s: Summary) => ReactNode
 }
 
-const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? one : many}`
-
-function countState(c: Schemas['IntegrationCount'], one: string): State {
-  if (c.total === 0) return { label: 'Not set up', variant: 'default' }
-  if (c.failing > 0) return { label: `${c.failing} failing`, variant: 'destructive' }
-  return { label: plural(c.total, one), variant: 'success' }
+function countState(c: Schemas['IntegrationCount'], kind: 'channels' | 'webhooks'): State {
+  if (c.total === 0) return { label: t('org:integrations.notSetUp'), variant: 'default' }
+  if (c.failing > 0) return { label: t('org:integrations.failing', { failing: c.failing }), variant: 'destructive' }
+  return { label: kind === 'channels' ? t('org:integrations.channelCount', { count: c.total }) : t('org:integrations.webhookCount', { count: c.total }), variant: 'success' }
 }
 
-const INTEGRATIONS: { title: string; items: Integration[] }[] = [
+const INTEGRATIONS = localized((): { title: string; items: Integration[] }[] => [
   {
-    title: 'Notifications',
+    title: t('org:integrations.notifications'),
     items: [
       {
         key: 'chat',
-        title: 'Chat notifications',
+        title: t('org:integrations.chatNotifications'),
         description:
-          'Post the organization’s events, such as failed backups and new members, to Slack, Microsoft Teams, Discord, Google Chat or Mattermost.',
+          t('org:integrations.postTheOrganizationSEventsSuch'),
         icon: ForumIcon,
         path: 'integrations/chat',
-        state: (s) => countState(s.chat, 'channel'),
+        state: (s) => countState(s.chat, 'channels'),
       },
       {
         key: 'webhooks',
-        title: 'Webhooks',
+        title: t('org:integrations.webhooks'),
         description:
-          'Send every event to your own service as signed JSON, in order, retried until it answers.',
+          t('org:integrations.sendEveryEventToYourOwn'),
         icon: WebhookIcon,
         path: 'webhooks',
-        state: (s) => countState(s.webhooks, 'webhook'),
+        state: (s) => countState(s.webhooks, 'webhooks'),
       },
     ],
   },
   {
-    title: 'Sign-in',
+    title: t('org:integrations.signIn'),
     items: [
       {
         key: 'sso',
-        title: 'Single sign-on',
+        title: t('org:integrations.singleSignOn'),
         description:
-          'Let members sign in through your identity provider, require it, and let people join by themselves.',
+          t('org:integrations.letMembersSignInThroughYour'),
         icon: BadgeIcon,
         path: 'sso',
         state: (s) =>
           !s.sso.provider
-            ? { label: 'Not set up', variant: 'default' }
+            ? { label: t('org:integrations.notSetUp'), variant: 'default' }
             : s.sso.provider_missing
-              ? { label: 'Provider missing', variant: 'destructive' }
-              : { label: s.sso.required ? 'Required' : 'On', variant: 'success' },
+              ? { label: t('org:integrations.providerMissing'), variant: 'destructive' }
+              : { label: s.sso.required ? t('org:integrations.required') : t('org:integrations.on'), variant: 'success' },
         note: (s) =>
           s.sso.provider_missing
-            ? `${s.sso.provider} is no longer set up on this instance, so it isn’t enforced.`
+            ? t('org:integrations.isNoLongerSetUpOn', { provider: s.sso.provider })
             : s.sso.provider
-              ? `Through ${s.sso.provider}`
+              ? t('org:integrations.through', { provider: s.sso.provider })
               : undefined,
       },
     ],
   },
   {
-    title: 'Projects',
+    title: t('org:integrations.projects'),
     items: [
       {
         key: 'log_drains',
-        title: 'Log drains',
-        description: 'Send a created project’s logs to Datadog, Loki or any HTTP endpoint as well.',
+        title: t('org:integrations.logDrains'),
+        description: t('org:integrations.sendACreatedProjectSLogs'),
         icon: LogsIcon,
         state: (s) =>
           s.log_drains.total === 0
-            ? { label: 'None', variant: 'default' }
-            : { label: plural(s.log_drains.total, 'drain'), variant: 'success' },
+            ? { label: t('org:integrations.none'), variant: 'default' }
+            : { label: t('org:integrations.drainCount', { count: s.log_drains.total }), variant: 'success' },
         note: (s) =>
           s.log_drains.total > 0
-            ? `In ${plural(s.log_drains.projects, 'project')}. Set up in each project’s Settings › Log Drains.`
-            : 'Set up in each project’s Settings › Log Drains.',
+            ? t('org:integrations.inSetUpInEachProject', { count: s.log_drains.projects })
+            : t('org:integrations.setUpInEachProjectS'),
       },
       {
         key: 'backup_copies',
-        title: 'Backup copies in S3',
+        title: t('org:integrations.backupCopiesInS3'),
         description:
-          'Copy created projects’ backups to an S3-compatible bucket, so they survive losing this server.',
+          t('org:integrationsIndex.copyCreatedProjectsBackupsToAn'),
         icon: CloudUploadIcon,
         state: (s) =>
           s.backup_copies.enabled
-            ? { label: 'On', variant: 'success' }
-            : { label: 'Off', variant: 'default' },
+            ? { label: t('org:integrations.on'), variant: 'success' }
+            : { label: t('org:integrations.off'), variant: 'default' },
         note: () =>
-          'Set for the whole instance in Supermixer’s config file, by whoever runs the server.',
+          t('org:integrationsIndex.setForTheWholeInstanceIn'),
       },
     ],
   },
-]
+])
 
 function IntegrationsPage() {
   const org = useSelectedOrganization()
@@ -139,13 +138,13 @@ function IntegrationsPage() {
   return (
     <>
       <PageHeader
-        title="Organization Integrations"
-        description="What this organization is connected to outside Supermixer."
+        title={t('org:integrations.organizationIntegrations')}
+        description={t('org:integrations.whatThisOrganizationIsConnectedTo')}
         size="large"
       />
       <PageContainer size="large" className="flex flex-col gap-10 pb-16">
         {summary.isError && <Alert variant="destructive" title={summary.error.message} />}
-        {INTEGRATIONS.map((group) => (
+        {INTEGRATIONS().map((group) => (
           <section key={group.title} className="flex flex-col gap-3">
             <h2 className="heading-section text-foreground-light">{group.title}</h2>
             <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -194,7 +193,7 @@ function IntegrationCard({
             {state.label}
           </Badge>
         ) : failed ? (
-          <Badge className="ml-auto">Unavailable</Badge>
+          <Badge className="ml-auto">{t('org:integrations.unavailable')}</Badge>
         ) : (
           <Skeleton className="ml-auto h-4 w-16" />
         )}

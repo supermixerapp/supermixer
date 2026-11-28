@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrig
 import { BUILTIN_TYPES, ENUM_TYPES_SQL, TABLES_SQL, type TableListRow } from '@/lib/pg/catalog'
 import { usePg } from '@/lib/pg/run'
 import type { ColumnDef } from '@/lib/pg/table-sql'
+import { t as tr, Trans } from '@/lib/i18n'
 
 export const newColumn = (): ColumnDef => ({ name: '', type: 'text', nullable: true })
 
@@ -19,12 +20,12 @@ function TypePicker({ projectRef, value, onChange }: { projectRef: string; value
   const enums = usePg<{ schema: string; name: string }>(projectRef, ['enum-types'], ENUM_TYPES_SQL)
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="tiny" aria-label="Type">
+      <SelectTrigger size="tiny" aria-label={tr('database:columnFields.type')}>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
         <SelectGroup>
-          <SelectLabel>Built-in</SelectLabel>
+          <SelectLabel>{tr('database:columnFields.builtIn')}</SelectLabel>
           {BUILTIN_TYPES.map((t) => (
             <SelectItem key={t} value={t}>
               {t}
@@ -33,7 +34,7 @@ function TypePicker({ projectRef, value, onChange }: { projectRef: string; value
         </SelectGroup>
         {(enums.data?.length ?? 0) > 0 && (
           <SelectGroup>
-            <SelectLabel>Enums</SelectLabel>
+            <SelectLabel>{tr('database:columnFields.enums')}</SelectLabel>
             {enums.data!.map((e) => (
               <SelectItem key={`${e.schema}.${e.name}`} value={`${e.schema}.${e.name}`}>
                 {e.schema === 'public' ? e.name : `${e.schema}.${e.name}`}
@@ -72,17 +73,17 @@ function ReferencePicker({
           onChange({ schema: s!, table: rest.join('.'), column: 'id', onDelete: value?.onDelete ?? 'no action' })
         }}
       >
-        <SelectTrigger size="tiny" className="w-48" aria-label="References">
-          <SelectValue placeholder="No foreign key" />
+        <SelectTrigger size="tiny" className="w-48" aria-label={tr('database:columnFields.references')}>
+          <SelectValue placeholder={tr('database:columnFields.noForeignKey')} />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value="none">No foreign key</SelectItem>
+          <SelectItem value="none">{tr('database:columnFields.noForeignKey')}</SelectItem>
           {options.map((t) => (
             <SelectItem key={t.id} value={`${targetSchema}.${t.name}`}>
               {targetSchema}.{t.name}
             </SelectItem>
           ))}
-          {targetSchema !== 'auth' && <SelectItem value="auth.users">auth.users</SelectItem>}
+          {targetSchema !== 'auth' && <SelectItem value="auth.users">{'auth.users'}</SelectItem>}
         </SelectContent>
       </Select>
       {value && (
@@ -90,18 +91,18 @@ function ReferencePicker({
           <Input
             size="tiny"
             className="w-24"
-            aria-label="Referenced column"
+            aria-label={tr('database:columnFields.referencedColumn')}
             value={value.column}
             onChange={(e) => onChange({ ...value, column: e.target.value })}
           />
           <Select value={value.onDelete ?? 'no action'} onValueChange={(v) => onChange({ ...value, onDelete: v as never })}>
-            <SelectTrigger size="tiny" className="w-36" aria-label="On delete">
+            <SelectTrigger size="tiny" className="w-36" aria-label={tr('database:columnFields.onDelete')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
               {(['no action', 'cascade', 'set null', 'restrict'] as const).map((o) => (
                 <SelectItem key={o} value={o}>
-                  on delete {o}
+                  {tr('database:columnFields.onDelete2', { o })}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -131,25 +132,25 @@ export function ColumnEditor({
   return (
     <div className="flex flex-col gap-3 rounded-md border bg-surface-100 p-3">
       <div className="grid grid-cols-[1fr_9rem_1fr_auto] items-center gap-2">
-        <Input size="tiny" aria-label="Column name" placeholder="column_name" value={value.name} onChange={(e) => set({ name: e.target.value })} />
+        <Input size="tiny" aria-label={tr('database:columnFields.columnName')} placeholder="column_name" value={value.name} onChange={(e) => set({ name: e.target.value })} />
         <TypePicker projectRef={projectRef} value={value.type} onChange={(type) => set({ type })} />
         <Input
           size="tiny"
-          aria-label="Default value"
-          placeholder={value.identity ? 'identity' : 'Default (SQL), e.g. now()'}
+          aria-label={tr('database:columnFields.defaultValue')}
+          placeholder={value.identity ? 'identity' : tr('database:columnFields.defaultSqlEGNow')}
           disabled={value.identity}
           value={value.default ?? ''}
           onChange={(e) => set({ default: e.target.value || undefined })}
         />
-        {onRemove ? <Button variant="text" size="tiny" icon={<CloseIcon />} aria-label={`Remove ${value.name || 'column'}`} onClick={onRemove} /> : <span />}
+        {onRemove ? <Button variant="text" size="tiny" icon={<CloseIcon />} aria-label={tr('database:columnFields.remove', { name: value.name || tr('database:columnFields.column') })} onClick={onRemove} /> : <span />}
       </div>
       <div className="flex flex-wrap gap-x-5 gap-y-2 text-xs text-foreground-light">
         {(
           [
-            ['primary', 'Primary key'],
-            ['identity', 'Identity'],
-            ['unique', 'Unique'],
-            ['isArray', 'Array'],
+            ['primary', tr('database:columnFields.primaryKey')],
+            ['identity', tr('database:columnFields.identity')],
+            ['unique', tr('database:columnFields.unique')],
+            ['isArray', tr('database:columnFields.array')],
           ] as const
         ).map(([k, label]) => (
           <label key={k} htmlFor={id(k)} className="flex items-center gap-1.5">
@@ -158,8 +159,7 @@ export function ColumnEditor({
           </label>
         ))}
         <label htmlFor={id('nullable')} className="flex items-center gap-1.5">
-          <Checkbox id={id('nullable')} checked={value.nullable && !value.primary} disabled={value.primary} onCheckedChange={(c) => set({ nullable: c === true })} />
-          Nullable
+          <Trans i18nKey="database:columnFields.nullable" components={{ checkbox: <Checkbox id={id('nullable')} checked={value.nullable && !value.primary} disabled={value.primary} onCheckedChange={(c) => set({ nullable: c === true })} /> }} />
         </label>
       </div>
       <ReferencePicker projectRef={projectRef} schema={schema} value={value.references} onChange={(references) => set({ references })} />
@@ -191,7 +191,7 @@ export function ColumnList({
         />
       ))}
       <Button variant="dashed" size="tiny" icon={<AddIcon />} onClick={() => onChange([...columns, newColumn()])}>
-        Add column
+        {tr('database:columnFields.addColumn')}
       </Button>
     </div>
   )

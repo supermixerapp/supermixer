@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
 import { api, isApiError, unwrap, type Schemas } from '@/lib/api/client'
 import { can } from '@/lib/api/hooks'
+import { localized, t } from '@/lib/i18n'
 
 export type Stack = Schemas['Stack']
 export type StackDetail = Schemas['StackDetail']
@@ -60,32 +61,32 @@ export function useKeyRotationDone(ref: string, onDone: () => void, enabled = tr
   }
 }
 
-export const OPERATION_LABELS: Record<NonNullable<Stack['operation']>, string> = {
-  starting: 'Starting…',
-  stopping: 'Stopping…',
-  restarting: 'Restarting…',
-  deleting: 'Deleting…',
-  updating: 'Updating functions…',
-  backing_up: 'Backing up…',
-  restoring: 'Restoring…',
-  upgrading: 'Upgrading…',
-  rotating_keys: 'Rotating keys…',
-}
+export const OPERATION_LABELS = localized((): Record<NonNullable<Stack['operation']>, string> => ({
+  starting: t('project:stack.starting'),
+  stopping: t('project:stack.stopping'),
+  restarting: t('project:stack.restarting'),
+  deleting: t('project:stack.deleting'),
+  updating: t('project:stack.updatingFunctions'),
+  backing_up: t('project:stack.backingUp'),
+  restoring: t('project:stack.restoring'),
+  upgrading: t('project:stack.upgrading'),
+  rotating_keys: t('project:stack.rotatingKeys'),
+}))
 
-export const STACK_STATUS: Record<
+export const STACK_STATUS = localized((): Record<
   Stack['status'],
   { label: string; variant: 'success' | 'warning' | 'destructive' | 'default' }
-> = {
-  provisioning: { label: 'Creating…', variant: 'warning' },
-  running: { label: 'Running', variant: 'success' },
-  paused: { label: 'Paused', variant: 'default' },
-  failed: { label: 'Failed', variant: 'destructive' },
-  deleting: { label: 'Deleting…', variant: 'warning' },
-}
+> => ({
+  provisioning: { label: t('project:stack.creating'), variant: 'warning' },
+  running: { label: t('project:stack.running'), variant: 'success' },
+  paused: { label: t('project:stack.paused'), variant: 'default' },
+  failed: { label: t('project:stack.failed'), variant: 'destructive' },
+  deleting: { label: t('project:stack.deleting'), variant: 'warning' },
+}))
 
 export function StackBadge({ stack }: { stack: Pick<Stack, 'status' | 'operation'> }) {
-  if (stack.operation) return <Badge variant="warning">{OPERATION_LABELS[stack.operation]}</Badge>
-  const s = STACK_STATUS[stack.status]
+  if (stack.operation) return <Badge variant="warning">{OPERATION_LABELS()[stack.operation]}</Badge>
+  const s = STACK_STATUS()[stack.status]
   return <Badge variant={s.variant}>{s.label}</Badge>
 }
 
@@ -137,11 +138,11 @@ export function stackActions(s: Pick<Stack, 'status' | 'operation'>): Action[] {
   return ['start']
 }
 
-export const ACTION_LABELS: Record<Action, string> = {
-  start: 'Start',
-  stop: 'Pause',
-  restart: 'Restart',
-}
+export const ACTION_LABELS = localized((): Record<Action, string> => ({
+  start: t('project:stack.start'),
+  stop: t('project:stack.pause'),
+  restart: t('project:stack.restart'),
+}))
 
 /** The end of the docker compose output, kept scrolled to the bottom. */
 export function StackLog({ log, className }: { log: string; className?: string }) {
@@ -155,7 +156,7 @@ export function StackLog({ log, className }: { log: string; className?: string }
       ref={ref}
       className={`max-h-80 overflow-auto rounded-md border bg-surface-100 p-3 font-mono text-xs whitespace-pre-wrap text-foreground-light ${className ?? ''}`}
     >
-      {log || 'No output yet.'}
+      {log || t('project:stack.noOutputYet')}
     </pre>
   )
 }
@@ -173,14 +174,14 @@ export function StackProgress({ project }: { project: Schemas['Project'] }) {
   const allowed = can(project, 'project:update')
   const title =
     s.status === 'provisioning'
-      ? 'Creating the stack'
+      ? t('project:stack.creatingTheStack')
       : s.operation
-        ? OPERATION_LABELS[s.operation]
+        ? OPERATION_LABELS()[s.operation]
         : s.status === 'paused'
-          ? 'This stack is paused'
+          ? t('project:stack.thisStackIsPaused')
           : s.status === 'failed'
-            ? 'The stack needs attention'
-            : 'Deleting the stack'
+            ? t('project:stack.theStackNeedsAttention')
+            : t('project:stack.deletingTheStack')
   return (
     <Card className="flex flex-col gap-3 p-5">
       <div className="flex items-start justify-between gap-4">
@@ -190,23 +191,23 @@ export function StackProgress({ project }: { project: Schemas['Project'] }) {
           </span>
           <span className="text-xs text-foreground-lighter">
             {s.status === 'provisioning'
-              ? 'Supermixer is starting Supabase’s containers. The first stack can take several minutes while images download.'
+              ? t('project:stack.supermixerIsStartingSupabaseSContainers')
               : s.status === 'paused'
-                ? 'Its containers are stopped; data is kept. Start it to use the project again.'
+                ? t('project:stack.itsContainersAreStoppedDataIs')
                 : s.status === 'failed'
-                  ? 'The last operation didn’t finish. Read the output below, then try again.'
-                  : 'Supermixer is working on the stack.'}
+                  ? t('project:stack.theLastOperationDidnTFinish')
+                  : t('project:stack.supermixerIsWorkingOnTheStack')}
           </span>
         </div>
         {stackActions(s).includes('start') && (
           <PermissionButton
             allowed={allowed}
-            action="start this stack"
+            action={t('project:stack.startThisStack')}
             variant="primary"
             loading={act.isPending}
             onClick={() => act.mutate('start')}
           >
-            {s.status === 'failed' ? 'Try again' : 'Start'}
+            {s.status === 'failed' ? t('project:stack.tryAgain') : t('project:stack.start')}
           </PermissionButton>
         )}
       </div>

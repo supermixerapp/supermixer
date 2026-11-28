@@ -11,6 +11,7 @@ import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { addEnumValue, createEnum, dropType, ENUMS_SQL, type EnumRow } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/types')({
   validateSearch: schemaSearch,
@@ -30,17 +31,17 @@ function TypesPage() {
 
   return (
     <DatabasePage
-      title="Enumerated Types"
-      description="Types whose values come from a fixed list, usable as column types."
+      title={t('database:databaseTypes.enumeratedTypes')}
+      description={t('database:databaseTypes.typesWhoseValuesComeFromA')}
       toolbar={
         <>
           <SchemaPicker projectRef={ref} value={schema} onChange={(s) => void navigate({ to: '.', search: { schema: s } })} />
-          <SearchBox value={search} onChange={setSearch} placeholder="Search for a type" />
+          <SearchBox value={search} onChange={setSearch} placeholder={t('database:databaseTypes.searchForAType')} />
         </>
       }
       actions={
-        <PermissionButton allowed={canChange} action="create types here" variant="primary" icon={<AddIcon />} onClick={() => setSheet({})}>
-          Create type
+        <PermissionButton allowed={canChange} action={t('database:databaseTypes.createTypesHere')} variant="primary" icon={<AddIcon />} onClick={() => setSheet({})}>
+          {t('database:databaseTypes.createType')}
         </PermissionButton>
       }
     >
@@ -49,11 +50,11 @@ function TypesPage() {
         loading={enums.isPending}
         error={enums.error}
         rowKey={(e) => e.name}
-        empty={search ? 'No types match your search' : `No enumerated types in ${schema}`}
+        empty={search ? t('database:databaseTypes.noTypesMatchYourSearch') : t('database:databaseTypes.noEnumeratedTypesIn', { schema })}
         columns={[
-          { header: 'Name', cell: (e) => <span className="text-foreground">{e.name}</span> },
+          { header: t('database:databaseTypes.name'), cell: (e) => <span className="text-foreground">{e.name}</span> },
           {
-            header: 'Values',
+            header: t('database:databaseTypes.values'),
             cell: (e) => (
               <span className="flex flex-wrap gap-1">
                 {e.values.map((v) => (
@@ -64,12 +65,12 @@ function TypesPage() {
           },
         ]}
         actions={[
-          { label: 'Add a value', hidden: () => !canChange, onSelect: (e) => setSheet({ adding: e }) },
+          { label: t('database:databaseTypes.addAValue'), hidden: () => !canChange, onSelect: (e) => setSheet({ adding: e }) },
           {
-            label: 'Delete type',
+            label: t('database:databaseTypes.deleteType'),
             hidden: () => !canChange,
-            confirm: (e) => ({ title: `Delete type ${e.name}?`, description: 'Columns that use it make this fail.' }),
-            onSelect: (e) => ddl.mutate({ sql: dropType(schema, e.name), done: `Deleted ${e.name}` }),
+            confirm: (e) => ({ title: t('database:databaseTypes.deleteType2', { name: e.name }), description: t('database:databaseTypes.columnsThatUseItMakeThis') }),
+            onSelect: (e) => ddl.mutate({ sql: dropType(schema, e.name), done: t('database:databaseTypes.deleted', { name: e.name }) }),
           },
         ]}
       />
@@ -93,29 +94,29 @@ function EnumSheet({ projectRef, schema, adding, onClose }: { projectRef: string
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={adding ? `Add values to ${adding.name}` : 'Create a new enumerated type'}
-      description={adding ? 'Existing values cannot be removed or renamed here.' : undefined}
+      title={adding ? t('database:databaseTypes.addValuesTo', { name: adding.name }) : t('database:databaseTypes.createANewEnumeratedType')}
+      description={adding ? t('database:databaseTypes.existingValuesCannotBeRemovedOr') : undefined}
       error={ddl.error}
-      submitLabel={adding ? 'Add values' : 'Create type'}
+      submitLabel={adding ? t('database:databaseTypes.addValues') : t('database:databaseTypes.createType')}
       submitting={ddl.isPending}
       disabled={!sql}
-      onSubmit={() => ddl.mutate({ sql, done: adding ? `Updated ${adding.name}` : `Created ${name}` }, { onSuccess: onClose })}
+      onSubmit={() => ddl.mutate({ sql, done: adding ? t('database:databaseTypes.updated', { name: adding.name }) : t('database:databaseTypes.created', { name }) }, { onSuccess: onClose })}
     >
       {!adding && (
-        <FormField label="Name" htmlFor="enum-name">
+        <FormField label={t('database:databaseTypes.name')} htmlFor="enum-name">
           <Input id="enum-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="mood" />
         </FormField>
       )}
-      <FormField label="Values">
+      <FormField label={t('database:databaseTypes.values')}>
         <div className="flex flex-col gap-2">
           {values.map((v, i) => (
             <div key={i} className="flex gap-2">
-              <Input aria-label={`Value ${i + 1}`} value={v} onChange={(e) => setValues(values.map((x, j) => (j === i ? e.target.value : x)))} />
-              <Button variant="text" icon={<CloseIcon />} aria-label="Remove value" onClick={() => setValues(values.filter((_, j) => j !== i))} />
+              <Input aria-label={t('database:databaseTypes.value', { i: i + 1 })} value={v} onChange={(e) => setValues(values.map((x, j) => (j === i ? e.target.value : x)))} />
+              <Button variant="text" icon={<CloseIcon />} aria-label={t('database:databaseTypes.removeValue')} onClick={() => setValues(values.filter((_, j) => j !== i))} />
             </div>
           ))}
           <Button variant="dashed" size="tiny" icon={<AddIcon />} onClick={() => setValues([...values, ''])}>
-            Add value
+            {t('database:databaseTypes.addValue')}
           </Button>
         </div>
       </FormField>

@@ -2,22 +2,23 @@
  * Logs: entries the stack's Logflare stores, read through Supermixer's API.
  */
 import type { Schemas } from '@/lib/api/client'
+import { localized, t } from '@/lib/i18n'
 
 export type LogSource = Schemas['LogSource']
 export type LogEntry = Schemas['LogEntry']
 
 /** Studio's log collection pages (logs/<path>) and where their entries come from. */
-export const LOG_COLLECTIONS: Record<string, { title: string; source: LogSource; search?: string; description: string }> = {
-  'edge-logs': { title: 'API Gateway', source: 'api_gateway', description: 'Every request through the API gateway.' },
-  'postgres-logs': { title: 'Postgres', source: 'postgres', description: "The database server's log." },
-  'postgrest-logs': { title: 'PostgREST', source: 'postgrest', description: 'The Data API server.' },
-  'pooler-logs': { title: 'Pooler', source: 'pooler', description: 'The connection pooler. Self-hosted stacks only ship these when Vector is set up to collect them.' },
-  'auth-logs': { title: 'Auth', source: 'auth', description: 'Sign-ups, sign-ins and the Auth server.' },
-  'storage-logs': { title: 'Storage', source: 'storage', description: 'The Storage API.' },
-  'realtime-logs': { title: 'Realtime', source: 'realtime', description: 'The Realtime server.' },
-  'edge-functions-logs': { title: 'Edge Functions', source: 'functions', description: 'The Edge Runtime: function output and errors.' },
-  'pgcron-logs': { title: 'Cron', source: 'postgres', search: 'cron job', description: "pg_cron's lines in the Postgres log." },
-}
+export const LOG_COLLECTIONS = localized((): Record<string, { title: string; source: LogSource; search?: string; description: string }> => ({
+  'edge-logs': { title: t('observability:logs.apiGateway'), source: 'api_gateway', description: t('observability:logs.everyRequestThroughTheApiGateway') },
+  'postgres-logs': { title: 'Postgres', source: 'postgres', description: t('observability:logs.theDatabaseServerSLog') },
+  'postgrest-logs': { title: 'PostgREST', source: 'postgrest', description: t('observability:logs.theDataApiServer') },
+  'pooler-logs': { title: 'Pooler', source: 'pooler', description: t('observability:logs.theConnectionPoolerSelfHostedStacks') },
+  'auth-logs': { title: 'Auth', source: 'auth', description: t('observability:logs.signUpsSignInsAndThe') },
+  'storage-logs': { title: 'Storage', source: 'storage', description: t('observability:logs.theStorageApi') },
+  'realtime-logs': { title: 'Realtime', source: 'realtime', description: t('observability:logs.theRealtimeServer') },
+  'edge-functions-logs': { title: t('observability:logs.edgeFunctions'), source: 'functions', description: t('observability:logs.theEdgeRuntimeFunctionOutputAnd') },
+  'pgcron-logs': { title: 'Cron', source: 'postgres', search: 'cron job', description: t('observability:logs.pgCronSLinesInThe') },
+}))
 
 export const SOURCE_LABELS: Record<LogSource, string> = {
   api_gateway: 'API Gateway',
@@ -30,13 +31,13 @@ export const SOURCE_LABELS: Record<LogSource, string> = {
   functions: 'Edge Functions',
 }
 
-export const TIME_RANGES: { label: string; minutes: number }[] = [
-  { label: 'Last 15 minutes', minutes: 15 },
-  { label: 'Last hour', minutes: 60 },
-  { label: 'Last 3 hours', minutes: 180 },
-  { label: 'Last 24 hours', minutes: 1440 },
-  { label: 'Last 7 days', minutes: 10080 },
-]
+export const TIME_RANGES = localized((): { label: string; minutes: number }[] => [
+  { label: t('observability:logs.last15Minutes'), minutes: 15 },
+  { label: t('observability:logs.lastHour'), minutes: 60 },
+  { label: t('observability:logs.last3Hours'), minutes: 180 },
+  { label: t('observability:logs.last24Hours'), minutes: 1440 },
+  { label: t('observability:logs.last7Days'), minutes: 10080 },
+])
 
 /** What an API gateway entry says about the request, when it's there. */
 export function requestOf(e: LogEntry): { method: string; path: string; status: number | null } | null {

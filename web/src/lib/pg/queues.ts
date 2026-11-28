@@ -3,6 +3,7 @@
  * pgmq.q_<name>, with archived messages in pgmq.a_<name>.
  */
 import { literal, qualified } from './sql'
+import { t } from '@/lib/i18n'
 
 export interface QueueRow {
   name: string
@@ -41,9 +42,9 @@ export type QueueType = 'basic' | 'unlogged'
 
 /** pgmq's own rule: lowercase letters, digits and underscores, at most 47 characters. */
 export function queueNameProblem(name: string): string | null {
-  if (!name) return 'Enter a name'
-  if (!/^[a-z0-9_]+$/.test(name)) return 'Use lowercase letters, digits and underscores'
-  if (name.length > 47) return 'At most 47 characters'
+  if (!name) return t('integrations:queues.enterAName')
+  if (!/^[a-z0-9_]+$/.test(name)) return t('integrations:queues.useLowercaseLettersDigitsAndUnderscores')
+  if (name.length > 47) return t('integrations:queues.atMost47Characters')
   return null
 }
 

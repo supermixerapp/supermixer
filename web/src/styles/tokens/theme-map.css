@@ -145,10 +145,13 @@
   --text-color-muted: var(--foreground-muted);
   --text-color-contrast: var(--foreground-contrast);
 
-  /* Fonts: the same families as current Studio, bundled locally. */
-  --font-sans: 'Inter Variable', 'Inter', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  /* Fonts: the same families as current Studio, bundled locally. Neither
+     has Japanese characters, so the system's Japanese fonts come next. */
+  --font-sans:
+    'Inter Variable', 'Inter', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo, 'Noto Sans JP', 'Noto Sans CJK JP', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
   --font-heading:
-    'Manrope Variable', 'Manrope', system-ui, 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    'Manrope Variable', 'Manrope', 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo, 'Noto Sans JP', 'Noto Sans CJK JP', system-ui, 'Helvetica Neue', Helvetica, Arial,
+    sans-serif;
   --font-mono: 'Source Code Pro Variable', 'Source Code Pro', 'Office Code Pro', Menlo, monospace;
 
   --breakpoint-xs: 480px;

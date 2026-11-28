@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { createFileRoute, Outlet, redirect } from '@tanstack/react-router'
 
 import { ChoosePassword } from '@/components/auth/choose-password'
+import { LanguageSync } from '@/components/layout/language-menu'
 import { ThemeSync } from '@/components/layout/theme-sync'
 
 import { isApiError } from '@/lib/api/client'
@@ -27,6 +28,7 @@ function AppLayout() {
   return (
     <>
       <ThemeSync />
+      <LanguageSync />
       {me?.password_change_required ? <ChoosePassword username={me.username} mfa={me.mfa_enabled} /> : <Outlet />}
     </>
   )

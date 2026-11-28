@@ -22,6 +22,7 @@ import { Separator } from '@/components/ui/separator'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useLocalStorage } from '@/lib/storage'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 const BEHAVIOURS = ['expandable', 'open', 'closed'] as const
 type SidebarBehaviour = (typeof BEHAVIOURS)[number]
@@ -48,7 +49,7 @@ export function Sidebar({ groups }: { groups: SidebarLink[][] }) {
     // it expands on hover, like Studio.
     <div className={cn('relative hidden shrink-0 md:block', behaviour === 'open' ? 'w-(--sidebar-width)' : 'w-(--sidebar-width-icon)')}>
       <nav
-        aria-label="Main"
+        aria-label={t('common:sidebar.main')}
         data-state={expanded ? 'expanded' : 'collapsed'}
         onMouseEnter={() => setHovered(true)}
         onMouseLeave={() => setHovered(false)}
@@ -77,16 +78,16 @@ export function Sidebar({ groups }: { groups: SidebarLink[][] }) {
                 variant="text"
                 className="mx-0.5 w-min px-1.5 [&_svg]:!h-5 [&_svg]:!w-5"
                 icon={<SidebarIcon />}
-                aria-label="Sidebar control"
+                aria-label={t('common:sidebar.sidebarControl')}
               />
             </DropdownMenuTrigger>
             <DropdownMenuContent side="top" align="start" className="w-40">
-              <DropdownMenuLabel>Sidebar control</DropdownMenuLabel>
+              <DropdownMenuLabel>{t('common:sidebar.sidebarControl')}</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuRadioGroup value={behaviour} onValueChange={(v) => setBehaviour(v as SidebarBehaviour)}>
-                <DropdownMenuRadioItem value="open">Expanded</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="closed">Collapsed</DropdownMenuRadioItem>
-                <DropdownMenuRadioItem value="expandable">Expand on hover</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="open">{t('common:sidebar.expanded')}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="closed">{t('common:sidebar.collapsed')}</DropdownMenuRadioItem>
+                <DropdownMenuRadioItem value="expandable">{t('common:sidebar.expandOnHover')}</DropdownMenuRadioItem>
               </DropdownMenuRadioGroup>
             </DropdownMenuContent>
           </DropdownMenu>

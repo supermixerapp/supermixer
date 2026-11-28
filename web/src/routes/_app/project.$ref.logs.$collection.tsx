@@ -11,7 +11,7 @@ export const Route = createFileRoute('/_app/project/$ref/logs/$collection')({
 
 function LogCollectionPage() {
   const { ref, collection } = Route.useParams()
-  const c = LOG_COLLECTIONS[collection]
+  const c = LOG_COLLECTIONS()[collection]
   if (!c) return <NotFoundContent />
   // Keyed so switching collections starts with fresh filters.
   return <LogsView key={collection} projectRef={ref} title={c.title} description={c.description} source={c.source} {...(c.search && { search: c.search })} />

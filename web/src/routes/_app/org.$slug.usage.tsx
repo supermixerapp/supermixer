@@ -10,6 +10,7 @@ import { can, useProjects } from '@/lib/api/hooks'
 import { pgQuery } from '@/lib/pg/run'
 import { USAGE_SQL, type ProjectUsage } from '@/lib/pg/usage'
 import { formatBytes } from '@/lib/storage-api'
+import { t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/usage')({
   component: UsagePage,
@@ -31,8 +32,8 @@ function UsagePage() {
   return (
     <>
       <PageHeader
-        title="Usage"
-        description="What each project's stack uses, read from its own database. Refreshes every minute."
+        title={t('org:usage.usage')}
+        description={t('org:usage.whatEachProjectSStackUses')}
         size="large"
       />
       <PageContainer size="large" className="flex flex-col gap-6 pb-16">
@@ -40,25 +41,25 @@ function UsagePage() {
           <Skeleton className="h-40" />
         ) : inOrg.length === 0 ? (
           <Card>
-            <p className="px-4 py-10 text-center text-sm text-foreground-lighter">No projects in this organization yet</p>
+            <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{t('org:usage.noProjectsInThisOrganizationYet')}</p>
           </Card>
         ) : (
           <>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <Stat label="Database size" value={formatBytes(sum('db_bytes'))} />
-              <Stat label="Storage" value={formatBytes(sum('storage_bytes'))} hint={`${sum('storage_objects').toLocaleString()} files`} />
-              <Stat label="Auth users" value={sum('users').toLocaleString()} />
-              <Stat label="Connections" value={sum('connections').toLocaleString()} hint={`of ${sum('max_connections').toLocaleString()} allowed`} />
+              <Stat label={t('org:usage.databaseSize')} value={formatBytes(sum('db_bytes'))} />
+              <Stat label={t('org:usage.storage')} value={formatBytes(sum('storage_bytes'))} hint={t('org:usage.files', { value: sum('storage_objects').toLocaleString(language()) })} />
+              <Stat label={t('org:usage.authUsers')} value={sum('users').toLocaleString(language())} />
+              <Stat label={t('org:usage.connections')} value={sum('connections').toLocaleString(language())} hint={t('org:usage.ofAllowed', { value: sum('max_connections').toLocaleString(language()) })} />
             </div>
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>Project</TableHead>
-                    <TableHead className="text-right">Database</TableHead>
-                    <TableHead className="text-right">Storage</TableHead>
-                    <TableHead className="text-right">Auth users</TableHead>
-                    <TableHead className="text-right">Connections</TableHead>
+                    <TableHead>{t('org:usage.project')}</TableHead>
+                    <TableHead className="text-right">{t('org:usage.database')}</TableHead>
+                    <TableHead className="text-right">{t('org:usage.storage')}</TableHead>
+                    <TableHead className="text-right">{t('org:usage.authUsers')}</TableHead>
+                    <TableHead className="text-right">{t('org:usage.connections')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -74,11 +75,11 @@ function UsagePage() {
                         </TableCell>
                         {!q ? (
                           <TableCell colSpan={4} className="text-right text-xs text-foreground-lighter">
-                            You can&apos;t read this project&apos;s data
+                            {t('org:usage.youCanTReadThisProject')}
                           </TableCell>
                         ) : q.error ? (
                           <TableCell colSpan={4} className="text-right text-xs text-destructive" title={q.error.message}>
-                            Couldn&apos;t read usage: {q.error.message}
+                            {t('org:usage.couldnTReadUsage', { message: q.error.message })}
                           </TableCell>
                         ) : !u ? (
                           <TableCell colSpan={4}>
@@ -89,16 +90,16 @@ function UsagePage() {
                             <TableCell className="text-right tabular-nums text-foreground-light">{formatBytes(u.db_bytes)}</TableCell>
                             <TableCell className="text-right tabular-nums text-foreground-light">
                               {u.storage_bytes === null ? (
-                                <span title="This stack has no Storage tables">—</span>
+                                <span title={t('org:usage.thisStackHasNoStorageTables')}>—</span>
                               ) : (
                                 <>
                                   {formatBytes(u.storage_bytes)}
-                                  <span className="ml-1 text-xs text-foreground-lighter">({(u.storage_objects ?? 0).toLocaleString()} files)</span>
+                                  <span className="ml-1 text-xs text-foreground-lighter">{t('org:usage.files2', { value: (u.storage_objects ?? 0).toLocaleString(language()) })}</span>
                                 </>
                               )}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-foreground-light">
-                              {u.users === null ? <span title="This stack has no Auth tables">—</span> : u.users.toLocaleString()}
+                              {u.users === null ? <span title={t('org:usage.thisStackHasNoAuthTables')}>—</span> : u.users.toLocaleString(language())}
                             </TableCell>
                             <TableCell className="text-right tabular-nums text-foreground-light">
                               {u.connections} / {u.max_connections}
@@ -111,8 +112,8 @@ function UsagePage() {
                 </TableBody>
               </Table>
             </Card>
-            <Alert title="Request counts and egress need log analytics">
-              They come from the stack&apos;s API gateway logs, which Supermixer reads through Logflare when a stack runs it.
+            <Alert title={t('org:usage.requestCountsAndEgressNeedLog')}>
+              {t('org:usage.theyComeFromTheStackS')}
             </Alert>
           </>
         )}

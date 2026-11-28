@@ -27,26 +27,27 @@ import {
 } from '@/components/ui/table'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { relativeTime } from '@/lib/auth-users'
+import { localized, t, Trans, language } from '@/lib/i18n'
 
 export type Webhook = Schemas['Webhook']
 
 /** The kinds of event to choose from: audit log actions, or prefixes of them. */
-export const EVENT_GROUPS: { values: string[]; label: string; hint: string }[] = [
+export const EVENT_GROUPS = localized((): { values: string[]; label: string; hint: string }[] => [
   {
     values: ['project.backup_failed', 'project.operation_failed'],
-    label: 'Failures',
-    hint: 'a backup failed, or starting, upgrading or restoring a project failed',
+    label: t('org:webhookParts.failures'),
+    hint: t('org:webhookParts.aBackupFailedOrStartingUpgrading'),
   },
   {
     values: ['project.'],
-    label: 'Projects',
-    hint: 'created, changed, deleted, keys rotated, backups, functions, failures',
+    label: t('org:webhookParts.projects'),
+    hint: t('org:webhookParts.createdChangedDeletedKeysRotatedBackups'),
   },
-  { values: ['member.'], label: 'Members', hint: 'joined, role changed, removed' },
-  { values: ['invitation.'], label: 'Invitations', hint: 'created, revoked' },
-  { values: ['organization.'], label: 'Organization', hint: 'settings changed' },
-  { values: ['webhook.'], label: 'Webhooks and chat channels', hint: 'added, changed, deleted' },
-]
+  { values: ['member.'], label: t('org:webhookParts.members'), hint: t('org:webhookParts.joinedRoleChangedRemoved') },
+  { values: ['invitation.'], label: t('org:webhookParts.invitations'), hint: t('org:webhookParts.createdRevoked') },
+  { values: ['organization.'], label: t('org:webhookParts.organization'), hint: t('org:webhookParts.settingsChanged') },
+  { values: ['webhook.'], label: t('org:webhookParts.webhooksAndChatChannels'), hint: t('org:webhookParts.addedChangedDeleted') },
+])
 
 export const webhooksQuery = (slug: string) => ({
   queryKey: ['organizations', slug, 'webhooks'],
@@ -60,10 +61,10 @@ export const integrationsQuery = (slug: string) => ({
 })
 
 export function eventsLabel(events: string[]) {
-  if (events.includes('*')) return ['All events']
+  if (events.includes('*')) return [t('org:webhookParts.allEvents')]
   const out: string[] = []
   let rest = events
-  for (const g of EVENT_GROUPS) {
+  for (const g of EVENT_GROUPS()) {
     if (g.values.every((v) => rest.includes(v))) {
       out.push(g.label)
       rest = rest.filter((e) => !g.values.includes(e))
@@ -73,13 +74,13 @@ export function eventsLabel(events: string[]) {
 }
 
 export function WebhookStatus({ hook }: { hook: Webhook }) {
-  if (!hook.enabled) return <Badge>Off</Badge>
+  if (!hook.enabled) return <Badge>{t('org:webhookParts.off')}</Badge>
   if (hook.failing_since) {
     return (
       <span className="flex flex-col items-end gap-1">
-        <Badge variant="destructive">Failing</Badge>
+        <Badge variant="destructive">{t('org:webhookParts.failing')}</Badge>
         <span className="text-xs text-foreground-lighter">
-          since {relativeTime(hook.failing_since)}
+          {t('org:webhookParts.since', { relativeTime: relativeTime(hook.failing_since) })}
         </span>
       </span>
     )
@@ -87,14 +88,14 @@ export function WebhookStatus({ hook }: { hook: Webhook }) {
   if (hook.last_success_at) {
     return (
       <span className="flex flex-col items-end gap-1">
-        <Badge variant="success">Delivering</Badge>
+        <Badge variant="success">{t('org:webhookParts.delivering')}</Badge>
         <span className="text-xs text-foreground-lighter">
-          last {relativeTime(hook.last_success_at)}
+          {t('org:webhookParts.last', { relativeTime: relativeTime(hook.last_success_at) })}
         </span>
       </span>
     )
   }
-  return <Badge>Waiting for events</Badge>
+  return <Badge>{t('org:webhookParts.waitingForEvents')}</Badge>
 }
 
 /** Checkboxes for the kinds of event to send. */
@@ -114,12 +115,11 @@ export function EventsFieldset({
   }
   return (
     <fieldset className="flex flex-col gap-3">
-      <legend className="mb-2 text-sm text-foreground-light">Events</legend>
+      <legend className="mb-2 text-sm text-foreground-light">{t('org:webhookParts.events')}</legend>
       <label className="flex items-center gap-2 text-sm">
-        <Checkbox checked={all} onCheckedChange={(c) => onChange(c === true ? ['*'] : [])} />
-        All events
+        <Trans i18nKey="org:webhookParts.allEvents2" components={{ checkbox: <Checkbox checked={all} onCheckedChange={(c) => onChange(c === true ? ['*'] : [])} /> }} />
       </label>
-      {EVENT_GROUPS.map((g) => {
+      {EVENT_GROUPS().map((g) => {
         const own = g.values.every((v) => events.includes(v))
         // Covered by a broader choice (Failures, when Projects is chosen).
         const implied = !own && g.values.every(covered)
@@ -165,9 +165,9 @@ export function DeliveriesSheet({
     <Sheet open onOpenChange={(o) => !o && onClose()}>
       <SheetContent size="lg" className="flex flex-col">
         <SheetHeader>
-          <SheetTitle>Deliveries</SheetTitle>
+          <SheetTitle>{t('org:webhookParts.deliveries')}</SheetTitle>
           <SheetDescription className="break-all">
-            The latest 100 attempts to {hook.url}, newest first.
+            {t('org:webhookParts.theLatest100AttemptsToNewest', { url: hook.url })}
           </SheetDescription>
         </SheetHeader>
         <SheetSection className="min-h-0 flex-1 overflow-auto p-0">
@@ -178,22 +178,22 @@ export function DeliveriesSheet({
           ) : list.isError ? (
             <p className="p-4 text-sm text-destructive">{list.error.message}</p>
           ) : list.data.length === 0 ? (
-            <p className="p-6 text-center text-sm text-foreground-lighter">Nothing sent yet.</p>
+            <p className="p-6 text-center text-sm text-foreground-lighter">{t('org:webhookParts.nothingSentYet')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Time</TableHead>
-                  <TableHead>Event</TableHead>
-                  <TableHead>Result</TableHead>
-                  <TableHead className="text-right">Took</TableHead>
+                  <TableHead>{t('org:webhookParts.time')}</TableHead>
+                  <TableHead>{t('org:webhookParts.event')}</TableHead>
+                  <TableHead>{t('org:webhookParts.result')}</TableHead>
+                  <TableHead className="text-right">{t('org:webhookParts.took')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {list.data.map((d) => (
                   <TableRow key={d.id}>
                     <TableCell className="whitespace-nowrap text-foreground-light">
-                      {new Date(d.created_at).toLocaleString()}
+                      {new Date(d.created_at).toLocaleString(language())}
                     </TableCell>
                     <TableCell>
                       <Badge>{d.event}</Badge>
@@ -206,7 +206,7 @@ export function DeliveriesSheet({
                       )}
                     </TableCell>
                     <TableCell className="text-right text-foreground-light">
-                      {d.duration_ms} ms
+                      {t('org:webhookParts.ms', { durationMs: d.duration_ms })}
                     </TableCell>
                   </TableRow>
                 ))}

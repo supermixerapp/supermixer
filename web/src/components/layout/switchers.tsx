@@ -19,6 +19,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { NewOrganizationDialog } from '@/components/organization/new-organization-dialog'
 import { can, useOrganizations, useProjects, useSelectedOrganization, useSelectedProject } from '@/lib/api/hooks'
+import { t, Trans } from '@/lib/i18n'
 
 function SwitcherShell({
   href,
@@ -78,14 +79,14 @@ export function OrganizationSwitcher() {
         href={`/org/${selected.slug}`}
         label={selected.name}
         leading={<ProjectsIcon size={14} className="text-foreground-lighter" />}
-        ariaLabel="Show organizations"
+        ariaLabel={t('common:switchers.showOrganizations')}
         open={open}
         onOpenChange={setOpen}
       >
         <Command>
-          <CommandInput placeholder="Find organization..." />
+          <CommandInput placeholder={t('common:switchers.findOrganization')} />
           <CommandList>
-            <CommandEmpty>No organizations found</CommandEmpty>
+            <CommandEmpty>{t('common:switchers.noOrganizationsFound')}</CommandEmpty>
             <CommandGroup>
               {orgs.map((org) => (
                 <CommandItem
@@ -110,7 +111,7 @@ export function OrganizationSwitcher() {
                   void navigate({ to: '/organizations' })
                 }}
               >
-                All Organizations
+                {t('common:switchers.allOrganizations')}
               </CommandItem>
               <CommandItem
                 onSelect={() => {
@@ -118,8 +119,7 @@ export function OrganizationSwitcher() {
                   setCreating(true)
                 }}
               >
-                <AddIcon size={14} />
-                New organization
+                <Trans i18nKey="common:switchers.newOrganization" components={{ addicon: <AddIcon size={14} /> }} />
               </CommandItem>
             </CommandGroup>
           </CommandList>
@@ -143,14 +143,14 @@ export function ProjectSwitcher() {
     <SwitcherShell
       href={`/project/${selected.ref}`}
       label={selected.name}
-      ariaLabel="Show projects"
+      ariaLabel={t('common:switchers.showProjects')}
       open={open}
       onOpenChange={setOpen}
     >
       <Command>
-        <CommandInput placeholder="Find project..." />
+        <CommandInput placeholder={t('common:switchers.findProject')} />
         <CommandList>
-          <CommandEmpty>No projects found</CommandEmpty>
+          <CommandEmpty>{t('common:switchers.noProjectsFound')}</CommandEmpty>
           <CommandGroup>
             {siblings.map((p) => (
               <CommandItem
@@ -176,7 +176,7 @@ export function ProjectSwitcher() {
                   void navigate({ to: '/org/$slug', params: { slug: org.slug } })
                 }}
               >
-                All Projects
+                {t('common:switchers.allProjects')}
               </CommandItem>
             )}
             {org && can(org, 'projects:create') && (
@@ -186,8 +186,7 @@ export function ProjectSwitcher() {
                   void navigate({ to: '/new/$slug', params: { slug: org.slug } })
                 }}
               >
-                <AddIcon size={14} />
-                New project
+                <Trans i18nKey="common:switchers.newProject" components={{ addicon: <AddIcon size={14} /> }} />
               </CommandItem>
             )}
           </CommandGroup>

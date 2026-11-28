@@ -19,6 +19,7 @@ import {
 } from '@/lib/pg/observability'
 import { pgQuery } from '@/lib/pg/run'
 import { formatBytes } from '@/lib/storage-api'
+import { t as tr, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/observability/')({
   component: ObservabilityPage,
@@ -46,11 +47,11 @@ function ObservabilityPage() {
 
   return (
     <DatabasePage
-      title="Database"
+      title={tr('observability:observability.database')}
       description={
         <>
-          Live figures from Postgres&apos;s statistics, refreshed every 10 seconds.
-          {s?.stats_reset && ` Totals count from ${new Date(s.stats_reset).toLocaleString()}.`}
+          {tr('observability:observability.liveFiguresFromPostgresSStatistics')}
+          {s?.stats_reset && tr('observability:observability.totalsCountFrom', { value: new Date(s.stats_reset).toLocaleString(language()) })}
         </>
       }
     >
@@ -60,26 +61,26 @@ function ObservabilityPage() {
         <Skeleton className="h-28" />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <Stat label="Database size" value={formatBytes(s.db_bytes)} />
+          <Stat label={tr('observability:observability.databaseSize')} value={formatBytes(s.db_bytes)} />
           <Stat
-            label="Connections"
+            label={tr('observability:observability.connections')}
             value={`${s.connections} / ${s.max_connections}`}
-            hint={`${s.active} running a query`}
+            hint={tr('observability:observability.runningAQuery', { active: s.active })}
             warn={s.connections / s.max_connections > 0.8}
           />
-          <Stat label="Transactions per second" value={tps === null ? '…' : tps.toFixed(tps < 10 ? 1 : 0)} hint={`${pct(s.rollbacks / Math.max(1, s.commits + s.rollbacks))} rolled back`} />
+          <Stat label={tr('observability:observability.transactionsPerSecond')} value={tps === null ? '…' : tps.toFixed(tps < 10 ? 1 : 0)} hint={tr('observability:observability.rolledBack', { pct: pct(s.rollbacks / Math.max(1, s.commits + s.rollbacks)) })} />
           <Stat
-            label="Cache hit rate"
+            label={tr('observability:observability.cacheHitRate')}
             value={s.table_hit === null ? '—' : pct(s.table_hit)}
-            hint={`indexes ${s.index_hit === null ? '—' : pct(s.index_hit)}`}
+            hint={tr('observability:observability.indexes', { value: s.index_hit === null ? '—' : pct(s.index_hit) })}
             warn={s.table_hit !== null && s.table_hit < 0.99}
           />
-          <Stat label="Deadlocks" value={s.deadlocks.toLocaleString()} warn={s.deadlocks > 0} />
-          <Stat label="Temporary files" value={formatBytes(s.temp_bytes)} hint="Queries that spilled to disk" />
+          <Stat label={tr('observability:observability.deadlocks')} value={s.deadlocks.toLocaleString(language())} warn={s.deadlocks > 0} />
+          <Stat label={tr('observability:observability.temporaryFiles')} value={formatBytes(s.temp_bytes)} hint={tr('observability:observability.queriesThatSpilledToDisk')} />
         </div>
       )}
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm text-foreground">Connections</h2>
+        <h2 className="text-sm text-foreground">{tr('observability:observability.connections')}</h2>
         <Card>
           {connections.error ? (
             <div className="p-4">
@@ -91,11 +92,11 @@ function ObservabilityPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Application</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="whitespace-nowrap">Oldest</TableHead>
+                  <TableHead>{tr('observability:observability.application')}</TableHead>
+                  <TableHead>{tr('observability:observability.role')}</TableHead>
+                  <TableHead>{tr('observability:observability.state')}</TableHead>
+                  <TableHead className="text-right">{tr('observability:observability.count')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{tr('observability:observability.oldest')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -114,7 +115,7 @@ function ObservabilityPage() {
         </Card>
       </section>
       <section className="flex flex-col gap-2">
-        <h2 className="text-sm text-foreground">Largest tables</h2>
+        <h2 className="text-sm text-foreground">{tr('observability:observability.largestTables')}</h2>
         <Card>
           {tables.error ? (
             <div className="p-4">
@@ -126,13 +127,13 @@ function ObservabilityPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Table</TableHead>
-                  <TableHead className="text-right">Size</TableHead>
-                  <TableHead className="text-right">Rows (est.)</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Sequential scans</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Index scans</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Dead rows</TableHead>
-                  <TableHead className="whitespace-nowrap">Last autovacuum</TableHead>
+                  <TableHead>{tr('observability:observability.table')}</TableHead>
+                  <TableHead className="text-right">{tr('observability:observability.size')}</TableHead>
+                  <TableHead className="text-right">{tr('observability:observability.rowsEst')}</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">{tr('observability:observability.sequentialScans')}</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">{tr('observability:observability.indexScans')}</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">{tr('observability:observability.deadRows')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{tr('observability:observability.lastAutovacuum')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -143,10 +144,10 @@ function ObservabilityPage() {
                       {t.name}
                     </TableCell>
                     <TableCell className="text-right tabular-nums text-foreground-light">{formatBytes(t.bytes)}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground-light">{t.rows.toLocaleString()}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground-light">{t.seq_scans?.toLocaleString() ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground-light">{t.index_scans?.toLocaleString() ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground-light">{t.dead_rows?.toLocaleString() ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground-light">{t.rows.toLocaleString(language())}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground-light">{t.seq_scans?.toLocaleString(language()) ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground-light">{t.index_scans?.toLocaleString(language()) ?? '—'}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground-light">{t.dead_rows?.toLocaleString(language()) ?? '—'}</TableCell>
                     <TableCell className="whitespace-nowrap text-foreground-light">{relativeTime(t.last_autovacuum)}</TableCell>
                   </TableRow>
                 ))}

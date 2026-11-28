@@ -5,6 +5,7 @@ import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type HTMLAt
 
 import { CloseIcon } from '@/components/icons'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 const paddingVariants = cva('', {
   variants: {
@@ -49,7 +50,7 @@ export const DialogContent = forwardRef<
         {!hideClose && (
           <DialogPrimitive.Close className="absolute top-3.5 right-3.5 rounded-xs p-0.5 opacity-20 transition-opacity hit-area-6 hover:opacity-100 focus-ring disabled:pointer-events-none">
             <CloseIcon size={16} />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t('common:dialog.close')}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

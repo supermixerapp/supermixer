@@ -19,6 +19,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { snippetsQuery } from '@/lib/api/queries'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/sql')({
   component: SqlLayout,
@@ -33,24 +34,24 @@ function SqlLayout() {
   const [search, setSearch] = useState('')
   const visible = (snippets.data ?? []).filter((s) => s.name.toLowerCase().includes(search.toLowerCase()))
   const sections: [string, Snippet[]][] = [
-    ['Favorites', visible.filter((s) => s.favorite)],
-    ['Shared', visible.filter((s) => s.visibility === 'project' && !s.favorite)],
-    ['Private', visible.filter((s) => s.visibility === 'private' && !s.favorite)],
+    [t('database:sql.favorites'), visible.filter((s) => s.favorite)],
+    [t('database:sql.shared'), visible.filter((s) => s.visibility === 'project' && !s.favorite)],
+    [t('database:sql.private'), visible.filter((s) => s.visibility === 'private' && !s.favorite)],
   ]
 
   return (
     <div className="flex h-full min-h-0">
-      <aside aria-label="SQL snippets" className="hidden w-(--product-menu-width) shrink-0 flex-col border-r bg-dash-sidebar md:flex">
+      <aside aria-label={t('database:sql.sqlSnippets')} className="hidden w-(--product-menu-width) shrink-0 flex-col border-r bg-dash-sidebar md:flex">
         <div className="flex min-h-(--header-height) shrink-0 items-center gap-2 border-b px-4">
-          <h4 className="min-w-0 flex-1 truncate font-sans text-sm font-normal">SQL Editor</h4>
-          <Button asChild variant="default" size="tiny" icon={<AddIcon />} aria-label="New query">
+          <h4 className="min-w-0 flex-1 truncate font-sans text-sm font-normal">{t('database:sql.sqlEditor')}</h4>
+          <Button asChild variant="default" size="tiny" icon={<AddIcon />} aria-label={t('database:sql.newQuery')}>
             <Link to="/project/$ref/sql/$id" params={{ ref, id: 'new' }} />
           </Button>
         </div>
         <div className="border-b p-3">
           <div className="relative">
             <SearchIcon size={14} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-foreground-lighter" />
-            <Input size="tiny" className="pl-7" placeholder="Search queries" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input size="tiny" className="pl-7" placeholder={t('database:sql.searchQueries')} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
         <div className="grow overflow-y-auto py-2">
@@ -130,7 +131,7 @@ function SnippetItem({ projectRef, snippet }: { projectRef: string; snippet: Sni
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
-            aria-label={`Actions for ${snippet.name}`}
+            aria-label={t('database:sql.actionsFor', { name: snippet.name })}
             className="absolute top-1/2 right-1 -translate-y-1/2 rounded p-0.5 text-foreground-lighter opacity-0 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100"
           >
             <MoreIcon size={14} />
@@ -139,7 +140,7 @@ function SnippetItem({ projectRef, snippet }: { projectRef: string; snippet: Sni
         <DropdownMenuContent align="start" className="w-52">
           <DropdownMenuItem onSelect={() => update.mutate({ favorite: !snippet.favorite })}>
             <StarIcon size={14} className="text-foreground-lighter" />
-            {snippet.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            {snippet.favorite ? t('database:sql.removeFromFavorites') : t('database:sql.addToFavorites')}
           </DropdownMenuItem>
           {snippet.can_edit && (
             <>
@@ -149,14 +150,14 @@ function SnippetItem({ projectRef, snippet }: { projectRef: string; snippet: Sni
                 ) : (
                   <PublicIcon size={14} className="text-foreground-lighter" />
                 )}
-                {snippet.visibility === 'project' ? 'Make private' : 'Share with project'}
+                {snippet.visibility === 'project' ? t('database:sql.makePrivate') : t('database:sql.shareWithProject')}
               </DropdownMenuItem>
             </>
           )}
           {canDelete && (
             <>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onSelect={() => setDeleting(true)}>Delete query</DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => setDeleting(true)}>{t('database:sql.deleteQuery')}</DropdownMenuItem>
             </>
           )}
         </DropdownMenuContent>
@@ -164,9 +165,9 @@ function SnippetItem({ projectRef, snippet }: { projectRef: string; snippet: Sni
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title={`Delete "${snippet.name}"?`}
-        description={snippet.visibility === 'project' ? 'It is shared, so it disappears for everyone in the project.' : 'This cannot be undone.'}
-        confirmLabel="Delete query"
+        title={t('database:sql.delete', { name: snippet.name })}
+        description={snippet.visibility === 'project' ? t('database:sql.itIsSharedSoItDisappears') : t('database:sql.thisCannotBeUndone')}
+        confirmLabel={t('database:sql.deleteQuery')}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}
       />

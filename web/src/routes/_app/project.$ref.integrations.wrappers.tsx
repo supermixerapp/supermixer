@@ -41,6 +41,8 @@ import {
   type WrapperType,
 } from '@/lib/pg/wrappers'
 import { cn } from '@/lib/utils'
+import { t as tr, Trans } from '@/lib/i18n'
+import { formatList } from '@/lib/i18n/format'
 
 export const Route = createFileRoute('/_app/project/$ref/integrations/wrappers')({
   component: WrappersPage,
@@ -69,39 +71,39 @@ function WrappersPage() {
   return (
     <IntegrationPage
       projectRef={ref}
-      title="Wrappers"
-      description="Query Stripe, S3, BigQuery, ClickHouse and other services as Postgres tables, with Supabase's foreign data wrappers."
+      title={tr('integrations:integrationsWrappers.wrappers')}
+      description={tr('integrations:integrationsWrappers.queryStripeS3BigqueryClickhouseAnd')}
       extension={{ name: 'wrappers', schema: 'extensions' }}
-      about="Adds Supabase's foreign data wrappers to the extensions schema. Each wrapper's credentials are kept in Vault."
+      about={tr('integrations:integrationsWrappers.addsSupabaseSForeignDataWrappers')}
       actions={
         <PermissionButton
           allowed={canChange}
-          action="add wrappers"
+          action={tr('integrations:integrationsWrappers.addWrappers')}
           variant="primary"
           icon={<AddIcon />}
           disabled={!vaultReady}
-          title={vaultReady ? undefined : 'Wrappers need Vault for their credentials'}
+          title={vaultReady ? undefined : tr('integrations:integrationsWrappers.wrappersNeedVaultForTheirCredentials')}
           onClick={() => setChoosing(true)}
         >
-          Add wrapper
+          {tr('integrations:integrationsWrappers.addWrapper')}
         </PermissionButton>
       }
     >
       {vault.state && !vaultReady && (
-        <Alert variant="warning" title="Wrappers keep their credentials in Vault, which isn't enabled">
+        <Alert variant="warning" title={tr('integrations:integrationsWrappers.wrappersKeepTheirCredentialsInVault')}>
           <span className="flex flex-col items-start gap-2">
             {vault.state.default_version
-              ? 'Enable the supabase_vault extension to add wrappers.'
-              : "This database doesn't have the supabase_vault extension; Supabase's own Postgres images do."}
+              ? tr('integrations:integrationsWrappers.enableTheSupabaseVaultExtensionTo')
+              : tr('integrations:integrationsWrappers.thisDatabaseDoesnTHaveThe')}
             {vault.state.default_version && (
               <PermissionButton
                 allowed={canChange}
-                action="enable extensions"
+                action={tr('integrations:integrationsWrappers.enableExtensions')}
                 size="tiny"
                 loading={ddl.isPending}
-                onClick={() => ddl.mutate({ sql: enableExtension('supabase_vault', 'vault'), done: 'Enabled supabase_vault' })}
+                onClick={() => ddl.mutate({ sql: enableExtension('supabase_vault', 'vault'), done: tr('integrations:integrationsWrappers.enabledSupabaseVault') })}
               >
-                Enable Vault
+                {tr('integrations:integrationsWrappers.enableVault')}
               </PermissionButton>
             )}
           </span>
@@ -112,14 +114,14 @@ function WrappersPage() {
         loading={servers.isPending}
         error={servers.error}
         rowKey={(s) => s.server}
-        empty="No wrappers yet"
+        empty={tr('integrations:integrationsWrappers.noWrappersYet')}
         columns={[
           {
-            header: 'Name',
+            header: tr('integrations:integrationsWrappers.name'),
             cell: (s) => <span className="font-mono text-xs text-foreground">{s.server}</span>,
           },
           {
-            header: 'Type',
+            header: tr('integrations:integrationsWrappers.type'),
             cell: (s) => {
               const t = typeOf(s)
               return t ? (
@@ -132,7 +134,7 @@ function WrappersPage() {
             },
           },
           {
-            header: 'Foreign tables',
+            header: tr('integrations:integrationsWrappers.foreignTables'),
             cell: (s) =>
               s.tables.length === 0 ? (
                 <span className="text-foreground-lighter">—</span>
@@ -143,24 +145,24 @@ function WrappersPage() {
                       {t.schema}.{t.name}
                     </span>
                   ))}
-                  {s.tables.length > 4 && <span className="text-xs text-foreground-lighter">and {s.tables.length - 4} more</span>}
+                  {s.tables.length > 4 && <span className="text-xs text-foreground-lighter">{tr('integrations:integrationsWrappers.andMore', { count: s.tables.length - 4 })}</span>}
                 </span>
               ),
           },
           {
-            header: 'Settings',
+            header: tr('integrations:integrationsWrappers.settings'),
             cell: (s) => <ServerSettings server={s} />,
           },
         ]}
         actions={[
           {
-            label: 'Delete wrapper',
+            label: tr('integrations:integrationsWrappers.deleteWrapper'),
             hidden: () => !canChange,
             confirm: (s) => ({
-              title: `Delete ${s.server}?`,
+              title: tr('integrations:integrationsWrappers.delete', { server: s.server }),
               description: deleteDescription(s),
             }),
-            onSelect: (s) => ddl.mutate({ sql: dropWrapperSql(s), done: `Deleted ${s.server}` }),
+            onSelect: (s) => ddl.mutate({ sql: dropWrapperSql(s), done: tr('integrations:integrationsWrappers.deleted', { server: s.server }) }),
           },
         ]}
       />
@@ -180,14 +182,14 @@ function WrappersPage() {
 
 /** What deleting a server does, as the confirmation should say it. */
 function deleteDescription(s: WrapperServer): string {
-  const tables = s.tables.length === 0 ? 'Drops the wrapper' : s.tables.length === 1 ? 'Drops it and its foreign table' : `Drops it and its ${s.tables.length} foreign tables`
+  const tables = s.tables.length === 0 ? tr('integrations:integrationsWrappers.dropsTheWrapper') : s.tables.length === 1 ? tr('integrations:integrationsWrappers.dropsItAndItsForeignTable') : tr('integrations:integrationsWrappers.dropsItAndItsForeignTables', { length: s.tables.length })
   const schema = importedSchema(s)
   const extras = [
-    schema && `removes the ${schema} schema if nothing else is in it`,
-    wrapperSecretIds(s).length > 0 && 'deletes its credentials from Vault unless another wrapper uses them',
+    schema && tr('integrations:integrationsWrappers.removesTheSchemaIfNothingElse', { schema }),
+    wrapperSecretIds(s).length > 0 && tr('integrations:integrationsWrappers.deletesItsCredentialsFromVaultUnless'),
   ].filter(Boolean)
-  const what = extras.length === 0 ? `${tables}.` : extras.length === 1 ? `${tables} and ${extras[0]}.` : `${tables}, ${extras[0]}, and ${extras[1]}.`
-  return `${what} The data stays in ${typeOf(s)?.label ?? 'the remote service'}. This can’t be undone.`
+  const what = formatList([tables, ...(extras as string[])])
+  return tr('integrations:integrationsWrappers.theDataStaysInThisCan', { what, label: typeOf(s)?.label ?? tr('integrations:integrationsWrappers.theRemoteService') })
 }
 
 /** Plain settings show their values; secrets and anything unknown stay masked. */
@@ -200,7 +202,7 @@ function ServerSettings({ server }: { server: WrapperServer }) {
         <span key={o.name} className="flex gap-2">
           <span className="text-foreground-lighter">{o.name}</span>
           <span className={cn('truncate font-mono', o.value === null ? 'text-foreground-lighter' : 'text-foreground-light')} title={o.value ?? undefined}>
-            {o.vault ? 'in Vault' : (o.value ?? '••••••••')}
+            {o.vault ? tr('integrations:integrationsWrappers.inVault') : (o.value ?? '••••••••')}
           </span>
         </span>
       ))}
@@ -225,11 +227,11 @@ function TypeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="xlarge">
         <DialogHeader>
-          <DialogTitle>Add a wrapper</DialogTitle>
-          <DialogDescription>Pick the service to query from Postgres.</DialogDescription>
+          <DialogTitle>{tr('integrations:integrationsWrappers.addAWrapper')}</DialogTitle>
+          <DialogDescription>{tr('integrations:integrationsWrappers.pickTheServiceToQueryFrom')}</DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-3">
-          <SearchBox value={q} onChange={setQ} placeholder="Search wrappers" />
+          <SearchBox value={q} onChange={setQ} placeholder={tr('integrations:integrationsWrappers.searchWrappers')} />
           <div className="grid max-h-[60vh] grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
             {shown.map((t) => {
               const ok = versionAtLeast(installed, t.minimumExtensionVersion)
@@ -243,15 +245,15 @@ function TypeDialog({
                 >
                   <span className="flex items-center gap-2 text-sm text-foreground">
                     {t.label}
-                    {t.handlerName === 'wasm_fdw_handler' && <Badge>Wasm</Badge>}
+                    {t.handlerName === 'wasm_fdw_handler' && <Badge>{tr('integrations:integrationsWrappers.wasm')}</Badge>}
                   </span>
                   <span className="text-xs text-foreground-lighter">
-                    {ok ? t.description : `Needs wrappers ${t.minimumExtensionVersion} or later; this database has ${installed ?? 'none'}.`}
+                    {ok ? t.description : tr('integrations:integrationsWrappers.needsWrappersOrLaterThisDatabase', { minimumExtensionVersion: t.minimumExtensionVersion, installed: installed ?? 'none' })}
                   </span>
                 </button>
               )
             })}
-            {shown.length === 0 && <p className="py-6 text-center text-sm text-foreground-lighter sm:col-span-2">No wrappers match</p>}
+            {shown.length === 0 && <p className="py-6 text-center text-sm text-foreground-lighter sm:col-span-2">{tr('integrations:integrationsWrappers.noWrappersMatch')}</p>}
           </div>
         </DialogSection>
       </DialogContent>
@@ -296,8 +298,8 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
       try {
         // 1. Secrets into Vault, as bound parameters: never in statement text.
         for (const s of draftSecrets(draft)) {
-          const row = rowsOf<{ id: string }>(await runSql(projectRef, CREATE_WRAPPER_SECRET_SQL, { params: [s.value, s.name, `Used by the ${draft.server} wrapper`] }))[0]
-          if (!row) throw new Error(`Vault didn't return an id for ${s.name}`)
+          const row = rowsOf<{ id: string }>(await runSql(projectRef, CREATE_WRAPPER_SECRET_SQL, { params: [s.value, s.name, tr('integrations:integrationsWrappers.usedByTheWrapper', { server: draft.server })] }))[0]
+          if (!row) throw new Error(tr('integrations:integrationsWrappers.vaultDidnTReturnAnId', { name: s.name }))
           ids[s.option] = row.id
           created.push(s.name)
         }
@@ -312,7 +314,7 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
             await runSql(projectRef, DELETE_SECRETS_SQL, { params: [JSON.stringify(left)] })
           } catch (cleanup) {
             throw new Error(
-              `${e instanceof Error ? e.message : String(e)}. Removing the secrets it had saved also failed (${cleanup instanceof Error ? cleanup.message : String(cleanup)}); delete ${created.join(', ')} under Integrations › Vault.`,
+              tr('integrations:integrationsWrappers.removingTheSecretsItHadSaved', { value: e instanceof Error ? e.message : String(e), value2: cleanup instanceof Error ? cleanup.message : String(cleanup), join: created.join(', ') }),
               { cause: cleanup }
             )
           } finally {
@@ -323,7 +325,7 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
       }
     },
     onSuccess: async () => {
-      toast.success(`Added ${draft.server}`)
+      toast.success(tr('integrations:integrationsWrappers.added', { server: draft.server }))
       await queryClient.invalidateQueries({ queryKey: ['projects', projectRef, 'pg'] })
       onClose()
     },
@@ -334,37 +336,37 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`Add a ${type.label} wrapper`}
+      title={tr('integrations:integrationsWrappers.addAWrapper2', { label: type.label })}
       description={
         <>
           {type.description}.{' '}
           <a href={type.docsUrl} target="_blank" rel="noreferrer noopener" className="inline-flex items-center gap-1 text-foreground-light hover:text-foreground">
-            Supabase&apos;s guide <ExternalLinkIcon size={12} />
+            <Trans i18nKey="integrations:integrationsWrappers.supabaseSGuide" components={{ externallinkicon: <ExternalLinkIcon size={12} /> }} />
           </a>
         </>
       }
-      error={create.error ?? (lookupError && new Error(`Couldn't check existing names: ${lookupError.message}`))}
-      submitLabel="Add wrapper"
+      error={create.error ?? (lookupError && new Error(tr('integrations:integrationsWrappers.couldnTCheckExistingNames', { message: lookupError.message })))}
+      submitLabel={tr('integrations:integrationsWrappers.addWrapper')}
       submitting={create.isPending}
       disabled={problems.length > 0 || lookups.some((q) => q.isPending) || !!lookupError}
       onSubmit={() => create.mutate()}
     >
-      <FormField label="Wrapper name" htmlFor="wrapper-name" description="The foreign server's name. Its secrets are saved in Vault as <name>_<option>.">
+      <FormField label={tr('integrations:integrationsWrappers.wrapperName')} htmlFor="wrapper-name" description={tr('integrations:integrationsWrappers.theForeignServerSNameIts')}>
         <Input id="wrapper-name" autoComplete="off" value={draft.server} onChange={(e) => set({ server: e.target.value.trim() })} />
       </FormField>
 
       {visible.map((o) => (
         <FormField
           key={o.name}
-          label={o.label + (o.required ? '' : ' (optional)')}
+          label={o.required ? o.label : tr('common:optionalLabel', { label: o.label })}
           htmlFor={`opt-${o.name}`}
           description={
             <>
               {o.description}
-              {o.encrypted && ' Saved in Vault.'}
+              {o.encrypted && tr('integrations:integrationsWrappers.savedInVault')}
               {o.urlHelper && (
                 <a href={o.urlHelper} target="_blank" rel="noreferrer noopener" className="ml-1 inline-flex items-center gap-1 text-foreground-light hover:text-foreground">
-                  Where to find it <ExternalLinkIcon size={12} />
+                  <Trans i18nKey="integrations:integrationsWrappers.whereToFindIt" components={{ externallinkicon: <ExternalLinkIcon size={12} /> }} />
                 </a>
               )}
             </>
@@ -395,14 +397,14 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
       ))}
 
       {canImport && type.tables.length > 0 && (
-        <FormField label="Add tables" htmlFor="wrapper-mode">
+        <FormField label={tr('integrations:integrationsWrappers.addTables')} htmlFor="wrapper-mode">
           <Select value={draft.mode} onValueChange={(v) => set({ mode: v as WrapperDraft['mode'] })}>
             <SelectTrigger id="wrapper-mode">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="tables">Choose foreign tables</SelectItem>
-              <SelectItem value="schema">Import everything into a new schema</SelectItem>
+              <SelectItem value="tables">{tr('integrations:integrationsWrappers.chooseForeignTables')}</SelectItem>
+              <SelectItem value="schema">{tr('integrations:integrationsWrappers.importEverythingIntoANewSchema')}</SelectItem>
             </SelectContent>
           </Select>
         </FormField>
@@ -410,7 +412,7 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
 
       {draft.mode === 'schema' ? (
         <>
-          <FormField label="New schema" htmlFor="target-schema" description="Created for the wrapper's tables; it mustn't exist yet.">
+          <FormField label={tr('integrations:integrationsWrappers.newSchema')} htmlFor="target-schema" description={tr('integrations:integrationsWrappers.createdForTheWrapperSTables')}>
             <Input id="target-schema" autoComplete="off" value={draft.targetSchema} onChange={(e) => set({ targetSchema: e.target.value.trim() })} />
           </FormField>
           {type.sourceSchemaOption && !type.sourceSchemaOption.readOnly && (
@@ -432,7 +434,7 @@ function WrapperSheet({ projectRef, type, onClose }: { projectRef: string; type:
             />
           ))}
           <Button variant="default" size="tiny" icon={<AddIcon />} className="w-fit" onClick={() => set({ tables: [...draft.tables, tableFromTemplate(type, 0)] })}>
-            Add a table
+            {tr('integrations:integrationsWrappers.addATable')}
           </Button>
         </div>
       )}
@@ -470,7 +472,7 @@ function TableCard({
       <div className="flex items-start gap-2">
         {type.tables.length > 1 ? (
           <Select value={String(table.template)} onValueChange={(v) => onChange(tableFromTemplate(type, Number(v), table.schema))}>
-            <SelectTrigger className="flex-1" aria-label="Table">
+            <SelectTrigger className="flex-1" aria-label={tr('integrations:integrationsWrappers.table')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -484,11 +486,11 @@ function TableCard({
         ) : (
           <span className="flex-1 text-sm text-foreground">{template.label}</span>
         )}
-        <Button variant="text" size="tiny" icon={<CloseIcon />} aria-label="Remove table" onClick={onRemove} />
+        <Button variant="text" size="tiny" icon={<CloseIcon />} aria-label={tr('integrations:integrationsWrappers.removeTable')} onClick={onRemove} />
       </div>
       {template.description && <p className="-mt-1 text-xs text-foreground-lighter">{template.description}</p>}
       <div className="grid grid-cols-2 gap-3">
-        <FormField label="Schema" description={schemas.includes(table.schema) ? undefined : 'A new schema; it is created first.'}>
+        <FormField label={tr('integrations:integrationsWrappers.schema')} description={schemas.includes(table.schema) ? undefined : tr('integrations:integrationsWrappers.aNewSchemaItIsCreated')}>
           <Input list={listId} autoComplete="off" value={table.schema} onChange={(e) => set({ schema: e.target.value.trim() })} />
           <datalist id={listId}>
             {schemas.map((s) => (
@@ -496,7 +498,7 @@ function TableCard({
             ))}
           </datalist>
         </FormField>
-        <FormField label="Table name">
+        <FormField label={tr('integrations:integrationsWrappers.tableName')}>
           <Input autoComplete="off" value={table.name} onChange={(e) => set({ name: e.target.value.trim() })} />
         </FormField>
       </div>
@@ -504,14 +506,14 @@ function TableCard({
       {template.options.length > 0 && (
         <div className="grid grid-cols-2 gap-3">
           {template.options.map((o) => (
-            <FormField key={o.name} label={(o.label ?? o.name) + (o.required ? '' : ' (optional)')}>
+            <FormField key={o.name} label={o.required ? (o.label ?? o.name) : tr('common:optionalLabel', { label: o.label ?? o.name })}>
               {o.type === 'select' ? (
                 <Select value={table.options[o.name] || '__none'} disabled={!o.editable} onValueChange={(v) => set({ options: { ...table.options, [o.name]: v === '__none' ? '' : v } })}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {!o.required && <SelectItem value="__none">None</SelectItem>}
+                    {!o.required && <SelectItem value="__none">{tr('integrations:integrationsWrappers.none')}</SelectItem>}
                     {o.options.map((x) => (
                       <SelectItem key={x.value} value={x.value}>
                         {x.label}
@@ -534,7 +536,7 @@ function TableCard({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs text-foreground-lighter">Columns</span>
+        <span className="text-xs text-foreground-lighter">{tr('integrations:integrationsWrappers.columns')}</span>
         {fixedColumns ? (
           <div className="grid grid-cols-2 gap-x-4 gap-y-1">
             {template.availableColumns!.map((c) => {
@@ -561,26 +563,26 @@ function TableCard({
             {table.columns.map((c, i) => (
               <div key={i} className="flex gap-2">
                 <Input
-                  aria-label="Column name"
+                  aria-label={tr('integrations:integrationsWrappers.columnName')}
                   placeholder="name"
                   autoComplete="off"
                   value={c.name}
                   onChange={(e) => set({ columns: table.columns.map((x, j) => (j === i ? { ...x, name: e.target.value.trim() } : x)) })}
                 />
                 <Input
-                  aria-label="Column type"
+                  aria-label={tr('integrations:integrationsWrappers.columnType')}
                   placeholder="text"
                   autoComplete="off"
                   value={c.type}
                   onChange={(e) => set({ columns: table.columns.map((x, j) => (j === i ? { ...x, type: e.target.value } : x)) })}
                 />
-                <Button variant="text" size="tiny" icon={<CloseIcon />} aria-label="Remove column" onClick={() => set({ columns: table.columns.filter((_, j) => j !== i) })} />
+                <Button variant="text" size="tiny" icon={<CloseIcon />} aria-label={tr('integrations:integrationsWrappers.removeColumn')} onClick={() => set({ columns: table.columns.filter((_, j) => j !== i) })} />
               </div>
             ))}
             <Button variant="default" size="tiny" icon={<AddIcon />} className="w-fit" onClick={() => set({ columns: [...table.columns, { name: '', type: 'text' }] })}>
-              Add a column
+              {tr('integrations:integrationsWrappers.addAColumn')}
             </Button>
-            {table.columns.length === 0 && <Alert title="This table's columns depend on the remote data; add the ones you want, with Postgres types." />}
+            {table.columns.length === 0 && <Alert title={tr('integrations:integrationsWrappers.thisTableSColumnsDependOn')} />}
           </>
         )}
       </div>

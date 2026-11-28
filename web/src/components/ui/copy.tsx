@@ -5,20 +5,21 @@ import { cn } from '@/lib/utils'
 
 import { Button } from './button'
 import { toast } from './toaster'
+import { t } from '@/lib/i18n'
 
 export async function writeClipboard(text: string) {
   try {
     await navigator.clipboard.writeText(text)
     return true
   } catch {
-    toast.error('Could not copy to the clipboard')
+    toast.error(t('common:copy.couldNotCopyToTheClipboard'))
     return false
   }
 }
 
 export function CopyButton({
   value,
-  label = 'Copy',
+  label = t('common:copy.copy'),
   className,
   iconOnly = false,
 }: {
@@ -34,7 +35,7 @@ export function CopyButton({
       variant={iconOnly ? 'text' : 'default'}
       size={iconOnly ? 'tiny' : undefined}
       aria-label={iconOnly ? label : undefined}
-      title={iconOnly ? (copied ? 'Copied' : label) : undefined}
+      title={iconOnly ? (copied ? t('common:copy.copied') : label) : undefined}
       className={className}
       icon={copied ? <CheckIcon /> : <CopyIcon />}
       onClick={async () => {
@@ -44,7 +45,7 @@ export function CopyButton({
         }
       }}
     >
-      {iconOnly ? null : copied ? 'Copied' : label}
+      {iconOnly ? null : copied ? t('common:copy.copied') : label}
     </Button>
   )
 }

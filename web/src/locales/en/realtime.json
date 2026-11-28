@@ -1,0 +1,49 @@
+{
+  "realtimeInspector": {
+    "notConnected": "Not connected",
+    "connecting": "Connecting…",
+    "listening": "Listening",
+    "disconnected": "Disconnected",
+    "error": "Error",
+    "realtimeInspector": "Realtime Inspector",
+    "joinAChannelToWatchBroadcast": "Join a channel to watch Broadcast, Presence and Postgres Changes as they happen, and send test broadcasts. The socket uses the service role, so policies don't limit what you see.",
+    "theSocketCanSendAsWell": "The socket can send as well as listen, with the service role.",
+    "watchingRealtimeNeedsARoleThat": "Watching Realtime needs a role that can change data",
+    "channel": "Channel",
+    "postgresChanges": "Postgres changes",
+    "table": "Table",
+    "donTListen": "Don't listen",
+    "allTables": "All tables",
+    "privateChannel": "<checkbox/>Private channel",
+    "leave": "Leave",
+    "joinChannel": "Join channel",
+    "watchRealtime": "watch Realtime",
+    "broadcastEvent": "Broadcast event",
+    "payload": "Payload",
+    "mustBeAJsonObject": "Must be a JSON object",
+    "sendBroadcast": "Send broadcast",
+    "theLatest500": " (the latest 500)",
+    "clear": "Clear",
+    "waitingForMessages": "Waiting for messages…",
+    "joinAChannelToSeeMessages": "Join a channel to see messages here",
+    "messages_one": "{{count}} message",
+    "messages_other": "{{count}} messages",
+    "schemaNotPublished": "No tables in {{schema}} are in the supabase_realtime publication, so no changes will arrive. Add them under <link>Database › Publications</link>.",
+    "tableNotPublished": "{{schema}}.{{table}} isn't in the supabase_realtime publication, so no changes will arrive. Add it under <link>Database › Publications</link>."
+  },
+  "realtimePolicies": {
+    "policiesOnRealtimeMessagesDecideWho": "Policies on realtime.messages decide who can receive and send Broadcast and Presence messages on private channels. Public channels and Postgres Changes don't use them."
+  },
+  "realtime": {
+    "presenceState": "Presence state",
+    "presenceChange": "Presence change",
+    "systemMessage": "System message",
+    "joinRefused": "Join refused",
+    "channelError": "Channel error",
+    "channelClosed": "Channel closed",
+    "theSocketFailedCheckThatThe": "The socket failed. Check that the stack runs Realtime.",
+    "joined": "Joined",
+    "postgresChange": "{{type}} on {{table}}",
+    "change": "change"
+  }
+}

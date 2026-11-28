@@ -27,6 +27,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { BYTE_UNITS, joinBytes, splitBytes, type ByteUnit } from '@/lib/byte-units'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/storage/settings')({
   component: StorageSettingsPage,
@@ -43,15 +44,12 @@ function StorageSettingsPage() {
   if (!project) return null
   return (
     <DatabasePage
-      title="Storage Settings"
-      description="Limits and features of this project's Storage."
+      title={t('storage:storageSettings.storageSettings')}
+      description={t('storage:storageSettings.limitsAndFeaturesOfThisProject')}
     >
       {!project.stack ? (
-        <Alert title="Supermixer connects to this stack, so its Storage settings are set where it runs">
-          Self-hosted Storage reads them from its service&apos;s environment in the stack&apos;s
-          compose file: <code className="font-mono text-xs">FILE_SIZE_LIMIT</code> (bytes) and{' '}
-          <code className="font-mono text-xs">ENABLE_IMAGE_TRANSFORMATION</code>. Projects created
-          with &ldquo;Create a new stack&rdquo; are configured here.
+        <Alert title={t('storage:storageSettings.supermixerConnectsToThisStackSo')}>
+          <Trans i18nKey="storage:storageSettings.selfHostedStorageReadsThemFrom" components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" /> }} />
         </Alert>
       ) : config.error ? (
         <Alert variant="destructive" title={config.error.message} />
@@ -111,10 +109,10 @@ function StorageSettingsForm({
     onSuccess: (c) => {
       toast.success(
         c.restarted
-          ? 'Saved; Storage restarted with the new settings'
+          ? t('storage:storageSettings.savedStorageRestartedWithTheNew')
           : project.stack?.status === 'running'
-            ? 'Saved'
-            : 'Saved; they take effect when the stack starts'
+            ? t('storage:storageSettings.saved')
+            : t('storage:storageSettings.savedTheyTakeEffectWhenThe')
       )
       queryClient.setQueryData(storageConfigQuery(project.ref).queryKey, {
         ...c,
@@ -129,24 +127,23 @@ function StorageSettingsForm({
   }
   return (
     <>
-      {!canChange && <Alert title="Only Owners and Administrators can change Storage settings" />}
+      {!canChange && <Alert title={t('storage:storageSettings.onlyOwnersAndAdministratorsCanChange')} />}
       {saved.problems?.map((p) => (
         <Alert key={p.setting} variant="warning" title={p.message}>
-          Storage is given it as it is, and the setting below shows its default. Save it as shown,
-          or change it, to replace the value.
+          {t('storage:storageSettings.storageIsGivenItAsIt')}
         </Alert>
       ))}
       {project.stack?.status !== 'running' && (
-        <Alert title="The stack isn't running">Saved settings take effect when it starts.</Alert>
+        <Alert title={t('storage:storageSettings.theStackIsnTRunning')}>{t('storage:storageSettings.savedSettingsTakeEffectWhenIt')}</Alert>
       )}
-      <SettingsSection title="Uploads">
+      <SettingsSection title={t('storage:storageSettings.uploads')}>
         <Card>
           <CardContent className="flex flex-col gap-6">
             <FormField
-              label="Upload file size limit"
+              label={t('storage:storageSettings.uploadFileSizeLimit')}
               htmlFor="upload-limit"
               layout="horizontal"
-              description="The largest file anyone can upload, in any bucket. A bucket's own limit can only be lower. Between 1 KB and 500 GB."
+              description={t('storage:storageSettings.theLargestFileAnyoneCanUpload')}
             >
               <div className="flex gap-2">
                 <Input
@@ -164,7 +161,7 @@ function StorageSettingsForm({
                   onValueChange={(v) => setUnit(v as ByteUnit)}
                   disabled={!canChange}
                 >
-                  <SelectTrigger aria-label="Unit" className="w-28">
+                  <SelectTrigger aria-label={t('storage:storageSettings.unit')} className="w-28">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -178,46 +175,41 @@ function StorageSettingsForm({
               </div>
             </FormField>
             <FormField
-              label="Image transformations"
+              label={t('storage:storageSettings.imageTransformations')}
               layout="horizontal"
-              description="Resize and convert images on the fly, through render URLs (imgproxy). Turning it off refuses those requests."
+              description={t('storage:storageSettings.resizeAndConvertImagesOnThe')}
             >
               <Switch
-                aria-label="Image transformations"
+                aria-label={t('storage:storageSettings.imageTransformations')}
                 checked={transform}
                 disabled={!canChange}
                 onCheckedChange={setTransform}
               />
             </FormField>
             {!valid && (
-              <Alert variant="warning" title="The upload limit must be between 1 KB and 500 GB" />
+              <Alert variant="warning" title={t('storage:storageSettings.theUploadLimitMustBeBetween')} />
             )}
             {save.error && <Alert variant="destructive" title={save.error.message} />}
           </CardContent>
           <CardFooter>
             <Button variant="default" disabled={!anyEdited} onClick={reset}>
-              Cancel
+              {t('storage:storageSettings.cancel')}
             </Button>
             <PermissionButton
               allowed={canChange}
-              action="change Storage settings"
+              action={t('storage:storageSettings.changeStorageSettings')}
               variant="primary"
               disabled={!dirty || !valid}
               loading={save.isPending}
               onClick={() => save.mutate()}
             >
-              Save
+              {t('storage:storageSettings.save')}
             </PermissionButton>
           </CardFooter>
         </Card>
       </SettingsSection>
       <p className="text-sm text-foreground-lighter">
-        Saving restarts Storage, so uploads in progress may fail. S3 clients connect as described
-        under{' '}
-        <Link to="/project/$ref/storage/s3" params={{ ref: project.ref }} className="text-link">
-          S3 Connection
-        </Link>
-        .
+        <Trans i18nKey="storage:storageSettings.savingRestartsStorageSoUploadsIn" components={{ link: <Link to="/project/$ref/storage/s3" params={{ ref: project.ref }} className="text-link" /> }} />
       </p>
     </>
   )

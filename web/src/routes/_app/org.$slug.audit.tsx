@@ -12,25 +12,26 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
 import { auditActorsQuery, auditLogsQuery } from '@/lib/api/queries'
+import { localized, t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/audit')({
   component: AuditPage,
 })
 
-const ACTIONS = [
-  { value: 'all', label: 'All actions' },
-  { value: 'organization.', label: 'Organization' },
-  { value: 'project.', label: 'Projects' },
-  { value: 'project.database_role_', label: 'Database logins' },
-  { value: 'member.', label: 'Members' },
-  { value: 'invitation.', label: 'Invitations' },
-]
-const RANGES = [
-  { value: 'all', label: 'All time' },
-  { value: '1', label: 'Last 24 hours' },
-  { value: '7', label: 'Last 7 days' },
-  { value: '30', label: 'Last 30 days' },
-]
+const ACTIONS = localized(() => [
+  { value: 'all', label: t('org:audit.allActions') },
+  { value: 'organization.', label: t('org:audit.organization') },
+  { value: 'project.', label: t('org:audit.projects') },
+  { value: 'project.database_role_', label: t('org:audit.databaseLogins') },
+  { value: 'member.', label: t('org:audit.members') },
+  { value: 'invitation.', label: t('org:audit.invitations') },
+])
+const RANGES = localized(() => [
+  { value: 'all', label: t('org:audit.allTime') },
+  { value: '1', label: t('org:audit.last24Hours') },
+  { value: '7', label: t('org:audit.last7Days') },
+  { value: '30', label: t('org:audit.last30Days') },
+])
 
 function AuditPage() {
   const { slug } = Route.useParams()
@@ -55,31 +56,31 @@ function AuditPage() {
   return (
     <>
       <PageHeader
-        title="Audit Logs"
-        description="Every change made in this organization: who did it, when and from where."
+        title={t('org:audit.auditLogs')}
+        description={t('org:audit.everyChangeMadeInThisOrganization')}
         size="large"
       />
       <PageContainer size="large" className="flex flex-col gap-4 pb-16">
         {!allowed ? (
-          <Alert variant="warning" title="You need additional permissions to view audit logs">
-            Only Owners and Administrators can see this organization&apos;s audit logs.
+          <Alert variant="warning" title={t('org:audit.youNeedAdditionalPermissionsToView')}>
+            {t('org:audit.onlyOwnersAndAdministratorsCanSee')}
           </Alert>
         ) : (
           <>
             <div className="flex flex-wrap gap-2">
-              <FilterSelect value={action} onChange={setAction} options={ACTIONS} />
+              <FilterSelect value={action} onChange={setAction} options={ACTIONS()} />
               <FilterSelect
                 value={actor}
                 onChange={setActor}
                 options={[
-                  { value: 'all', label: 'Everyone' },
+                  { value: 'all', label: t('org:audit.everyone') },
                   ...(actors.data ?? []).map((a) => ({
                     value: a.id,
-                    label: a.member ? a.username : `${a.username} (no longer a member)`,
+                    label: a.member ? a.username : t('org:audit.noLongerAMember', { username: a.username }),
                   })),
                 ]}
               />
-              <FilterSelect value={range} onChange={setRange} options={RANGES} />
+              <FilterSelect value={range} onChange={setRange} options={RANGES()} />
             </div>
             <Card>
               {logs.isPending ? (
@@ -88,23 +89,23 @@ function AuditPage() {
                   <Skeleton className="h-6" />
                 </div>
               ) : entries.length === 0 ? (
-                <p className="px-4 py-10 text-center text-sm text-foreground-lighter">No entries match these filters.</p>
+                <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{t('org:audit.noEntriesMatchTheseFilters')}</p>
               ) : (
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>Time</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Target</TableHead>
-                      <TableHead>Actor</TableHead>
-                      <TableHead>IP address</TableHead>
+                      <TableHead>{t('org:audit.time')}</TableHead>
+                      <TableHead>{t('org:audit.action')}</TableHead>
+                      <TableHead>{t('org:audit.target')}</TableHead>
+                      <TableHead>{t('org:audit.actor')}</TableHead>
+                      <TableHead>{t('org:audit.ipAddress')}</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {entries.map((e) => (
                       <TableRow key={e.id}>
                         <TableCell className="whitespace-nowrap text-foreground-light">
-                          {new Date(e.created_at).toLocaleString()}
+                          {new Date(e.created_at).toLocaleString(language())}
                         </TableCell>
                         <TableCell>
                           <Badge>{e.action}</Badge>
@@ -127,7 +128,7 @@ function AuditPage() {
             </Card>
             {logs.hasNextPage && (
               <Button variant="default" className="self-center" loading={logs.isFetchingNextPage} onClick={() => logs.fetchNextPage()}>
-                Load older entries
+                {t('org:audit.loadOlderEntries')}
               </Button>
             )}
           </>

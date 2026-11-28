@@ -37,16 +37,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can } from '@/lib/api/hooks'
+import { localized, t as tr, Trans } from '@/lib/i18n'
 
 type Drain = Schemas['LogDrain']
 type DrainInput = Schemas['LogDrainInput']
 type DrainType = Drain['type']
 
-const TYPES: Record<DrainType, { label: string; hint: string }> = {
-  http: { label: 'HTTP endpoint', hint: 'Batches of JSON log events, POSTed to your URL.' },
-  loki: { label: 'Loki', hint: 'Pushed to Loki, labelled with the project and service.' },
-  datadog: { label: 'Datadog', hint: 'Sent to Datadog Logs with your API key.' },
-}
+const TYPES = localized((): Record<DrainType, { label: string; hint: string }> => ({
+  http: { label: tr('project:logDrains.httpEndpoint'), hint: tr('project:logDrains.batchesOfJsonLogEventsPosted') },
+  loki: { label: tr('project:logDrains.loki'), hint: tr('project:logDrains.pushedToLokiLabelledWithThe') },
+  datadog: { label: tr('project:logDrains.datadog'), hint: tr('project:logDrains.sentToDatadogLogsWithYour') },
+}))
 
 const SITES = [
   'datadoghq.com',
@@ -93,7 +94,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
   const remove = useMutation({
     mutationFn: (id: string) =>
       unwrap(api.DELETE('/projects/{ref}/log-drains/{id}', { params: { path: { ref, id } } })),
-    onSuccess: () => toast.success('Log drain removed'),
+    onSuccess: () => toast.success(tr('project:logDrains.logDrainRemoved')),
     onError: (e) => toast.error(e.message),
     onSettled: () => {
       setDeleting(null)
@@ -110,34 +111,31 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
     <>
       {logsOff && (
         <LogsOffAlert projectRef={ref}>
-          There are no logs to send: Supermixer doesn&apos;t run Logflare and Vector for this project. Destinations
-          can be removed, but not added or changed.
+          {tr('project:logDrains.thereAreNoLogsToSend')}
         </LogsOffAlert>
       )}
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-foreground-light">
-          Logs from the API gateway, Auth, the Data API, Realtime, Storage, Edge Functions and Postgres also
-          go to these destinations. Each event carries <code className="font-mono text-xs">supabase_service</code>{' '}
-          and <code className="font-mono text-xs">supabase_project</code>.
+          <Trans i18nKey="project:logDrains.logsFromTheApiGatewayAuth" components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" /> }} />
         </p>
         <PermissionButton
           allowed={allowed}
-          action="add log drains"
+          action={tr('project:logDrains.addLogDrains')}
           variant="primary"
           disabled={logsOff}
           onClick={() => setEditing('new')}
         >
-          Add destination
+          {tr('project:logDrains.addDestination')}
         </PermissionButton>
       </div>
       <Card>
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>Name</TableHead>
-              <TableHead>Type</TableHead>
-              <TableHead>Destination</TableHead>
-              <TableHead>Enabled</TableHead>
+              <TableHead>{tr('project:logDrains.name')}</TableHead>
+              <TableHead>{tr('project:logDrains.type')}</TableHead>
+              <TableHead>{tr('project:logDrains.destination')}</TableHead>
+              <TableHead>{tr('project:logDrains.enabled')}</TableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
@@ -145,7 +143,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
             {list.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="py-8 text-center text-foreground-lighter">
-                  No log drains yet
+                  {tr('project:logDrains.noLogDrainsYet')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -153,7 +151,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
                 <TableRow key={d.id}>
                   <TableCell className="text-foreground">{d.name}</TableCell>
                   <TableCell>
-                    <Badge>{TYPES[d.type].label}</Badge>
+                    <Badge>{TYPES()[d.type].label}</Badge>
                   </TableCell>
                   <TableCell className="max-w-72 truncate font-mono text-xs text-foreground-light">
                     {d.type === 'datadog' ? d.datadog_site : d.url}
@@ -163,24 +161,24 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
                       checked={d.enabled}
                       disabled={!allowed || logsOff || toggle.isPending}
                       onCheckedChange={() => toggle.mutate(d)}
-                      aria-label={`${d.enabled ? 'Disable' : 'Enable'} ${d.name}`}
+                      aria-label={`${d.enabled ? tr('common:actions.disable') : tr('common:actions.enable')} ${d.name}`}
                     />
                   </TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${d.name}`} />
+                        <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={tr('project:logDrains.actionsFor', { name: d.name })} />
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-40">
                         <DropdownMenuItem disabled={!allowed || logsOff} onSelect={() => setEditing(d)}>
-                          Edit…
+                          {tr('project:logDrains.edit')}
                         </DropdownMenuItem>
                         <DropdownMenuItem
                           disabled={!allowed}
                           className="text-destructive"
                           onSelect={() => setDeleting(d)}
                         >
-                          Remove…
+                          {tr('project:logDrains.remove')}
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -192,9 +190,7 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
         </Table>
       </Card>
       <p className="text-xs text-foreground-lighter">
-        Logs leave from the stack’s Vector container: to reach a service on the Supermixer server itself, use
-        host.docker.internal rather than localhost. Saving checks the configuration with Vector, then restarts
-        it.
+        {tr('project:logDrains.logsLeaveFromTheStackS')}
       </p>
 
       {editing && (
@@ -208,9 +204,9 @@ export function LogDrains({ project }: { project: Schemas['Project'] }) {
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Remove ${deleting?.name ?? 'this drain'}?`}
-        description="Logs stop going to this destination."
-        confirmLabel="Remove"
+        title={tr('project:logDrains.remove2', { name: deleting?.name ?? tr('project:logDrains.thisDrain') })}
+        description={tr('project:logDrains.logsStopGoingToThisDestination')}
+        confirmLabel={tr('project:logDrains.remove3')}
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
       />
@@ -269,7 +265,7 @@ function DrainDialog({
         : unwrap(api.POST('/projects/{ref}/log-drains', { params: { path: { ref: projectRef } }, body }))
     },
     onSuccess: () => {
-      toast.success(drain ? 'Log drain saved' : 'Log drain added')
+      toast.success(drain ? tr('project:logDrains.logDrainSaved') : tr('project:logDrains.logDrainAdded'))
       onSaved()
       onClose()
     },
@@ -287,22 +283,22 @@ function DrainDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>{drain ? `Edit ${drain.name}` : 'Add a log drain'}</DialogTitle>
-            <DialogDescription>{TYPES[type].hint}</DialogDescription>
+            <DialogTitle>{drain ? tr('project:logDrains.edit2', { name: drain.name }) : tr('project:logDrains.addALogDrain')}</DialogTitle>
+            <DialogDescription>{TYPES()[type].hint}</DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
-            <FormField label="Name" htmlFor="drain-name">
+            <FormField label={tr('project:logDrains.name')} htmlFor="drain-name">
               <Input id="drain-name" value={name} required maxLength={100} onChange={(e) => setName(e.target.value)} />
             </FormField>
-            <FormField label="Type" htmlFor="drain-type">
+            <FormField label={tr('project:logDrains.type')} htmlFor="drain-type">
               <Select value={type} onValueChange={(v) => setType(v as DrainType)} disabled={!!drain}>
                 <SelectTrigger id="drain-type" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {(Object.keys(TYPES) as DrainType[]).map((t) => (
+                  {(Object.keys(TYPES()) as DrainType[]).map((t) => (
                     <SelectItem key={t} value={t}>
-                      {TYPES[t].label}
+                      {TYPES()[t].label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -310,7 +306,7 @@ function DrainDialog({
             </FormField>
             {type === 'datadog' ? (
               <>
-                <FormField label="Site" htmlFor="drain-site">
+                <FormField label={tr('project:logDrains.site')} htmlFor="drain-site">
                   <Select value={site} onValueChange={setSite}>
                     <SelectTrigger id="drain-site" className="w-full">
                       <SelectValue />
@@ -324,14 +320,14 @@ function DrainDialog({
                     </SelectContent>
                   </Select>
                 </FormField>
-                <FormField label="API key" htmlFor="drain-key">
+                <FormField label={tr('project:logDrains.apiKey')} htmlFor="drain-key">
                   <Input
                     id="drain-key"
                     type="password"
                     autoComplete="off"
                     value={apiKey}
                     required={!drain?.api_key_set}
-                    placeholder={drain?.api_key_set ? 'Unchanged' : ''}
+                    placeholder={drain?.api_key_set ? tr('project:logDrains.unchanged') : ''}
                     onChange={(e) => setApiKey(e.target.value)}
                   />
                 </FormField>
@@ -339,9 +335,9 @@ function DrainDialog({
             ) : (
               <>
                 <FormField
-                  label={type === 'loki' ? 'Loki URL' : 'URL'}
+                  label={type === 'loki' ? tr('project:logDrains.lokiUrl') : 'URL'}
                   htmlFor="drain-url"
-                  description={type === 'loki' ? 'Its base URL, such as http://loki:3100' : undefined}
+                  description={type === 'loki' ? tr('project:logDrains.lokiUrlHint') : undefined}
                 >
                   <Input
                     id="drain-url"
@@ -353,24 +349,24 @@ function DrainDialog({
                   />
                 </FormField>
                 <label className="flex items-center justify-between gap-4 text-sm">
-                  <span className="text-foreground-light">Compress with gzip</span>
+                  <span className="text-foreground-light">{tr('project:logDrains.compressWithGzip')}</span>
                   <Switch checked={gzip} onCheckedChange={setGzip} />
                 </label>
                 <div className="flex flex-col gap-2">
-                  <span className="text-sm text-foreground-light">Headers</span>
+                  <span className="text-sm text-foreground-light">{tr('project:logDrains.headers')}</span>
                   {headers.map((h, i) => (
                     <div key={i} className="flex gap-2">
                       <Input
-                        aria-label="Header name"
-                        placeholder="Authorization"
+                        aria-label={tr('project:logDrains.headerName')}
+                        placeholder={tr('project:logDrains.authorization')}
                         value={h.name}
                         onChange={(e) => setHeader(i, { name: e.target.value })}
                       />
                       <Input
-                        aria-label="Header value"
+                        aria-label={tr('project:logDrains.headerValue')}
                         type="password"
                         autoComplete="off"
-                        placeholder={h.set ? 'Unchanged' : 'Value'}
+                        placeholder={h.set ? tr('project:logDrains.unchanged') : tr('project:logDrains.value')}
                         value={h.value}
                         onChange={(e) => setHeader(i, { value: e.target.value })}
                       />
@@ -379,7 +375,7 @@ function DrainDialog({
                         variant="default"
                         onClick={() => setHeaders((hs) => hs.filter((_, j) => j !== i))}
                       >
-                        Remove
+                        {tr('project:logDrains.remove3')}
                       </Button>
                     </div>
                   ))}
@@ -390,7 +386,7 @@ function DrainDialog({
                       size="tiny"
                       onClick={() => setHeaders((hs) => [...hs, { name: '', value: '', set: false }])}
                     >
-                      Add header
+                      {tr('project:logDrains.addHeader')}
                     </Button>
                   </div>
                 </div>
@@ -400,10 +396,10 @@ function DrainDialog({
           </DialogSection>
           <DialogFooter>
             <Button type="button" variant="default" onClick={onClose}>
-              Cancel
+              {tr('project:logDrains.cancel')}
             </Button>
             <Button type="submit" variant="primary" loading={save.isPending}>
-              {drain ? 'Save' : 'Add destination'}
+              {drain ? tr('project:logDrains.save') : tr('project:logDrains.addDestination')}
             </Button>
           </DialogFooter>
         </form>

@@ -1,0 +1,270 @@
+{
+  "language": {
+    "label": "Language",
+    "switched": "The app is now in English",
+    "notLoaded": "That language didn't load. Check your connection and try again.",
+    "unsavedTitle": "Switch to {{name}}?",
+    "unsavedText": "This page has changes that aren't saved yet. Switching language draws the page again, and they'll be lost.",
+    "switchAnyway": "Switch anyway"
+  },
+  "confirmDialog": {
+    "typeToConfirm": "Type <span>{{confirmText}}</span> to confirm",
+    "cancel": "Cancel"
+  },
+  "healthBadge": {
+    "healthy": "Healthy",
+    "degraded": "Degraded",
+    "unhealthy": "Unhealthy",
+    "checking": "Checking…",
+    "unknown": "Unknown"
+  },
+  "accountLayout": {
+    "preferences": "Preferences",
+    "security": "Security",
+    "accessTokens": "Access Tokens",
+    "appearance": "Appearance",
+    "auditLogs": "Audit Logs",
+    "account": "Account",
+    "accountSettings": "Account settings"
+  },
+  "adminLayout": {
+    "organizations": "Organizations",
+    "projects": "Projects",
+    "overview": "Overview",
+    "users": "Users",
+    "signUp": "Sign-up",
+    "globalNotice": "Global notice",
+    "resourceLimits": "Resource limits",
+    "auditLog": "Audit log",
+    "instance": "Instance",
+    "administration": "Administration",
+    "usage": "Usage",
+    "onlyInstanceAdminsCanSeeThis": "Only instance admins can see this"
+  },
+  "appShell": {
+    "youAreSignedInWithThe": "<warningicon/>You are signed in with the default password.<link>Change it now</link>"
+  },
+  "authLayout": {
+    "theManagementPlaneForYourSelf": "The management plane for your self-hosted Supabase.",
+    "organizationsProjectsTeamsAndAccessControl": "Organizations, projects, teams and access control for every stack you run."
+  },
+  "commandMenu": {
+    "search": "Search...",
+    "ctrlK": "Ctrl K",
+    "searchAndNavigate": "Search and navigate",
+    "commandMenu": "Command menu",
+    "typeACommandOrSearch": "Type a command or search...",
+    "noResultsFound": "No results found.",
+    "project": "Project: {{name}}",
+    "projectPages": "Project pages",
+    "organization": "Organization: {{name}}",
+    "supermixer": "Supermixer",
+    "allOrganizations": "All organizations",
+    "preferences": "Preferences",
+    "securityTwoFactorSignIn": "Security (two-factor sign-in)",
+    "accessTokens": "Access tokens",
+    "appearance": "Appearance",
+    "instanceOverview": "Instance overview",
+    "users": "Users",
+    "globalNotice": "Global notice",
+    "resourceLimits": "Resource limits",
+    "signUp": "Sign-up",
+    "instanceAuditLog": "Instance audit log",
+    "designSystem": "Design system",
+    "theme": "Theme",
+    "useDarkTheme": "<darkmodeicon/> Use dark theme",
+    "useLightTheme": "<lightmodeicon/> Use light theme",
+    "useSystemTheme": "<systemthemeicon/> Use system theme"
+  },
+  "globalNotice": {
+    "info": "Info",
+    "warning": "Warning",
+    "critical": "Critical",
+    "notice": "{{label}} notice"
+  },
+  "layoutHeader": {
+    "backToOrganizationHome": "Back to organization home"
+  },
+  "page": {
+    "comingSoon": "Coming soon",
+    "stage": "Stage {{stage}}",
+    "thisPageIsComingSoon": "This page is coming soon.",
+    "thisPageIsPartOfStage": "This page is part of Stage {{stage}} of the Supermixer plan. Supermixer is currently at Stage {{cURRENTSTAGE}}."
+  },
+  "sidebar": {
+    "main": "Main",
+    "sidebarControl": "Sidebar control",
+    "expanded": "Expanded",
+    "collapsed": "Collapsed",
+    "expandOnHover": "Expand on hover"
+  },
+  "switchers": {
+    "findOrganization": "Find organization...",
+    "noOrganizationsFound": "No organizations found",
+    "allOrganizations": "All Organizations",
+    "newOrganization": "<addicon/>New organization",
+    "showProjects": "Show projects",
+    "findProject": "Find project...",
+    "noProjectsFound": "No projects found",
+    "allProjects": "All Projects",
+    "newProject": "<addicon/>New project",
+    "showOrganizations": "Show organizations"
+  },
+  "themeSync": {
+    "couldnTSaveYourTheme": "Couldn't save your theme: {{value}}"
+  },
+  "userDropdown": {
+    "accountMenu": "Account menu",
+    "chosenProjects": "Chosen projects",
+    "in": "in {{name}}",
+    "instanceAdmin": "Instance admin",
+    "managesThisSupermixerInstanceSAccounts": "Manages this Supermixer instance's accounts and settings",
+    "preferences": "<tuneicon/>Preferences",
+    "instanceAdmin2": "<manageaccountsicon/>Instance admin",
+    "apiEndpoints": "<apiicon/>API endpoints",
+    "theme": "Theme",
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System",
+    "logOut": "<logouticon/>Log out"
+  },
+  "limitField": {
+    "enterAWholeNumberFrom1": "Enter a whole number from 1 to {{value}}",
+    "limit": "Limit {{lowerCase}}",
+    "unlimited": "Unlimited"
+  },
+  "permissionButton": {
+    "youNeedAdditionalPermissionsTo": "You need additional permissions to {{action}}"
+  },
+  "copy": {
+    "couldNotCopyToTheClipboard": "Could not copy to the clipboard",
+    "copied": "Copied",
+    "copy": "Copy"
+  },
+  "dataGrid": {
+    "null": "NULL",
+    "empty": "EMPTY"
+  },
+  "dialog": {
+    "close": "Close"
+  },
+  "sheet": {
+    "close": "Close"
+  },
+  "navigation": {
+    "projectOverview": "Project Overview",
+    "tableEditor": "Table Editor",
+    "sqlEditor": "SQL Editor",
+    "database": "Database",
+    "authentication": "Authentication",
+    "storage": "Storage",
+    "edgeFunctions": "Edge Functions",
+    "realtime": "Realtime",
+    "advisors": "Advisors",
+    "observability": "Observability",
+    "logs": "Logs",
+    "integrations": "Integrations",
+    "projectSettings": "Project Settings",
+    "projects": "Projects",
+    "team": "Team",
+    "usage": "Usage",
+    "organizationSettings": "Organization Settings",
+    "databaseManagement": "Database Management",
+    "schemaVisualizer": "Schema Visualizer",
+    "tables": "Tables",
+    "functions": "Functions",
+    "triggers": "Triggers",
+    "enumeratedTypes": "Enumerated Types",
+    "extensions": "Extensions",
+    "indexes": "Indexes",
+    "publications": "Publications",
+    "accessControl": "Access Control",
+    "policies": "Policies",
+    "roles": "Roles",
+    "columnPrivileges": "Column Privileges",
+    "configuration": "Configuration",
+    "settings": "Settings",
+    "platform": "Platform",
+    "backups": "Backups",
+    "migrations": "Migrations",
+    "manage": "Manage",
+    "users": "Users",
+    "notifications": "Notifications",
+    "emails": "Emails",
+    "signInProviders": "Sign In / Providers",
+    "sessions": "Sessions",
+    "rateLimits": "Rate Limits",
+    "multiFactor": "Multi-Factor",
+    "urlConfiguration": "URL Configuration",
+    "attackProtection": "Attack Protection",
+    "authHooks": "Auth Hooks",
+    "auditLogs": "Audit Logs",
+    "secrets": "Secrets",
+    "buckets": "Buckets",
+    "s3Connection": "S3 Connection",
+    "tools": "Tools",
+    "inspector": "Inspector",
+    "securityAdvisor": "Security Advisor",
+    "performanceAdvisor": "Performance Advisor",
+    "queryPerformance": "Query Performance",
+    "changes": "Changes",
+    "reports": "Reports",
+    "apiGateway": "API Gateway",
+    "collections": "Collections",
+    "logsExplorer": "Logs Explorer",
+    "pooler": "Pooler",
+    "auth": "Auth",
+    "cron": "Cron",
+    "general": "General",
+    "infrastructure": "Infrastructure",
+    "apiKeys": "API Keys",
+    "jwtKeys": "JWT Keys",
+    "logDrains": "Log Drains",
+    "dataApi": "Data API",
+    "security": "Security",
+    "webhooks": "Webhooks",
+    "oauthApps": "OAuth Apps"
+  },
+  "root": {
+    "pageNotFound": "Page not found",
+    "thePageYouAreLookingFor": "The page you are looking for does not exist.",
+    "goToOrganizations": "Go to organizations"
+  },
+  "actions": {
+    "enable": "Enable",
+    "disable": "Disable"
+  },
+  "optionalLabel": "{{label}} (optional)",
+  "client": {
+    "requestFailed": "Request failed"
+  },
+  "gateway": {
+    "requestFailed": "Request failed ({{status}})"
+  },
+  "queries": {
+    "supermixerServerIsUnreachable": "Supermixer server is unreachable"
+  },
+  "roles": {
+    "fullAccessIncludingOrganizationSettingsAnd": "Full access, including organization settings and managing Owners.",
+    "fullAccessExceptOrganizationSettingsTransferring": "Full access except organization settings, transferring projects out and managing Owners.",
+    "worksWithProjectDataAndKeys": "Works with project data and keys, and deploys Edge Functions; cannot change settings.",
+    "canViewEverythingExceptSecretApi": "Can view everything except secret API keys.",
+    "noAccess": "No access",
+    "seesOnlyTheProjectsGivenTo": "Sees only the projects given to them below.",
+    "owner": "Owner",
+    "administrator": "Administrator",
+    "developer": "Developer",
+    "readOnly": "Read-only"
+  },
+  "join": {
+    "thisLinkIsMissingItsInvitation": "This link is missing its invitation token."
+  },
+  "passwords": {
+    "mfaYour": "At least {{min}} characters (with two-factor sign-in on), and not a common password or your username",
+    "mfaTheir": "At least {{min}} characters (with two-factor sign-in on), and not a common password or their username",
+    "singleYour": "At least {{min}} characters ({{mfaMin}} with two-factor sign-in on), and not a common password or your username",
+    "singleTheir": "At least {{min}} characters ({{mfaMin}} with two-factor sign-in on), and not a common password or their username",
+    "unknownYour": "At least {{min}} characters, or {{mfaMin}} if two-factor sign-in is on; not a common password or your username",
+    "unknownTheir": "At least {{min}} characters, or {{mfaMin}} if two-factor sign-in is on; not a common password or their username"
+  }
+}

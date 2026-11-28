@@ -37,6 +37,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useProfile, useProjects, useSelectedOrganization } from '@/lib/api/hooks'
 import { invitationsQuery, membersQuery, uiConfigQuery } from '@/lib/api/queries'
 import { ORG_ROLES, PROJECT_ROLES, roleLabel, type OrgRole, type ProjectRole } from '@/lib/roles'
+import { t, Trans, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/team')({
   component: TeamPage,
@@ -64,12 +65,12 @@ function TeamPage() {
     onSuccess: async (_, m) => {
       setRemoving(null)
       if (m.user_id === me?.id) {
-        toast.success(`You left ${org?.name}`)
+        toast.success(t('org:team.youLeft', { name: org?.name }))
         await queryClient.invalidateQueries()
         void navigate({ to: '/organizations' })
         return
       }
-      toast.success(`Removed ${m.username}`)
+      toast.success(t('org:team.removed', { username: m.username }))
       await queryClient.invalidateQueries({ queryKey: ['organizations', slug] })
     },
     onError: (e) => toast.error(e.message),
@@ -94,7 +95,7 @@ function TeamPage() {
 
   return (
     <>
-      <PageHeader title="Team" description="Manage who can access this organization and its projects." size="large" />
+      <PageHeader title={t('org:team.team')} description={t('org:team.manageWhoCanAccessThisOrganization')} size="large" />
       <PageContainer size="large" className="flex flex-col gap-10 pb-16">
         <section className="flex flex-col gap-4">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -106,7 +107,7 @@ function TeamPage() {
               <Input
                 size="tiny"
                 className="pl-7"
-                placeholder="Filter members"
+                placeholder={t('org:team.filterMembers')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -114,17 +115,17 @@ function TeamPage() {
             <div className="flex items-center gap-2">
               {self && (
                 <Button variant="default" onClick={() => setRemoving(self)}>
-                  Leave organization
+                  {t('org:team.leaveOrganization')}
                 </Button>
               )}
               <PermissionButton
                 allowed={canInvite}
-                action="invite members"
+                action={t('org:team.inviteMembers2')}
                 variant="primary"
                 icon={<AddIcon />}
                 onClick={() => setInviting(true)}
               >
-                Invite members
+                {t('org:team.inviteMembers')}
               </PermissionButton>
             </div>
           </div>
@@ -138,9 +139,9 @@ function TeamPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>Member</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Projects</TableHead>
+                    <TableHead>{t('org:team.member')}</TableHead>
+                    <TableHead>{t('org:team.role')}</TableHead>
+                    <TableHead>{t('org:team.projects')}</TableHead>
                     <TableHead className="w-12" />
                   </TableRow>
                 </TableHeader>
@@ -153,13 +154,13 @@ function TeamPage() {
                           <div className="flex min-w-0 flex-col">
                             <span className="flex items-center gap-2 truncate text-foreground">
                               {m.display_name || m.username}
-                              {m.user_id === me?.id && <Badge>You</Badge>}
+                              {m.user_id === me?.id && <Badge>{t('org:team.you')}</Badge>}
                               {m.mfa_enabled ? (
-                                <Badge variant="success" title="Signs in with an authenticator app">2FA</Badge>
+                                <Badge variant="success" title={t('org:team.signsInWithAnAuthenticatorApp')}>{t('org:team.n2fa')}</Badge>
                               ) : (
                                 org?.mfa_required && (
-                                  <Badge variant="warning" title="Can't open this organization until they turn on two-factor sign-in">
-                                    No 2FA
+                                  <Badge variant="warning" title={t('org:team.canTOpenThisOrganizationUntil')}>
+                                    {t('org:team.no2fa')}
                                   </Badge>
                                 )
                               )}
@@ -174,9 +175,9 @@ function TeamPage() {
                       <TableCell className="text-foreground-light">{roleLabel(m.role)}</TableCell>
                       <TableCell className="text-foreground-light">
                         {m.role !== 'no_access' ? (
-                          'All projects'
+                          t('org:team.allProjects')
                         ) : m.project_roles.length === 0 ? (
-                          <span className="text-foreground-lighter">None</span>
+                          <span className="text-foreground-lighter">{t('org:team.none')}</span>
                         ) : (
                           <span className="flex flex-wrap gap-1">
                             {m.project_roles.map((pr) => (
@@ -191,14 +192,14 @@ function TeamPage() {
                         {(canManage(m) || can(org, 'members:remove')) && m.user_id !== me?.id && (
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="text" icon={<SettingsIcon />} aria-label={`Manage ${m.username}`} />
+                              <Button variant="text" icon={<SettingsIcon />} aria-label={t('org:team.manage', { username: m.username })} />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-44">
                               <DropdownMenuItem disabled={!canManage(m)} onSelect={() => setEditing(m)}>
-                                Edit access
+                                {t('org:team.editAccess')}
                               </DropdownMenuItem>
                               <DropdownMenuItem disabled={!canManage(m)} onSelect={() => setRemoving(m)}>
-                                Remove from organization
+                                {t('org:team.removeFromOrganization')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -215,31 +216,31 @@ function TeamPage() {
         {canInvite && (
           <section className="flex flex-col gap-4">
             <div>
-              <h3 className="heading-subSection">Pending invitations</h3>
-              <p className="text-sm text-foreground-light">Links stop working after 7 days or once used.</p>
+              <h3 className="heading-subSection">{t('org:team.pendingInvitations')}</h3>
+              <p className="text-sm text-foreground-light">{t('org:team.linksStopWorkingAfter7Days')}</p>
             </div>
             <Card>
               {invitations.data && invitations.data.length > 0 ? (
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>For</TableHead>
-                      <TableHead>Role</TableHead>
-                      <TableHead>Invited by</TableHead>
-                      <TableHead>Expires</TableHead>
+                      <TableHead>{t('org:team.for')}</TableHead>
+                      <TableHead>{t('org:team.role')}</TableHead>
+                      <TableHead>{t('org:team.invitedBy')}</TableHead>
+                      <TableHead>{t('org:team.expires')}</TableHead>
                       <TableHead className="w-24" />
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {invitations.data.map((inv) => (
                       <TableRow key={inv.id}>
-                        <TableCell>{inv.email || <span className="text-foreground-lighter">Anyone with the link</span>}</TableCell>
+                        <TableCell>{inv.email || <span className="text-foreground-lighter">{t('org:team.anyoneWithTheLink')}</span>}</TableCell>
                         <TableCell className="text-foreground-light">{roleLabel(inv.role)}</TableCell>
                         <TableCell className="text-foreground-light">{inv.invited_by}</TableCell>
-                        <TableCell className="text-foreground-light">{new Date(inv.expires_at).toLocaleDateString()}</TableCell>
+                        <TableCell className="text-foreground-light">{new Date(inv.expires_at).toLocaleDateString(language())}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="default" loading={revoke.isPending && revoke.variables === inv.id} onClick={() => revoke.mutate(inv.id)}>
-                            Revoke
+                            {t('org:team.revoke')}
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -247,7 +248,7 @@ function TeamPage() {
                   </TableBody>
                 </Table>
               ) : (
-                <p className="px-4 py-6 text-center text-sm text-foreground-lighter">No pending invitations</p>
+                <p className="px-4 py-6 text-center text-sm text-foreground-lighter">{t('org:team.noPendingInvitations')}</p>
               )}
             </Card>
           </section>
@@ -259,22 +260,20 @@ function TeamPage() {
       <ConfirmDialog
         open={!!removing}
         onOpenChange={(o) => !o && setRemoving(null)}
-        title={removing?.user_id === me?.id ? `Leave ${org?.name}?` : `Remove ${removing?.username}?`}
+        title={removing?.user_id === me?.id ? t('org:team.leave', { name: org?.name }) : t('org:team.remove', { username: removing?.username })}
         description={
           removing?.user_id === me?.id
-            ? 'You will lose access to this organization and its projects until someone invites you again.'
+            ? t('org:team.youWillLoseAccessToThis')
             : (
                 <>
-                  They will lose access to this organization and all of its projects.
+                  {t('org:team.theyWillLoseAccessToThis')}
                   <span className="mt-2 block">
-                    <strong className="font-medium text-foreground">Any Postgres logins they created still work.</strong>{' '}
-                    Look for them under Database › Roles in each project, or filter Audit Logs by their name, then delete
-                    the ones they made.
+                    <Trans i18nKey="org:team.anyPostgresLoginsTheyCreatedStill" components={{ strong: <strong className="font-medium text-foreground" /> }} />
                   </span>
                 </>
               )
         }
-        confirmLabel={removing?.user_id === me?.id ? 'Leave organization' : 'Remove member'}
+        confirmLabel={removing?.user_id === me?.id ? t('org:team.leaveOrganization') : t('org:team.removeMember')}
         loading={remove.isPending}
         onConfirm={() => removing && remove.mutate(removing)}
       />
@@ -312,12 +311,12 @@ function AccessEditor({
 }) {
   const { data: projects = [] } = useProjects()
   const orgProjects = projects.filter((p) => p.organization_slug === slug)
-  const roles = ORG_ROLES.filter((r) => r.value !== 'owner' || actorRole === 'owner')
+  const roles = ORG_ROLES().filter((r) => r.value !== 'owner' || actorRole === 'owner')
   const assigned = (ref: string) => assignments.find((a) => a.ref === ref)
 
   return (
     <div className="flex flex-col gap-4">
-      <FormField label="Role" description={ORG_ROLES.find((r) => r.value === role)?.description}>
+      <FormField label={t('org:team.role')} description={ORG_ROLES().find((r) => r.value === role)?.description}>
         <Select value={role} onValueChange={(v) => onChange(v as OrgRole, v === 'no_access' ? assignments : [])}>
           <SelectTrigger>
             <SelectValue />
@@ -332,9 +331,9 @@ function AccessEditor({
         </Select>
       </FormField>
       {role === 'no_access' && (
-        <FormField label="Project access" description="Choose the projects this member can use, and their role on each.">
+        <FormField label={t('org:team.projectAccess')} description={t('org:team.chooseTheProjectsThisMemberCan')}>
           {orgProjects.length === 0 ? (
-            <p className="text-sm text-foreground-lighter">This organization has no projects yet.</p>
+            <p className="text-sm text-foreground-lighter">{t('org:team.thisOrganizationHasNoProjectsYet')}</p>
           ) : (
             <ul className="flex flex-col divide-y rounded-md border">
               {orgProjects.map((p) => {
@@ -370,7 +369,7 @@ function AccessEditor({
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {PROJECT_ROLES.map((r) => (
+                        {PROJECT_ROLES().map((r) => (
                           <SelectItem key={r.value} value={r.value}>
                             {r.label}
                           </SelectItem>
@@ -439,23 +438,23 @@ function InviteDialog({
     <Dialog open={open} onOpenChange={close}>
       <DialogContent size="medium">
         <DialogHeader>
-          <DialogTitle>{!link ? 'Invite a member' : emailed?.sent ? 'Invitation sent' : 'Share the invitation link'}</DialogTitle>
+          <DialogTitle>{!link ? t('org:team.inviteAMember') : emailed?.sent ? t('org:team.invitationSent') : t('org:team.shareTheInvitationLink')}</DialogTitle>
           <DialogDescription>
             {!link
               ? emailOn
-                ? 'Email someone a link to join this organization, creating an account if they need one. Or leave the email empty to share the link yourself.'
-                : 'Create a link that lets someone join this organization, creating an account if they need one.'
+                ? t('org:team.emailSomeoneALinkToJoin')
+                : t('org:team.createALinkThatLetsSomeone')
               : emailed?.sent
-                ? `We emailed the link to ${email}. You can also share it yourself: it works once, for 7 days, and won't be shown again.`
-                : 'Send this link to the person you are inviting. It works once and expires in 7 days. It will not be shown again.'}
+                ? t('org:team.weEmailedTheLinkToYou', { email })
+                : t('org:team.sendThisLinkToThePerson')}
           </DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-4 border-t">
           {link ? (
             <>
               {emailed && !emailed.sent && (
-                <Alert variant="warning" title="Couldn't email the invitation">
-                  {emailed.error ?? 'The mail server refused it.'} Share the link yourself.
+                <Alert variant="warning" title={t('org:team.couldnTEmailTheInvitation')}>
+                  {t('org:team.shareTheLinkYourself', { error: emailed.error ?? t('org:team.theMailServerRefusedIt') })}
                 </Alert>
               )}
               <CopyField value={link} />
@@ -463,9 +462,9 @@ function InviteDialog({
           ) : (
             <>
               <FormField
-                label="Email (optional)"
+                label={t('org:team.emailOptional')}
                 htmlFor="inv-email"
-                description={emailOn ? 'We’ll email them the link; it also pre-fills their sign-up form.' : 'Pre-fills their sign-up form.'}
+                description={emailOn ? t('org:team.weLlEmailThemTheLink') : t('org:team.preFillsTheirSignUpForm')}
               >
                 <Input id="inv-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
               </FormField>
@@ -486,12 +485,12 @@ function InviteDialog({
         <DialogFooter>
           {link ? (
             <Button variant="primary" onClick={() => close(false)}>
-              Done
+              {t('org:team.done')}
             </Button>
           ) : (
             <>
               <Button variant="default" onClick={() => close(false)}>
-                Cancel
+                {t('org:team.cancel')}
               </Button>
               <Button
                 variant="primary"
@@ -499,7 +498,7 @@ function InviteDialog({
                 disabled={role === 'no_access' && assignments.length === 0}
                 onClick={() => create.mutate()}
               >
-                {emailOn && email ? 'Send invitation' : 'Create invitation link'}
+                {emailOn && email ? t('org:team.sendInvitation') : t('org:team.createInvitationLink')}
               </Button>
             </>
           )}
@@ -534,7 +533,7 @@ function EditAccessDialog({
         })
       ),
     onSuccess: async () => {
-      toast.success(`Updated access for ${member.username}`)
+      toast.success(t('org:team.updatedAccessFor', { username: member.username }))
       await queryClient.invalidateQueries({ queryKey: ['organizations', slug] })
       onClose()
     },
@@ -543,7 +542,7 @@ function EditAccessDialog({
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="medium">
         <DialogHeader>
-          <DialogTitle>Edit access for {member.display_name || member.username}</DialogTitle>
+          <DialogTitle>{t('org:team.editAccessFor', { displayName: member.display_name || member.username })}</DialogTitle>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-4 border-t">
           <AccessEditor
@@ -560,7 +559,7 @@ function EditAccessDialog({
         </DialogSection>
         <DialogFooter>
           <Button variant="default" onClick={onClose}>
-            Cancel
+            {t('org:team.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -568,7 +567,7 @@ function EditAccessDialog({
             disabled={role === 'no_access' && assignments.length === 0}
             onClick={() => save.mutate()}
           >
-            Save
+            {t('org:team.save')}
           </Button>
         </DialogFooter>
       </DialogContent>

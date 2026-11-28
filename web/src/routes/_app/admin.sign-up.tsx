@@ -20,6 +20,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { resourceLimitsQuery, signUpSettingsQuery, uiConfigQuery } from '@/lib/api/queries'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/admin/sign-up')({
   component: SignUpSettingsPage,
@@ -31,8 +32,8 @@ function SignUpSettingsPage() {
   const saved = settings.data
   return (
     <AdminLayout
-      title="Sign-up"
-      description="Whether people can create their own accounts here. Accounts made by an instance admin or through an invitation link work either way."
+      title={t('admin:adminSignUp.signUp')}
+      description={t('admin:adminSignUp.whetherPeopleCanCreateTheirOwn')}
     >
       {settings.error ? (
         <Alert variant="destructive" title={settings.error.message} />
@@ -82,7 +83,7 @@ function SignUpForm({ saved }: { saved: Schemas['SignUpSettings'] }) {
   const save = useMutation({
     mutationFn: () => unwrap(api.PUT('/admin/sign-up', { body })),
     onSuccess: (s) => {
-      toast.success('Sign-up settings saved')
+      toast.success(t('admin:adminSignUp.signUpSettingsSaved'))
       queryClient.setQueryData(signUpSettingsQuery.queryKey, s)
       void queryClient.invalidateQueries({ queryKey: uiConfigQuery.queryKey })
     },
@@ -94,21 +95,18 @@ function SignUpForm({ saved }: { saved: Schemas['SignUpSettings'] }) {
   return (
     <>
       {!emailOn && (
-        <Alert variant="warning" title="This Supermixer can't send email">
-          Sign-up sends each person a link by email, so it can&apos;t be turned on until email is
-          set up in the server&apos;s configuration (
-          <code className="font-mono text-xs">[email]</code> in{' '}
-          <code className="font-mono text-xs">.env.toml</code>).
+        <Alert variant="warning" title={t('admin:adminSignUp.thisSupermixerCanTSendEmail')}>
+          <Trans i18nKey="admin:adminSignUp.signUpSendsEachPersonA" components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" /> }} />
         </Alert>
       )}
-      <SettingsSection title="Sign-up">
+      <SettingsSection title={t('admin:adminSignUp.signUp')}>
         <Card>
           <CardContent className="flex flex-col gap-8">
             <FormField
-              label="Allow people to create accounts"
+              label={t('admin:adminSignUp.allowPeopleToCreateAccounts')}
               htmlFor="su-enabled"
               layout="horizontal"
-              description="The sign-in page offers “Create one”. People enter their email address and get a link to choose a username and password."
+              description={t('admin:adminSignUp.theSignInPageOffersCreate')}
             >
               <div className="flex min-h-9 items-center">
                 <Switch
@@ -120,33 +118,33 @@ function SignUpForm({ saved }: { saved: Schemas['SignUpSettings'] }) {
               </div>
             </FormField>
             <FormField
-              label="Allowed email domains"
+              label={t('admin:adminSignUp.allowedEmailDomains')}
               htmlFor="su-domains"
               layout="horizontal"
-              description="Only addresses at these domains can sign up, such as example.com. Separate them with commas. Leave it empty to allow any address."
+              description={t('admin:adminSignUp.onlyAddressesAtTheseDomainsCan')}
             >
               <Input
                 id="su-domains"
-                placeholder="Any domain"
+                placeholder={t('admin:adminSignUp.anyDomain')}
                 value={domains}
                 onChange={(e) => setDomains(e.target.value)}
               />
             </FormField>
             <FormField
-              label="New accounts need approval"
+              label={t('admin:adminSignUp.newAccountsNeedApproval')}
               htmlFor="su-approval"
               layout="horizontal"
-              description="New accounts can't sign in until an instance admin approves them under Instance › Users."
+              description={t('admin:adminSignUp.newAccountsCanTSignIn')}
             >
               <div className="flex min-h-9 items-center">
                 <Switch id="su-approval" checked={approval} onCheckedChange={setApproval} />
               </div>
             </FormField>
             <FormField
-              label="Email instance admins about new accounts"
+              label={t('admin:adminSignUp.emailInstanceAdminsAboutNewAccounts')}
               htmlFor="su-notify"
               layout="horizontal"
-              description="Each instance admin with an email address gets an email when someone signs up."
+              description={t('admin:adminSignUp.eachInstanceAdminWithAnEmail')}
             >
               <div className="flex min-h-9 items-center">
                 <Switch id="su-notify" checked={notify} onCheckedChange={setNotify} />
@@ -155,21 +153,16 @@ function SignUpForm({ saved }: { saved: Schemas['SignUpSettings'] }) {
             {enabled && unlimited && (
               <Alert
                 variant="warning"
-                title="New accounts can create as many projects as they like"
+                title={t('admin:adminSignUp.newAccountsCanCreateAsMany')}
               >
-                Anyone who signs up can create organizations and start new Supabase stacks on this
-                server. Set limits under{' '}
-                <Link to="/admin/limits" className="text-link">
-                  Instance › Resource limits
-                </Link>{' '}
-                first.
+                <Trans i18nKey="admin:adminSignUp.anyoneWhoSignsUpCanCreate" components={{ link: <Link to="/admin/limits" className="text-link" /> }} />
               </Alert>
             )}
             {save.error && <Alert variant="destructive" title={save.error.message} />}
           </CardContent>
           <CardFooter>
             <Button variant="default" disabled={!dirty} onClick={reset}>
-              Cancel
+              {t('admin:adminSignUp.cancel')}
             </Button>
             <Button
               variant="primary"
@@ -177,7 +170,7 @@ function SignUpForm({ saved }: { saved: Schemas['SignUpSettings'] }) {
               loading={save.isPending}
               onClick={() => save.mutate()}
             >
-              Save
+              {t('admin:adminSignUp.save')}
             </Button>
           </CardFooter>
         </Card>

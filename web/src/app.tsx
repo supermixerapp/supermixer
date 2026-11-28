@@ -10,7 +10,6 @@ import { profileQuery } from '@/lib/api/queries'
 import { ThemeProvider } from '@/lib/theme'
 
 import { routeTree } from './routeTree.gen'
-import './styles/globals.css'
 
 // A 401 anywhere means the session ended (expired, revoked, or the user was
 // disabled): drop cached data and go to sign-in.
@@ -61,16 +60,19 @@ declare module '@tanstack/react-router' {
   }
 }
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider>
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider delayDuration={300}>
-          <CommandMenuProvider>
-            <RouterProvider router={router} />
-          </CommandMenuProvider>
-        </TooltipProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
-  </StrictMode>
-)
+/** Renders the app; main.tsx calls it once the language is loaded. */
+export function start() {
+  createRoot(document.getElementById('root')!).render(
+    <StrictMode>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <TooltipProvider delayDuration={300}>
+            <CommandMenuProvider>
+              <RouterProvider router={router} />
+            </CommandMenuProvider>
+          </TooltipProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </StrictMode>
+  )
+}

@@ -295,11 +295,14 @@ Larger buttons get proportionally rounder corners: `radius-md × (1 + (h/26 − 
 | Select chevron | ChevronDown | `expand_more` |
 | Search | Search | `search` |
 | Account | User | `account_circle` |
+| Language | The current language's flag | none: `web/src/components/flags.tsx` |
 | Close | X | `close` |
 | Check | Check | `check` |
 | Theme | Moon / Sun / Monitor | `dark_mode` / `light_mode` / `desktop_windows` |
 
 When adding an icon, add it to `web/src/components/icons.ts` and to this table.
+
+The language menu shows flags instead of an icon, drawn in `flags.tsx` with their real colours and a faint edge so white flags show. English uses the United Kingdom's flag.
 
 ---
 

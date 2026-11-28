@@ -5,6 +5,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { useTheme } from '@/lib/theme'
 
 import { applyEditorTheme, monaco } from './monaco'
+import { t } from '@/lib/i18n'
 
 export interface Runnable {
   sql: string
@@ -92,7 +93,7 @@ export function CodeEditor({
     applyEditorTheme(resolved)
     ed.addAction({
       id: 'supermixer.run',
-      label: 'Run query',
+      label: t('database:codeEditor.runQuery'),
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter],
       run: () => onRunRef.current?.(runnable()),
     })
@@ -110,7 +111,7 @@ export function CodeEditor({
       options={{
         readOnly,
         minimap: { enabled: false },
-        fontFamily: "'Source Code Pro Variable', 'Source Code Pro', monospace",
+        fontFamily: '\'Source Code Pro Variable\', \'Source Code Pro\', monospace',
         fontSize: 13,
         lineHeight: 20,
         padding: { top: 12, bottom: 12 },

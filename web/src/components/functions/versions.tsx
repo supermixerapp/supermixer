@@ -19,17 +19,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { relativeTime } from '@/lib/auth-users'
+import { localized, t, language } from '@/lib/i18n'
 
 type Version = Schemas['FunctionVersion']
 
-const KIND: Record<Version['kind'], { label: string; hint: string }> = {
-  deployed: { label: 'Deployed', hint: 'Deployed from Supermixer.' },
-  restored: { label: 'Restored', hint: 'An earlier version, deployed again.' },
+const KIND = localized((): Record<Version['kind'], { label: string; hint: string }> => ({
+  deployed: { label: t('functions:versions.deployed'), hint: t('functions:versions.deployedFromSupermixer') },
+  restored: { label: t('functions:versions.restored'), hint: t('functions:versions.anEarlierVersionDeployedAgain') },
   found: {
-    label: 'Found',
-    hint: 'The function as Supermixer found it before changing it: deployed before versions were kept, or changed outside Supermixer.',
+    label: t('functions:versions.found'),
+    hint: t('functions:versions.theFunctionAsSupermixerFoundIt'),
   },
-}
+}))
 
 export const functionVersionsQuery = (ref: string, name: string) => ({
   queryKey: ['projects', ref, 'functions', name, 'versions'],
@@ -58,7 +59,7 @@ export function FunctionVersions({
         api.POST('/projects/{ref}/functions/{name}/versions/{id}/restore', { params: { path: { ref, name, id } } })
       ),
     onSuccess: (res) => {
-      toast.success(res.restarted ? `Restored ${name}` : `Restored ${name}; it takes effect when the stack starts`)
+      toast.success(res.restarted ? t('functions:versions.restored2', { name }) : t('functions:versions.restoredItTakesEffectWhenThe', { name }))
       setRestoring(null)
     },
     onSettled: () => {
@@ -77,10 +78,10 @@ export function FunctionVersions({
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead>When</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>SHA-256</TableHead>
-              <TableHead className="text-right">Files</TableHead>
+              <TableHead>{t('functions:versions.when')}</TableHead>
+              <TableHead>{t('functions:versions.version')}</TableHead>
+              <TableHead>{t('functions:versions.sha256')}</TableHead>
+              <TableHead className="text-right">{t('functions:versions.files')}</TableHead>
               <TableHead className="w-44" />
             </TableRow>
           </TableHeader>
@@ -88,7 +89,7 @@ export function FunctionVersions({
             {list.length === 0 ? (
               <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={5} className="py-8 text-center text-foreground-lighter">
-                  No versions kept yet; the next deploy is the first.
+                  {t('functions:versions.noVersionsKeptYetTheNext')}
                 </TableCell>
               </TableRow>
             ) : (
@@ -96,23 +97,23 @@ export function FunctionVersions({
                 <TableRow key={v.id}>
                   <TableCell>
                     <span className="flex flex-col">
-                      <span className="whitespace-nowrap text-foreground">{new Date(v.created_at).toLocaleString()}</span>
+                      <span className="whitespace-nowrap text-foreground">{new Date(v.created_at).toLocaleString(language())}</span>
                       <span className="text-xs text-foreground-lighter">
                         {relativeTime(v.created_at)}
-                        {v.created_by && <> · by {v.created_by}</>}
+                        {v.created_by && <> {t('functions:versions.by', { createdBy: v.created_by })}</>}
                       </span>
                     </span>
                   </TableCell>
                   <TableCell>
-                    <span className="flex flex-wrap items-center gap-1" title={KIND[v.kind].hint}>
-                      <Badge variant={v.kind === 'found' ? 'warning' : 'default'}>{KIND[v.kind].label}</Badge>
-                      {current === v.sha256 && <Badge variant="success">Current</Badge>}
+                    <span className="flex flex-wrap items-center gap-1" title={KIND()[v.kind].hint}>
+                      <Badge variant={v.kind === 'found' ? 'warning' : 'default'}>{KIND()[v.kind].label}</Badge>
+                      {current === v.sha256 && <Badge variant="success">{t('functions:versions.current')}</Badge>}
                     </span>
                   </TableCell>
                   <TableCell>
                     <span className="flex items-center gap-1 font-mono text-xs whitespace-nowrap text-foreground-light">
                       {v.sha256.slice(0, 12)}…
-                      <CopyButton value={v.sha256} label="Copy the full hash" iconOnly />
+                      <CopyButton value={v.sha256} label={t('functions:versions.copyTheFullHash')} iconOnly />
                     </span>
                   </TableCell>
                   <TableCell className="text-right font-mono text-xs whitespace-nowrap text-foreground-light">
@@ -121,17 +122,17 @@ export function FunctionVersions({
                   <TableCell className="text-right">
                     <span className="flex justify-end gap-2">
                       <Button size="tiny" variant="default" onClick={() => setViewing(v)}>
-                        View
+                        {t('functions:versions.view')}
                       </Button>
                       <PermissionButton
                         allowed={canDeploy}
-                        action="deploy functions"
+                        action={t('functions:versions.deployFunctions')}
                         size="tiny"
                         variant="default"
                         disabled={current === v.sha256}
                         onClick={() => setRestoring(v)}
                       >
-                        Restore
+                        {t('functions:versions.restore')}
                       </PermissionButton>
                     </span>
                   </TableCell>
@@ -142,8 +143,7 @@ export function FunctionVersions({
         </Table>
       </Card>
       <p className="text-xs text-foreground-lighter">
-        The last 10 versions are kept, also after the function is deleted. The audit log records each deploy with these
-        hashes, so you can check what ran.
+        {t('functions:versions.theLast10VersionsAreKept')}
       </p>
 
       <VersionSheet projectRef={ref} name={name} version={viewing} onClose={() => setViewing(null)} />
@@ -151,16 +151,15 @@ export function FunctionVersions({
         open={restoring !== null}
         onOpenChange={(o) => !o && setRestoring(null)}
         variant="warning"
-        title={`Restore this version of ${name}?`}
+        title={t('functions:versions.restoreThisVersionOf', { name })}
         description={
           restoring && (
             <>
-              The function’s files are replaced with the version of {new Date(restoring.created_at).toLocaleString()}, and
-              the stack’s functions service restarts. The current files are kept as a version first.
+              {t('functions:versions.theFunctionSFilesAreReplaced', { value: new Date(restoring.created_at).toLocaleString(language()) })}
             </>
           )
         }
-        confirmLabel="Restore"
+        confirmLabel={t('functions:versions.restore')}
         loading={restore.isPending}
         onConfirm={() => restoring && restore.mutate(restoring.id)}
       >
@@ -196,20 +195,20 @@ function VersionSheet({
           <>
             <SheetHeader>
               <SheetTitle>
-                {name}, {new Date(version.created_at).toLocaleString()}
+                {name}, {new Date(version.created_at).toLocaleString(language())}
               </SheetTitle>
               <SheetDescription className="font-mono text-xs break-all">{version.sha256}</SheetDescription>
             </SheetHeader>
             <div className="flex-1 overflow-y-auto">
               <SheetSection className="flex flex-col gap-2">
-                <h3 className="text-xs text-foreground-lighter">Files</h3>
+                <h3 className="text-xs text-foreground-lighter">{t('functions:versions.files')}</h3>
                 <ul className="flex flex-col divide-y rounded-md border text-xs">
                   {version.files.map((f) => (
                     <li key={f.path} className="flex items-center justify-between gap-3 px-3 py-2">
                       <span className="font-mono text-foreground">
                         {f.path}
                         {f.link && <span className="text-foreground-lighter"> → {f.link}</span>}
-                        {f.unreadable && <span className="text-warning-600"> (couldn’t be read, so not kept)</span>}
+                        {f.unreadable && <span className="text-warning-600"> {t('functions:versions.couldnTBeReadSoNot')}</span>}
                       </span>
                       {!f.unreadable && (
                         <span className="font-mono text-foreground-lighter" title={f.sha256}>
@@ -241,7 +240,7 @@ function VersionSheet({
               )}
               {(detail.data?.other_files.length ?? 0) > 0 && (
                 <SheetSection className="border-t text-xs text-foreground-lighter">
-                  Not shown, since they aren’t text: {detail.data!.other_files.join(', ')}
+                  {t('functions:versions.notShownSinceTheyArenT', { join: detail.data!.other_files.join(', ') })}
                 </SheetSection>
               )}
             </div>

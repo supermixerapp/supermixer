@@ -8,6 +8,7 @@ import { useProfile } from '@/lib/api/hooks'
 import { uiConfigQuery } from '@/lib/api/queries'
 import { FALLBACK_THEME, useTheme, type ThemePreference } from '@/lib/theme'
 import { cn } from '@/lib/utils'
+import { localized, t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/account/appearance')({
   component: AppearancePage,
@@ -15,7 +16,7 @@ export const Route = createFileRoute('/_app/account/appearance')({
 
 function AppearancePage() {
   return (
-    <AccountLayout title="Appearance">
+    <AccountLayout title={t('account:appearance.appearance')}>
       <ThemeSection />
       <BrandSection />
     </AccountLayout>
@@ -47,7 +48,7 @@ function Mock({ mode, className }: { mode: 'dark' | 'light'; className?: string 
   )
 }
 
-const LABELS: Record<ThemePreference, string> = { dark: 'Dark', light: 'Light', system: 'System' }
+const LABELS = localized((): Record<ThemePreference, string> => ({ dark: t('account:appearance.dark'), light: t('account:appearance.light'), system: t('account:appearance.system') }))
 
 function ThemeSection() {
   const { preference, setPreference } = useTheme()
@@ -55,16 +56,16 @@ function ThemeSection() {
   const { data: ui } = useQuery(uiConfigQuery)
   const fallback = ui?.default_theme ?? FALLBACK_THEME
   const options: { value: ThemePreference; label: string }[] = [
-    { value: 'dark', label: 'Dark' },
-    { value: 'light', label: 'Light' },
-    { value: 'system', label: 'System' },
+    { value: 'dark', label: t('account:appearance.dark') },
+    { value: 'light', label: t('account:appearance.light') },
+    { value: 'system', label: t('account:appearance.system') },
   ]
   return (
     <SettingsSection
-      title="Theme"
-      description="Choose how Supermixer looks to you. Your choice is saved on your account, so it follows you to every browser."
+      title={t('account:appearance.theme')}
+      description={t('account:appearance.chooseHowSupermixerLooksToYou')}
     >
-      <div role="radiogroup" aria-label="Theme" className="grid grid-cols-3 gap-3">
+      <div role="radiogroup" aria-label={t('account:appearance.theme')} className="grid grid-cols-3 gap-3">
         {options.map((o) => (
           <button
             key={o.value}
@@ -99,8 +100,8 @@ function ThemeSection() {
       {profile && (
         <p className="mt-3 text-xs text-foreground-lighter">
           {profile.theme
-            ? `Saved on your account: ${LABELS[profile.theme]}.`
-            : `You haven't chosen a theme, so Supermixer uses this server's default: ${LABELS[fallback]}.`}
+            ? t('account:appearance.savedOnYourAccount', { value: LABELS()[profile.theme] })
+            : t('account:appearance.youHavenTChosenATheme', { value: LABELS()[fallback] })}
         </p>
       )}
     </SettingsSection>
@@ -120,11 +121,10 @@ function BrandSection() {
   const { data } = useQuery(uiConfigQuery)
   return (
     <SettingsSection
-      title="Brand colour"
+      title={t('account:appearance.brandColour')}
       description={
         <>
-          Set by <code className="font-mono text-xs">appearance.brand_color</code> in the server&apos;s .env.toml. Restart
-          Supermixer to apply a change; every shade below is derived from it.
+          <Trans i18nKey="account:appearance.setByAppearanceBrandColorIn" components={{ code: <code className="font-mono text-xs" /> }} />
         </>
       }
     >
@@ -133,7 +133,7 @@ function BrandSection() {
           <div className="h-8 w-8 rounded-md bg-primary-solid" />
           <div className="flex flex-col">
             <span className="text-sm text-foreground">
-              {data?.brand_color === '#0019a8' ? 'Piccadilly blue' : 'Custom brand colour'}
+              {data?.brand_color === '#0019a8' ? t('account:appearance.piccadillyBlue') : t('account:appearance.customBrandColour')}
             </span>
             <span className="font-mono text-xs text-foreground-lighter">{data?.brand_color ?? '…'}</span>
           </div>

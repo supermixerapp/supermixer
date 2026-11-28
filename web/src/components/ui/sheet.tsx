@@ -5,6 +5,7 @@ import { forwardRef, type ComponentPropsWithoutRef, type ElementRef, type HTMLAt
 
 import { CloseIcon } from '@/components/icons'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 export const Sheet = SheetPrimitive.Root
 export const SheetTrigger = SheetPrimitive.Trigger
@@ -44,7 +45,7 @@ export const SheetContent = forwardRef<
       {children}
       <SheetPrimitive.Close className="absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus-ring disabled:pointer-events-none">
         <CloseIcon size={16} />
-        <span className="sr-only">Close</span>
+        <span className="sr-only">{t('common:sheet.close')}</span>
       </SheetPrimitive.Close>
     </SheetPrimitive.Content>
   </SheetPrimitive.Portal>

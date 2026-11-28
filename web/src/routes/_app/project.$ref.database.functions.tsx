@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { createFunction, dropFunction, FUNCTIONS_SQL, parseProconfig, type FunctionDef, type FunctionRow } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/functions')({
   validateSearch: schemaSearch,
@@ -44,17 +45,17 @@ function FunctionsPage() {
 
   return (
     <DatabasePage
-      title="Database Functions"
-      description="Functions and procedures you wrote, callable from SQL, triggers and the Data API (rpc)."
+      title={t('database:databaseFunctions.databaseFunctions')}
+      description={t('database:databaseFunctions.functionsAndProceduresYouWroteCallable')}
       toolbar={
         <>
           <SchemaPicker projectRef={ref} value={schema} onChange={(s) => void navigate({ to: '.', search: { schema: s } })} />
-          <SearchBox value={search} onChange={setSearch} placeholder="Search for a function" />
+          <SearchBox value={search} onChange={setSearch} placeholder={t('database:databaseFunctions.searchForAFunction')} />
         </>
       }
       actions={
-        <PermissionButton allowed={canChange} action="create functions here" variant="primary" icon={<AddIcon />} onClick={() => setEditing(blank(schema))}>
-          Create a new function
+        <PermissionButton allowed={canChange} action={t('database:databaseFunctions.createFunctionsHere')} variant="primary" icon={<AddIcon />} onClick={() => setEditing(blank(schema))}>
+          {t('database:databaseFunctions.createANewFunction')}
         </PermissionButton>
       }
     >
@@ -63,20 +64,20 @@ function FunctionsPage() {
         loading={functions.isPending}
         error={functions.error}
         rowKey={(f) => `${f.name}(${f.args})`}
-        empty={search ? 'No functions match your search' : `No functions in ${schema} (extension functions are hidden)`}
+        empty={search ? t('database:databaseFunctions.noFunctionsMatchYourSearch') : t('database:databaseFunctions.noFunctionsInExtensionFunctionsAre', { schema })}
         columns={[
-          { header: 'Name', cell: (f) => <span className="text-foreground">{f.name}</span> },
-          { header: 'Arguments', cell: (f) => <Code title={f.args}>{f.args || '–'}</Code> },
-          { header: 'Return type', cell: (f) => <Code>{f.returns ?? 'procedure'}</Code> },
-          { header: 'Language', cell: (f) => f.language },
+          { header: t('database:databaseFunctions.name'), cell: (f) => <span className="text-foreground">{f.name}</span> },
+          { header: t('database:databaseFunctions.arguments'), cell: (f) => <Code title={f.args}>{f.args || '–'}</Code> },
+          { header: t('database:databaseFunctions.returnType'), cell: (f) => <Code>{f.returns ?? 'procedure'}</Code> },
+          { header: t('database:databaseFunctions.language'), cell: (f) => f.language },
           {
-            header: 'Security',
-            cell: (f) => (f.security_definer ? <Badge variant="warning">Definer</Badge> : <Badge>Invoker</Badge>),
+            header: t('database:databaseFunctions.security'),
+            cell: (f) => (f.security_definer ? <Badge variant="warning">{t('database:databaseFunctions.definer')}</Badge> : <Badge>{t('database:databaseFunctions.invoker')}</Badge>),
           },
         ]}
         actions={[
           {
-            label: 'Edit function',
+            label: t('database:databaseFunctions.editFunction'),
             hidden: (f) => !canChange || f.definition === null || f.kind !== 'f',
             onSelect: (f) =>
               setEditing({
@@ -92,10 +93,10 @@ function FunctionsPage() {
               }),
           },
           {
-            label: 'Delete function',
+            label: t('database:databaseFunctions.deleteFunction'),
             hidden: () => !canChange,
-            confirm: (f) => ({ title: `Delete ${f.name}(${f.args})?`, description: 'Triggers or policies that use it make this fail.' }),
-            onSelect: (f) => ddl.mutate({ sql: dropFunction(schema, f.name, f.args, f.kind === 'p' ? 'p' : 'f'), done: `Deleted ${f.name}` }),
+            confirm: (f) => ({ title: `Delete ${f.name}(${f.args})?`, description: t('database:databaseFunctions.triggersOrPoliciesThatUseIt') }),
+            onSelect: (f) => ddl.mutate({ sql: dropFunction(schema, f.name, f.args, f.kind === 'p' ? 'p' : 'f'), done: t('database:databaseFunctions.deleted', { name: f.name }) }),
           },
         ]}
       />
@@ -119,37 +120,37 @@ function FunctionSheet({ projectRef, initial, onClose }: { projectRef: string; i
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={initial.name ? `Edit ${initial.name}` : 'Create a new function'}
-      description="Saved with create or replace. Changing the arguments creates a separate function."
+      title={initial.name ? t('database:databaseFunctions.edit', { name: initial.name }) : t('database:databaseFunctions.createANewFunction')}
+      description={t('database:databaseFunctions.savedWithCreateOrReplaceChanging')}
       error={ddl.error}
-      submitLabel="Save function"
+      submitLabel={t('database:databaseFunctions.saveFunction')}
       submitting={ddl.isPending}
       disabled={!sql}
-      onSubmit={() => ddl.mutate({ sql, done: `Saved ${f.name}` }, { onSuccess: onClose })}
+      onSubmit={() => ddl.mutate({ sql, done: t('database:databaseFunctions.saved', { name: f.name }) }, { onSuccess: onClose })}
     >
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Name" htmlFor="fn-name">
+        <FormField label={t('database:databaseFunctions.name')} htmlFor="fn-name">
           <Input id="fn-name" autoFocus value={f.name} onChange={(e) => set({ name: e.target.value })} placeholder="touch_updated_at" />
         </FormField>
-        <FormField label="Return type" htmlFor="fn-returns" description="e.g. void, trigger, int8, setof public.todos">
+        <FormField label={t('database:databaseFunctions.returnType')} htmlFor="fn-returns" description={t('database:databaseFunctions.eGVoidTriggerInt8Setof')}>
           <Input id="fn-returns" className="font-mono" value={f.returns} onChange={(e) => set({ returns: e.target.value })} />
         </FormField>
       </div>
-      <FormField label="Arguments" htmlFor="fn-args" description="As in SQL, e.g. user_id uuid, amount numeric default 0">
+      <FormField label={t('database:databaseFunctions.arguments')} htmlFor="fn-args" description={t('database:databaseFunctions.asInSqlEGUser')}>
         <Input id="fn-args" className="font-mono" value={f.args} onChange={(e) => set({ args: e.target.value })} />
       </FormField>
-      <FormField label="Language">
+      <FormField label={t('database:databaseFunctions.language')}>
         <Select value={f.language} onValueChange={(v) => set({ language: v as FunctionDef['language'] })}>
           <SelectTrigger className="w-40">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="plpgsql">plpgsql</SelectItem>
-            <SelectItem value="sql">sql</SelectItem>
+            <SelectItem value="plpgsql">{t('database:databaseFunctions.plpgsql')}</SelectItem>
+            <SelectItem value="sql">{t('database:databaseFunctions.sql')}</SelectItem>
           </SelectContent>
         </Select>
       </FormField>
-      <FormField label="Definition">
+      <FormField label={t('database:databaseFunctions.definition')}>
         <div className="h-64 overflow-hidden rounded-md border">
           <CodeEditor value={f.body} onChange={(body) => set({ body })} />
         </div>
@@ -158,15 +159,14 @@ function FunctionSheet({ projectRef, initial, onClose }: { projectRef: string; i
         <label className="flex items-start gap-2">
           <Checkbox checked={f.securityDefiner} onCheckedChange={(c) => set({ securityDefiner: c === true })} className="mt-0.5" />
           <span>
-            Security definer
-            <span className="block text-xs text-foreground-lighter">Runs with the owner&apos;s rights instead of the caller&apos;s. Use with care.</span>
+            <Trans i18nKey="database:databaseFunctions.securityDefinerRunsWithTheOwner" components={{ span: <span className="block text-xs text-foreground-lighter" /> }} />
           </span>
         </label>
 <SearchPathField value={f.searchPath} original={initial.searchPath} onChange={(searchPath) => set({ searchPath })} />
       </div>
       {(f.settings?.length ?? 0) > 0 && (
         <p className="text-xs text-foreground-lighter">
-          Keeps its other settings: {f.settings!.map((x) => `${x.name} = ${x.value}`).join(', ')}
+          {t('database:databaseFunctions.keepsItsOtherSettings')} {f.settings!.map((x) => `${x.name} = ${x.value}`).join(', ')}
         </p>
       )}
       {sql && <SqlPreview sql={sql} />}
@@ -181,13 +181,13 @@ function SearchPathField({ value, original, onChange }: { value: string | null; 
     <label className="flex items-start gap-2">
       <Checkbox checked={value === ''} onCheckedChange={(c) => onChange(c === true ? '' : custom)} className="mt-0.5" />
       <span>
-        Empty search_path (recommended)
+        {t('database:databaseFunctions.emptySearchPathRecommended')}
         <span className="block text-xs text-foreground-lighter">
           {value === ''
-            ? 'Names in the body must be schema-qualified, which prevents search_path attacks.'
+            ? t('database:databaseFunctions.namesInTheBodyMustBe')
             : value
-              ? `Keeps search_path = ${value}.`
-              : 'No search_path is set: the function uses the caller\'s.'}
+              ? t('database:databaseFunctions.keepsSearchPath', { value })
+              : t('database:databaseFunctions.noSearchPathIsSetThe')}
         </span>
       </span>
     </label>

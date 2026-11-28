@@ -27,6 +27,7 @@ import { organizationLimitsQuery, organizationsQuery, uiConfigQuery } from '@/li
 import { cn } from '@/lib/utils'
 
 import { NotFound } from '../__root'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/new/$slug')({
   loader: async ({ context, params }) => {
@@ -73,7 +74,7 @@ function NewProjectPage() {
         })
       ),
     onSuccess: async (project) => {
-      toast.success(`Registered ${project.name}`)
+      toast.success(t('org:new.registered', { name: project.name }))
       await queryClient.invalidateQueries({ queryKey: ['projects'] })
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
       void navigate({ to: '/project/$ref', params: { ref: project.ref } })
@@ -87,32 +88,28 @@ function NewProjectPage() {
   const error = create.error ?? test.error
 
   return (
-    <AppShell title="New project">
+    <AppShell title={t('org:new.newProject')}>
       <div className="overflow-y-auto py-12">
         <PageContainer size="medium">
           {!allowed ? (
-            <Alert variant="warning" title="You need additional permissions to add projects">
-              Only Owners and Administrators of {org.name} can register projects.
+            <Alert variant="warning" title={t('org:new.youNeedAdditionalPermissionsToAdd')}>
+              {t('org:new.onlyOwnersAndAdministratorsOfCan', { name: org.name })}
             </Alert>
           ) : full ? (
             <Alert
               variant="warning"
-              title={`${org.name} has reached its limit of ${limit} ${limit === 1 ? 'project' : 'projects'}`}
+              title={t('org:new.hasReachedItsLimitOf', { name: org.name, count: limit })}
             >
-              Remove a project first, or raise the limit under{' '}
-              <Link to="/org/$slug/general" params={{ slug: org.slug }} className="text-link">
-                Organization Settings › General
-              </Link>{' '}
-              (up to the instance&apos;s limit, which instance admins set).
+              <Trans i18nKey="org:new.removeAProjectFirstOrRaise" components={{ link: <Link to="/org/$slug/general" params={{ slug: org.slug }} className="text-link" /> }} />
             </Alert>
           ) : (
             <div className="flex flex-col gap-6">
               {provisioning && (
-                <div role="radiogroup" aria-label="New project" className="grid grid-cols-2 gap-3">
+                <div role="radiogroup" aria-label={t('org:new.newProject')} className="grid grid-cols-2 gap-3">
                   {(
                     [
-                      ['create', 'Create a new stack', 'Supermixer starts a new Supabase stack on its Docker host.'],
-                      ['connect', 'Connect an existing stack', 'Register a self-hosted Supabase stack that is already running.'],
+                      ['create', t('org:new.createANewStack'), t('org:new.supermixerStartsANewSupabaseStack')],
+                      ['connect', t('org:new.connectAnExistingStack'), t('org:new.registerASelfHostedSupabaseStack')],
                     ] as const
                   ).map(([value, title, text]) => (
                     <button
@@ -139,31 +136,30 @@ function NewProjectPage() {
                   <Card>
                     <div className="flex items-start justify-between gap-4 border-b px-card py-4">
                       <div>
-                        <h3 className="font-sans text-base font-normal text-foreground">Register a project</h3>
+                        <h3 className="font-sans text-base font-normal text-foreground">{t('org:new.registerAProject')}</h3>
                         <p className="mt-1 text-sm text-foreground-lighter">
-                          Connect a self-hosted Supabase stack that is already running. Supermixer manages it; the stack
-                          itself is not changed.
+                          {t('org:new.connectASelfHostedSupabaseStack')}
                         </p>
                       </div>
                       <Button variant="default" icon={<ArticleIcon />} onClick={() => setImporting(true)}>
-                        Fill from Supabase .env
+                        {t('org:new.fillFromSupabaseEnv')}
                       </Button>
                     </div>
                     <div className="grid gap-4 border-b px-card py-6 md:grid-cols-12 md:gap-x-6">
                       <div className="md:col-span-4">
-                        <h4 className="font-sans text-sm font-normal text-foreground">Project</h4>
+                        <h4 className="font-sans text-sm font-normal text-foreground">{t('org:new.project')}</h4>
                       </div>
                       <div className="flex flex-col gap-4 md:col-span-8">
-                        <FormField label="Organization">
+                        <FormField label={t('org:new.organization')}>
                           <Input value={org.name} readOnly />
                         </FormField>
-                        <FormField label="Project name" htmlFor="project-name">
+                        <FormField label={t('org:new.projectName')} htmlFor="project-name">
                           <Input
                             id="project-name"
                             required
                             maxLength={64}
                             autoFocus
-                            placeholder="Production"
+                            placeholder={t('org:new.production')}
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                           />
@@ -176,7 +172,7 @@ function NewProjectPage() {
                         {test.data && (
                           <>
                             <div className="flex items-center gap-2 text-sm">
-                              Connection test <HealthBadge status={test.data.status} />
+                              <Trans i18nKey="org:new.connectionTest" components={{ healthbadge: <HealthBadge status={test.data.status} /> }} />
                             </div>
                             <HealthChecks report={test.data} />
                           </>
@@ -186,14 +182,14 @@ function NewProjectPage() {
                     )}
                     <div className="flex items-center justify-between gap-2 border-t px-card py-4">
                       <Button variant="default" onClick={cancel}>
-                        Cancel
+                        {t('org:new.cancel')}
                       </Button>
                       <div className="flex gap-2">
                         <Button variant="default" loading={test.isPending} onClick={() => test.mutate()}>
-                          Test connection
+                          {t('org:new.testConnection')}
                         </Button>
                         <Button type="submit" variant="primary" loading={create.isPending} disabled={!name.trim()}>
-                          Create project
+                          {t('org:new.createProject')}
                         </Button>
                       </div>
                     </div>

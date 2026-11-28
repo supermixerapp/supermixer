@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { AuthConfigPage, AuthSection } from '@/components/auth-config/kit'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/auth/rate-limits')({
   component: RateLimitsPage,
@@ -8,25 +9,25 @@ export const Route = createFileRoute('/_app/project/$ref/auth/rate-limits')({
 
 function RateLimitsPage() {
   return (
-    <AuthConfigPage title="Rate Limits" description="Limits on Auth's endpoints, to stop abuse. Empty means Auth's default.">
+    <AuthConfigPage title={t('authentication:authRateLimits.rateLimits')} description={t('authentication:authRateLimits.limitsOnAuthSEndpointsTo')}>
       {(ctx) => (
         <AuthSection
           ctx={ctx}
-          title="Rate limits"
+          title={t('authentication:authRateLimits.rateLimits2')}
           fields={[
             {
               name: 'rate_limit_email_sent',
-              label: 'Emails sent',
-              description: 'Sign-up confirmations, magic links, password resets and invites, for the whole project. Only applies with your own SMTP server.',
+              label: t('authentication:authRateLimits.emailsSent'),
+              description: t('authentication:authRateLimits.signUpConfirmationsMagicLinksPassword'),
               type: 'number',
-              unit: 'emails per hour',
+              unit: t('authentication:authRateLimits.emailsPerHour'),
               default: 30,
             },
-            { name: 'rate_limit_sms_sent', label: 'SMS messages sent', description: 'For the whole project.', type: 'number', unit: 'messages per hour', default: 30 },
-            { name: 'rate_limit_token_refresh', label: 'Token refreshes', type: 'number', unit: 'requests per 5 minutes per IP', default: 150 },
-            { name: 'rate_limit_verify', label: 'Token verifications', description: 'OTP and magic link checks.', type: 'number', unit: 'requests per 5 minutes per IP', default: 30 },
-            { name: 'rate_limit_otp', label: 'Sign-ups and sign-ins', type: 'number', unit: 'requests per 5 minutes per IP', default: 30 },
-            { name: 'rate_limit_anonymous_users', label: 'Anonymous sign-ins', type: 'number', unit: 'requests per hour per IP', default: 30 },
+            { name: 'rate_limit_sms_sent', label: t('authentication:authRateLimits.smsMessagesSent'), description: t('authentication:authRateLimits.forTheWholeProject'), type: 'number', unit: t('authentication:authRateLimits.messagesPerHour'), default: 30 },
+            { name: 'rate_limit_token_refresh', label: t('authentication:authRateLimits.tokenRefreshes'), type: 'number', unit: t('authentication:authRateLimits.requestsPer5MinutesPerIp'), default: 150 },
+            { name: 'rate_limit_verify', label: t('authentication:authRateLimits.tokenVerifications'), description: t('authentication:authRateLimits.otpAndMagicLinkChecks'), type: 'number', unit: t('authentication:authRateLimits.requestsPer5MinutesPerIp'), default: 30 },
+            { name: 'rate_limit_otp', label: t('authentication:authRateLimits.signUpsAndSignIns'), type: 'number', unit: t('authentication:authRateLimits.requestsPer5MinutesPerIp'), default: 30 },
+            { name: 'rate_limit_anonymous_users', label: t('authentication:authRateLimits.anonymousSignIns'), type: 'number', unit: t('authentication:authRateLimits.requestsPerHourPerIp'), default: 30 },
           ]}
         />
       )}

@@ -13,6 +13,7 @@ import { can, useSelectedProject } from '@/lib/api/hooks'
 import { PROTECTED_SCHEMAS, SCHEMAS_SQL, TABLES_SQL, type SchemaRow, type TableListRow } from '@/lib/pg/catalog'
 import { pgQuery, usePg } from '@/lib/pg/run'
 import { cn } from '@/lib/utils'
+import { t as tr, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/editor')({
   validateSearch: (search: Record<string, unknown>): { schema?: string } =>
@@ -36,14 +37,14 @@ function TableEditorLayout() {
 
   return (
     <div className="flex h-full min-h-0">
-      <aside aria-label="Tables" className="hidden w-(--product-menu-width) shrink-0 flex-col border-r bg-dash-sidebar md:flex">
+      <aside aria-label={tr('database:editor.tables')} className="hidden w-(--product-menu-width) shrink-0 flex-col border-r bg-dash-sidebar md:flex">
         <div className="flex min-h-(--header-height) shrink-0 items-center border-b px-4">
-          <h4 className="font-sans text-sm font-normal">Table Editor</h4>
+          <h4 className="font-sans text-sm font-normal">{tr('database:editor.tableEditor')}</h4>
         </div>
         <div className="flex flex-col gap-2 border-b p-3">
           <Select value={schema} onValueChange={(s) => void navigate({ to: '/project/$ref/editor', params: { ref }, search: { schema: s } })}>
-            <SelectTrigger size="tiny" aria-label="Schema">
-              <span className="text-foreground-lighter">schema</span>
+            <SelectTrigger size="tiny" aria-label={tr('database:editor.schema')}>
+              <span className="text-foreground-lighter">{tr('database:editor.schema2')}</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -56,26 +57,25 @@ function TableEditorLayout() {
           </Select>
           <PermissionButton
             allowed={can(project, 'project:data:write') && !isProtected}
-            action={isProtected ? 'create tables in a schema Supabase manages' : 'create tables'}
+            action={isProtected ? tr('database:editor.createTablesInManagedSchema') : tr('database:editor.createTables')}
             variant="default"
             size="tiny"
             icon={<AddIcon />}
             className="justify-start"
             onClick={() => setCreating(true)}
           >
-            New table
+            {tr('database:editor.newTable')}
           </PermissionButton>
         </div>
         <div className="p-3 pb-1">
           <div className="relative">
             <SearchIcon size={14} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-foreground-lighter" />
-            <Input size="tiny" className="pl-7" placeholder="Search tables" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input size="tiny" className="pl-7" placeholder={tr('database:editor.searchTables')} value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
         </div>
         {isProtected && (
           <p className="mx-3 my-2 flex gap-1.5 rounded-md border bg-surface-100 px-2 py-1.5 text-xs text-foreground-light">
-            <LockIcon size={14} className="mt-px shrink-0 text-foreground-lighter" />
-            This schema is managed by Supabase and is read-only here.
+            <Trans i18nKey="database:editor.thisSchemaIsManagedBySupabase" components={{ lockicon: <LockIcon size={14} className="mt-px shrink-0 text-foreground-lighter" /> }} />
           </p>
         )}
         <ul className="grow overflow-y-auto px-2 py-2">
@@ -86,7 +86,7 @@ function TableEditorLayout() {
             </li>
           ) : visible.length === 0 ? (
             <li className="px-2 py-4 text-center text-xs text-foreground-lighter">
-              {search ? 'No tables match your search' : `No tables in ${schema}`}
+              {search ? tr('database:editor.noTablesMatchYourSearch') : tr('database:editor.noTablesIn', { schema })}
             </li>
           ) : (
             visible.map((t) => {
@@ -105,14 +105,14 @@ function TableEditorLayout() {
                     <TableEditorIcon size={14} className="shrink-0 text-foreground-lighter" />
                     <span className="truncate">{t.name}</span>
                     {t.kind !== 'r' && t.kind !== 'p' && (
-                      <span className="ml-auto text-[10px] text-foreground-muted uppercase">{t.kind === 'v' ? 'view' : t.kind === 'm' ? 'mat. view' : 'foreign'}</span>
+                      <span className="ml-auto text-[10px] text-foreground-muted uppercase">{t.kind === 'v' ? 'view' : t.kind === 'm' ? tr('database:editor.matView') : 'foreign'}</span>
                     )}
                     {(t.kind === 'r' || t.kind === 'p') && !t.rls && !isProtected && (
                       <Tooltip>
                         <TooltipTrigger asChild>
-                          <span className="ml-auto rounded bg-warning-200 px-1 text-[10px] text-warning-600">RLS off</span>
+                          <span className="ml-auto rounded bg-warning-200 px-1 text-[10px] text-warning-600">{tr('database:editor.rlsOff')}</span>
                         </TooltipTrigger>
-                        <TooltipContent>Row Level Security is disabled: anyone with the anon key can read and write this table.</TooltipContent>
+                        <TooltipContent>{tr('database:editor.rowLevelSecurityIsDisabledAnyone')}</TooltipContent>
                       </Tooltip>
                     )}
                   </Link>

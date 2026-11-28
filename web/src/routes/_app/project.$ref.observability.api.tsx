@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { DatabasePage } from '@/components/database/catalog-page'
 import { RequestsReport } from '@/components/logs/requests-report'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/observability/api')({
   component: ApiReportPage,
@@ -10,7 +11,7 @@ export const Route = createFileRoute('/_app/project/$ref/observability/api')({
 function ApiReportPage() {
   const { ref } = Route.useParams()
   return (
-    <DatabasePage title="API Gateway" description="Requests through the stack's API gateway over the last 24 hours, from its logs. Refreshes every minute.">
+    <DatabasePage title={t('observability:observabilityApi.apiGateway')} description={t('observability:observabilityApi.requestsThroughTheStackSApi')}>
       <RequestsReport projectRef={ref} />
     </DatabasePage>
   )

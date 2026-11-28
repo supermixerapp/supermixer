@@ -6,6 +6,7 @@ import { useProfile } from '@/lib/api/hooks'
 
 import { GlobalNotice } from './global-notice'
 import { LayoutHeader } from './layout-header'
+import { Trans } from '@/lib/i18n'
 
 /** Header across the top; optional icon rail and content below (Studio's layout). */
 export function AppShell({ sidebar, title, children }: { sidebar?: ReactNode; title?: string; children: ReactNode }) {
@@ -31,11 +32,7 @@ function DefaultPasswordBanner() {
       role="alert"
       className="flex shrink-0 items-center justify-center gap-2 border-b border-warning-500 bg-warning-200 px-4 py-1.5 text-xs text-foreground"
     >
-      <WarningIcon size={14} className="text-warning-600" />
-      You are signed in with the default password.
-      <Link to="/account/me" hash="password" className="text-link">
-        Change it now
-      </Link>
+      <Trans i18nKey="common:appShell.youAreSignedInWithThe" components={{ warningicon: <WarningIcon size={14} className="text-warning-600" />, link: <Link to="/account/me" hash="password" className="text-link" /> }} />
     </div>
   )
 }

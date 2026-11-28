@@ -31,6 +31,7 @@ import {
 import { usePg } from '@/lib/pg/run'
 import { setRls } from '@/lib/pg/table-sql'
 import { listBuckets } from '@/lib/storage-api'
+import { localized, t as tr, Trans } from '@/lib/i18n'
 
 /**
  * Row Level Security per table, shared by Database › Policies, Auth › Policies
@@ -44,7 +45,7 @@ export function PoliciesView({
   onSchemaChange,
   storage = false,
   realtime = false,
-  description = 'Row Level Security policies decide which rows each role can read and write through the API.',
+  description = tr('database:policiesView.rowLevelSecurityPoliciesDecideWhich'),
 }: {
   projectRef: string
   schema: string
@@ -53,7 +54,7 @@ export function PoliciesView({
   realtime?: boolean
   description?: ReactNode
 }) {
-  const managed = storage ? STORAGE_TABLE_HINTS : realtime ? REALTIME_TABLE_HINTS : null
+  const managed = storage ? STORAGE_TABLE_HINTS() : realtime ? REALTIME_TABLE_HINTS() : null
   const [search, setSearch] = useState('')
   const [creating, setCreating] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<PolicyRow | null>(null)
@@ -70,12 +71,12 @@ export function PoliciesView({
 
   return (
     <DatabasePage
-      title="Policies"
+      title={tr('database:policiesView.policies')}
       description={description}
       toolbar={
         <>
           {onSchemaChange && <SchemaPicker projectRef={ref} value={schema} onChange={onSchemaChange} />}
-          <SearchBox value={search} onChange={setSearch} placeholder="Filter tables" />
+          <SearchBox value={search} onChange={setSearch} placeholder={tr('database:policiesView.filterTables')} />
         </>
       }
     >
@@ -85,7 +86,7 @@ export function PoliciesView({
       ) : tables.isPending || policies.isPending ? (
         <Skeleton className="h-40" />
       ) : rows.length === 0 ? (
-        <p className="py-10 text-center text-sm text-foreground-lighter">{search ? 'No tables match your filter' : `No tables in ${schema}`}</p>
+        <p className="py-10 text-center text-sm text-foreground-lighter">{search ? tr('database:policiesView.noTablesMatchYourFilter') : tr('database:policiesView.noTablesIn', { schema })}</p>
       ) : (
         rows.map((t) => {
           const own = (policies.data ?? []).filter((p) => p.table === t.name)
@@ -93,32 +94,31 @@ export function PoliciesView({
             <Card key={t.id}>
               <div className="flex flex-wrap items-center gap-3 border-b px-4 py-3">
                 <span className="text-sm text-foreground">{t.name}</span>
-                {!t.rls && <Badge variant="warning">RLS disabled</Badge>}
+                {!t.rls && <Badge variant="warning">{tr('database:policiesView.rlsDisabled')}</Badge>}
                 {managed && <span className="text-xs text-foreground-lighter">{managed[t.name]}</span>}
                 {managed ? (
                   <span className="ml-auto" />
                 ) : (
                 <label className="ml-auto flex items-center gap-2 text-xs text-foreground-light">
-                  Row Level Security
-                  <Switch
-                    aria-label={`Row Level Security on ${t.name}`}
+                  <Trans i18nKey="database:policiesView.rowLevelSecurity" components={{ switch: <Switch
+                    aria-label={tr('database:policiesView.rlsOnTable', { name: t.name })}
                     checked={t.rls}
                     disabled={!canChange || ddl.isPending}
-                    onCheckedChange={(on) => ddl.mutate({ sql: setRls(schema, t.name, on), done: `RLS ${on ? 'enabled' : 'disabled'} on ${t.name}` })}
-                  />
+                    onCheckedChange={(on) => ddl.mutate({ sql: setRls(schema, t.name, on), done: on ? tr('database:policiesView.rlsEnabledOn', { name: t.name }) : tr('database:policiesView.rlsDisabledOn', { name: t.name }) })}
+                  /> }} />
                 </label>
                 )}
-                <PermissionButton allowed={canChange} action="create policies here" variant="default" size="tiny" icon={<AddIcon />} onClick={() => setCreating(t.name)}>
-                  Create policy
+                <PermissionButton allowed={canChange} action={tr('database:policiesView.createPoliciesHere')} variant="default" size="tiny" icon={<AddIcon />} onClick={() => setCreating(t.name)}>
+                  {tr('database:policiesView.createPolicy')}
                 </PermissionButton>
               </div>
               {own.length === 0 ? (
                 <p className="px-4 py-4 text-xs text-foreground-lighter">
                   {realtime
-                    ? 'No policies: only the service role can use private channels.'
+                    ? tr('database:policiesView.noPoliciesOnlyTheServiceRole')
                     : t.rls
-                      ? 'No policies: the API can read or write nothing in this table.'
-                      : 'RLS is off: anyone with the anon key can read and write every row.'}
+                      ? tr('database:policiesView.noPoliciesTheApiCanRead')
+                      : tr('database:policiesView.rlsIsOffAnyoneWithThe')}
                 </p>
               ) : (
                 <ul className="divide-y">
@@ -128,14 +128,14 @@ export function PoliciesView({
                       <div className="flex min-w-0 flex-1 flex-col gap-1">
                         <span className="text-foreground">{p.name}</span>
                         <span className="text-xs text-foreground-lighter">
-                          {p.permissive ? 'Permissive' : 'Restrictive'} · to {p.roles.join(', ')}
+                          {tr(p.permissive ? 'database:policiesView.permissiveTo' : 'database:policiesView.restrictiveTo', { roles: p.roles.join(', ') })}
                         </span>
-                        {p.using && <code className="truncate font-mono text-xs text-foreground-light">using ({p.using})</code>}
-                        {p.check && <code className="truncate font-mono text-xs text-foreground-light">with check ({p.check})</code>}
+                        {p.using && <code className="truncate font-mono text-xs text-foreground-light">{tr('database:policiesView.using', { using: p.using })}</code>}
+                        {p.check && <code className="truncate font-mono text-xs text-foreground-light">{tr('database:policiesView.withCheck', { check: p.check })}</code>}
                       </div>
                       {canChange && (
                         <Button variant="text" size="tiny" onClick={() => setDeleting(p)}>
-                          Delete
+                          {tr('database:policiesView.delete')}
                         </Button>
                       )}
                     </li>
@@ -152,12 +152,12 @@ export function PoliciesView({
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete policy "${deleting?.name}"?`}
-        description="Access it granted stops at once."
-        confirmLabel="Delete policy"
+        title={tr('database:policiesView.deletePolicy', { name: deleting?.name })}
+        description={tr('database:policiesView.accessItGrantedStopsAtOnce')}
+        confirmLabel={tr('database:policiesView.deletePolicy2')}
         loading={ddl.isPending}
         onConfirm={() =>
-          deleting && ddl.mutate({ sql: dropPolicy(schema, deleting.table, deleting.name), done: `Deleted ${deleting.name}` }, { onSettled: () => setDeleting(null) })
+          deleting && ddl.mutate({ sql: dropPolicy(schema, deleting.table, deleting.name), done: tr('database:policiesView.deleted', { name: deleting.name }) }, { onSettled: () => setDeleting(null) })
         }
       />
     </DatabasePage>
@@ -166,14 +166,14 @@ export function PoliciesView({
 
 const COMMON_ROLES = ['anon', 'authenticated', 'service_role']
 
-const STORAGE_TABLE_HINTS: Record<string, string> = {
-  objects: 'Who can read, upload, change and delete files',
-  buckets: 'Who can list and manage buckets through the API',
-}
+const STORAGE_TABLE_HINTS = localized((): Record<string, string> => ({
+  objects: tr('database:policiesView.whoCanReadUploadChangeAnd'),
+  buckets: tr('database:policiesView.whoCanListAndManageBuckets'),
+}))
 
-const REALTIME_TABLE_HINTS: Record<string, string> = {
-  messages: 'Who can receive and send Broadcast and Presence on private channels',
-}
+const REALTIME_TABLE_HINTS = localized((): Record<string, string> => ({
+  messages: tr('database:policiesView.whoCanReceiveAndSendBroadcast'),
+}))
 
 function PolicySheet({
   projectRef,
@@ -204,8 +204,8 @@ function PolicySheet({
       ? storagePolicyTemplates(chosenBucket)
       : []
     : realtime
-      ? REALTIME_POLICY_TEMPLATES
-      : POLICY_TEMPLATES
+      ? REALTIME_POLICY_TEMPLATES()
+      : POLICY_TEMPLATES()
   const ddl = useDdl(projectRef)
   const set = (patch: Partial<PolicyDef>) => setP((x) => ({ ...x, ...patch }))
   const sql = p.name.trim() ? createPolicy({ ...p, name: p.name.trim() }) : ''
@@ -215,18 +215,18 @@ function PolicySheet({
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={`Create a policy on ${table}`}
+      title={tr('database:policiesView.createAPolicyOn', { table })}
       error={ddl.error}
-      submitLabel="Save policy"
+      submitLabel={tr('database:policiesView.savePolicy')}
       submitting={ddl.isPending}
       disabled={!sql}
-      onSubmit={() => ddl.mutate({ sql, done: `Created ${p.name}` }, { onSuccess: onClose })}
+      onSubmit={() => ddl.mutate({ sql, done: tr('database:policiesView.created', { name: p.name }) }, { onSuccess: onClose })}
     >
       {bucketTemplates && (
-        <FormField label="Bucket" description={buckets.data?.length === 0 ? 'No buckets yet; templates need one.' : 'Templates below apply to this bucket.'}>
+        <FormField label={tr('database:policiesView.bucket')} description={buckets.data?.length === 0 ? tr('database:policiesView.noBucketsYetTemplatesNeedOne') : tr('database:policiesView.templatesBelowApplyToThisBucket')}>
           <Select value={chosenBucket ?? ''} onValueChange={setBucket}>
-            <SelectTrigger aria-label="Bucket">
-              <SelectValue placeholder="Choose a bucket" />
+            <SelectTrigger aria-label={tr('database:policiesView.bucket')}>
+              <SelectValue placeholder={tr('database:policiesView.chooseABucket')} />
             </SelectTrigger>
             <SelectContent>
               {(buckets.data ?? []).map((b) => (
@@ -238,7 +238,7 @@ function PolicySheet({
           </Select>
         </FormField>
       )}
-      <FormField label="Start from a template">
+      <FormField label={tr('database:policiesView.startFromATemplate')}>
         <div className="grid gap-1 sm:grid-cols-2">
           {templates.map((t) => (
             <button
@@ -251,11 +251,11 @@ function PolicySheet({
           ))}
         </div>
       </FormField>
-      <FormField label="Policy name" htmlFor="pol-name">
+      <FormField label={tr('database:policiesView.policyName')} htmlFor="pol-name">
         <Input id="pol-name" value={p.name} onChange={(e) => set({ name: e.target.value })} />
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Command">
+        <FormField label={tr('database:policiesView.command')}>
           <Select value={p.command} onValueChange={(v) => set({ command: v as PolicyDef['command'] })}>
             <SelectTrigger>
               <SelectValue />
@@ -269,19 +269,19 @@ function PolicySheet({
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Behaviour">
+        <FormField label={tr('database:policiesView.behaviour')}>
           <Select value={p.permissive ? 'permissive' : 'restrictive'} onValueChange={(v) => set({ permissive: v === 'permissive' })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="permissive">Permissive (any matching policy allows)</SelectItem>
-              <SelectItem value="restrictive">Restrictive (every one must allow)</SelectItem>
+              <SelectItem value="permissive">{tr('database:policiesView.permissiveAnyMatchingPolicyAllows')}</SelectItem>
+              <SelectItem value="restrictive">{tr('database:policiesView.restrictiveEveryOneMustAllow')}</SelectItem>
             </SelectContent>
           </Select>
         </FormField>
       </div>
-      <FormField label="Target roles" description="None ticked means every role (public).">
+      <FormField label={tr('database:policiesView.targetRoles')} description={tr('database:policiesView.noneTickedMeansEveryRolePublic')}>
         <div className="flex gap-4 text-sm">
           {COMMON_ROLES.map((r) => (
             <label key={r} className="flex items-center gap-1.5">
@@ -292,12 +292,12 @@ function PolicySheet({
         </div>
       </FormField>
       {showUsing && (
-        <FormField label="USING expression" htmlFor="pol-using" description="Which existing rows the command can see, e.g. (select auth.uid()) = user_id">
+        <FormField label={tr('database:policiesView.usingExpression')} htmlFor="pol-using" description={tr('database:policiesView.whichExistingRowsTheCommandCan')}>
           <Textarea id="pol-using" className="font-mono text-xs" value={p.using} onChange={(e) => set({ using: e.target.value })} />
         </FormField>
       )}
       {showCheck && (
-        <FormField label="WITH CHECK expression" htmlFor="pol-check" description="Which new or changed rows are allowed.">
+        <FormField label={tr('database:policiesView.withCheckExpression')} htmlFor="pol-check" description={tr('database:policiesView.whichNewOrChangedRowsAre')}>
           <Textarea id="pol-check" className="font-mono text-xs" value={p.check} onChange={(e) => set({ check: e.target.value })} />
         </FormField>
       )}

@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { api, unwrap } from '@/lib/api/client'
 import { profileQuery, uiConfigQuery } from '@/lib/api/queries'
 import { passwordRule } from '@/lib/passwords'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/sign-up')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -49,10 +50,7 @@ function Heading({ title, subtitle }: { title: string; subtitle: React.ReactNode
 function BackToSignIn() {
   return (
     <p className="mt-8 text-center text-sm text-foreground-lighter">
-      Already have an account?{' '}
-      <Link to="/sign-in" search={{ redirect: undefined }} className="text-link">
-        Sign in
-      </Link>
+      <Trans i18nKey="auth:signUp.alreadyHaveAnAccountSignIn" components={{ link: <Link to="/sign-in" search={{ redirect: undefined }} className="text-link" /> }} />
     </p>
   )
 }
@@ -77,7 +75,7 @@ function AskForLink() {
     return (
       <div aria-busy="true">
         <div className="mb-10">
-          <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Create your account</h1>
+          <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">{t('auth:signUp.createYourAccount')}</h1>
           <Skeleton className="h-4 w-64" />
         </div>
         <Skeleton className="h-36" />
@@ -88,11 +86,11 @@ function AskForLink() {
     return (
       <>
         <Heading
-          title="Create your account"
-          subtitle="Accounts here are made by an instance admin."
+          title={t('auth:signUp.createYourAccount')}
+          subtitle={t('auth:signUp.accountsHereAreMadeByAn')}
         />
-        <Alert variant="warning" title="You can't create your own account on this Supermixer">
-          Ask an instance admin for one, or use the invitation link you were sent.
+        <Alert variant="warning" title={t('auth:signUp.youCanTCreateYourOwn')}>
+          {t('auth:signUp.askAnInstanceAdminForOne')}
         </Alert>
         <BackToSignIn />
       </>
@@ -101,13 +99,13 @@ function AskForLink() {
   return (
     <>
       <Heading
-        title="Create your account"
+        title={t('auth:signUp.createYourAccount')}
         subtitle={
           request.isSuccess
-            ? 'Check your email.'
+            ? t('auth:signUp.checkYourEmail')
             : !ui?.sign_up_enabled
-              ? 'Sign in with one of these, and your account is made.'
-              : 'Enter your email address, and we’ll email you a link to set up your account.'
+              ? t('auth:signUp.signInWithOneOfThese')
+              : t('auth:signUp.enterYourEmailAddressAndWe')
         }
       />
       {providers.length > 0 && !request.isSuccess && (
@@ -125,24 +123,21 @@ function AskForLink() {
                 <a
                   href={`/api/v1/auth/sso/${encodeURIComponent(p.id)}/start?redirect=${encodeURIComponent('/dashboard')}`}
                 >
-                  Continue with {p.name}
+                  {t('auth:signUp.continueWith', { name: p.name })}
                 </a>
               </Button>
             ))}
           </div>
           {ui?.sign_up_enabled && (
             <div className="my-6 flex items-center gap-3 text-xs text-foreground-lighter">
-              <span className="h-px flex-1 bg-border" />
-              or
-              <span className="h-px flex-1 bg-border" />
+              <Trans i18nKey="auth:signUp.or" components={{ span: <span className="h-px flex-1 bg-border" />, span2: <span className="h-px flex-1 bg-border" /> }} />
             </div>
           )}
         </>
       )}
       {!ui?.sign_up_enabled ? null : request.isSuccess ? (
-        <Alert title={`We've sent an email to ${email.trim()}`}>
-          It has a link to choose your username and password, which works once, for a day. If
-          nothing arrives in a few minutes, check your spam folder.
+        <Alert title={t('auth:signUp.weVeSentAnEmailTo', { trim: email.trim() })}>
+          {t('auth:signUp.itHasALinkToChoose')}
         </Alert>
       ) : (
         <form
@@ -152,7 +147,7 @@ function AskForLink() {
           }}
           className="flex flex-col gap-4"
         >
-          <FormField label="Email" htmlFor="su-email">
+          <FormField label={t('auth:signUp.email')} htmlFor="su-email">
             <Input
               id="su-email"
               type="email"
@@ -165,7 +160,7 @@ function AskForLink() {
             />
           </FormField>
           <div aria-hidden className="absolute -left-[10000px] h-px w-px overflow-hidden">
-            <label htmlFor="su-website">Website</label>
+            <label htmlFor="su-website">{t('auth:signUp.website')}</label>
             <input
               id="su-website"
               tabIndex={-1}
@@ -183,7 +178,7 @@ function AskForLink() {
             loading={request.isPending}
             className="mt-2"
           >
-            Send link
+            {t('auth:signUp.sendLink')}
           </Button>
         </form>
       )}
@@ -243,10 +238,9 @@ function ChooseAccount({ token }: { token: string }) {
   if (waiting) {
     return (
       <>
-        <Heading title="Thanks for signing up" subtitle="Your account is almost ready." />
-        <Alert title="Your account is waiting for an instance admin's approval">
-          We&apos;ll email {info.data?.email} as soon as it&apos;s approved. Then you can sign in
-          with the username and password you just chose.
+        <Heading title={t('auth:signUp.thanksForSigningUp')} subtitle={t('auth:signUp.yourAccountIsAlmostReady')} />
+        <Alert title={t('auth:signUp.yourAccountIsWaitingForAn')}>
+          {t('auth:signUp.weLlEmailAsSoonAs', { email: info.data?.email })}
         </Alert>
         <BackToSignIn />
       </>
@@ -254,18 +248,18 @@ function ChooseAccount({ token }: { token: string }) {
   }
   return (
     <>
-      <Heading title="Create your account" subtitle="Choose your username and password." />
+      <Heading title={t('auth:signUp.createYourAccount')} subtitle={t('auth:signUp.chooseYourUsernameAndPassword')} />
       {info.error ? (
         <Alert variant="warning" title={info.error.message}>
           <Link to="/sign-up" search={{ token: undefined }} className="text-link">
-            Ask for a new link
+            {t('auth:signUp.askForANewLink')}
           </Link>
         </Alert>
       ) : !info.data ? (
         <Skeleton className="h-72" />
       ) : (
         <form onSubmit={submit} className="flex flex-col gap-4">
-          <FormField label="Email" htmlFor="su-email">
+          <FormField label={t('auth:signUp.email')} htmlFor="su-email">
             <Input
               id="su-email"
               type="email"
@@ -276,9 +270,9 @@ function ChooseAccount({ token }: { token: string }) {
             />
           </FormField>
           <FormField
-            label="Username"
+            label={t('auth:signUp.username')}
             htmlFor="su-username"
-            description="3–40 characters: letters, digits, . _ -"
+            description={t('auth:signUp.n340CharactersLettersDigits')}
           >
             <Input
               id="su-username"
@@ -289,7 +283,7 @@ function ChooseAccount({ token }: { token: string }) {
               onChange={set('username')}
             />
           </FormField>
-          <FormField label="Display name" htmlFor="su-name">
+          <FormField label={t('auth:signUp.displayName')} htmlFor="su-name">
             <Input
               id="su-name"
               autoComplete="name"
@@ -297,7 +291,7 @@ function ChooseAccount({ token }: { token: string }) {
               onChange={set('display_name')}
             />
           </FormField>
-          <FormField label="Password" htmlFor="su-password" description={passwordRule(false).hint}>
+          <FormField label={t('auth:signUp.password')} htmlFor="su-password" description={passwordRule(false).hint}>
             <Input
               id="su-password"
               type="password"
@@ -309,9 +303,9 @@ function ChooseAccount({ token }: { token: string }) {
             />
           </FormField>
           <FormField
-            label="Confirm password"
+            label={t('auth:signUp.confirmPassword')}
             htmlFor="su-confirm"
-            error={mismatch ? "The passwords don't match" : undefined}
+            error={mismatch ? t('auth:signUp.thePasswordsDonTMatch') : undefined}
           >
             <Input
               id="su-confirm"
@@ -325,8 +319,7 @@ function ChooseAccount({ token }: { token: string }) {
           </FormField>
           {info.data.approval_required && (
             <p className="text-sm text-foreground-light">
-              An instance admin approves new accounts here before they can sign in. We&apos;ll email
-              you when yours is ready.
+              {t('auth:signUp.anInstanceAdminApprovesNewAccounts')}
             </p>
           )}
           {create.error && <Alert variant="destructive" title={create.error.message} />}
@@ -338,7 +331,7 @@ function ChooseAccount({ token }: { token: string }) {
             loading={create.isPending}
             className="mt-2"
           >
-            Create account
+            {t('auth:signUp.createAccount')}
           </Button>
         </form>
       )}

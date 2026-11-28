@@ -20,6 +20,7 @@ import { apiKeysQuery } from '@/lib/api/queries'
 import { usePg } from '@/lib/pg/run'
 import { useLocalStorage } from '@/lib/storage'
 import { cn } from '@/lib/utils'
+import { localized, t, Trans } from '@/lib/i18n'
 
 const SECTIONS = ['introduction', 'authentication', 'users', 'tables', 'functions'] as const
 type Section = (typeof SECTIONS)[number]
@@ -52,7 +53,7 @@ select c.relname as name, c.relkind as kind,
 from pg_class c join pg_namespace n on n.oid = c.relnamespace
 where n.nspname = $1 and c.relkind in ('r', 'p', 'v', 'm', 'f')`
 
-const KIND_LABEL: Record<string, string> = { v: 'View', m: 'Materialized view', f: 'Foreign table' }
+const KIND_LABEL = localized((): Record<string, string> => ({ v: t('integrations:integrationsDataApiDocs.view'), m: t('integrations:integrationsDataApiDocs.materializedView'), f: t('integrations:integrationsDataApiDocs.foreignTable') }))
 
 const LANGS = ['js', 'bash'] as const
 type Lang = (typeof LANGS)[number]
@@ -85,24 +86,24 @@ function DataApiDocsPage() {
 
   const nav: { title: string; links: { label: string; search: Search; active: boolean }[] }[] = [
     {
-      title: 'Getting started',
+      title: t('integrations:integrationsDataApiDocs.gettingStarted'),
       links: [
-        { label: 'Introduction', search: {}, active: section === 'introduction' },
-        { label: 'Authentication', search: { section: 'authentication' }, active: section === 'authentication' },
-        { label: 'User Management', search: { section: 'users' }, active: section === 'users' },
+        { label: t('integrations:integrationsDataApiDocs.introduction'), search: {}, active: section === 'introduction' },
+        { label: t('integrations:integrationsDataApiDocs.authentication'), search: { section: 'authentication' }, active: section === 'authentication' },
+        { label: t('integrations:integrationsDataApiDocs.userManagement'), search: { section: 'users' }, active: section === 'users' },
       ],
     },
     {
-      title: 'Tables and Views',
+      title: t('integrations:integrationsDataApiDocs.tablesAndViews'),
       links: [
-        { label: 'Introduction', search: { section: 'tables' }, active: section === 'tables' && !search.resource },
+        { label: t('integrations:integrationsDataApiDocs.introduction'), search: { section: 'tables' }, active: section === 'tables' && !search.resource },
         ...(docs?.resources ?? []).map((r) => ({ label: r.name, search: { resource: r.name }, active: search.resource === r.name })),
       ],
     },
     {
-      title: 'Stored Procedures',
+      title: t('integrations:integrationsDataApiDocs.storedProcedures'),
       links: [
-        { label: 'Introduction', search: { section: 'functions' }, active: section === 'functions' && !search.rpc },
+        { label: t('integrations:integrationsDataApiDocs.introduction'), search: { section: 'functions' }, active: section === 'functions' && !search.rpc },
         ...(docs?.functions ?? []).map((f) => ({ label: f.name, search: { rpc: f.name }, active: search.rpc === f.name })),
       ],
     },
@@ -114,8 +115,8 @@ function DataApiDocsPage() {
   const needsSpec = section === 'tables' || section === 'functions'
   if (needsSpec && spec.error) {
     body = (
-      <Alert variant="destructive" title={`Couldn't read the Data API's description: ${spec.error.message}`}>
-        PostgREST may have its OpenAPI output turned off (PGRST_OPENAPI_MODE), or the stack may be down.
+      <Alert variant="destructive" title={t('integrations:integrationsDataApiDocs.couldnTReadTheDataApi', { message: spec.error.message })}>
+        {t('integrations:integrationsDataApiDocs.postgrestMayHaveItsOpenapiOutput')}
       </Alert>
     )
   } else if (needsSpec && !docs) {
@@ -126,28 +127,28 @@ function DataApiDocsPage() {
     body = <Authentication client={client} lang={lang} />
   } else if (section === 'users') {
     body = (
-      <Page title="User Management" lead="Sign users up and in, and manage the signed-in user, with Supabase Auth.">
+      <Page title={t('integrations:integrationsDataApiDocs.userManagement')} lead={t('integrations:integrationsDataApiDocs.signUsersUpAndInAnd')}>
         {authExamples(client).map((e) => (
           <ExampleSection key={e.title} example={e} lang={lang} />
         ))}
       </Page>
     )
   } else if (search.resource && !resource) {
-    body = <Alert title={`${search.resource} isn't in the Data API`}>It may have been renamed or removed, or not be exposed to API roles.</Alert>
+    body = <Alert title={t('integrations:integrationsDataApiDocs.isnTInTheDataApi', { resource: search.resource })}>{t('integrations:integrationsDataApiDocs.itMayHaveBeenRenamedOr')}</Alert>
   } else if (resource) {
     const readOnly = !resource.insert && !resource.update && !resource.delete
     const kind = kinds.data?.find((k) => k.name === resource.name)?.kind
-    const lead = [resource.description, kind && KIND_LABEL[kind], readOnly && 'Read-only through the Data API.'].filter(Boolean).join(' · ')
+    const lead = [resource.description, kind && KIND_LABEL()[kind], readOnly && t('integrations:integrationsDataApiDocs.readOnlyThroughTheDataApi')].filter(Boolean).join(' · ')
     body = (
       <Page title={resource.name} lead={lead || undefined}>
-        <Section title="Columns">
+        <Section title={t('integrations:integrationsDataApiDocs.columns')}>
           <Card>
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
+                  <TableHead>{t('integrations:integrationsDataApiDocs.name')}</TableHead>
+                  <TableHead>{t('integrations:integrationsDataApiDocs.type')}</TableHead>
+                  <TableHead>{t('integrations:integrationsDataApiDocs.description')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -156,8 +157,8 @@ function DataApiDocsPage() {
                     <TableCell className="align-top">
                       <span className="flex flex-wrap items-center gap-1.5 font-mono text-xs text-foreground">
                         {c.name}
-                        {c.primaryKey && <Badge>primary key</Badge>}
-                        {c.required && !c.hasDefault && <Badge variant="warning">required</Badge>}
+                        {c.primaryKey && <Badge>{t('integrations:integrationsDataApiDocs.primaryKey')}</Badge>}
+                        {c.required && !c.hasDefault && <Badge variant="warning">{t('integrations:integrationsDataApiDocs.required')}</Badge>}
                       </span>
                     </TableCell>
                     <TableCell className="align-top font-mono text-xs text-foreground-light">{c.format}</TableCell>
@@ -165,10 +166,7 @@ function DataApiDocsPage() {
                       {c.description}
                       {c.references && (
                         <span className="block text-xs text-foreground-lighter">
-                          References{' '}
-                          <Link to="." search={{ resource: c.references.split('.')[0] }} className="font-mono text-foreground-light underline-offset-2 hover:underline">
-                            {c.references}
-                          </Link>
+                          <Trans i18nKey="integrations:integrationsDataApiDocs.references" values={{ references: c.references }} components={{ link: <Link to="." search={{ resource: c.references.split('.')[0] }} className="font-mono text-foreground-light underline-offset-2 hover:underline" /> }} />
                         </span>
                       )}
                       {!c.description && !c.references && '—'}
@@ -187,31 +185,31 @@ function DataApiDocsPage() {
   } else if (section === 'tables') {
     body = (
       <Page
-        title="Tables and Views"
-        lead="Every table and view in the exposed schema gets REST endpoints. Row Level Security decides which rows each user can read and change."
+        title={t('integrations:integrationsDataApiDocs.tablesAndViews')}
+        lead={t('integrations:integrationsDataApiDocs.everyTableAndViewInThe')}
       >
         <IndexList
-          empty="No tables or views are exposed."
+          empty={t('integrations:integrationsDataApiDocs.noTablesOrViewsAreExposed')}
           items={(docs?.resources ?? []).map((r) => ({ name: r.name, description: r.description, search: { resource: r.name } }))}
         />
       </Page>
     )
   } else if (search.rpc && !fn) {
-    body = <Alert title={`${search.rpc} isn't in the Data API`}>It may have been renamed or removed, or not be exposed to API roles.</Alert>
+    body = <Alert title={t('integrations:integrationsDataApiDocs.isnTInTheDataApi2', { rpc: search.rpc })}>{t('integrations:integrationsDataApiDocs.itMayHaveBeenRenamedOr')}</Alert>
   } else if (fn) {
     body = (
       <Page title={fn.name} lead={fn.description ?? undefined}>
-        <Section title="Arguments">
+        <Section title={t('integrations:integrationsDataApiDocs.arguments')}>
           {fn.params.length === 0 ? (
-            <p className="text-sm text-foreground-light">None.</p>
+            <p className="text-sm text-foreground-light">{t('integrations:integrationsDataApiDocs.none')}</p>
           ) : (
             <Card>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Required</TableHead>
+                    <TableHead>{t('integrations:integrationsDataApiDocs.name')}</TableHead>
+                    <TableHead>{t('integrations:integrationsDataApiDocs.type')}</TableHead>
+                    <TableHead>{t('integrations:integrationsDataApiDocs.required2')}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -219,7 +217,7 @@ function DataApiDocsPage() {
                     <TableRow key={p.name}>
                       <TableCell className="font-mono text-xs text-foreground">{p.name}</TableCell>
                       <TableCell className="font-mono text-xs text-foreground-light">{p.format}</TableCell>
-                      <TableCell className="text-foreground-light">{p.required ? 'Yes' : 'No, it has a default'}</TableCell>
+                      <TableCell className="text-foreground-light">{p.required ? t('integrations:integrationsDataApiDocs.yes') : t('integrations:integrationsDataApiDocs.noItHasADefault')}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -230,7 +228,7 @@ function DataApiDocsPage() {
         <ExampleSection
           example={{
             ...functionExample(fn, client),
-            description: fn.get ? 'Stable functions can also be called with GET and the arguments in the query string.' : 'Volatile functions can only be called with POST.',
+            description: fn.get ? t('integrations:integrationsDataApiDocs.stableFunctionsCanAlsoBeCalled') : t('integrations:integrationsDataApiDocs.volatileFunctionsCanOnlyBeCalled'),
           }}
           lang={lang}
         />
@@ -238,9 +236,9 @@ function DataApiDocsPage() {
     )
   } else {
     body = (
-      <Page title="Stored Procedures" lead="Postgres functions in the exposed schema can be called as remote procedures, with their arguments as JSON.">
+      <Page title={t('integrations:integrationsDataApiDocs.storedProcedures')} lead={t('integrations:integrationsDataApiDocs.postgresFunctionsInTheExposedSchema')}>
         <IndexList
-          empty="No functions are exposed."
+          empty={t('integrations:integrationsDataApiDocs.noFunctionsAreExposed')}
           items={(docs?.functions ?? []).map((f) => ({ name: f.name, description: f.description, search: { rpc: f.name } }))}
         />
       </Page>
@@ -249,7 +247,7 @@ function DataApiDocsPage() {
 
   return (
     <div className="flex h-full min-h-0">
-      <nav aria-label="API docs" className="hidden w-56 shrink-0 overflow-y-auto border-r py-2 md:block">
+      <nav aria-label={t('integrations:integrationsDataApiDocs.apiDocs')} className="hidden w-56 shrink-0 overflow-y-auto border-r py-2 md:block">
         {nav.map((group, i) => (
           <Fragment key={group.title}>
             {i > 0 && <div className="h-px bg-border" />}
@@ -271,7 +269,7 @@ function DataApiDocsPage() {
                     </Link>
                   </li>
                 ))}
-                {group.links.length === 1 && group.title !== 'Getting started' && spec.isPending && (
+                {group.links.length === 1 && group.title !== t('integrations:integrationsDataApiDocs.gettingStarted') && spec.isPending && (
                   <li className="px-3 py-1">
                     <Skeleton className="h-4" />
                   </li>
@@ -283,17 +281,17 @@ function DataApiDocsPage() {
       </nav>
       <div className="min-w-0 flex-1 overflow-y-auto">
         <div className="sticky top-0 z-10 flex items-center gap-3 border-b bg-dash-sidebar px-6 py-2">
-          <h1 className="text-sm text-foreground">API Docs</h1>
-          <span className="text-xs text-foreground-lighter">from the Data API&apos;s own description</span>
+          <h1 className="text-sm text-foreground">{t('integrations:integrationsDataApiDocs.apiDocs2')}</h1>
+          <span className="text-xs text-foreground-lighter">{t('integrations:integrationsDataApiDocs.fromTheDataApiSOwn')}</span>
           <div className="ml-auto flex items-center gap-3">
             <Tabs value={lang} onValueChange={(v) => setLang(v as Lang)}>
               <TabsList className="border-b-0">
-                <TabsTrigger value="js">JavaScript</TabsTrigger>
-                <TabsTrigger value="bash">Bash</TabsTrigger>
+                <TabsTrigger value="js">{t('integrations:integrationsDataApiDocs.javascript')}</TabsTrigger>
+                <TabsTrigger value="bash">{t('integrations:integrationsDataApiDocs.bash')}</TabsTrigger>
               </TabsList>
             </Tabs>
             <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={spec.isFetching && !spec.isPending} onClick={() => void spec.refetch()}>
-              Refresh
+              {t('integrations:integrationsDataApiDocs.refresh')}
             </Button>
           </div>
         </div>
@@ -344,7 +342,7 @@ function IndexList({ items, empty }: { items: { name: string; description: strin
         <li key={i.name}>
           <Link to="." search={i.search} className="block rounded-md border bg-surface-100 px-4 py-3 focus-ring hover:border-strong">
             <span className="block font-mono text-sm text-foreground">{i.name}</span>
-            <span className="block truncate text-xs text-foreground-lighter">{i.description ?? 'No description'}</span>
+            <span className="block truncate text-xs text-foreground-lighter">{i.description ?? t('integrations:integrationsDataApiDocs.noDescription')}</span>
           </Link>
         </li>
       ))}
@@ -355,11 +353,11 @@ function IndexList({ items, empty }: { items: { name: string; description: strin
 function Introduction({ client, dbUri, lang }: { client: Client; dbUri: string | undefined; lang: Lang }) {
   return (
     <Page
-      title="Introduction"
-      lead="The Data API turns the exposed schema into a REST API with PostgREST. These docs are written from that API's own description, so they follow your tables, views and functions."
+      title={t('integrations:integrationsDataApiDocs.introduction')}
+      lead={t('integrations:integrationsDataApiDocs.theDataApiTurnsTheExposed')}
     >
       <Section
-        title="Connect"
+        title={t('integrations:integrationsDataApiDocs.connect')}
         code={
           <CodeBlock
             code={
@@ -370,28 +368,25 @@ function Introduction({ client, dbUri, lang }: { client: Client; dbUri: string |
           />
         }
       >
-        <p className="text-sm text-foreground-light">Install supabase-js and create a client with the project URL and its public key.</p>
-        <FormField label="Project URL">
+        <p className="text-sm text-foreground-light">{t('integrations:integrationsDataApiDocs.installSupabaseJsAndCreateA')}</p>
+        <FormField label={t('integrations:integrationsDataApiDocs.projectUrl')}>
           <CopyField value={client.url} />
         </FormField>
-        <FormField label="Public key" description="Safe in a browser when Row Level Security is on.">
+        <FormField label={t('integrations:integrationsDataApiDocs.publicKey')} description={t('integrations:integrationsDataApiDocs.safeInABrowserWhenRow')}>
           <CopyField value={client.key} />
         </FormField>
       </Section>
       <Section
-        title="Generate types"
+        title={t('integrations:integrationsDataApiDocs.generateTypes')}
         code={<CodeBlock code={`npx supabase gen types typescript \\\n  --db-url '${dbUri ?? 'postgresql://postgres:[YOUR-PASSWORD]@host:5432/postgres'}' \\\n  > database.types.ts`} />}
       >
         <p className="text-sm text-foreground-light">
-          The Supabase CLI can write TypeScript types for your schema straight from the database. Pass them to{' '}
-          <code className="font-mono text-xs">createClient&lt;Database&gt;()</code> to type every query.
+          <Trans i18nKey="integrations:integrationsDataApiDocs.theSupabaseCliCanWriteTypescript" values={{ call: 'createClient<Database>()' }} components={{ code: <code className="font-mono text-xs" /> }} />
         </p>
       </Section>
-      <Section title="What's listed">
+      <Section title={t('integrations:integrationsDataApiDocs.whatSListed')}>
         <p className="text-sm text-foreground-light">
-          Supermixer reads the description with the service role, so it lists everything that role can reach. The anon and
-          authenticated roles may see less, depending on their privileges (Database › Column Privileges) and Row Level Security.
-          Only the stack&apos;s default exposed schema is described.
+          {t('integrations:integrationsDataApiDocs.supermixerReadsTheDescriptionWithThe')}
         </p>
       </Section>
     </Page>
@@ -401,9 +396,9 @@ function Introduction({ client, dbUri, lang }: { client: Client; dbUri: string |
 function Authentication({ client, lang }: { client: Client; lang: Lang }) {
   const url = client.url.replace(/\/+$/, '')
   return (
-    <Page title="Authentication" lead="Every request names a key. Which key, and whether a user is signed in, decides what Postgres role the request runs as.">
+    <Page title={t('integrations:integrationsDataApiDocs.authentication')} lead={t('integrations:integrationsDataApiDocs.everyRequestNamesAKeyWhich')}>
       <Section
-        title="Public key"
+        title={t('integrations:integrationsDataApiDocs.publicKey')}
         code={
           <CodeBlock
             code={
@@ -415,13 +410,11 @@ function Authentication({ client, lang }: { client: Client; lang: Lang }) {
         }
       >
         <p className="text-sm text-foreground-light">
-          The anon or publishable key is meant for browsers and apps. Requests run as the <code className="font-mono text-xs">anon</code> role
-          until a user signs in, then as <code className="font-mono text-xs">authenticated</code>. Turn on Row Level Security for every
-          exposed table.
+          <Trans i18nKey="integrations:integrationsDataApiDocs.theAnonOrPublishableKeyIs" components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" /> }} />
         </p>
       </Section>
       <Section
-        title="Signed-in users"
+        title={t('integrations:integrationsDataApiDocs.signedInUsers')}
         code={
           <CodeBlock
             code={
@@ -433,12 +426,11 @@ function Authentication({ client, lang }: { client: Client; lang: Lang }) {
         }
       >
         <p className="text-sm text-foreground-light">
-          A signed-in user&apos;s access token goes in the Authorization header instead of the key. Policies can read who they are
-          with <code className="font-mono text-xs">auth.uid()</code>.
+          <Trans i18nKey="integrations:integrationsDataApiDocs.aSignedInUserSAccess" components={{ code: <code className="font-mono text-xs" /> }} />
         </p>
       </Section>
       <Section
-        title="Service role key"
+        title={t('integrations:integrationsDataApiDocs.serviceRoleKey')}
         code={
           <CodeBlock
             code={
@@ -450,12 +442,7 @@ function Authentication({ client, lang }: { client: Client; lang: Lang }) {
         }
       >
         <p className="text-sm text-foreground-light">
-          The service role bypasses Row Level Security. Keep its key on servers, never in a browser or app. Members who may see it
-          find it in{' '}
-          <Link to="/project/$ref/settings/api-keys" from="/project/$ref" className="text-foreground underline-offset-2 hover:underline">
-            Project Settings › API Keys
-          </Link>
-          .
+          <Trans i18nKey="integrations:integrationsDataApiDocs.theServiceRoleBypassesRowLevel" components={{ link: <Link to="/project/$ref/settings/api-keys" from="/project/$ref" className="text-foreground underline-offset-2 hover:underline" /> }} />
         </p>
       </Section>
     </Page>

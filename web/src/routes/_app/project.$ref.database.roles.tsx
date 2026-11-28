@@ -26,6 +26,7 @@ import {
   scramVerifier,
   type RoleDef,
 } from '@/lib/pg/roles'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/roles')({
   component: RolesPage,
@@ -44,7 +45,7 @@ const SUPABASE_PREFIXES = ['supabase_', 'pgsodium_', 'pgtle_']
 /** Managed elsewhere: Supabase's roles and Supermixer's read-only login. */
 function managedBy(name: string): string | null {
   if (SUPABASE_ROLES.has(name) || SUPABASE_PREFIXES.some((p) => name.startsWith(p))) return 'Supabase'
-  if (name.startsWith('supermixer_ro_')) return 'Supermixer read-only'
+  if (name.startsWith('supermixer_ro_')) return t('database:databaseRoles.supermixerReadOnly')
   return null
 }
 
@@ -81,12 +82,12 @@ function RolesPage() {
 
   return (
     <DatabasePage
-      title="Database Roles"
-      description={`Who can connect and what they may do. ${total} connection${total === 1 ? '' : 's'} open right now.`}
-      toolbar={<SearchBox value={search} onChange={setSearch} placeholder="Search for a role" />}
+      title={t('database:databaseRoles.databaseRoles')}
+      description={t('database:databaseRoles.whoCanConnectAndWhatThey', { count: total })}
+      toolbar={<SearchBox value={search} onChange={setSearch} placeholder={t('database:databaseRoles.searchForARole')} />}
       actions={
-        <PermissionButton allowed={canChange} action="manage roles" variant="primary" icon={<AddIcon />} onClick={() => setEditing({})}>
-          Add role
+        <PermissionButton allowed={canChange} action={t('database:databaseRoles.manageRoles')} variant="primary" icon={<AddIcon />} onClick={() => setEditing({})}>
+          {t('database:databaseRoles.addRole')}
         </PermissionButton>
       }
     >
@@ -95,10 +96,10 @@ function RolesPage() {
         loading={roles.isPending}
         error={roles.error}
         rowKey={(r) => r.name}
-        empty="No roles match your search"
+        empty={t('database:databaseRoles.noRolesMatchYourSearch')}
         columns={[
           {
-            header: 'Role',
+            header: t('database:databaseRoles.role'),
             cell: (r) => (
               <span className="flex items-center gap-2 text-foreground">
                 {r.name}
@@ -107,36 +108,36 @@ function RolesPage() {
             ),
           },
           {
-            header: 'Attributes',
+            header: t('database:databaseRoles.attributes'),
             cell: (r) => (
               <span className="flex flex-wrap gap-1">
-                {r.superuser && <Badge variant="destructive">superuser</Badge>}
-                {r.login && <Badge>login</Badge>}
-                {r.bypass_rls && <Badge variant="warning">bypass RLS</Badge>}
-                {r.create_role && <Badge>create role</Badge>}
-                {r.create_db && <Badge>create db</Badge>}
-                {r.replication && <Badge>replication</Badge>}
-                {r.valid_until && <Badge>expires {expiryToDate(r.valid_until)}</Badge>}
+                {r.superuser && <Badge variant="destructive">{t('database:databaseRoles.superuser')}</Badge>}
+                {r.login && <Badge>{t('database:databaseRoles.login')}</Badge>}
+                {r.bypass_rls && <Badge variant="warning">{t('database:databaseRoles.bypassRls')}</Badge>}
+                {r.create_role && <Badge>{t('database:databaseRoles.createRole')}</Badge>}
+                {r.create_db && <Badge>{t('database:databaseRoles.createDb')}</Badge>}
+                {r.replication && <Badge>{t('database:databaseRoles.replication')}</Badge>}
+                {r.valid_until && <Badge>{t('database:databaseRoles.expires', { expiryToDate: expiryToDate(r.valid_until) })}</Badge>}
               </span>
             ),
           },
           {
-            header: 'Connections',
+            header: t('database:databaseRoles.connections'),
             cell: (r) => `${r.connections}${r.connection_limit >= 0 ? ` / ${r.connection_limit}` : ''}`,
             className: 'text-right whitespace-nowrap',
           },
         ]}
         actions={[
-          { label: 'Edit role', hidden: (r) => !canChange || !!lockedReason(r), onSelect: (r) => setEditing({ original: r }) },
+          { label: t('database:databaseRoles.editRole'), hidden: (r) => !canChange || !!lockedReason(r), onSelect: (r) => setEditing({ original: r }) },
           {
-            label: 'Delete role',
+            label: t('database:databaseRoles.deleteRole'),
             hidden: (r) => !canChange || !!managedBy(r.name) || r.superuser,
             confirm: (r) => ({
-              title: `Delete role ${r.name}?`,
-              description: 'Roles that own objects or hold privileges can\'t be dropped until those are reassigned or revoked.',
+              title: t('database:databaseRoles.deleteRole2', { name: r.name }),
+              description: t('database:databaseRoles.rolesThatOwnObjectsOrHold'),
               confirmText: r.name,
             }),
-            onSelect: (r) => ddl.mutate({ sql: dropRole(r.name), done: `Deleted ${r.name}` }),
+            onSelect: (r) => ddl.mutate({ sql: dropRole(r.name), done: t('database:databaseRoles.deleted', { name: r.name }) }),
           },
         ]}
       />
@@ -158,10 +159,10 @@ function RoleSheet({ projectRef, original, onClose }: { projectRef: string; orig
 
   const renaming = !base || next.name !== base.name
   // An existing name is fine as it is; only a new name has to pass the checks.
-  const nameProblem = renaming ? (roleNameProblem(next.name) ?? (managedBy(next.name) ? "That name is reserved for Supabase's or Supermixer's own roles." : null)) : null
+  const nameProblem = renaming ? (roleNameProblem(next.name) ?? (managedBy(next.name) ? t('database:databaseRoles.thatNameIsReservedForSupabase') : null)) : null
   const noHash = !!password && !canHashPasswords()
   // The preview shows where the password goes without revealing it.
-  const mask = password ? 'SCRAM-SHA-256$…' : null
+  const mask = password ? t('database:databaseRoles.scramSha256') : null
   const preview = nameProblem ? '' : base ? alterRole(base, next, mask) : createRole(next, mask)
   const busy = hashing || ddl.isPending
 
@@ -179,49 +180,48 @@ function RoleSheet({ projectRef, original, onClose }: { projectRef: string; orig
       setHashing(false)
     }
     const sql = base ? alterRole(base, next, verifier) : createRole(next, verifier)
-    ddl.mutate({ sql, done: base ? `Updated ${next.name}` : `Created ${next.name}` }, { onSuccess: onClose })
+    ddl.mutate({ sql, done: base ? t('database:databaseRoles.updated', { name: next.name }) : t('database:databaseRoles.created', { name: next.name }) }, { onSuccess: onClose })
   }
 
   const flags: [keyof RoleDef, string, string][] = [
-    ['login', 'Can log in', 'Needed to connect; group roles usually leave it off.'],
-    ['inherit', 'Inherit privileges', 'Gets the privileges of roles it is a member of.'],
-    ['createDb', 'Create databases', ''],
-    ['createRole', 'Create roles', 'Can create, alter and drop other roles.'],
-    ['replication', 'Replication', 'Can start streaming replication. On Postgres 15 only a superuser can set this.'],
-    ['bypassRls', 'Bypass Row Level Security', 'Ignores every RLS policy. Use with care.'],
+    ['login', t('database:databaseRoles.canLogIn'), t('database:databaseRoles.neededToConnectGroupRolesUsually')],
+    ['inherit', t('database:databaseRoles.inheritPrivileges'), t('database:databaseRoles.getsThePrivilegesOfRolesIt')],
+    ['createDb', t('database:databaseRoles.createDatabases'), ''],
+    ['createRole', t('database:databaseRoles.createRoles'), t('database:databaseRoles.canCreateAlterAndDropOther')],
+    ['replication', t('database:databaseRoles.replication2'), t('database:databaseRoles.canStartStreamingReplicationOnPostgres')],
+    ['bypassRls', t('database:databaseRoles.bypassRowLevelSecurity'), t('database:databaseRoles.ignoresEveryRlsPolicyUseWith')],
   ]
 
   return (
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={original ? `Edit role ${original.name}` : 'Add a role'}
+      title={original ? t('database:databaseRoles.editRole2', { name: original.name }) : t('database:databaseRoles.addARole')}
       description={
         <>
-          Passwords are hashed with SCRAM-SHA-256 in your browser; Postgres only receives the hash. Through the pooler,
-          sign in as <code className="font-mono">{next.name || 'name'}.&lt;tenant&gt;</code>.
+          <Trans i18nKey="database:databaseRoles.passwordsAreHashedWithScramSha" values={{ user: `${next.name || 'name'}.<tenant>` }} components={{ code: <code className="font-mono" /> }} />
         </>
       }
       error={hashError ?? ddl.error}
-      submitLabel={original ? 'Save role' : 'Add role'}
+      submitLabel={original ? t('database:databaseRoles.saveRole') : t('database:databaseRoles.addRole')}
       submitting={busy}
       disabled={!!nameProblem || noHash || (!!base && !preview)}
       onSubmit={() => void save()}
     >
       <FormField
-        label="Name"
+        label={t('database:databaseRoles.name')}
         htmlFor="role-name"
-        description={nameProblem && next.name ? <span className="text-destructive">{nameProblem}</span> : 'Up to 63 bytes; names starting with pg_ are reserved.'}
+        description={nameProblem && next.name ? <span className="text-destructive">{nameProblem}</span> : t('database:databaseRoles.upTo63Bytes')}
       >
         <Input id="role-name" autoFocus value={role.name} onChange={(e) => set({ name: e.target.value })} placeholder="reporting" />
       </FormField>
       <FormField
-        label={original ? 'New password (optional)' : 'Password (optional)'}
+        label={original ? t('database:databaseRoles.newPasswordOptional') : t('database:databaseRoles.passwordOptional')}
         htmlFor="role-password"
         description={
           original
-            ? 'Leave blank to keep the current password. The pooler (Supavisor) caches passwords, so a new one may take a while to work through it; direct connections use it at once.'
-            : 'Leave blank for a role that signs in another way, or not at all.'
+            ? t('database:databaseRoles.leaveBlankToKeepTheCurrent')
+            : t('database:databaseRoles.leaveBlankForARoleThat')
         }
       >
         <Input id="role-password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} />
@@ -229,17 +229,17 @@ function RoleSheet({ projectRef, original, onClose }: { projectRef: string; orig
       {noHash && (
         <Alert
           variant="warning"
-          title="Passwords can only be set over HTTPS"
+          title={t('database:databaseRoles.passwordsCanOnlyBeSetOver')}
         >
-          Browsers only allow password hashing on HTTPS or localhost. Open Supermixer over HTTPS, or leave the password blank.
+          {t('database:databaseRoles.browsersOnlyAllowPasswordHashingOn')}
         </Alert>
       )}
       {base && renaming && !password && original?.login && (
         <Alert
           variant="warning"
-          title="Renaming can clear the password"
+          title={t('database:databaseRoles.renamingCanClearThePassword')}
         >
-          If this role's password is stored as MD5 (older stacks), Postgres clears it on rename and the role can no longer sign in. Set a new password here to be safe.
+          {t('database:databaseRoles.ifThisRoleSPasswordIs')}
         </Alert>
       )}
       <div className="flex flex-col gap-2.5 text-sm">
@@ -254,7 +254,7 @@ function RoleSheet({ projectRef, original, onClose }: { projectRef: string; orig
         ))}
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Connection limit" htmlFor="role-limit" description="-1 or blank for no limit; 0 blocks every connection.">
+        <FormField label={t('database:databaseRoles.connectionLimit')} htmlFor="role-limit" description={t('database:databaseRoles.n1OrBlankForNoLimit')}>
           <Input
             id="role-limit"
             inputMode="numeric"
@@ -262,7 +262,7 @@ function RoleSheet({ projectRef, original, onClose }: { projectRef: string; orig
             onChange={(e) => /^-?\d*$/.test(e.target.value) && setLimitText(e.target.value)}
           />
         </FormField>
-        <FormField label="Valid until (optional)" htmlFor="role-valid" description="The password works through the end of this day, in your time zone.">
+        <FormField label={t('database:databaseRoles.validUntilOptional')} htmlFor="role-valid" description={t('database:databaseRoles.thePasswordWorksThroughTheEnd')}>
           <Input
             id="role-valid"
             type="date"

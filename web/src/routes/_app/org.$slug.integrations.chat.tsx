@@ -49,6 +49,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
+import { localized, t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/integrations/chat')({
   component: ChatNotificationsPage,
@@ -57,40 +58,40 @@ export const Route = createFileRoute('/_app/org/$slug/integrations/chat')({
 type ChatKind = Exclude<Schemas['WebhookKind'], 'webhook'>
 
 /** The chat apps, and where each one's incoming webhook address comes from. */
-const APPS: { kind: ChatKind; label: string; placeholder: string; help: string }[] = [
+const APPS = localized((): { kind: ChatKind; label: string; placeholder: string; help: string }[] => [
   {
     kind: 'slack',
-    label: 'Slack',
+    label: t('org:integrationsChat.slack'),
     placeholder: 'https://hooks.slack.com/services/…',
-    help: 'Create a Slack app with Incoming Webhooks turned on (api.slack.com/apps), add a webhook for the channel, and copy its URL.',
+    help: t('org:integrationsChat.slackHelp'),
   },
   {
     kind: 'teams',
-    label: 'Microsoft Teams',
+    label: t('org:integrationsChat.microsoftTeams'),
     placeholder: 'https://….logic.azure.com/workflows/…',
-    help: 'In the channel, open Workflows and choose “Post to a channel when a webhook request is received”. Copy the URL the workflow gives you.',
+    help: t('org:integrationsChat.inTheChannelOpenWorkflowsAnd'),
   },
   {
     kind: 'discord',
-    label: 'Discord',
+    label: t('org:integrationsChat.discord'),
     placeholder: 'https://discord.com/api/webhooks/…',
-    help: "In the channel's settings, open Integrations › Webhooks, create a webhook, and copy its URL.",
+    help: t('org:integrationsChat.inTheChannelSSettingsOpen'),
   },
   {
     kind: 'google_chat',
-    label: 'Google Chat',
+    label: t('org:integrationsChat.googleChat'),
     placeholder: 'https://chat.googleapis.com/v1/spaces/…',
-    help: 'In the space, open Apps & integrations › Webhooks, add a webhook, and copy its URL.',
+    help: t('org:integrationsChat.inTheSpaceOpenAppsIntegrations'),
   },
   {
     kind: 'mattermost',
-    label: 'Mattermost',
+    label: t('org:integrationsChat.mattermost'),
     placeholder: 'https://mattermost.example.com/hooks/…',
-    help: "In Mattermost, open Integrations › Incoming Webhooks, add one for the channel, and copy its URL. A Mattermost server on your own network needs webhooks.allow_private_addresses in Supermixer's config.",
+    help: t('org:integrationsChat.inMattermostOpenIntegrationsIncomingWebhooks'),
   },
-]
+])
 
-const appOf = (kind: string) => APPS.find((a) => a.kind === kind)
+const appOf = (kind: string) => APPS().find((a) => a.kind === kind)
 
 /** New channels hear about failures and people coming and going. */
 const DEFAULT_EVENTS = ['project.backup_failed', 'project.operation_failed', 'member.']
@@ -125,7 +126,7 @@ function ChatNotificationsPage() {
       ),
     onSuccess: (h) => {
       toast.success(
-        h.enabled ? 'Channel turned on: it gets new events from now' : 'Channel turned off'
+        h.enabled ? t('org:integrationsChat.channelTurnedOnItGetsNew') : t('org:integrationsChat.channelTurnedOff')
       )
       void refresh()
     },
@@ -135,8 +136,8 @@ function ChatNotificationsPage() {
     mutationFn: (h: Webhook) =>
       unwrap(api.POST('/organizations/{slug}/webhooks/{webhook_id}/test', path(h))),
     onSuccess: (d) => {
-      if (d.error) toast.error(`Test message: ${d.error}`)
-      else toast.success('Test message sent: check the channel')
+      if (d.error) toast.error(t('org:integrationsChat.testMessage', { error: d.error }))
+      else toast.success(t('org:integrationsChat.testMessageSentCheckTheChannel'))
     },
     onError: (e) => toast.error(e.message),
   })
@@ -144,7 +145,7 @@ function ChatNotificationsPage() {
     mutationFn: (h: Webhook) =>
       unwrap(api.DELETE('/organizations/{slug}/webhooks/{webhook_id}', path(h))),
     onSuccess: () => {
-      toast.success('Channel removed')
+      toast.success(t('org:integrationsChat.channelRemoved'))
       setDeleting(null)
       void refresh()
     },
@@ -163,34 +164,33 @@ function ChatNotificationsPage() {
           params={{ slug }}
           className="inline-flex items-center gap-1 text-sm text-foreground-light transition-colors hover:text-foreground"
         >
-          <ArrowBackIcon size={16} />
-          Organization Integrations
+          <Trans i18nKey="org:integrationsChat.organizationIntegrations" components={{ arrowbackicon: <ArrowBackIcon size={16} /> }} />
         </Link>
       </PageContainer>
       <PageHeader
-        title="Chat notifications"
-        description="Post this organization's events to Slack, Microsoft Teams, Discord, Google Chat or Mattermost, as messages people can read."
+        title={t('org:integrationsChat.chatNotifications')}
+        description={t('org:integrationsChat.postThisOrganizationSEventsTo')}
         size="small"
       />
       <PageContainer size="small" className="flex flex-col gap-10 pb-16">
         <SettingsSection
-          title="Channels"
-          description="Each event goes out as one message, in order. If a channel stops answering, Supermixer keeps trying, holding later messages back, so nothing is skipped."
+          title={t('org:integrationsChat.channels')}
+          description={t('org:integrationsChat.eachEventGoesOutAsOne')}
         >
           {!isOwner ? (
-            <Alert title="Only Owners manage chat notifications">
-              They send the organization's events outside Supermixer.
+            <Alert title={t('org:integrationsChat.onlyOwnersManageChatNotifications')}>
+              {t('org:integrationsChat.theySendTheOrganizationSEvents')}
             </Alert>
           ) : (
             <>
               <div className="flex justify-end">
                 <PermissionButton
                   allowed={isOwner}
-                  action="manage chat notifications"
+                  action={t('org:integrationsChat.manageChatNotifications')}
                   variant="primary"
                   onClick={() => setEditing('new')}
                 >
-                  Add channel
+                  {t('org:integrationsChat.addChannel')}
                 </PermissionButton>
               </div>
               <Card>
@@ -205,7 +205,7 @@ function ChatNotificationsPage() {
                   </p>
                 ) : channels.data.length === 0 ? (
                   <p className="px-4 py-10 text-center text-sm text-foreground-lighter">
-                    No channels yet.
+                    {t('org:integrationsChat.noChannelsYet')}
                   </p>
                 ) : (
                   <div className="flex flex-col divide-y">
@@ -240,13 +240,13 @@ function ChatNotificationsPage() {
                             loading={test.isPending && test.variables?.id === h.id}
                             onClick={() => test.mutate(h)}
                           >
-                            Send test message
+                            {t('org:integrationsChat.sendTestMessage')}
                           </Button>
                           <Button size="tiny" variant="default" onClick={() => setDeliveries(h)}>
-                            Deliveries
+                            {t('org:integrationsChat.deliveries')}
                           </Button>
                           <Button size="tiny" variant="default" onClick={() => setEditing(h)}>
-                            Edit
+                            {t('org:integrationsChat.edit')}
                           </Button>
                           <Button
                             size="tiny"
@@ -254,10 +254,10 @@ function ChatNotificationsPage() {
                             loading={toggle.isPending && toggle.variables?.id === h.id}
                             onClick={() => toggle.mutate(h)}
                           >
-                            {h.enabled ? 'Turn off' : 'Turn on'}
+                            {h.enabled ? t('org:integrationsChat.turnOff') : t('org:integrationsChat.turnOn')}
                           </Button>
                           <Button size="tiny" variant="danger" onClick={() => setDeleting(h)}>
-                            Remove
+                            {t('org:integrationsChat.remove')}
                           </Button>
                         </div>
                       </div>
@@ -287,9 +287,9 @@ function ChatNotificationsPage() {
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         variant="danger"
-        title="Remove this channel?"
-        description={`Messages stop going to this ${appOf(deleting?.kind ?? '')?.label ?? 'chat'} channel. Its delivery history goes too.`}
-        confirmLabel="Remove channel"
+        title={t('org:integrationsChat.removeThisChannel')}
+        description={t('org:integrationsChat.messagesStopGoingToThisChannel', { label: appOf(deleting?.kind ?? '')?.label ?? t('org:integrationsChat.chat') })}
+        confirmLabel={t('org:integrationsChat.removeChannel')}
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting)}
       />
@@ -333,7 +333,7 @@ function ChannelDialog({
       )
     },
     onSuccess: () => {
-      toast.success(channel ? 'Channel saved' : 'Channel added: send a test message to check it')
+      toast.success(channel ? t('org:integrationsChat.channelSaved') : t('org:integrationsChat.channelAddedSendATestMessage'))
       onSaved()
     },
   })
@@ -348,23 +348,23 @@ function ChannelDialog({
         >
           <DialogHeader>
             <DialogTitle>
-              {channel ? `Edit ${app?.label ?? ''} channel` : 'Add a chat channel'}
+              {channel ? t('org:integrationsChat.editChannel', { label: app?.label ?? '' }) : t('org:integrationsChat.addAChatChannel')}
             </DialogTitle>
             <DialogDescription>
               {channel
-                ? 'Changes apply to the next message.'
-                : 'It gets events from now on, not ones from before.'}
+                ? t('org:integrationsChat.changesApplyToTheNextMessage')
+                : t('org:integrationsChat.itGetsEventsFromNowOn')}
             </DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-5 border-t">
             {!channel && (
-              <FormField label="App" htmlFor="chat-app">
+              <FormField label={t('org:integrationsChat.app')} htmlFor="chat-app">
                 <Select value={kind} onValueChange={(v) => setKind(v as ChatKind)}>
                   <SelectTrigger id="chat-app">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {APPS.map((a) => (
+                    {APPS().map((a) => (
                       <SelectItem key={a.kind} value={a.kind}>
                         {a.label}
                       </SelectItem>
@@ -374,12 +374,12 @@ function ChannelDialog({
               </FormField>
             )}
             <FormField
-              label="Incoming webhook URL"
+              label={t('org:integrationsChat.incomingWebhookUrl')}
               htmlFor="chat-url"
               description={
                 channel
-                  ? `Leave empty to keep the current address (${channel.url}/…). It's kept encrypted and not shown again.`
-                  : `${app?.help ?? ''} Treat it like a password: anyone with it can post to the channel. It's kept encrypted and not shown again.`
+                  ? t('org:integrationsChat.leaveEmptyToKeepTheCurrent', { url: channel.url })
+                  : t('org:integrationsChat.treatItLikeAPasswordAnyone', { help: app?.help ?? '' })
               }
             >
               <Input
@@ -388,20 +388,20 @@ function ChannelDialog({
                 autoFocus={!channel}
                 autoComplete="off"
                 spellCheck={false}
-                placeholder={channel ? 'Leave empty to keep it' : app?.placeholder}
+                placeholder={channel ? t('org:integrationsChat.leaveEmptyToKeepIt') : app?.placeholder}
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
               />
             </FormField>
             <FormField
-              label="Description (optional)"
+              label={t('org:integrationsChat.descriptionOptional')}
               htmlFor="chat-desc"
-              description="Such as the channel's name, to tell channels apart here."
+              description={t('org:integrationsChat.suchAsTheChannelSName')}
             >
               <Input
                 id="chat-desc"
                 maxLength={200}
-                placeholder="#ops-alerts"
+                placeholder={t('org:integrationsChat.opsAlerts')}
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
               />
@@ -411,7 +411,7 @@ function ChannelDialog({
           </DialogSection>
           <DialogFooter>
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {t('org:integrationsChat.cancel')}
             </Button>
             <Button
               type="submit"
@@ -419,7 +419,7 @@ function ChannelDialog({
               loading={save.isPending}
               disabled={(!channel && !url.trim()) || events.length === 0}
             >
-              {channel ? 'Save' : 'Add channel'}
+              {channel ? t('org:integrationsChat.save') : t('org:integrationsChat.addChannel')}
             </Button>
           </DialogFooter>
         </form>

@@ -10,6 +10,7 @@
  */
 import data from './wrapper-types.json'
 import { ident, literal, qualified } from './sql'
+import { t as tr } from '@/lib/i18n'
 
 export interface WrapperOption {
   name: string
@@ -168,18 +169,26 @@ export const importedSchema = (s: Pick<WrapperServer, 'options'>): string | null
 export const secretName = (server: string, option: string) => `${server}_${option}`
 
 const NAME = /^[a-z_][a-z0-9_]{0,62}$/
-/** Problems with a name for a server, schema, table or column; null if fine. */
-export function nameProblem(name: string, what: string): string | null {
-  if (!name) return `Enter a ${what} name`
-  if (!NAME.test(name)) return `Use lowercase letters, digits and underscores for the ${what} name, starting with a letter`
+/** Problems with a wrapper's, schema's or table's name; null if fine. */
+export function nameProblem(name: string, what: 'wrapper' | 'schema' | 'table'): string | null {
+  if (!name) {
+    if (what === 'wrapper') return tr('integrations:wrappers.enterAWrapperName')
+    if (what === 'schema') return tr('integrations:wrappers.enterASchemaName')
+    return tr('integrations:wrappers.enterATableName')
+  }
+  if (!NAME.test(name)) {
+    if (what === 'wrapper') return tr('integrations:wrappers.wrapperNameRule')
+    if (what === 'schema') return tr('integrations:wrappers.schemaNameRule')
+    return tr('integrations:wrappers.tableNameRule')
+  }
   return null
 }
 
 /** Column names must match the remote ones, so any case is fine; quoting does the rest. */
 export function columnProblem(name: string): string | null {
-  if (!name) return 'Enter a column name'
-  if (name.includes('\0')) return 'Column names can’t contain NUL characters'
-  if (new TextEncoder().encode(name).length > 63) return `Column name ${name} is longer than 63 bytes`
+  if (!name) return tr('integrations:wrappers.enterAColumnName')
+  if (name.includes('\0')) return tr('integrations:wrappers.columnNamesCanTContainNul')
+  if (new TextEncoder().encode(name).length > 63) return tr('integrations:wrappers.columnNameIsLongerThan63', { name })
   return null
 }
 
@@ -187,7 +196,7 @@ export function columnProblem(name: string): string | null {
 // keeps typed-in column types from carrying anything but a type.
 const TYPE = /^[a-z_][a-z0-9_]*( [a-z_][a-z0-9_]*)*(\(\d+(, ?\d+)?\))?(\[\])?$/i
 export function typeProblem(type: string): string | null {
-  return TYPE.test(type.trim()) ? null : `"${type}" doesn't look like a Postgres type`
+  return TYPE.test(type.trim()) ? null : tr('integrations:wrappers.notAPostgresType', { type })
 }
 
 export interface TableDraft {
@@ -294,21 +303,21 @@ export function draftProblems(
   const out: string[] = []
   const server = nameProblem(d.server, 'wrapper')
   if (server) out.push(server)
-  else if (taken.servers.includes(d.server)) out.push(`A wrapper called ${d.server} already exists`)
+  else if (taken.servers.includes(d.server)) out.push(tr('integrations:wrappers.aWrapperCalledAlreadyExists', { server: d.server }))
   for (const o of d.type.server.options) {
     if (o.hidden || o.readOnly || !o.required) continue
     if ((d.values[o.name] ?? o.defaultValue ?? '') === '') out.push(`Enter ${o.label}`)
   }
   for (const s of draftSecrets(d)) {
-    if (taken.secrets.includes(s.name)) out.push(`A Vault secret called ${s.name} already exists; pick another wrapper name`)
+    if (taken.secrets.includes(s.name)) out.push(tr('integrations:wrappers.aVaultSecretCalledAlreadyExists', { name: s.name }))
   }
   if (d.mode === 'schema') {
     if (!canImportSchema(d.type)) out.push(`${d.type.label} can't import a schema; choose foreign tables`)
     const p = nameProblem(d.targetSchema, 'schema')
     if (p) out.push(p)
-    else if (taken.schemas.includes(d.targetSchema)) out.push(`Schema ${d.targetSchema} already exists; imported tables need a new one`)
+    else if (taken.schemas.includes(d.targetSchema)) out.push(tr('integrations:wrappers.schemaAlreadyExistsImportedTablesNeed', { targetSchema: d.targetSchema }))
   } else {
-    if (d.tables.length === 0) out.push('Add at least one table')
+    if (d.tables.length === 0) out.push(tr('integrations:wrappers.addAtLeastOneTable'))
     const seen = new Set<string>()
     d.tables.forEach((t, i) => {
       const label = `Table ${i + 1}`

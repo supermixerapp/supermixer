@@ -10,6 +10,7 @@ import { useTheme } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
 import { filePathProblem, type FunctionFile } from './api'
+import { t } from '@/lib/i18n'
 
 function language(path: string): string {
   const ext = path.slice(path.lastIndexOf('.') + 1).toLowerCase()
@@ -43,7 +44,7 @@ export function FunctionCodeEditor({
   const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null)
   const current = files.find((f) => f.path === active) ?? files[0]
   const sorted = [...files].sort((a, b) => a.path.localeCompare(b.path))
-  const addProblem = adding === null ? null : (filePathProblem(adding.trim()) ?? (files.some((f) => f.path === adding.trim()) ? 'That file exists' : null))
+  const addProblem = adding === null ? null : (filePathProblem(adding.trim()) ?? (files.some((f) => f.path === adding.trim()) ? t('functions:codeEditor.thatFileExists') : null))
 
   const add = () => {
     const path = adding?.trim() ?? ''
@@ -63,7 +64,7 @@ export function FunctionCodeEditor({
   return (
     <div className="grid h-[34rem] grid-cols-[14rem_1fr] overflow-hidden rounded-md border">
       <div className="flex flex-col overflow-y-auto border-r bg-surface-75">
-        <ul className="flex flex-col py-1" aria-label="Files">
+        <ul className="flex flex-col py-1" aria-label={t('functions:codeEditor.files')}>
           {sorted.map((f) => (
             <li key={f.path} className="group flex items-center">
               <button
@@ -82,7 +83,7 @@ export function FunctionCodeEditor({
               {!readOnly && files.length > 1 && (
                 <button
                   type="button"
-                  aria-label={`Remove ${f.path}`}
+                  aria-label={t('functions:codeEditor.remove', { path: f.path })}
                   onClick={() => remove(f.path)}
                   className="mr-1 rounded p-1 text-foreground-lighter opacity-0 group-hover:opacity-100 hover:text-foreground focus:opacity-100 focus-ring"
                 >
@@ -95,7 +96,7 @@ export function FunctionCodeEditor({
         {!readOnly &&
           (adding === null ? (
             <Button variant="text" size="tiny" className="mx-2 mb-2 self-start" icon={<AddIcon />} onClick={() => setAdding('')}>
-              Add file
+              {t('functions:codeEditor.addFile')}
             </Button>
           ) : (
             <form
@@ -107,7 +108,7 @@ export function FunctionCodeEditor({
             >
               <Input
                 autoFocus
-                aria-label="New file path"
+                aria-label={t('functions:codeEditor.newFilePath')}
                 className="h-7 font-mono text-xs"
                 placeholder="lib/db.ts"
                 value={adding}
@@ -133,7 +134,7 @@ export function FunctionCodeEditor({
           options={{
             readOnly,
             minimap: { enabled: false },
-            fontFamily: "'Source Code Pro Variable', 'Source Code Pro', monospace",
+            fontFamily: '\'Source Code Pro Variable\', \'Source Code Pro\', monospace',
             fontSize: 13,
             lineHeight: 20,
             padding: { top: 12, bottom: 12 },
@@ -144,7 +145,7 @@ export function FunctionCodeEditor({
           }}
         />
       ) : (
-        <div className="flex items-center justify-center text-sm text-foreground-lighter">No files</div>
+        <div className="flex items-center justify-center text-sm text-foreground-lighter">{t('functions:codeEditor.noFiles')}</div>
       )}
     </div>
   )

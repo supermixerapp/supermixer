@@ -25,6 +25,7 @@ import {
   UsageIcon,
 } from '@/components/icons'
 import type { Icon } from '@/components/icon'
+import { localized, t } from '@/lib/i18n'
 
 /** The implementation stage Supermixer is currently at. */
 export const CURRENT_STAGE = 5
@@ -39,36 +40,36 @@ export interface NavRoute {
 }
 
 /** Project sidebar, in Studio's groups: home+tools, products, other, settings. */
-export const projectNavGroups: NavRoute[][] = [
+export const projectNavGroups = localized((): NavRoute[][] => [
   [
-    { key: 'home', label: 'Project Overview', icon: HomeIcon, path: '', stage: 1 },
-    { key: 'editor', label: 'Table Editor', icon: TableEditorIcon, path: 'editor', stage: 2 },
-    { key: 'sql', label: 'SQL Editor', icon: SqlEditorIcon, path: 'sql', stage: 2 },
+    { key: 'home', label: t('common:navigation.projectOverview'), icon: HomeIcon, path: '', stage: 1 },
+    { key: 'editor', label: t('common:navigation.tableEditor'), icon: TableEditorIcon, path: 'editor', stage: 2 },
+    { key: 'sql', label: t('common:navigation.sqlEditor'), icon: SqlEditorIcon, path: 'sql', stage: 2 },
   ],
   [
-    { key: 'database', label: 'Database', icon: DatabaseIcon, path: 'database/tables', stage: 2 },
-    { key: 'auth', label: 'Authentication', icon: AuthIcon, path: 'auth/users', stage: 2 },
-    { key: 'storage', label: 'Storage', icon: StorageIcon, path: 'storage/buckets', stage: 2 },
-    { key: 'functions', label: 'Edge Functions', icon: EdgeFunctionsIcon, path: 'functions', stage: 3 },
-    { key: 'realtime', label: 'Realtime', icon: RealtimeIcon, path: 'realtime/inspector', stage: 3 },
+    { key: 'database', label: t('common:navigation.database'), icon: DatabaseIcon, path: 'database/tables', stage: 2 },
+    { key: 'auth', label: t('common:navigation.authentication'), icon: AuthIcon, path: 'auth/users', stage: 2 },
+    { key: 'storage', label: t('common:navigation.storage'), icon: StorageIcon, path: 'storage/buckets', stage: 2 },
+    { key: 'functions', label: t('common:navigation.edgeFunctions'), icon: EdgeFunctionsIcon, path: 'functions', stage: 3 },
+    { key: 'realtime', label: t('common:navigation.realtime'), icon: RealtimeIcon, path: 'realtime/inspector', stage: 3 },
   ],
   [
-    { key: 'advisors', label: 'Advisors', icon: AdvisorsIcon, path: 'advisors/security', stage: 3 },
-    { key: 'observability', label: 'Observability', icon: ObservabilityIcon, path: 'observability', stage: 3 },
-    { key: 'logs', label: 'Logs', icon: LogsIcon, path: 'logs/explorer', stage: 3 },
-    { key: 'integrations', label: 'Integrations', icon: IntegrationsIcon, path: 'integrations', stage: 3 },
+    { key: 'advisors', label: t('common:navigation.advisors'), icon: AdvisorsIcon, path: 'advisors/security', stage: 3 },
+    { key: 'observability', label: t('common:navigation.observability'), icon: ObservabilityIcon, path: 'observability', stage: 3 },
+    { key: 'logs', label: t('common:navigation.logs'), icon: LogsIcon, path: 'logs/explorer', stage: 3 },
+    { key: 'integrations', label: t('common:navigation.integrations'), icon: IntegrationsIcon, path: 'integrations', stage: 3 },
   ],
-  [{ key: 'settings', label: 'Project Settings', icon: SettingsIcon, path: 'settings/general', stage: 1 }],
-]
+  [{ key: 'settings', label: t('common:navigation.projectSettings'), icon: SettingsIcon, path: 'settings/general', stage: 1 }],
+])
 
 /** Organization sidebar (Studio's OrganizationLinks, minus Billing). */
-export const orgNav: NavRoute[] = [
-  { key: 'projects', label: 'Projects', icon: ProjectsIcon, path: '', stage: 1 },
-  { key: 'team', label: 'Team', icon: TeamIcon, path: 'team', stage: 1 },
-  { key: 'integrations', label: 'Integrations', icon: IntegrationsIcon, path: 'integrations', stage: 5 },
-  { key: 'usage', label: 'Usage', icon: UsageIcon, path: 'usage', stage: 3 },
-  { key: 'settings', label: 'Organization Settings', icon: SettingsIcon, path: 'general', stage: 1 },
-]
+export const orgNav = localized((): NavRoute[] => [
+  { key: 'projects', label: t('common:navigation.projects'), icon: ProjectsIcon, path: '', stage: 1 },
+  { key: 'team', label: t('common:navigation.team'), icon: TeamIcon, path: 'team', stage: 1 },
+  { key: 'integrations', label: t('common:navigation.integrations'), icon: IntegrationsIcon, path: 'integrations', stage: 5 },
+  { key: 'usage', label: t('common:navigation.usage'), icon: UsageIcon, path: 'usage', stage: 3 },
+  { key: 'settings', label: t('common:navigation.organizationSettings'), icon: SettingsIcon, path: 'general', stage: 1 },
+])
 
 export interface ProductMenuItem {
   label: string
@@ -91,212 +92,212 @@ export interface ProductMenu {
 }
 
 /** Second-level menus, keyed by the first path segment under /project/$ref. */
-export const productMenus: Record<string, ProductMenu> = {
+export const productMenus = localized((): Record<string, ProductMenu> => ({
   database: {
-    title: 'Database',
+    title: t('common:navigation.database'),
     groups: [
       {
-        title: 'Database Management',
+        title: t('common:navigation.databaseManagement'),
         items: [
-          { label: 'Schema Visualizer', path: 'database/schemas', stage: 2 },
-          { label: 'Tables', path: 'database/tables', stage: 2 },
-          { label: 'Functions', path: 'database/functions', stage: 2 },
-          { label: 'Triggers', path: 'database/triggers', stage: 2 },
-          { label: 'Enumerated Types', path: 'database/types', stage: 2 },
-          { label: 'Extensions', path: 'database/extensions', stage: 2 },
-          { label: 'Indexes', path: 'database/indexes', stage: 2 },
-          { label: 'Publications', path: 'database/publications', stage: 2 },
+          { label: t('common:navigation.schemaVisualizer'), path: 'database/schemas', stage: 2 },
+          { label: t('common:navigation.tables'), path: 'database/tables', stage: 2 },
+          { label: t('common:navigation.functions'), path: 'database/functions', stage: 2 },
+          { label: t('common:navigation.triggers'), path: 'database/triggers', stage: 2 },
+          { label: t('common:navigation.enumeratedTypes'), path: 'database/types', stage: 2 },
+          { label: t('common:navigation.extensions'), path: 'database/extensions', stage: 2 },
+          { label: t('common:navigation.indexes'), path: 'database/indexes', stage: 2 },
+          { label: t('common:navigation.publications'), path: 'database/publications', stage: 2 },
         ],
       },
       {
-        title: 'Access Control',
+        title: t('common:navigation.accessControl'),
         items: [
-          { label: 'Policies', path: 'database/policies', stage: 2 },
-          { label: 'Roles', path: 'database/roles', stage: 2 },
-          { label: 'Column Privileges', path: 'database/column-privileges', stage: 2 },
+          { label: t('common:navigation.policies'), path: 'database/policies', stage: 2 },
+          { label: t('common:navigation.roles'), path: 'database/roles', stage: 2 },
+          { label: t('common:navigation.columnPrivileges'), path: 'database/column-privileges', stage: 2 },
         ],
       },
       {
-        title: 'Configuration',
-        items: [{ label: 'Settings', path: 'database/settings', stage: 2 }],
+        title: t('common:navigation.configuration'),
+        items: [{ label: t('common:navigation.settings'), path: 'database/settings', stage: 2 }],
       },
       {
-        title: 'Platform',
+        title: t('common:navigation.platform'),
         items: [
-          { label: 'Backups', path: 'database/backups', stage: 4 },
-          { label: 'Migrations', path: 'database/migrations', stage: 2 },
+          { label: t('common:navigation.backups'), path: 'database/backups', stage: 4 },
+          { label: t('common:navigation.migrations'), path: 'database/migrations', stage: 2 },
         ],
       },
     ],
   },
   auth: {
-    title: 'Authentication',
+    title: t('common:navigation.authentication'),
     groups: [
       {
-        title: 'Manage',
-        items: [{ label: 'Users', path: 'auth/users', stage: 2 }],
+        title: t('common:navigation.manage'),
+        items: [{ label: t('common:navigation.users'), path: 'auth/users', stage: 2 }],
       },
       {
-        title: 'Notifications',
-        items: [{ label: 'Emails', path: 'auth/templates', stage: 4 }],
+        title: t('common:navigation.notifications'),
+        items: [{ label: t('common:navigation.emails'), path: 'auth/templates', stage: 4 }],
       },
       {
-        title: 'Configuration',
+        title: t('common:navigation.configuration'),
         items: [
-          { label: 'Policies', path: 'auth/policies', stage: 2 },
-          { label: 'Sign In / Providers', path: 'auth/providers', stage: 4 },
-          { label: 'Sessions', path: 'auth/sessions', stage: 4 },
-          { label: 'Rate Limits', path: 'auth/rate-limits', stage: 4 },
-          { label: 'Multi-Factor', path: 'auth/mfa', stage: 4 },
-          { label: 'URL Configuration', path: 'auth/url-configuration', stage: 4 },
-          { label: 'Attack Protection', path: 'auth/protection', stage: 4 },
-          { label: 'Auth Hooks', path: 'auth/hooks', stage: 4 },
-          { label: 'Audit Logs', path: 'auth/audit-logs', stage: 3 },
+          { label: t('common:navigation.policies'), path: 'auth/policies', stage: 2 },
+          { label: t('common:navigation.signInProviders'), path: 'auth/providers', stage: 4 },
+          { label: t('common:navigation.sessions'), path: 'auth/sessions', stage: 4 },
+          { label: t('common:navigation.rateLimits'), path: 'auth/rate-limits', stage: 4 },
+          { label: t('common:navigation.multiFactor'), path: 'auth/mfa', stage: 4 },
+          { label: t('common:navigation.urlConfiguration'), path: 'auth/url-configuration', stage: 4 },
+          { label: t('common:navigation.attackProtection'), path: 'auth/protection', stage: 4 },
+          { label: t('common:navigation.authHooks'), path: 'auth/hooks', stage: 4 },
+          { label: t('common:navigation.auditLogs'), path: 'auth/audit-logs', stage: 3 },
         ],
       },
     ],
   },
   functions: {
-    title: 'Edge Functions',
+    title: t('common:navigation.edgeFunctions'),
     groups: [
       {
-        title: 'Manage',
+        title: t('common:navigation.manage'),
         items: [
-          { label: 'Functions', path: 'functions', stage: 3 },
-          { label: 'Secrets', path: 'functions/secrets', stage: 4 },
+          { label: t('common:navigation.functions'), path: 'functions', stage: 3 },
+          { label: t('common:navigation.secrets'), path: 'functions/secrets', stage: 4 },
         ],
       },
     ],
   },
   storage: {
-    title: 'Storage',
+    title: t('common:navigation.storage'),
     groups: [
       {
-        title: 'Manage',
+        title: t('common:navigation.manage'),
         items: [
-          { label: 'Buckets', path: 'storage/buckets', stage: 2 },
-          { label: 'Policies', path: 'storage/policies', stage: 2 },
+          { label: t('common:navigation.buckets'), path: 'storage/buckets', stage: 2 },
+          { label: t('common:navigation.policies'), path: 'storage/policies', stage: 2 },
         ],
       },
       {
-        title: 'Configuration',
+        title: t('common:navigation.configuration'),
         items: [
-          { label: 'Settings', path: 'storage/settings', stage: 4 },
-          { label: 'S3 Connection', path: 'storage/s3', stage: 4 },
+          { label: t('common:navigation.settings'), path: 'storage/settings', stage: 4 },
+          { label: t('common:navigation.s3Connection'), path: 'storage/s3', stage: 4 },
         ],
       },
     ],
   },
   realtime: {
-    title: 'Realtime',
+    title: t('common:navigation.realtime'),
     groups: [
       {
-        title: 'Tools',
-        items: [{ label: 'Inspector', path: 'realtime/inspector', stage: 3 }],
+        title: t('common:navigation.tools'),
+        items: [{ label: t('common:navigation.inspector'), path: 'realtime/inspector', stage: 3 }],
       },
       {
-        title: 'Configuration',
-        items: [{ label: 'Policies', path: 'realtime/policies', stage: 3 }],
+        title: t('common:navigation.configuration'),
+        items: [{ label: t('common:navigation.policies'), path: 'realtime/policies', stage: 3 }],
       },
     ],
   },
   advisors: {
-    title: 'Advisors',
+    title: t('common:navigation.advisors'),
     groups: [
       {
-        title: 'Advisors',
+        title: t('common:navigation.advisors'),
         items: [
-          { label: 'Security Advisor', path: 'advisors/security', stage: 3 },
-          { label: 'Performance Advisor', path: 'advisors/performance', stage: 3 },
-          { label: 'Query Performance', path: 'advisors/query-performance', stage: 3 },
-          { label: 'Changes', path: 'advisors/changes', stage: 3 },
+          { label: t('common:navigation.securityAdvisor'), path: 'advisors/security', stage: 3 },
+          { label: t('common:navigation.performanceAdvisor'), path: 'advisors/performance', stage: 3 },
+          { label: t('common:navigation.queryPerformance'), path: 'advisors/query-performance', stage: 3 },
+          { label: t('common:navigation.changes'), path: 'advisors/changes', stage: 3 },
         ],
       },
     ],
   },
   observability: {
-    title: 'Observability',
+    title: t('common:navigation.observability'),
     groups: [
       {
-        title: 'Reports',
+        title: t('common:navigation.reports'),
         items: [
-          { label: 'Database', path: 'observability', stage: 3 },
-          { label: 'API Gateway', path: 'observability/api', stage: 3 },
+          { label: t('common:navigation.database'), path: 'observability', stage: 3 },
+          { label: t('common:navigation.apiGateway'), path: 'observability/api', stage: 3 },
         ],
       },
     ],
   },
   logs: {
-    title: 'Logs',
+    title: t('common:navigation.logs'),
     groups: [
       {
-        title: 'Collections',
+        title: t('common:navigation.collections'),
         items: [
-          { label: 'Logs Explorer', path: 'logs/explorer', stage: 3 },
-          { label: 'API Gateway', path: 'logs/edge-logs', stage: 3 },
+          { label: t('common:navigation.logsExplorer'), path: 'logs/explorer', stage: 3 },
+          { label: t('common:navigation.apiGateway'), path: 'logs/edge-logs', stage: 3 },
           { label: 'Postgres', path: 'logs/postgres-logs', stage: 3 },
           { label: 'PostgREST', path: 'logs/postgrest-logs', stage: 3 },
-          { label: 'Pooler', path: 'logs/pooler-logs', stage: 3 },
-          { label: 'Auth', path: 'logs/auth-logs', stage: 3 },
-          { label: 'Storage', path: 'logs/storage-logs', stage: 3 },
-          { label: 'Realtime', path: 'logs/realtime-logs', stage: 3 },
-          { label: 'Edge Functions', path: 'logs/edge-functions-logs', stage: 3 },
-          { label: 'Cron', path: 'logs/pgcron-logs', stage: 3 },
+          { label: t('common:navigation.pooler'), path: 'logs/pooler-logs', stage: 3 },
+          { label: t('common:navigation.auth'), path: 'logs/auth-logs', stage: 3 },
+          { label: t('common:navigation.storage'), path: 'logs/storage-logs', stage: 3 },
+          { label: t('common:navigation.realtime'), path: 'logs/realtime-logs', stage: 3 },
+          { label: t('common:navigation.edgeFunctions'), path: 'logs/edge-functions-logs', stage: 3 },
+          { label: t('common:navigation.cron'), path: 'logs/pgcron-logs', stage: 3 },
         ],
       },
     ],
   },
   settings: {
-    title: 'Project Settings',
+    title: t('common:navigation.projectSettings'),
     groups: [
       {
-        title: 'Configuration',
+        title: t('common:navigation.configuration'),
         items: [
-          { label: 'General', path: 'settings/general', stage: 1 },
-          { label: 'Infrastructure', path: 'settings/infrastructure', stage: 4 },
-          { label: 'API Keys', path: 'settings/api-keys', stage: 1 },
-          { label: 'JWT Keys', path: 'settings/jwt', stage: 1 },
-          { label: 'Log Drains', path: 'settings/log-drains', stage: 4 },
+          { label: t('common:navigation.general'), path: 'settings/general', stage: 1 },
+          { label: t('common:navigation.infrastructure'), path: 'settings/infrastructure', stage: 4 },
+          { label: t('common:navigation.apiKeys'), path: 'settings/api-keys', stage: 1 },
+          { label: t('common:navigation.jwtKeys'), path: 'settings/jwt', stage: 1 },
+          { label: t('common:navigation.logDrains'), path: 'settings/log-drains', stage: 4 },
         ],
       },
       {
-        title: 'Integrations',
+        title: t('common:navigation.integrations'),
         items: [
-          { label: 'Data API', path: 'integrations/data_api/docs', stage: 2 },
+          { label: t('common:navigation.dataApi'), path: 'integrations/data_api/docs', stage: 2 },
           { label: 'Vault', path: 'integrations/vault', stage: 3 },
         ],
       },
     ],
   },
-}
+}))
 
 /** Organization settings menu (Studio's OrganizationSettingsLayout). Paths are relative to /org/$slug. */
-export const orgSettingsMenu: ProductMenu = {
-  title: 'Organization Settings',
+export const orgSettingsMenu = localized((): ProductMenu => ({
+  title: t('common:navigation.organizationSettings'),
   groups: [
     {
-      title: 'Configuration',
+      title: t('common:navigation.configuration'),
       items: [
-        { label: 'General', path: 'general', stage: 1 },
-        { label: 'Security', path: 'security', stage: 5 },
+        { label: t('common:navigation.general'), path: 'general', stage: 1 },
+        { label: t('common:navigation.security'), path: 'security', stage: 5 },
         { label: 'SSO', path: 'sso', stage: 5 },
-        { label: 'Webhooks', path: 'webhooks', stage: 5 },
-        { label: 'OAuth Apps', path: 'apps', stage: 5, soon: true },
-        { label: 'Audit Logs', path: 'audit', stage: 1 },
+        { label: t('common:navigation.webhooks'), path: 'webhooks', stage: 5 },
+        { label: t('common:navigation.oauthApps'), path: 'apps', stage: 5, soon: true },
+        { label: t('common:navigation.auditLogs'), path: 'audit', stage: 1 },
       ],
     },
   ],
-}
+}))
 
 /** Looks up the label and stage for any project sub-path, for page titles. */
 export function describeProjectPath(path: string): { label: string; stage: number } | undefined {
-  for (const menu of Object.values(productMenus)) {
+  for (const menu of Object.values(productMenus())) {
     for (const group of menu.groups) {
       const item = group.items.find((i) => i.path === path)
       if (item) return { label: `${menu.title}: ${item.label}`, stage: item.stage }
     }
   }
-  for (const route of projectNavGroups.flat()) {
+  for (const route of projectNavGroups().flat()) {
     if (route.path === path) return { label: route.label, stage: route.stage }
   }
   return undefined

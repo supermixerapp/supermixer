@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { toast } from '@/components/ui/toaster'
 import { usePg } from '@/lib/pg/run'
 import { deleteBucket, emptyBucket, FOLDER_PLACEHOLDER, formatBytes, listBuckets, type Bucket } from '@/lib/storage-api'
+import { t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/storage/buckets/')({
   component: BucketsPage,
@@ -43,7 +44,7 @@ function BucketsPage() {
   const empty = useMutation<number, Error, Bucket>({
     mutationFn: (b) => emptyBucket(ref, b.id),
     onSuccess: async (n, b) => {
-      toast.success(`Deleted ${n} file${n === 1 ? '' : 's'} from ${b.name}`)
+      toast.success(t('storage:storageBuckets.deletedFilesFrom', { count: n, name: b.name }))
       await refresh()
     },
     onError: (e) => toast.error(e.message),
@@ -51,7 +52,7 @@ function BucketsPage() {
   const remove = useMutation<void, Error, Bucket>({
     mutationFn: (b) => deleteBucket(ref, b.id),
     onSuccess: async (_, b) => {
-      toast.success(`Deleted bucket ${b.name}`)
+      toast.success(t('storage:storageBuckets.deletedBucket', { name: b.name }))
       await refresh()
     },
     onError: (e) => toast.error(e.message),
@@ -59,12 +60,12 @@ function BucketsPage() {
 
   return (
     <DatabasePage
-      title="Buckets"
-      description="Containers for files. Open one to browse, upload and share its files."
-      toolbar={<SearchBox value={search} onChange={setSearch} placeholder="Search for a bucket" />}
+      title={t('storage:storageBuckets.buckets')}
+      description={t('storage:storageBuckets.containersForFilesOpenOneTo')}
+      toolbar={<SearchBox value={search} onChange={setSearch} placeholder={t('storage:storageBuckets.searchForABucket')} />}
       actions={
-        <PermissionButton allowed={canChange} action="create buckets" variant="primary" icon={<AddIcon />} onClick={() => setEditing({})}>
-          New bucket
+        <PermissionButton allowed={canChange} action={t('storage:storageBuckets.createBuckets')} variant="primary" icon={<AddIcon />} onClick={() => setEditing({})}>
+          {t('storage:storageBuckets.newBucket')}
         </PermissionButton>
       }
     >
@@ -73,10 +74,10 @@ function BucketsPage() {
         loading={buckets.isPending}
         error={buckets.error}
         rowKey={(b) => b.id}
-        empty={search ? 'No buckets match your search' : 'No buckets yet. Create one to start storing files.'}
+        empty={search ? t('storage:storageBuckets.noBucketsMatchYourSearch') : t('storage:storageBuckets.noBucketsYetCreateOneTo')}
         columns={[
           {
-            header: 'Name',
+            header: t('storage:storageBuckets.name'),
             cell: (b) => (
               <Link
                 to="/project/$ref/storage/buckets/$bucket"
@@ -88,37 +89,37 @@ function BucketsPage() {
               </Link>
             ),
           },
-          { header: 'Access', cell: (b) => (b.public ? <Badge variant="warning">Public</Badge> : <Badge>Private</Badge>) },
-          { header: 'File size limit', cell: (b) => (b.file_size_limit ? formatBytes(b.file_size_limit) : 'Stack default'), className: 'whitespace-nowrap' },
-          { header: 'Allowed types', cell: (b) => b.allowed_mime_types?.join(', ') || 'Any' },
+          { header: t('storage:storageBuckets.access'), cell: (b) => (b.public ? <Badge variant="warning">{t('storage:storageBuckets.public')}</Badge> : <Badge>{t('storage:storageBuckets.private')}</Badge>) },
+          { header: t('storage:storageBuckets.fileSizeLimit'), cell: (b) => (b.file_size_limit ? formatBytes(b.file_size_limit) : t('storage:storageBuckets.stackDefault')), className: 'whitespace-nowrap' },
+          { header: t('storage:storageBuckets.allowedTypes'), cell: (b) => b.allowed_mime_types?.join(', ') || t('storage:storageBuckets.any') },
           {
-            header: 'Files',
+            header: t('storage:storageBuckets.files'),
             cell: (b) => {
               const s = statFor(b.id)
-              return s ? `${s.files.toLocaleString()} · ${formatBytes(s.bytes)}` : stats.isPending ? '…' : '0'
+              return s ? `${s.files.toLocaleString(language())} · ${formatBytes(s.bytes)}` : stats.isPending ? '…' : '0'
             },
             className: 'text-right whitespace-nowrap',
           },
         ]}
         actions={[
-          { label: 'Open bucket', onSelect: (b) => void navigate({ to: '/project/$ref/storage/buckets/$bucket', params: { ref, bucket: b.id } }) },
-          { label: 'Edit bucket', hidden: () => !canChange, onSelect: (b) => setEditing({ bucket: b }) },
+          { label: t('storage:storageBuckets.openBucket'), onSelect: (b) => void navigate({ to: '/project/$ref/storage/buckets/$bucket', params: { ref, bucket: b.id } }) },
+          { label: t('storage:storageBuckets.editBucket'), hidden: () => !canChange, onSelect: (b) => setEditing({ bucket: b }) },
           {
-            label: 'Empty bucket',
+            label: t('storage:storageBuckets.emptyBucket'),
             hidden: () => !canChange,
             confirm: (b) => ({
-              title: `Empty bucket ${b.name}?`,
-              description: `Every file in it is deleted now${statFor(b.id) ? ` (${statFor(b.id)!.files.toLocaleString()} files)` : ''}. This can't be undone.`,
+              title: t('storage:storageBuckets.emptyBucket2', { name: b.name }),
+              description: statFor(b.id) ? t('storage:storageBuckets.everyFileCounted', { count: statFor(b.id)!.files }) : t('storage:storageBuckets.everyFileInItIsDeleted'),
               confirmText: b.name,
             }),
             onSelect: (b) => empty.mutate(b),
           },
           {
-            label: 'Delete bucket',
+            label: t('storage:storageBuckets.deleteBucket'),
             hidden: () => !canChange,
             confirm: (b) => ({
-              title: `Delete bucket ${b.name}?`,
-              description: "Its files are deleted first, then the bucket. This can't be undone.",
+              title: t('storage:storageBuckets.deleteBucket2', { name: b.name }),
+              description: t('storage:storageBuckets.itsFilesAreDeletedFirstThen'),
               confirmText: b.name,
             }),
             onSelect: (b) => remove.mutate(b),

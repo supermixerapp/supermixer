@@ -11,8 +11,27 @@ import { Skeleton } from '@/components/ui/skeleton'
 import type { Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { apiKeysQuery } from '@/lib/api/queries'
+import { t } from '@/lib/i18n'
 
 type KeyId = Schemas['ApiKey']['id']
+
+/** The server names and describes keys in English; the page says them in the user's language. */
+function keyText(k: Schemas['ApiKey']): { name: string; description: string } {
+  switch (k.id) {
+    case 'publishable':
+      return { name: t('project:apiKeyList.publishableName'), description: t('project:apiKeyList.publishableDescription') }
+    case 'secret':
+      return { name: t('project:apiKeyList.secretName'), description: t('project:apiKeyList.secretDescription') }
+    case 'anon':
+      return { name: k.name, description: t('project:apiKeyList.anonDescription') }
+    case 'service_role':
+      return { name: k.name, description: t('project:apiKeyList.serviceRoleDescription') }
+    case 'jwt_secret':
+      return { name: t('project:apiKeyList.jwtSecretName'), description: t('project:apiKeyList.jwtSecretDescription') }
+    default:
+      return { name: k.name, description: k.description }
+  }
+}
 
 /**
  * Shows a project's keys. Public keys are always visible; secret ones stay
@@ -38,12 +57,14 @@ export function ApiKeyList({ projectRef, ids, title }: { projectRef: string; ids
             {shown.map((k) => (
               <li key={k.id} className="flex flex-col gap-2 px-card py-4">
                 <div className="flex items-center gap-2">
-                  <span className="font-mono text-sm text-foreground">{k.name}</span>
-                  <Badge variant={k.secret ? 'warning' : 'default'}>{k.secret ? 'secret' : 'public'}</Badge>
+                  <span className="font-mono text-sm text-foreground">{keyText(k).name}</span>
+                  <Badge variant={k.secret ? 'warning' : 'default'}>
+                    {k.secret ? t('project:apiKeyList.secretBadge') : t('project:apiKeyList.publicBadge')}
+                  </Badge>
                 </div>
-                <p className="text-xs text-foreground-lighter">{k.description}</p>
+                <p className="text-xs text-foreground-lighter">{keyText(k).description}</p>
                 {!k.present ? (
-                  <p className="text-sm text-foreground-lighter">Not configured for this project.</p>
+                  <p className="text-sm text-foreground-lighter">{t('project:apiKeyList.notConfiguredForThisProject')}</p>
                 ) : k.value ? (
                   <CopyField value={k.value} />
                 ) : (
@@ -53,12 +74,12 @@ export function ApiKeyList({ projectRef, ids, title }: { projectRef: string; ids
                     actions={
                       <PermissionButton
                         allowed={canReveal}
-                        action="view secret API keys"
+                        action={t('project:apiKeyList.viewSecretApiKeys')}
                         variant="default"
                         loading={reveal && keys.isFetching}
                         onClick={() => setReveal(true)}
                       >
-                        Reveal
+                        {t('project:apiKeyList.reveal')}
                       </PermissionButton>
                     }
                   />
@@ -70,7 +91,7 @@ export function ApiKeyList({ projectRef, ids, title }: { projectRef: string; ids
       </Card>
       {reveal && (
         <Button variant="text" className="self-start" onClick={() => setReveal(false)}>
-          Hide secrets
+          {t('project:apiKeyList.hideSecrets')}
         </Button>
       )}
     </SettingsSection>

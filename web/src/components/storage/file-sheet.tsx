@@ -24,14 +24,15 @@ import {
   type Bucket,
   type StorageItem,
 } from '@/lib/storage-api'
+import { localized, t, language } from '@/lib/i18n'
 
-const LINK_EXPIRY: { label: string; seconds: number }[] = [
-  { label: '1 hour', seconds: 3600 },
-  { label: '1 day', seconds: 86_400 },
-  { label: '1 week', seconds: 604_800 },
-  { label: '1 month', seconds: 2_592_000 },
-  { label: '1 year', seconds: 31_536_000 },
-]
+const LINK_EXPIRY = localized((): { label: string; seconds: number }[] => [
+  { label: t('storage:fileSheet.n1Hour'), seconds: 3600 },
+  { label: t('storage:fileSheet.n1Day'), seconds: 86_400 },
+  { label: t('storage:fileSheet.n1Week'), seconds: 604_800 },
+  { label: t('storage:fileSheet.n1Month'), seconds: 2_592_000 },
+  { label: t('storage:fileSheet.n1Year'), seconds: 31_536_000 },
+])
 
 /** Text files small enough to show inline (only when the size is known). */
 const isText = (mime: string | undefined, size: number | undefined) =>
@@ -84,7 +85,7 @@ export function FileSheet({
     [blob]
   )
 
-  const [expiry, setExpiry] = useState(String(LINK_EXPIRY[1]!.seconds))
+  const [expiry, setExpiry] = useState(String(LINK_EXPIRY()[1]!.seconds))
   const [target, setTarget] = useState(path)
   const [signed, setSigned] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -105,7 +106,7 @@ export function FileSheet({
   const move = useMutation<unknown, Error>({
     mutationFn: () => moveObject(projectRef, bucket.id, path, dest),
     onSuccess: async () => {
-      toast.success(`Moved to ${dest}`)
+      toast.success(t('storage:fileSheet.movedTo', { dest }))
       onClose()
       await onChanged()
     },
@@ -113,7 +114,7 @@ export function FileSheet({
   const remove = useMutation<void, Error>({
     mutationFn: () => deleteObjects(projectRef, bucket.id, [path]),
     onSuccess: async () => {
-      toast.success(`Deleted ${name}`)
+      toast.success(t('storage:fileSheet.deleted', { name }))
       onClose()
       await onChanged()
     },
@@ -136,7 +137,7 @@ export function FileSheet({
           <SheetSection>
             {!previewable ? (
               <p className="rounded-md border bg-surface-100 px-3 py-8 text-center text-xs text-foreground-lighter">
-                {size === undefined ? 'No preview: the file size is unknown.' : size > PREVIEW_LIMIT ? 'Too large to preview.' : 'No preview for this type of file.'}
+                {size === undefined ? t('storage:fileSheet.noPreviewTheFileSizeIs') : size > PREVIEW_LIMIT ? t('storage:fileSheet.tooLargeToPreview') : t('storage:fileSheet.noPreviewForThisTypeOf')}
               </p>
             ) : preview.error ? (
               <Alert variant="destructive" title={preview.error.message} />
@@ -150,25 +151,25 @@ export function FileSheet({
           </SheetSection>
           <SheetSection className="border-t">
             <dl className="grid gap-3 text-sm sm:grid-cols-2">
-              <Field label="Type">{mime ?? '—'}</Field>
-              <Field label="Size">{formatBytes(size)}</Field>
-              <Field label="Last modified">{item.updated_at ? new Date(item.updated_at).toLocaleString() : '—'}</Field>
-              <Field label="Cache control">{item.metadata?.cacheControl ?? '—'}</Field>
+              <Field label={t('storage:fileSheet.type')}>{mime ?? '—'}</Field>
+              <Field label={t('storage:fileSheet.size')}>{formatBytes(size)}</Field>
+              <Field label={t('storage:fileSheet.lastModified')}>{item.updated_at ? new Date(item.updated_at).toLocaleString(language()) : '—'}</Field>
+              <Field label={t('storage:fileSheet.cacheControl')}>{item.metadata?.cacheControl ?? '—'}</Field>
             </dl>
           </SheetSection>
           <SheetSection className="flex flex-col gap-3 border-t">
             <Button variant="default" className="self-start" icon={<DownloadIcon />} loading={download.isPending} onClick={() => download.mutate()}>
-              Download
+              {t('storage:fileSheet.download')}
             </Button>
             {bucket.public ? (
-              <FormField label="Public URL" description="Anyone with this link can open the file.">
+              <FormField label={t('storage:fileSheet.publicUrl')} description={t('storage:fileSheet.anyoneWithThisLinkCanOpen')}>
                 <CopyField value={publicUrl(apiUrl, bucket.id, path)} />
               </FormField>
             ) : canChange ? (
               <div className="flex flex-col gap-2">
                 <div className="flex flex-wrap items-center gap-2">
                   <Button variant="default" icon={<LinkIcon />} loading={sign.isPending} onClick={() => sign.mutate()}>
-                    Create signed URL
+                    {t('storage:fileSheet.createSignedUrl')}
                   </Button>
                   <Select
                     value={expiry}
@@ -177,12 +178,12 @@ export function FileSheet({
                       setSigned(null)
                     }}
                   >
-                    <SelectTrigger className="w-36" aria-label="Link expires in">
-                      <span className="text-foreground-lighter">for</span>
+                    <SelectTrigger className="w-36" aria-label={t('storage:fileSheet.linkExpiresIn')}>
+                      <span className="text-foreground-lighter">{t('storage:fileSheet.for')}</span>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {LINK_EXPIRY.map((e) => (
+                      {LINK_EXPIRY().map((e) => (
                         <SelectItem key={e.seconds} value={String(e.seconds)}>
                           {e.label}
                         </SelectItem>
@@ -191,7 +192,7 @@ export function FileSheet({
                   </Select>
                 </div>
                 {signed && <CopyField value={signed} />}
-                <p className="text-xs text-foreground-lighter">Signed URLs work for anyone who has them until they expire, and can&apos;t be revoked early.</p>
+                <p className="text-xs text-foreground-lighter">{t('storage:fileSheet.signedUrlsWorkForAnyoneWho')}</p>
               </div>
             ) : null}
           </SheetSection>
@@ -204,21 +205,21 @@ export function FileSheet({
                   if (targetOk && !move.isPending) move.mutate()
                 }}
               >
-                <FormField label="Move or rename" htmlFor="file-target" description="The full path in this bucket, e.g. archive/2026/report.pdf">
+                <FormField label={t('storage:fileSheet.moveOrRename')} htmlFor="file-target" description={t('storage:fileSheet.theFullPathInThisBucket')}>
                   <Input id="file-target" value={target} onChange={(e) => setTarget(e.target.value)} />
                 </FormField>
                 {move.error && <Alert variant="destructive" title={move.error.message} />}
                 <Button type="submit" variant="default" className="self-start" disabled={!targetOk} loading={move.isPending}>
-                  Move
+                  {t('storage:fileSheet.move')}
                 </Button>
               </form>
               <div className="flex items-center gap-4">
                 <div className="flex-1">
-                  <p className="text-sm text-foreground">Delete file</p>
-                  <p className="text-xs text-foreground-lighter">Links to it stop working.</p>
+                  <p className="text-sm text-foreground">{t('storage:fileSheet.deleteFile')}</p>
+                  <p className="text-xs text-foreground-lighter">{t('storage:fileSheet.linksToItStopWorking')}</p>
                 </div>
                 <Button variant="danger" size="tiny" onClick={() => setConfirmDelete(true)}>
-                  Delete
+                  {t('storage:fileSheet.delete')}
                 </Button>
               </div>
             </SheetSection>
@@ -228,9 +229,9 @@ export function FileSheet({
       <ConfirmDialog
         open={confirmDelete}
         onOpenChange={setConfirmDelete}
-        title={`Delete ${name}?`}
-        description="This can't be undone."
-        confirmLabel="Delete file"
+        title={t('storage:fileSheet.delete2', { name })}
+        description={t('storage:fileSheet.thisCanTBeUndone')}
+        confirmLabel={t('storage:fileSheet.deleteFile')}
         loading={remove.isPending}
         onConfirm={() => remove.mutate(undefined, { onSettled: () => setConfirmDelete(false) })}
       />

@@ -15,6 +15,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useOrganizations, useProfile } from '@/lib/api/hooks'
 import { myLimitsQuery } from '@/lib/api/queries'
 import { roleLabel } from '@/lib/roles'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/organizations')({
   component: OrganizationsPage,
@@ -29,13 +30,13 @@ function OrganizationsPage() {
   const mine = useQuery(myLimitsQuery).data
   const max = mine?.max_organizations ?? null
   const full = max !== null && (mine?.organizations_created ?? 0) >= max
-  const fullReason = `You've created ${max} ${max === 1 ? 'organization' : 'organizations'}, the most this instance allows. Delete one, or ask an instance admin to raise the limit.`
+  const fullReason = t('org:organizations.youVeCreatedTheMostThis', { count: max })
   const visible = (orgs ?? []).filter((o) => o.name.toLowerCase().includes(search.toLowerCase()))
 
   return (
     <AppShell>
       <div className="overflow-y-auto">
-        <PageHeader title="Your Organizations" />
+        <PageHeader title={t('org:organizations.yourOrganizations')} />
         <PageContainer className="flex flex-col gap-4 pb-12">
           <div className="flex items-center justify-between gap-2">
             <div className="relative w-full max-w-64">
@@ -46,18 +47,18 @@ function OrganizationsPage() {
               <Input
                 size="tiny"
                 className="pl-7"
-                placeholder="Search for an organization"
+                placeholder={t('org:organizations.searchForAnOrganization')}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
             </div>
             {full ? (
               <BlockedButton reason={fullReason} variant="primary" icon={<AddIcon />}>
-                New organization
+                {t('org:organizations.newOrganization')}
               </BlockedButton>
             ) : (
               <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-                New organization
+                {t('org:organizations.newOrganization')}
               </Button>
             )}
           </div>
@@ -69,18 +70,17 @@ function OrganizationsPage() {
           ) : orgs && orgs.length === 0 ? (
             <Card className="flex flex-col items-center gap-3 px-6 py-14 text-center">
               <ProjectsIcon size={28} className="text-foreground-lighter" />
-              <p className="text-sm text-foreground">You are not in any organizations yet</p>
+              <p className="text-sm text-foreground">{t('org:organizations.youAreNotInAnyOrganizations')}</p>
               <p className="max-w-sm text-sm text-foreground-lighter">
-                Create one to start registering your self-hosted Supabase projects, or ask a teammate for an invitation
-                link.
+                {t('org:organizations.createOneToStartRegisteringYour')}
               </p>
               {full ? (
                 <BlockedButton reason={fullReason} variant="primary" icon={<AddIcon />} className="mt-2">
-                  New organization
+                  {t('org:organizations.newOrganization')}
                 </BlockedButton>
               ) : (
                 <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)} className="mt-2">
-                  New organization
+                  {t('org:organizations.newOrganization')}
                 </Button>
               )}
             </Card>
@@ -100,10 +100,10 @@ function OrganizationsPage() {
                     <div className="flex min-w-0 flex-1 flex-col">
                       <span className="truncate text-sm text-foreground">{org.name}</span>
                       {org.mfa_required && !me?.mfa_enabled ? (
-                        <span className="text-xs text-warning-600">Requires two-factor sign-in</span>
+                        <span className="text-xs text-warning-600">{t('org:organizations.requiresTwoFactorSignIn')}</span>
                       ) : (
                         <span className="text-xs text-foreground-lighter">
-                          {org.project_count} {org.project_count === 1 ? 'project' : 'projects'}
+                          {t('org:organizations.projects', { count: org.project_count })}
                         </span>
                       )}
                     </div>

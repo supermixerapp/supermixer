@@ -36,6 +36,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { relativeTime } from '@/lib/auth-users'
 import { formatBytes } from '@/lib/storage-api'
+import { localized, t, Trans, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/backups')({
   component: BackupsPage,
@@ -43,12 +44,12 @@ export const Route = createFileRoute('/_app/project/$ref/database/backups')({
 
 type Backup = Schemas['Backup']
 
-const KIND_LABELS: Record<Backup['kind'], string> = {
-  scheduled: 'Scheduled',
-  manual: 'Manual',
-  pre_restore: 'Before a restore',
-  pre_upgrade: 'Before an upgrade',
-}
+const KIND_LABELS = localized((): Record<Backup['kind'], string> => ({
+  scheduled: t('database:databaseBackups.scheduled'),
+  manual: t('database:databaseBackups.manual'),
+  pre_restore: t('database:databaseBackups.beforeARestore'),
+  pre_upgrade: t('database:databaseBackups.beforeAnUpgrade'),
+}))
 
 const FILES = ['roles.sql', 'schema.sql', 'data.sql'] as const
 
@@ -57,16 +58,15 @@ function BackupsPage() {
   return (
     <>
       <PageHeader
-        title="Backups"
-        description="Database backups in the format of supabase db dump: roles, schema and data. Storage files aren't included, as in Supabase's own backups."
+        title={t('database:databaseBackups.backups')}
+        description={t('database:databaseBackups.databaseBackupsInTheFormatOf')}
       />
       <PageContainer className="flex flex-col gap-10 pb-16">
         {!project ? null : project.stack ? (
           <ManagedBackups project={project} />
         ) : (
-          <Alert title="Supermixer connects to this stack; it didn't create it">
-            Back its database up where it runs, for example with supabase db dump. Projects created
-            with “Create a new stack” are backed up from here.
+          <Alert title={t('database:databaseBackups.supermixerConnectsToThisStackIt')}>
+            {t('database:databaseBackups.backItsDatabaseUpWhereIt')}
           </Alert>
         )}
       </PageContainer>
@@ -97,7 +97,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
 
   const create = useMutation({
     mutationFn: () => unwrap(api.POST('/projects/{ref}/backups', { params: { path: { ref } } })),
-    onSuccess: () => toast.success('Backing up the database'),
+    onSuccess: () => toast.success(t('database:databaseBackups.backingUpTheDatabase')),
     onError: (e) => toast.error(e.message),
     onSettled: refresh,
   })
@@ -105,7 +105,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
   const remove = useMutation({
     mutationFn: (id: string) =>
       unwrap(api.DELETE('/projects/{ref}/backups/{id}', { params: { path: { ref, id } } })),
-    onSuccess: () => toast.success('Backup deleted'),
+    onSuccess: () => toast.success(t('database:databaseBackups.backupDeleted')),
     onError: (e) => toast.error(e.message),
     onSettled: () => {
       setDeleting(null)
@@ -116,7 +116,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
   const restore = useMutation({
     mutationFn: (id: string) =>
       unwrap(api.POST('/projects/{ref}/backups/{id}/restore', { params: { path: { ref, id } } })),
-    onSuccess: () => toast.success('Restoring; the project is offline until it finishes'),
+    onSuccess: () => toast.success(t('database:databaseBackups.restoringTheProjectIsOfflineUntil')),
     onError: (e) => toast.error(e.message),
     onSettled: () => {
       setRestoring(null)
@@ -126,7 +126,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
   const retryUpload = useMutation({
     mutationFn: (id: string) =>
       unwrap(api.POST('/projects/{ref}/backups/{id}/upload', { params: { path: { ref, id } } })),
-    onSuccess: () => toast.success('Copying the backup to the bucket'),
+    onSuccess: () => toast.success(t('database:databaseBackups.copyingTheBackupToTheBucket')),
     onError: (e) => toast.error(e.message),
     onSettled: refresh,
   })
@@ -142,7 +142,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
       ),
     onSuccess: (p) => {
       void queryClient.invalidateQueries({ queryKey: ['projects'], exact: true })
-      toast.success(`Creating ${p.name} from the backup`)
+      toast.success(t('database:databaseBackups.creatingFromTheBackup', { name: p.name }))
       void navigate({ to: '/project/$ref', params: { ref: p.ref } })
     },
     onError: (e) => toast.error(e.message),
@@ -157,43 +157,40 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
   const busy = !!s.operation
   const running = s.status === 'running'
   const cantBackUp = !running
-    ? 'Start the stack to back it up'
+    ? t('database:databaseBackups.startTheStackToBackIt')
     : busy
-      ? 'The stack is busy; wait for it to finish'
+      ? t('database:databaseBackups.theStackIsBusyWaitFor')
       : null
 
   return (
     <>
       <SettingsSection
-        title="Schedule"
-        description="Set by the Supermixer server's configuration (provisioning.backup_interval, backup_keep and backup_s3)."
+        title={t('database:databaseBackups.schedule')}
+        description={t('database:databaseBackups.setByTheSupermixerServerS')}
       >
         <Card className="flex flex-wrap items-center justify-between gap-4 px-5 py-4 text-sm">
           <span className="flex flex-col gap-1.5 text-foreground-light">
             <span>
               {interval_hours > 0 ? (
                 <>
-                  Backed up every {formatInterval(interval_hours)} while running; the newest {keep}{' '}
-                  scheduled backups are kept. Manual backups are kept until you delete them.
+                  {t('database:databaseBackups.backedUpEveryWhileRunningThe', { interval: formatInterval(interval_hours), keep })}
                 </>
               ) : (
-                <>Scheduled backups are off. Manual backups are kept until you delete them.</>
+                <>{t('database:databaseBackups.scheduledBackupsAreOffManualBackups')}</>
               )}
             </span>
             <span className="text-xs text-foreground-lighter">
               {s3 ? (
                 <>
-                  Each backup is copied to{' '}
-                  <code className="font-mono text-foreground-light">{s3.location}</code> at{' '}
-                  {s3.endpoint}
-                  {s3.keep_local
-                    ? ', and kept on the Supermixer server too.'
-                    : '; once copied, it’s removed from the Supermixer server.'}
+                  <Trans
+                    i18nKey={s3.keep_local ? 'database:databaseBackups.copiedToAndKept' : 'database:databaseBackups.copiedToAndRemoved'}
+                    values={{ location: s3.location, endpoint: s3.endpoint }}
+                    components={{ code: <code className="font-mono text-foreground-light" /> }}
+                  />
                 </>
               ) : (
                 <>
-                  Backups are only on the Supermixer server. Set provisioning.backup_s3 to copy them
-                  to an S3-compatible bucket as well.
+                  {t('database:databaseBackups.backupsAreOnlyOnTheSupermixer')}
                 </>
               )}
             </span>
@@ -201,20 +198,19 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
           <WithReason reason={allowed ? cantBackUp : null}>
             <PermissionButton
               allowed={allowed}
-              action="back up this project"
+              action={t('database:databaseBackups.backUpThisProject')}
               variant="primary"
               disabled={!!cantBackUp}
               loading={create.isPending}
               onClick={() => create.mutate()}
             >
-              Back up now
+              {t('database:databaseBackups.backUpNow')}
             </PermissionButton>
           </WithReason>
         </Card>
         {s.operation === 'restoring' && (
-          <Alert variant="warning" title="Restoring a backup">
-            The database is offline until the restore finishes. Progress is on Settings ›
-            Infrastructure.
+          <Alert variant="warning" title={t('database:databaseBackups.restoringABackup')}>
+            {t('database:databaseBackups.theDatabaseIsOfflineUntilThe')}
           </Alert>
         )}
         {s.error && !busy && (
@@ -222,17 +218,17 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
         )}
       </SettingsSection>
 
-      <SettingsSection title="Backups" description="Newest first.">
+      <SettingsSection title={t('database:databaseBackups.backups')} description={t('database:databaseBackups.newestFirst')}>
         <Card>
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Taken</TableHead>
-                <TableHead>Kind</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Size</TableHead>
+                <TableHead>{t('database:databaseBackups.taken')}</TableHead>
+                <TableHead>{t('database:databaseBackups.kind')}</TableHead>
+                <TableHead>{t('database:databaseBackups.status')}</TableHead>
+                <TableHead className="text-right">{t('database:databaseBackups.size')}</TableHead>
                 <TableHead>Postgres</TableHead>
-                {showStored && <TableHead>Stored</TableHead>}
+                {showStored && <TableHead>{t('database:databaseBackups.stored')}</TableHead>}
                 <TableHead className="w-10" />
               </TableRow>
             </TableHeader>
@@ -243,7 +239,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                     colSpan={showStored ? 7 : 6}
                     className="py-8 text-center text-foreground-lighter"
                   >
-                    No backups yet
+                    {t('database:databaseBackups.noBackupsYet')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -251,14 +247,14 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                   <TableRow key={b.id}>
                     <TableCell>
                       <span className="flex flex-col">
-                        <span className="text-foreground">{new Date(b.started_at).toLocaleString()}</span>
+                        <span className="text-foreground">{new Date(b.started_at).toLocaleString(language())}</span>
                         <span className="text-xs text-foreground-lighter">
                           {relativeTime(b.started_at)}
-                          {b.created_by && <> · by {b.created_by}</>}
+                          {b.created_by && <> {t('database:databaseBackups.by', { createdBy: b.created_by })}</>}
                         </span>
                       </span>
                     </TableCell>
-                    <TableCell className="text-foreground-light">{KIND_LABELS[b.kind]}</TableCell>
+                    <TableCell className="text-foreground-light">{KIND_LABELS()[b.kind]}</TableCell>
                     <TableCell>
                       <StatusBadge backup={b} />
                     </TableCell>
@@ -281,7 +277,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                               variant="text"
                               size="tiny"
                               icon={<MoreIcon />}
-                              aria-label={`Actions for the backup of ${new Date(b.started_at).toLocaleString()}`}
+                              aria-label={t('database:databaseBackups.actionsForTheBackupOf', { value: new Date(b.started_at).toLocaleString(language()) })}
                             />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56">
@@ -299,20 +295,20 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                                   disabled={!allowed || !!cantBackUp || !!unreadable(b, s3)}
                                   onSelect={() => setRestoring(b)}
                                 >
-                                  Restore to this project…
+                                  {t('database:databaseBackups.restoreToThisProject')}
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   disabled={!allowed || !!unreadable(b, s3)}
                                   onSelect={() => {
-                                    setCopyName(`${project.name} (restored)`)
+                                    setCopyName(t('database:databaseBackups.restored', { name: project.name }))
                                     setCopying(b)
                                   }}
                                 >
-                                  Restore to a new project…
+                                  {t('database:databaseBackups.restoreToANewProject')}
                                 </DropdownMenuItem>
                                 <DropdownMenuSeparator />
                                 <DropdownMenuLabel className="text-xs text-foreground-lighter">
-                                  Download
+                                  {t('database:databaseBackups.download')}
                                 </DropdownMenuLabel>
                                 {FILES.map((f) => (
                                   <DropdownMenuItem
@@ -340,7 +336,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                                       disabled={!allowed}
                                       onSelect={() => retryUpload.mutate(b.id)}
                                     >
-                                      Copy to the bucket again
+                                      {t('database:databaseBackups.copyToTheBucketAgain')}
                                     </DropdownMenuItem>
                                     <DropdownMenuSeparator />
                                   </>
@@ -352,7 +348,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
                               className="text-destructive"
                               onSelect={() => setDeleting(b)}
                             >
-                              Delete…
+                              {t('database:databaseBackups.delete')}
                             </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
@@ -365,11 +361,7 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
           </Table>
         </Card>
         <p className="text-xs text-foreground-lighter">
-          To restore a download elsewhere, as Supabase documents:{' '}
-          <code className="font-mono">
-            psql --single-transaction -v ON_ERROR_STOP=1 -f roles.sql -f schema.sql -f data.sql
-          </code>
-          . The Vault's secrets aren't included, and roles that log in need their passwords set again.
+          <Trans i18nKey="database:databaseBackups.toRestoreADownloadElsewhereAs" components={{ code: <code className="font-mono" /> }} />
         </p>
       </SettingsSection>
 
@@ -377,18 +369,15 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
         open={restoring !== null}
         onOpenChange={(o) => !o && setRestoring(null)}
         variant="warning"
-        title="Restore this backup to the project?"
+        title={t('database:databaseBackups.restoreThisBackupToTheProject')}
         description={
           restoring && (
             <>
-              The database is replaced with the backup of{' '}
-              {new Date(restoring.started_at).toLocaleString()}; changes since then are lost.
-              Supermixer backs the current database up first, and the project is offline while it
-              restores. If the restore fails, the project goes back to its current database.
+              {t('database:databaseBackups.theDatabaseIsReplacedWithThe', { value: new Date(restoring.started_at).toLocaleString(language()) })}
             </>
           )
         }
-        confirmLabel="Restore"
+        confirmLabel={t('database:databaseBackups.restore')}
         confirmText={project.name}
         loading={restore.isPending}
         onConfirm={() => restoring && restore.mutate(restoring.id)}
@@ -398,15 +387,15 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
         open={copying !== null}
         onOpenChange={(o) => !o && setCopying(null)}
         variant="primary"
-        title="Restore to a new project"
-        description="Supermixer creates a new stack in this organization, with its own keys, and restores the backup into it. This project isn't changed."
-        confirmLabel="Create project"
+        title={t('database:databaseBackups.restoreToANewProject2')}
+        description={t('database:databaseBackups.supermixerCreatesANewStackIn')}
+        confirmLabel={t('database:databaseBackups.createProject')}
         loading={restoreToNew.isPending}
         onConfirm={() => {
           if (copying && copyName.trim()) restoreToNew.mutate({ id: copying.id, name: copyName.trim() })
         }}
       >
-        <FormField label="Name" htmlFor="restore-name">
+        <FormField label={t('database:databaseBackups.name')} htmlFor="restore-name">
           <Input id="restore-name" value={copyName} onChange={(e) => setCopyName(e.target.value)} />
         </FormField>
       </ConfirmDialog>
@@ -414,9 +403,9 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
       <ConfirmDialog
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title="Delete this backup?"
+        title={t('database:databaseBackups.deleteThisBackup')}
         description={deleting && deleteText(deleting, s3)}
-        confirmLabel="Delete backup"
+        confirmLabel={t('database:databaseBackups.deleteBackup')}
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting.id)}
       />
@@ -425,16 +414,16 @@ function ManagedBackups({ project }: { project: Schemas['Project'] }) {
 }
 
 function StatusBadge({ backup }: { backup: Backup }) {
-  if (backup.status === 'running') return <Badge variant="warning">Running…</Badge>
-  if (backup.status === 'completed') return <Badge variant="success">Completed</Badge>
+  if (backup.status === 'running') return <Badge variant="warning">{t('database:databaseBackups.running')}</Badge>
+  if (backup.status === 'completed') return <Badge variant="success">{t('database:databaseBackups.completed')}</Badge>
   return (
     <Tooltip>
       <TooltipTrigger asChild>
         <span className="inline-flex">
-          <Badge variant="destructive">Failed</Badge>
+          <Badge variant="destructive">{t('database:databaseBackups.failed')}</Badge>
         </span>
       </TooltipTrigger>
-      <TooltipContent className="max-w-sm">{backup.error || 'Failed'}</TooltipContent>
+      <TooltipContent className="max-w-sm">{backup.error || t('database:databaseBackups.failed')}</TooltipContent>
     </Tooltip>
   )
 }
@@ -449,29 +438,29 @@ function bucketOf(location: string): string {
 /** Why Supermixer can't read a backup's files, if it can't: they're only in a bucket it isn't set up for. */
 function unreadable(b: Backup, s3: S3): string | null {
   if (b.local) return null
-  if (!b.remote) return 'The backup’s files are missing.'
+  if (!b.remote) return t('database:databaseBackups.theBackupSFilesAreMissing')
   const bucket = bucketOf(b.remote)
   if (!s3)
-    return `The backup is only in bucket ${bucket}, and Supermixer isn’t set up for a bucket.`
+    return t('database:databaseBackups.theBackupIsOnlyInBucket', { bucket })
   const current = bucketOf(s3.location)
   return bucket === current
     ? null
-    : `The backup is only in bucket ${bucket}, and Supermixer is set up for bucket ${current}.`
+    : t('database:databaseBackups.theBackupIsOnlyInBucket2', { bucket, current })
 }
 
 /** What deleting a backup removes, from where it is. */
 function deleteText(b: Backup, s3: S3): string {
   const parts: string[] = []
-  if (b.local) parts.push('Its files are removed from the Supermixer server.')
+  if (b.local) parts.push(t('database:databaseBackups.itsFilesAreRemovedFromThe'))
   if (b.remote) {
     const bucket = bucketOf(b.remote)
     parts.push(
       s3 && bucketOf(s3.location) === bucket
-        ? `Its copy in bucket ${bucket} is removed too (later, if Supermixer can’t reach the bucket right now).`
-        : `Its copy in bucket ${bucket} is removed once Supermixer is set up for that bucket again.`
+        ? t('database:databaseBackups.itsCopyInBucketIsRemoved', { bucket })
+        : t('database:databaseBackups.itsCopyInBucketIsRemoved2', { bucket })
     )
   }
-  return [...parts, 'This can’t be undone.'].join(' ')
+  return [...parts, t('database:databaseBackups.thisCanTBeUndone')].join(' ')
 }
 
 /** Whether a backup is waiting to be copied to the bucket. */
@@ -484,7 +473,7 @@ function StoredBadges({ backup: b, s3 }: { backup: Backup; s3: boolean }) {
   if (b.status !== 'completed') return <span className="text-foreground-lighter">–</span>
   return (
     <span className="flex flex-wrap gap-1">
-      {b.local && <Badge>Server</Badge>}
+      {b.local && <Badge>{t('database:databaseBackups.server')}</Badge>}
       {b.remote ? (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -498,18 +487,18 @@ function StoredBadges({ backup: b, s3 }: { backup: Backup; s3: boolean }) {
         <Tooltip>
           <TooltipTrigger asChild>
             <span className="inline-flex">
-              <Badge variant="warning">S3 copy failed</Badge>
+              <Badge variant="warning">{t('database:databaseBackups.s3CopyFailed')}</Badge>
             </span>
           </TooltipTrigger>
           <TooltipContent className="max-w-sm">
             {b.upload_error.replace(/\.+$/, '')}.{' '}
             {s3
-              ? 'Supermixer tries again on its own, waiting longer each time.'
-              : 'Backups aren’t copied to a bucket any more, so it won’t be tried again.'}
+              ? t('database:databaseBackups.supermixerTriesAgainOnItsOwn')
+              : t('database:databaseBackups.backupsArenTCopiedToA')}
           </TooltipContent>
         </Tooltip>
       ) : (
-        uploading(b, s3) && <Badge variant="warning">Copying to S3…</Badge>
+        uploading(b, s3) && <Badge variant="warning">{t('database:databaseBackups.copyingToS3')}</Badge>
       )}
     </span>
   )
@@ -529,6 +518,6 @@ function WithReason({ reason, children }: { reason: string | null; children: Rea
 }
 
 function formatInterval(hours: number): string {
-  if (hours % 24 === 0) return hours === 24 ? 'day' : `${hours / 24} days`
-  return hours === 1 ? 'hour' : `${hours} hours`
+  if (hours % 24 === 0) return hours === 24 ? 'day' : t('database:databaseBackups.days', { hours: hours / 24 })
+  return hours === 1 ? 'hour' : t('database:databaseBackups.hours', { hours })
 }

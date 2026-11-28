@@ -16,6 +16,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useSelectedProject } from '@/lib/api/hooks'
 import { projectHealthQuery } from '@/lib/api/queries'
 import { roleLabel } from '@/lib/roles'
+import { t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/')({
   component: ProjectOverview,
@@ -49,7 +50,7 @@ function ProjectOverview() {
           project.studio_url && project.stack?.studio !== false && (
               <Button asChild variant="default" iconRight={<ExternalLinkIcon />}>
                 <a href={project.studio_url} target="_blank" rel="noreferrer">
-                  Open Studio
+                  {t('project:app.openStudio')}
                 </a>
               </Button>
           )
@@ -66,13 +67,13 @@ function ProjectOverview() {
         )}
         <div className="lg:col-span-3">
           <SettingsSection
-            title="Service health"
+            title={t('project:app.serviceHealth')}
             description={
-              health.data ? `Checked ${new Date(health.data.checked_at).toLocaleTimeString()}; refreshes every 30 seconds.` : undefined
+              health.data ? t('project:app.checkedRefreshesEvery30Seconds', { localeTimeString: new Date(health.data.checked_at).toLocaleTimeString(language()) }) : undefined
             }
           >
             {!up ? (
-              <p className="text-sm text-foreground-lighter">Health checks run while the stack is running.</p>
+              <p className="text-sm text-foreground-lighter">{t('project:app.healthChecksRunWhileTheStack')}</p>
             ) : health.isPending ? (
               <Skeleton className="h-56" />
             ) : health.data ? (
@@ -87,27 +88,27 @@ function ProjectOverview() {
                 loading={health.isFetching}
                 onClick={() => queryClient.invalidateQueries({ queryKey: projectHealthQuery(ref).queryKey })}
               >
-                Check again
+                {t('project:app.checkAgain')}
               </Button>
             )}
           </SettingsSection>
         </div>
         <div className="flex flex-col gap-10 lg:col-span-2">
-          <SettingsSection title="Project details">
+          <SettingsSection title={t('project:app.projectDetails')}>
             <Card>
               <dl className="divide-y text-sm">
-                <Detail label="Reference ID">
+                <Detail label={t('project:app.referenceId')}>
                   <span className="font-mono text-xs">{project.ref}</span>
                 </Detail>
-                <Detail label="Organization">{project.organization_name}</Detail>
-                <Detail label="Your role">{roleLabel(project.role)}</Detail>
-                <Detail label="Postgres">{health.data?.postgres_version ?? '—'}</Detail>
-                <Detail label="Auth">{health.data?.auth_version ?? '—'}</Detail>
-                <Detail label="Registered">{new Date(project.created_at).toLocaleDateString()}</Detail>
+                <Detail label={t('project:app.organization')}>{project.organization_name}</Detail>
+                <Detail label={t('project:app.yourRole')}>{roleLabel(project.role)}</Detail>
+                <Detail label={t('project:app.postgres')}>{health.data?.postgres_version ?? '—'}</Detail>
+                <Detail label={t('project:app.auth')}>{health.data?.auth_version ?? '—'}</Detail>
+                <Detail label={t('project:app.registered')}>{new Date(project.created_at).toLocaleDateString(language())}</Detail>
               </dl>
             </Card>
           </SettingsSection>
-          <SettingsSection title="Project URL">
+          <SettingsSection title={t('project:app.projectUrl')}>
             <CopyField value={project.api_url} />
           </SettingsSection>
         </div>

@@ -14,6 +14,7 @@ import { Card } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { enableExtension } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
+import { t, Trans } from '@/lib/i18n'
 
 export interface ExtensionState {
   installed_version: string | null
@@ -66,7 +67,7 @@ export function IntegrationPage({
       description={
         <span className="flex flex-col gap-2">
           <Link to="/project/$ref/integrations" params={{ ref: projectRef }} className="flex w-fit items-center gap-1 text-xs text-foreground-lighter hover:text-foreground">
-            <ArrowBackIcon size={14} /> Integrations
+            <Trans i18nKey="integrations:integrationPage.integrations" components={{ arrowbackicon: <ArrowBackIcon size={14} /> }} />
           </Link>
           <span>{description}</span>
         </span>
@@ -83,21 +84,21 @@ export function IntegrationPage({
       ) : ext.state.installed_version ? (
         children
       ) : !ext.state.default_version ? (
-        <Alert variant="warning" title={`The ${extension.name} extension isn't available on this database`}>
-          The stack&apos;s Postgres image doesn&apos;t include it. Supabase&apos;s own images do.
+        <Alert variant="warning" title={t('integrations:integrationPage.theExtensionIsnTAvailableOn', { name: extension.name })}>
+          {t('integrations:integrationPage.theStackSPostgresImageDoesn')}
         </Alert>
       ) : (
         <Card className="flex flex-col items-start gap-3 p-6">
-          <p className="text-sm text-foreground">Enable the {extension.name} extension</p>
+          <p className="text-sm text-foreground">{t('integrations:integrationPage.enableTheExtension', { name: extension.name })}</p>
           {about && <p className="max-w-2xl text-sm text-foreground-light">{about}</p>}
           <PermissionButton
             allowed={canChange}
-            action="enable extensions"
+            action={t('integrations:integrationPage.enableExtensions')}
             variant="primary"
             loading={ddl.isPending}
-            onClick={() => ddl.mutate({ sql: enableExtension(extension.name, extension.schema), done: `Enabled ${extension.name}` })}
+            onClick={() => ddl.mutate({ sql: enableExtension(extension.name, extension.schema), done: t('integrations:integrationPage.enabled', { name: extension.name }) })}
           >
-            Enable {extension.name}
+            {t('integrations:integrationPage.enable', { name: extension.name })}
           </PermissionButton>
         </Card>
       )}

@@ -3,6 +3,7 @@
  * database server's cron.timezone, which is GMT unless changed.
  */
 import { literal, qualified } from './sql'
+import { localized, language, t as tr } from '@/lib/i18n'
 
 export interface CronJob {
   id: number
@@ -106,50 +107,52 @@ export function isJsonObject(s: string): boolean {
 
 // ---------------------------------------------------------------- schedules
 
-export const SCHEDULE_PRESETS: { label: string; value: string }[] = [
-  { label: 'Every 30 seconds', value: '30 seconds' },
-  { label: 'Every minute', value: '* * * * *' },
-  { label: 'Every 5 minutes', value: '*/5 * * * *' },
-  { label: 'Every hour', value: '0 * * * *' },
-  { label: 'Every day at midnight', value: '0 0 * * *' },
-  { label: 'Every Monday at 09:00', value: '0 9 * * 1' },
-  { label: 'First day of the month', value: '0 0 1 * *' },
-]
+export const SCHEDULE_PRESETS = localized((): { label: string; value: string }[] => [
+  { label: tr('integrations:cron.every30Seconds'), value: '30 seconds' },
+  { label: tr('integrations:cron.everyMinute'), value: '* * * * *' },
+  { label: tr('integrations:cron.every5Minutes'), value: '*/5 * * * *' },
+  { label: tr('integrations:cron.everyHour'), value: '0 * * * *' },
+  { label: tr('integrations:cron.everyDayAtMidnight'), value: '0 0 * * *' },
+  { label: tr('integrations:cron.everyMondayAt0900'), value: '0 9 * * 1' },
+  { label: tr('integrations:cron.firstDayOfTheMonth'), value: '0 0 1 * *' },
+])
 
 const FIELD = /^[\d*,/\-A-Za-z#$LW]+$/
 
 /** pg_cron's syntax: five cron fields, or "N seconds" (1–59). */
 export function scheduleProblem(s: string): string | null {
   const t = s.trim()
-  if (!t) return 'Enter a schedule'
+  if (!t) return tr('integrations:cron.enterASchedule')
   const secs = /^(\d+) seconds?$/.exec(t)
-  if (secs) return Number(secs[1]) >= 1 && Number(secs[1]) <= 59 ? null : 'Seconds must be between 1 and 59'
+  if (secs) return Number(secs[1]) >= 1 && Number(secs[1]) <= 59 ? null : tr('integrations:cron.secondsMustBeBetween1And')
   const parts = t.split(/\s+/)
-  if (parts.length !== 5 || !parts.every((p) => FIELD.test(p))) return 'Use five cron fields (minute hour day month weekday), or "N seconds"'
+  if (parts.length !== 5 || !parts.every((p) => FIELD.test(p))) return tr('integrations:cron.useFiveCronFieldsMinuteHour')
   return null
 }
 
-const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+/** A weekday's name in the user's language; 0 and 7 are both Sunday. */
+const dayName = (dow: number) =>
+  new Intl.DateTimeFormat(language(), { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 7 + (dow % 7))))
 const pad = (n: string) => n.padStart(2, '0')
 
 /** Plain words for common schedules; null for ones it doesn't recognise. */
 export function describeSchedule(s: string): string | null {
   const t = s.trim()
   const secs = /^(\d+) seconds?$/.exec(t)
-  if (secs) return secs[1] === '1' ? 'Every second' : `Every ${secs[1]} seconds`
+  if (secs) return secs[1] === '1' ? tr('integrations:cron.everySecond') : tr('integrations:cron.everySeconds', { value: secs[1] })
   const parts = t.split(/\s+/)
   if (parts.length !== 5) return null
   const [m, h, dom, mon, dow] = parts as [string, string, string, string, string]
   const num = (x: string) => /^\d+$/.test(x)
   if (mon !== '*') return null
-  if (m === '*' && h === '*' && dom === '*' && dow === '*') return 'Every minute'
+  if (m === '*' && h === '*' && dom === '*' && dow === '*') return tr('integrations:cron.everyMinute')
   const every = /^\*\/(\d+)$/.exec(m)
-  if (every && h === '*' && dom === '*' && dow === '*') return `Every ${every[1]} minutes`
-  if (num(m) && h === '*' && dom === '*' && dow === '*') return m === '0' ? 'Every hour' : `Every hour at minute ${m}`
+  if (every && h === '*' && dom === '*' && dow === '*') return tr('integrations:cron.everyMinutes', { value: every[1] })
+  if (num(m) && h === '*' && dom === '*' && dow === '*') return m === '0' ? tr('integrations:cron.everyHour') : tr('integrations:cron.everyHourAtMinute', { m })
   if (!num(m) || !num(h)) return null
-  const at = `at ${pad(h)}:${pad(m)}`
-  if (dom === '*' && dow === '*') return `Every day ${at}`
-  if (dom === '*' && num(dow) && Number(dow) <= 7) return `Every ${DAYS[Number(dow)]} ${at}`
-  if (num(dom) && dow === '*') return `On day ${dom} of every month ${at}`
+  const time = `${pad(h)}:${pad(m)}`
+  if (dom === '*' && dow === '*') return tr('integrations:cron.everyDayAt', { time })
+  if (dom === '*' && num(dow) && Number(dow) <= 7) return tr('integrations:cron.everyWeekdayAt', { day: dayName(Number(dow)), time })
+  if (num(dom) && dow === '*') return tr('integrations:cron.onDayOfEveryMonthAt', { dom, time })
   return null
 }

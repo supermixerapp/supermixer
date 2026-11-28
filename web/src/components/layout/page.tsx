@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { PAGE_SIZE_CLASSES } from '@/components/ui/sizes'
 import { CURRENT_STAGE } from '@/lib/navigation'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 type PageSize = keyof typeof PAGE_SIZE_CLASSES
 
@@ -67,16 +68,16 @@ export function ComingSoon({
         <div className="flex flex-col items-center gap-2">
           <h2 className="heading-section">{title}</h2>
           {later ? (
-            <Badge>Coming soon</Badge>
+            <Badge>{t('common:page.comingSoon')}</Badge>
           ) : (
-            <Badge variant={stage <= CURRENT_STAGE ? 'success' : 'default'}>Stage {stage}</Badge>
+            <Badge variant={stage <= CURRENT_STAGE ? 'success' : 'default'}>{t('common:page.stage', { stage })}</Badge>
           )}
         </div>
         <p className="max-w-md text-sm text-foreground-light">
           {description ??
             (later
-              ? 'This page is coming soon.'
-              : `This page is part of Stage ${stage} of the Supermixer plan. Supermixer is currently at Stage ${CURRENT_STAGE}.`)}
+              ? t('common:page.thisPageIsComingSoon')
+              : t('common:page.thisPageIsPartOfStage', { stage, cURRENTSTAGE: CURRENT_STAGE }))}
         </p>
       </div>
     </PageContainer>

@@ -17,6 +17,7 @@ import { isJsonObject } from '@/lib/pg/cron'
 import { usePg } from '@/lib/pg/run'
 import { describe, InspectorSocket, type ChannelOptions, type LogEntry, type SocketState } from '@/lib/realtime'
 import { cn } from '@/lib/utils'
+import { localized, t as tr, Trans, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/realtime/inspector')({
   component: InspectorPage,
@@ -30,13 +31,13 @@ select c.relname as name from pg_publication_tables t join pg_class c on c.relna
 join pg_namespace n on n.oid = c.relnamespace and n.nspname = t.schemaname
 where t.pubname = 'supabase_realtime' and t.schemaname = $1`
 
-const STATE_LABEL: Record<SocketState, string> = {
-  idle: 'Not connected',
-  connecting: 'Connecting…',
-  joined: 'Listening',
-  closed: 'Disconnected',
-  error: 'Error',
-}
+const STATE_LABEL = localized((): Record<SocketState, string> => ({
+  idle: tr('realtime:realtimeInspector.notConnected'),
+  connecting: tr('realtime:realtimeInspector.connecting'),
+  joined: tr('realtime:realtimeInspector.listening'),
+  closed: tr('realtime:realtimeInspector.disconnected'),
+  error: tr('realtime:realtimeInspector.error'),
+}))
 
 function InspectorPage() {
   const { ref } = Route.useParams()
@@ -92,27 +93,27 @@ function InspectorPage() {
 
   return (
     <DatabasePage
-      title="Realtime Inspector"
-      description="Join a channel to watch Broadcast, Presence and Postgres Changes as they happen, and send test broadcasts. The socket uses the service role, so policies don't limit what you see."
+      title={tr('realtime:realtimeInspector.realtimeInspector')}
+      description={tr('realtime:realtimeInspector.joinAChannelToWatchBroadcast')}
     >
-      {!canUse && <Alert title="Watching Realtime needs a role that can change data">The socket can send as well as listen, with the service role.</Alert>}
+      {!canUse && <Alert title={tr('realtime:realtimeInspector.watchingRealtimeNeedsARoleThat')}>{tr('realtime:realtimeInspector.theSocketCanSendAsWell')}</Alert>}
       <Card className="flex flex-col gap-4 p-5">
         <div className="flex flex-wrap items-end gap-3">
           <div className="w-56">
-            <FormField label="Channel" htmlFor="rt-channel">
+            <FormField label={tr('realtime:realtimeInspector.channel')} htmlFor="rt-channel">
               <Input id="rt-channel" autoComplete="off" disabled={live} value={channel} onChange={(e) => setChannel(e.target.value)} />
             </FormField>
           </div>
-          <FormField label="Postgres changes">
+          <FormField label={tr('realtime:realtimeInspector.postgresChanges')}>
             <div className="flex gap-2">
               <SchemaPicker projectRef={ref} value={schema} onChange={(s) => !live && (setSchema(s), setTable('*'))} />
               <Select value={table} onValueChange={setTable} disabled={live}>
-                <SelectTrigger size="tiny" className="w-48" aria-label="Table">
+                <SelectTrigger size="tiny" className="w-48" aria-label={tr('realtime:realtimeInspector.table')}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value={NONE}>Don&apos;t listen</SelectItem>
-                  <SelectItem value="*">All tables</SelectItem>
+                  <SelectItem value={NONE}>{tr('realtime:realtimeInspector.donTListen')}</SelectItem>
+                  <SelectItem value="*">{tr('realtime:realtimeInspector.allTables')}</SelectItem>
                   {(tables.data ?? [])
                     .filter((t) => t.kind === 'r' || t.kind === 'p')
                     .map((t) => (
@@ -125,18 +126,17 @@ function InspectorPage() {
             </div>
           </FormField>
           <label className="flex h-[34px] items-center gap-2 text-sm">
-            <Checkbox checked={isPrivate} disabled={live} onCheckedChange={(c) => setPrivate(c === true)} />
-            Private channel
+            <Trans i18nKey="realtime:realtimeInspector.privateChannel" components={{ checkbox: <Checkbox checked={isPrivate} disabled={live} onCheckedChange={(c) => setPrivate(c === true)} /> }} />
           </label>
           <div className="ml-auto flex items-center gap-3">
-            <Badge variant={state === 'joined' ? 'success' : state === 'error' ? 'destructive' : 'default'}>{STATE_LABEL[state]}</Badge>
+            <Badge variant={state === 'joined' ? 'success' : state === 'error' ? 'destructive' : 'default'}>{STATE_LABEL()[state]}</Badge>
             {live ? (
               <Button variant="default" onClick={disconnect}>
-                Leave
+                {tr('realtime:realtimeInspector.leave')}
               </Button>
             ) : (
-              <PermissionButton allowed={canUse} action="watch Realtime" variant="primary" disabled={!channel.trim()} onClick={connect}>
-                Join channel
+              <PermissionButton allowed={canUse} action={tr('realtime:realtimeInspector.watchRealtime')} variant="primary" disabled={!channel.trim()} onClick={connect}>
+                {tr('realtime:realtimeInspector.joinChannel')}
               </PermissionButton>
             )}
           </div>
@@ -144,50 +144,49 @@ function InspectorPage() {
         {detail && <p className="text-xs text-destructive">{detail}</p>}
         {notPublished && (
           <p className="text-xs text-foreground-lighter">
-            {table === '*' ? `No tables in ${schema} are` : `${schema}.${table} isn't`} in the supabase_realtime publication, so no
-            changes will arrive. Add {table === '*' ? 'them' : 'it'} under{' '}
-            <Link to="/project/$ref/database/publications" params={{ ref }} className="text-foreground underline-offset-2 hover:underline">
-              Database › Publications
-            </Link>
-            .
+            <Trans
+              i18nKey={table === '*' ? 'realtime:realtimeInspector.schemaNotPublished' : 'realtime:realtimeInspector.tableNotPublished'}
+              values={{ schema, table }}
+              components={{ link: <Link to="/project/$ref/database/publications" params={{ ref }} className="text-foreground underline-offset-2 hover:underline" /> }}
+            />
           </p>
         )}
       </Card>
       {state === 'joined' && (
         <Card className="flex flex-wrap items-end gap-3 p-5">
           <div className="w-48">
-            <FormField label="Broadcast event" htmlFor="rt-event">
+            <FormField label={tr('realtime:realtimeInspector.broadcastEvent')} htmlFor="rt-event">
               <Input id="rt-event" autoComplete="off" value={event} onChange={(e) => setEvent(e.target.value)} />
             </FormField>
           </div>
           <div className="min-w-64 flex-1">
-            <FormField label="Payload" htmlFor="rt-payload" description={payloadOk ? undefined : <span className="text-destructive">Must be a JSON object</span>}>
+            <FormField label={tr('realtime:realtimeInspector.payload')} htmlFor="rt-payload" description={payloadOk ? undefined : <span className="text-destructive">{tr('realtime:realtimeInspector.mustBeAJsonObject')}</span>}>
               <Textarea id="rt-payload" rows={1} className="font-mono text-xs" value={payload} onChange={(e) => setPayload(e.target.value)} />
             </FormField>
           </div>
           <Button variant="default" disabled={!event.trim() || !payloadOk} onClick={() => socket.current?.broadcast(event.trim(), JSON.parse(payload))}>
-            Send broadcast
+            {tr('realtime:realtimeInspector.sendBroadcast')}
           </Button>
         </Card>
       )}
       <Card>
         <div className="flex items-center gap-2 border-b px-4 py-2 text-xs text-foreground-lighter">
           <span>
-            {entries.length} message{entries.length === 1 ? '' : 's'}
-            {entries.length === MAX_ENTRIES && ' (the latest 500)'}
+            {tr('realtime:realtimeInspector.messages', { count: entries.length })}
+            {entries.length === MAX_ENTRIES && tr('realtime:realtimeInspector.theLatest500')}
           </span>
           <Button variant="text" size="tiny" className="ml-auto" disabled={entries.length === 0} onClick={() => setEntries([])}>
-            Clear
+            {tr('realtime:realtimeInspector.clear')}
           </Button>
         </div>
         {entries.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{live ? 'Waiting for messages…' : 'Join a channel to see messages here'}</p>
+          <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{live ? tr('realtime:realtimeInspector.waitingForMessages') : tr('realtime:realtimeInspector.joinAChannelToSeeMessages')}</p>
         ) : (
           <ul className="max-h-[32rem] divide-y overflow-y-auto">
             {entries.map((e) => (
               <li key={e.id}>
                 <button className="flex w-full items-center gap-3 px-4 py-2 text-left text-sm hover:bg-surface-200" onClick={() => setOpen(open === e.id ? null : e.id)}>
-                  <span className="w-20 shrink-0 font-mono text-xs text-foreground-lighter tabular-nums">{new Date(e.at).toLocaleTimeString()}</span>
+                  <span className="w-20 shrink-0 font-mono text-xs text-foreground-lighter tabular-nums">{new Date(e.at).toLocaleTimeString(language())}</span>
                   <Badge variant={e.kind === 'error' ? 'destructive' : e.kind === 'postgres' ? 'success' : 'default'}>{e.kind}</Badge>
                   <span className={cn('truncate', e.kind === 'error' ? 'text-destructive' : 'text-foreground')}>{e.title}</span>
                 </button>

@@ -9,6 +9,7 @@ import { useNavigate, useRouter } from '@tanstack/react-router'
 import { useState, type FormEvent } from 'react'
 
 import { AuthLayout } from '@/components/layout/auth-layout'
+import { forgetLanguageSync } from '@/components/layout/language-menu'
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
 import { FormField } from '@/components/ui/form-field'
@@ -16,6 +17,7 @@ import { Input } from '@/components/ui/input'
 import { api, unwrap } from '@/lib/api/client'
 import { profileQuery } from '@/lib/api/queries'
 import { passwordRule } from '@/lib/passwords'
+import { t, Trans } from '@/lib/i18n'
 
 export function ChoosePassword({ username, mfa }: { username: string; mfa: boolean }) {
   const rule = passwordRule(mfa)
@@ -40,6 +42,7 @@ export function ChoosePassword({ username, mfa }: { username: string; mfa: boole
     mutationFn: () => unwrap(api.POST('/auth/sign-out')),
     onSettled: () => {
       queryClient.clear()
+      forgetLanguageSync()
       void navigate({ to: '/sign-in', search: { redirect: undefined } })
     },
   })
@@ -48,18 +51,20 @@ export function ChoosePassword({ username, mfa }: { username: string; mfa: boole
     if (!mismatch) change.mutate()
   }
   return (
-    <AuthLayout>
+    <AuthLayout signedIn>
       <div className="mb-10">
-        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Choose a new password</h1>
+        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">{t('auth:choosePassword.chooseANewPassword')}</h1>
         <h2 className="font-sans text-sm font-normal text-foreground-light">
-          You’re signed in as <span className="text-foreground">{username}</span> with a password that was set for you,
-          that an administrator asked you to replace, or that’s shorter than Supermixer now requires
-          {mfa ? '' : ' without two-factor sign-in'}. Choose a new one to continue.
+          <Trans
+            i18nKey={mfa ? 'auth:choosePassword.signedInWithPassword' : 'auth:choosePassword.signedInWithPasswordNoMfa'}
+            values={{ username }}
+            components={{ span: <span className="text-foreground" /> }}
+          />
         </h2>
       </div>
       <form onSubmit={submit} className="flex flex-col gap-4">
         <input type="text" autoComplete="username" value={username} readOnly hidden />
-        <FormField label="Password you signed in with" htmlFor="cp-current">
+        <FormField label={t('auth:choosePassword.passwordYouSignedInWith')} htmlFor="cp-current">
           <Input
             id="cp-current"
             type="password"
@@ -72,7 +77,7 @@ export function ChoosePassword({ username, mfa }: { username: string; mfa: boole
           />
         </FormField>
         <FormField
-          label="New password"
+          label={t('auth:choosePassword.newPassword')}
           htmlFor="cp-new"
           description={rule.hint}
         >
@@ -87,7 +92,7 @@ export function ChoosePassword({ username, mfa }: { username: string; mfa: boole
             onChange={(e) => setNext(e.target.value)}
           />
         </FormField>
-        <FormField label="Confirm new password" htmlFor="cp-confirm" error={mismatch ? 'Passwords do not match' : undefined}>
+        <FormField label={t('auth:choosePassword.confirmNewPassword')} htmlFor="cp-confirm" error={mismatch ? t('auth:choosePassword.passwordsDoNotMatch') : undefined}>
           <Input
             id="cp-confirm"
             type="password"
@@ -100,14 +105,11 @@ export function ChoosePassword({ username, mfa }: { username: string; mfa: boole
         </FormField>
         {change.error && <Alert variant="destructive" title={change.error.message} />}
         <Button type="submit" variant="primary" size="large" block loading={change.isPending} disabled={mismatch} className="mt-2">
-          Set password and continue
+          {t('auth:choosePassword.setPasswordAndContinue')}
         </Button>
       </form>
       <p className="mt-8 text-center text-sm text-foreground-lighter">
-        Not you?{' '}
-        <button type="button" className="text-link" onClick={() => signOut.mutate()}>
-          Sign out
-        </button>
+        <Trans i18nKey="auth:choosePassword.notYouSignOut" components={{ button: <button type="button" className="text-link" onClick={() => signOut.mutate()} /> }} />
       </p>
     </AuthLayout>
   )

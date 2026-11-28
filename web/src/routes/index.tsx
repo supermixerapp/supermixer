@@ -21,55 +21,57 @@ import type { Icon } from '@/components/icon'
 import { CommandMenuTrigger } from '@/components/layout/command-menu'
 import { GlobalNotice } from '@/components/layout/global-notice'
 import { ThemeSync } from '@/components/layout/theme-sync'
+import { LanguageMenu, LanguageSync } from '@/components/layout/language-menu'
 import { UserDropdown } from '@/components/layout/user-dropdown'
 import { Button } from '@/components/ui/button'
 import { profileQuery } from '@/lib/api/queries'
+import { localized, t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/')({
   component: HomePage,
 })
 
-const FEATURES: { icon: Icon; title: string; text: string }[] = [
+const FEATURES = localized((): { icon: Icon; title: string; text: string }[] => [
   {
     icon: ProjectsIcon,
-    title: 'Every project on one screen',
-    text: 'Connect the Supabase projects you already run, or start a new one with a click. You can see at a glance if one needs attention.',
+    title: t('home:home.everyProjectOnOneScreen'),
+    text: t('home:home.connectTheSupabaseProjectsYouAlready'),
   },
   {
     icon: DatabaseIcon,
-    title: 'As many projects as you need',
-    text: 'It runs on your own servers, so there’s no plan or project limit. Run as many Supabase projects as your hardware can hold.',
+    title: t('home:home.asManyProjectsAsYouNeed'),
+    text: t('home:home.itRunsOnYourOwnServers'),
   },
   {
     icon: LockIcon,
-    title: 'Stays on your servers',
-    text: 'Supermixer runs next to your projects and provides full control over your data. Fulfill compliance requirements and run in a self-hosted isolated environment. Your data and settings stay local.',
+    title: t('home:home.staysOnYourServers'),
+    text: t('home:home.supermixerRunsNextToYourProjects'),
   },
   {
     icon: TeamIcon,
-    title: 'Your team, your rules',
-    text: 'Invite people and choose what each of them can do. Owners, admins, developers and read-only members see just what they should.',
+    title: t('home:home.yourTeamYourRules'),
+    text: t('home:home.invitePeopleAndChooseWhatEach'),
   },
   {
     icon: VerifiedUserIcon,
-    title: 'Safe sign-in',
-    text: 'Two-step sign-in, single sign-on with your company’s login, and a record of who changed what and when.',
+    title: t('home:home.safeSignIn'),
+    text: t('home:home.twoStepSignInSingleSign'),
   },
   {
     icon: TableEditorIcon,
-    title: 'The tools you know',
-    text: 'Edit tables, run SQL, manage users and files, and deploy Edge Functions, all in the Supabase layout you’re used to.',
+    title: t('home:home.theToolsYouKnow'),
+    text: t('home:home.editTablesRunSqlManageUsers'),
   },
-]
+])
 
-const STEPS: { title: string; text: string }[] = [
-  { title: 'Install Supermixer', text: 'Run it on your own server with Docker, or on Kubernetes.' },
+const STEPS = localized((): { title: string; text: string }[] => [
+  { title: t('home:home.installSupermixer'), text: t('home:home.runItOnYourOwnServer') },
   {
-    title: 'Add your projects',
-    text: 'Connect the Supabase projects you have, or let Supermixer create new ones.',
+    title: t('home:home.addYourProjects'),
+    text: t('home:home.connectTheSupabaseProjectsYouHave'),
   },
-  { title: 'Invite your team', text: 'Send each person an invitation and pick their role.' },
-]
+  { title: t('home:home.inviteYourTeam'), text: t('home:home.sendEachPersonAnInvitationAnd') },
+])
 
 function HomePage() {
   // Signed out is a normal state here, not an error worth retrying.
@@ -82,6 +84,7 @@ function HomePage() {
   return (
     <div className="flex min-h-full flex-col bg-dash-sidebar">
       {signedIn && <ThemeSync />}
+      {signedIn && <LanguageSync />}
       <GlobalNotice />
       <SiteHeader signedIn={signedIn} checking={checking} />
       <main className="flex-1">
@@ -114,14 +117,18 @@ function SiteHeader({ signedIn, checking }: { signedIn: boolean; checking: boole
             <>
               <CommandMenuTrigger />
               <Button asChild size="tiny" variant="primary">
-                <Link to="/dashboard">Dashboard</Link>
+                <Link to="/dashboard">{t('home:home.dashboard')}</Link>
               </Button>
+              <LanguageMenu saveToAccount />
               <UserDropdown />
             </>
           ) : (
-            <Button asChild size="tiny" variant="primary">
-              <Link to="/sign-in">Sign in</Link>
-            </Button>
+            <>
+              <LanguageMenu />
+              <Button asChild size="tiny" variant="primary">
+                <Link to="/sign-in">{t('home:home.signIn')}</Link>
+              </Button>
+            </>
           )}
         </div>
       </div>
@@ -148,7 +155,7 @@ function Section({
 function MainAction({ signedIn }: { signedIn: boolean }) {
   return (
     <Button asChild size="medium" variant="primary">
-      {signedIn ? <Link to="/dashboard">Go to dashboard</Link> : <Link to="/sign-in">Sign in</Link>}
+      {signedIn ? <Link to="/dashboard">{t('home:home.goToDashboard')}</Link> : <Link to="/sign-in">{t('home:home.signIn')}</Link>}
     </Button>
   )
 }
@@ -163,25 +170,22 @@ function Hero({ signedIn }: { signedIn: boolean }) {
       />
       <div className="relative mx-auto flex w-full max-w-4xl flex-col items-center px-6 py-24 text-center sm:py-32">
         <p className="mb-5 text-sm text-foreground-lighter">
-          For teams that run Supabase themselves
+          {t('home:home.forTeamsThatRunSupabaseThemselves')}
         </p>
         <h1 className="font-heading text-4xl leading-[1.1] font-semibold tracking-tight text-balance text-foreground sm:text-5xl lg:text-6xl">
-          All your Supabase projects,
-          <br />
-          <span className="text-primary">in one place</span>
+          <Trans i18nKey="home:home.allYourSupabaseProjectsInOne" components={{ br: <br />, span: <span className="text-primary" /> }} />
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-foreground-light sm:text-lg">
-          Run <BrushRing>unlimited</BrushRing> Supabase on your own servers with Supermixer. Add
-          your projects, invite your team, and look after everything from one screen.
+          <Trans i18nKey="home:home.runUnlimitedSupabaseOnYourOwn" components={{ brushring: <BrushRing>{null}</BrushRing> }} />
         </p>
         <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <MainAction signedIn={signedIn} />
           <Button asChild size="medium" variant="default">
-            <a href="#features">See what it does</a>
+            <a href="#features">{t('home:home.seeWhatItDoes')}</a>
           </Button>
         </div>
         <p className="mt-6 text-xs text-foreground-lighter">
-          Free and open source, under the Apache License 2.0.
+          {t('home:home.freeAndOpenSourceUnderThe')}
         </p>
       </div>
     </section>
@@ -219,14 +223,14 @@ function Features() {
       <div className="py-20 sm:py-24">
         <div className="max-w-2xl">
           <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-            What you can do with it
+            {t('home:home.whatYouCanDoWithIt')}
           </h2>
           <p className="mt-3 text-foreground-light">
-            A management plane for self-hosted Supabase, with a few extras for running it yourself.
+            {t('home:home.aManagementPlaneForSelfHosted')}
           </p>
         </div>
         <div className="mt-14 grid gap-x-12 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
-          {FEATURES.map((f) => (
+          {FEATURES().map((f) => (
             <div key={f.title} className="flex flex-col gap-3">
               <f.icon size={24} className="text-primary" />
               <h3 className="font-heading text-base font-semibold text-foreground">{f.title}</h3>
@@ -244,13 +248,13 @@ function Steps() {
     <Section>
       <div className="py-20 sm:py-24">
         <h2 className="font-heading text-2xl font-semibold tracking-tight text-foreground sm:text-3xl">
-          Up and running in three steps
+          {t('home:home.upAndRunningInThreeSteps')}
         </h2>
         <ol className="mt-12 grid gap-10 sm:grid-cols-3 sm:gap-8">
-          {STEPS.map((s, i) => (
+          {STEPS().map((s, i) => (
             <li key={s.title} className="relative flex flex-col gap-3">
               {/* The line joining the steps, from this number to the next. */}
-              {i < STEPS.length - 1 && (
+              {i < STEPS().length - 1 && (
                 <span
                   aria-hidden
                   className="absolute top-4 left-10 hidden h-px w-[calc(100%-2rem)] bg-border sm:block"
@@ -274,12 +278,12 @@ function Closing({ signedIn }: { signedIn: boolean }) {
     <Section>
       <div className="flex flex-col items-center py-20 text-center sm:py-28">
         <h2 className="font-heading text-3xl font-semibold tracking-tight text-balance text-foreground sm:text-4xl">
-          Bring your projects together
+          {t('home:home.bringYourProjectsTogether')}
         </h2>
         <p className="mt-4 max-w-xl text-foreground-light">
           {signedIn
-            ? 'Your organizations and projects are waiting on your dashboard.'
-            : 'Sign in with the account your admin gave you, or the invitation link you were sent.'}
+            ? t('home:home.yourOrganizationsAndProjectsAreWaiting')
+            : t('home:home.signInWithTheAccountYour')}
         </p>
         <div className="mt-8">
           <MainAction signedIn={signedIn} />
@@ -304,28 +308,27 @@ function SiteFooter({ signedIn }: { signedIn: boolean }) {
                 Supermixer
               </span>
             </Link>
-            <p className="text-sm text-foreground-lighter">A dashboard for self-hosted Supabase.</p>
+            <p className="text-sm text-foreground-lighter">{t('home:home.aDashboardForSelfHostedSupabase')}</p>
           </div>
-          <nav aria-label="Footer" className="flex gap-6 text-sm">
+          <nav aria-label={t('home:home.footer')} className="flex gap-6 text-sm">
             {signedIn ? (
               <Link to="/dashboard" className="text-foreground-light hover:text-foreground">
-                Dashboard
+                {t('home:home.dashboard')}
               </Link>
             ) : (
               <Link to="/sign-in" className="text-foreground-light hover:text-foreground">
-                Sign in
+                {t('home:home.signIn')}
               </Link>
             )}
             <a href="#features" className="text-foreground-light hover:text-foreground">
-              Features
+              {t('home:home.features')}
             </a>
           </nav>
         </div>
         <div className="flex flex-col gap-1 border-t pt-6 text-xs text-foreground-lighter">
-          <p>© 2026 the Supermixer authors. Released under the Apache License 2.0.</p>
+          <p>{t('home:home.n2026TheSupermixerAuthorsReleasedUnder')}</p>
           <p>
-            Supabase is a trademark of Supabase, Inc. Supermixer is not affiliated with or endorsed
-            by Supabase.
+            {t('home:home.supabaseIsATrademarkOfSupabase')}
           </p>
         </div>
       </div>

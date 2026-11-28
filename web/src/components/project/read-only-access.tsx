@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can } from '@/lib/api/hooks'
 import { projectQuery } from '@/lib/api/queries'
+import { t, Trans } from '@/lib/i18n'
 
 /**
  * Whether Read-only members' queries run as their own database login. Without
@@ -30,7 +31,7 @@ export function ReadOnlyAccess({ project }: { project: Schemas['Project'] }) {
     mutationFn: () => unwrap(api.POST('/projects/{ref}/read-only-user', { params: { path: { ref: project.ref } } })),
     onSuccess: (p) => {
       done(p)
-      toast.success(`Created ${p.database.read_only_user}`)
+      toast.success(t('project:readOnlyAccess.created', { readOnlyUser: p.database.read_only_user }))
     },
   })
   const remove = useMutation({
@@ -38,7 +39,7 @@ export function ReadOnlyAccess({ project }: { project: Schemas['Project'] }) {
     onSuccess: (p) => {
       setRemoving(false)
       done(p)
-      toast.success('Read-only user removed')
+      toast.success(t('project:readOnlyAccess.readOnlyUserRemoved'))
     },
     onError: (e) => {
       setRemoving(false)
@@ -48,8 +49,8 @@ export function ReadOnlyAccess({ project }: { project: Schemas['Project'] }) {
 
   return (
     <SettingsSection
-      title="Read-only access"
-      description="How queries run for members with the Read-only role, in the SQL Editor and every read-only page."
+      title={t('project:readOnlyAccess.readOnlyAccess')}
+      description={t('project:readOnlyAccess.howQueriesRunForMembersWith')}
     >
       <Card>
         <CardContent className="flex flex-col gap-4">
@@ -57,40 +58,38 @@ export function ReadOnlyAccess({ project }: { project: Schemas['Project'] }) {
             <div className="flex items-start justify-between gap-4">
               <div className="flex flex-col gap-1 text-sm">
                 <span className="flex items-center gap-2 text-foreground">
-                  Separate database user <Badge variant="success">On</Badge>
+                  <Trans i18nKey="project:readOnlyAccess.separateDatabaseUserOn" components={{ badge: <Badge variant="success" /> }} />
                 </span>
                 <span className="text-foreground-light">
-                  Read-only queries sign in as <code className="font-mono text-xs">{user}</code>, which can read everything but
-                  cannot write, switch role or end other connections.
+                  <Trans i18nKey="project:readOnlyAccess.readOnlyQueriesSignInAs" values={{ user }} components={{ code: <code className="font-mono text-xs" /> }} />
                 </span>
               </div>
               <PermissionButton
                 allowed={canUpdate}
-                action="change project settings"
+                action={t('project:readOnlyAccess.changeProjectSettings')}
                 variant="default"
                 onClick={() => setRemoving(true)}
               >
-                Remove
+                {t('project:readOnlyAccess.remove')}
               </PermissionButton>
             </div>
           ) : (
             <>
-              <Alert variant="warning" title="Read-only queries share the admin database user">
-                They run in a read-only transaction, so data and schema can&apos;t change. Functions that act outside the
-                transaction still work, for example ending other connections with pg_terminate_backend.
+              <Alert variant="warning" title={t('project:readOnlyAccess.readOnlyQueriesShareTheAdmin')}>
+                {t('project:readOnlyAccess.theyRunInAReadOnly')}
               </Alert>
               <div className="flex items-center justify-between gap-4">
                 <p className="text-sm text-foreground-light">
-                  Create a separate login on this database (with pg_read_all_data) for read-only queries.
+                  {t('project:readOnlyAccess.createASeparateLoginOnThis')}
                 </p>
                 <PermissionButton
                   allowed={canUpdate}
-                  action="change project settings"
+                  action={t('project:readOnlyAccess.changeProjectSettings')}
                   variant="primary"
                   loading={create.isPending}
                   onClick={() => create.mutate()}
                 >
-                  Create read-only user
+                  {t('project:readOnlyAccess.createReadOnlyUser')}
                 </PermissionButton>
               </div>
               {create.error && <Alert variant="destructive" title={create.error.message} />}
@@ -101,9 +100,9 @@ export function ReadOnlyAccess({ project }: { project: Schemas['Project'] }) {
       <ConfirmDialog
         open={removing}
         onOpenChange={setRemoving}
-        title="Remove the read-only user?"
-        description={`This drops ${user} from the database. Read-only queries go back to running in a read-only transaction as the admin user.`}
-        confirmLabel="Remove"
+        title={t('project:readOnlyAccess.removeTheReadOnlyUser')}
+        description={t('project:readOnlyAccess.thisDropsFromTheDatabaseRead', { user })}
+        confirmLabel={t('project:readOnlyAccess.remove')}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}
       />

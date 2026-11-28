@@ -5,6 +5,7 @@
  */
 import { gateway, gatewayFetch } from './api/gateway'
 import { runSql, rowsOf } from './pg/run'
+import { t } from '@/lib/i18n'
 
 export interface Bucket {
   id: string
@@ -50,11 +51,11 @@ export function pathParts(path: string): string[] {
 
 /** Problems with a bucket, folder or file name, or null. */
 export function nameProblem(name: string, kind: 'bucket' | 'folder'): string | null {
-  if (!name.trim()) return 'Enter a name.'
-  if (name.includes('/')) return 'Names cannot contain "/".'
-  if (name === '.' || name === '..') return 'That name is reserved.'
-  if (kind === 'bucket' && name.length > 100) return 'Bucket names can be at most 100 characters.'
-  if (kind === 'folder' && name === FOLDER_PLACEHOLDER) return 'That name is reserved.'
+  if (!name.trim()) return t('storage:storageApi.enterAName')
+  if (name.includes('/')) return t('storage:storageApi.namesCannotContain')
+  if (name === '.' || name === '..') return t('storage:storageApi.thatNameIsReserved')
+  if (kind === 'bucket' && name.length > 100) return t('storage:storageApi.bucketNamesCanBeAtMost')
+  if (kind === 'folder' && name === FOLDER_PLACEHOLDER) return t('storage:storageApi.thatNameIsReserved')
   return null
 }
 

@@ -1,6 +1,7 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query'
 
 import { api, unwrap } from './client'
+import { t } from '@/lib/i18n'
 
 export const uiConfigQuery = queryOptions({
   queryKey: ['ui-config'],
@@ -20,7 +21,7 @@ export const healthQuery = queryOptions({
     }
     const message =
       typeof error === 'object' && error !== null && 'message' in error ? String(error.message) : undefined
-    throw new Error(message ?? 'Supermixer server is unreachable')
+    throw new Error(message ?? t('common:queries.supermixerServerIsUnreachable'))
   },
   refetchInterval: 30_000,
 })

@@ -17,6 +17,7 @@ import { Input, Textarea } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { gatewayRaw } from '@/lib/api/gateway'
 import { isJsonObject } from '@/lib/pg/cron'
+import { t } from '@/lib/i18n'
 
 const METHODS = ['POST', 'GET', 'PUT', 'PATCH', 'DELETE'] as const
 type Method = (typeof METHODS)[number]
@@ -81,7 +82,7 @@ export function FunctionInvoker({ projectRef: ref, initialName }: { projectRef: 
         // take it for a lapsed session) and names the real status in a header.
         upstream401: res.headers.get('x-supermixer-upstream-status') === '401',
         status: res.headers.get('x-supermixer-upstream-status') === '401' ? 401 : res.status,
-        statusText: res.headers.get('x-supermixer-upstream-status') === '401' ? 'Unauthorized' : res.statusText,
+        statusText: res.headers.get('x-supermixer-upstream-status') === '401' ? t('functions:invoker.unauthorized') : res.statusText,
         ms: Math.round(performance.now() - start),
         headers: [...res.headers.entries()].filter(([k]) => !['content-security-policy', 'x-content-type-options'].includes(k)),
         body: text,
@@ -105,9 +106,9 @@ export function FunctionInvoker({ projectRef: ref, initialName }: { projectRef: 
     <div className="flex flex-col gap-6">
       <Card className="flex flex-col gap-4 p-5">
         <div className="flex flex-wrap items-end gap-3">
-          <FormField label="Method">
+          <FormField label={t('functions:invoker.method')}>
             <Select value={method} onValueChange={(v) => setMethod(v as Method)}>
-              <SelectTrigger className="w-28" aria-label="Method">
+              <SelectTrigger className="w-28" aria-label={t('functions:invoker.method')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -120,7 +121,7 @@ export function FunctionInvoker({ projectRef: ref, initialName }: { projectRef: 
             </Select>
           </FormField>
           <div className="min-w-56 flex-1">
-            <FormField label="Function" htmlFor="fn-name" description={!nameOk && name ? <span className="text-destructive">A function name, optionally followed by a path</span> : undefined}>
+            <FormField label={t('functions:invoker.function')} htmlFor="fn-name" description={!nameOk && name ? <span className="text-destructive">{t('functions:invoker.aFunctionNameOptionallyFollowedBy')}</span> : undefined}>
               <Input id="fn-name" list="fn-recent" autoComplete="off" className="font-mono" value={name} onChange={(e) => setName(e.target.value)} placeholder="hello" />
             </FormField>
             <datalist id="fn-recent">
@@ -130,36 +131,36 @@ export function FunctionInvoker({ projectRef: ref, initialName }: { projectRef: 
             </datalist>
           </div>
           <div className="min-w-48 flex-1">
-            <FormField label="Query string" htmlFor="fn-query">
-              <Input id="fn-query" autoComplete="off" className="font-mono" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="a=1&b=2" />
+            <FormField label={t('functions:invoker.queryString')} htmlFor="fn-query">
+              <Input id="fn-query" autoComplete="off" className="font-mono" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('functions:invoker.a1B2')} />
             </FormField>
           </div>
         </div>
         <FormField
-          label="Headers"
+          label={t('functions:invoker.headers')}
           htmlFor="fn-headers"
-          description={headersOk ? 'A JSON object. Supermixer adds the service role key itself.' : <span className="text-destructive">Must be a JSON object</span>}
+          description={headersOk ? t('functions:invoker.aJsonObjectSupermixerAddsThe') : <span className="text-destructive">{t('functions:invoker.mustBeAJsonObject')}</span>}
         >
           <Textarea id="fn-headers" rows={2} className="font-mono text-xs" value={headers} onChange={(e) => setHeaders(e.target.value)} />
         </FormField>
         {method !== 'GET' && (
-          <FormField label="Body" htmlFor="fn-body">
+          <FormField label={t('functions:invoker.body')} htmlFor="fn-body">
             <Textarea id="fn-body" rows={5} className="font-mono text-xs" value={body} onChange={(e) => setBody(e.target.value)} />
           </FormField>
         )}
         <div className="flex items-center gap-3">
           <PermissionButton
             allowed={canInvoke}
-            action="call Edge Functions"
+            action={t('functions:invoker.callEdgeFunctions')}
             variant="primary"
             icon={<PlayIcon />}
             loading={invoke.isPending}
             disabled={!nameOk || !headersOk}
             onClick={() => invoke.mutate()}
           >
-            Send request
+            {t('functions:invoker.sendRequest')}
           </PermissionButton>
-          <span className="text-xs text-foreground-lighter">Runs as the service role, and is recorded in the organization&apos;s audit log.</span>
+          <span className="text-xs text-foreground-lighter">{t('functions:invoker.runsAsTheServiceRoleAnd')}</span>
         </div>
       </Card>
       {invoke.error && <Alert variant="destructive" title={invoke.error.message} />}
@@ -169,15 +170,15 @@ export function FunctionInvoker({ projectRef: ref, initialName }: { projectRef: 
             <Badge variant={invoke.data.status < 400 ? 'success' : 'destructive'}>
               {invoke.data.status} {invoke.data.statusText}
             </Badge>
-            <span className="text-foreground-lighter">{invoke.data.ms} ms</span>
+            <span className="text-foreground-lighter">{t('functions:invoker.ms', { ms: invoke.data.ms })}</span>
             {invoke.data.upstream401 && (
               <span className="text-xs text-foreground-lighter">
-                From the function, or from the stack&apos;s gateway if it doesn&apos;t accept Supermixer&apos;s key.
+                {t('functions:invoker.fromTheFunctionOrFromThe')}
               </span>
             )}
           </div>
           <details className="text-xs">
-            <summary className="cursor-pointer text-foreground-light select-none">Response headers</summary>
+            <summary className="cursor-pointer text-foreground-light select-none">{t('functions:invoker.responseHeaders')}</summary>
             <dl className="mt-2 grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 font-mono">
               {invoke.data.headers.map(([k, v]) => (
                 <div key={k} className="contents">

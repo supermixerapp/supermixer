@@ -34,6 +34,7 @@ import {
   type QueueType,
 } from '@/lib/pg/queues'
 import { pgQuery } from '@/lib/pg/run'
+import { t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/integrations/queues')({
   component: QueuesPage,
@@ -51,17 +52,17 @@ function QueuesPage() {
   return (
     <IntegrationPage
       projectRef={ref}
-      title="Queues"
-      description="Durable message queues in Postgres with pgmq: send, read and archive messages from SQL or the API."
+      title={t('integrations:integrationsQueues.queues')}
+      description={t('integrations:integrationsQueues.durableMessageQueuesInPostgresWith')}
       extension={{ name: 'pgmq', schema: null }}
-      about="Creates the pgmq schema. Each queue becomes a table of messages, plus an archive table."
+      about={t('integrations:integrationsQueues.createsThePgmqSchemaEachQueue')}
       actions={
         <>
           <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={queues.isFetching && !queues.isPending} onClick={() => void queues.refetch()}>
-            Refresh
+            {t('integrations:integrationsQueues.refresh')}
           </Button>
-          <PermissionButton allowed={canChange} action="create queues" variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-            Create queue
+          <PermissionButton allowed={canChange} action={t('integrations:integrationsQueues.createQueues')} variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
+            {t('integrations:integrationsQueues.createQueue')}
           </PermissionButton>
         </>
       }
@@ -71,43 +72,43 @@ function QueuesPage() {
         loading={queues.isPending}
         error={queues.error}
         rowKey={(q) => q.name}
-        empty="No queues yet"
+        empty={t('integrations:integrationsQueues.noQueuesYet')}
         columns={[
           {
-            header: 'Name',
+            header: t('integrations:integrationsQueues.name'),
             cell: (q) => (
               <button className="flex items-center gap-2 text-left text-foreground underline-offset-2 hover:underline" onClick={() => setOpen(q.name)}>
                 {q.name}
-                {q.is_unlogged && <Badge>Unlogged</Badge>}
-                {q.is_partitioned && <Badge>Partitioned</Badge>}
+                {q.is_unlogged && <Badge>{t('integrations:integrationsQueues.unlogged')}</Badge>}
+                {q.is_partitioned && <Badge>{t('integrations:integrationsQueues.partitioned')}</Badge>}
               </button>
             ),
           },
-          { header: 'Messages', className: 'text-right', cell: (q) => <span className="tabular-nums text-foreground-light">{q.length.toLocaleString()}</span> },
+          { header: t('integrations:integrationsQueues.messages'), className: 'text-right', cell: (q) => <span className="tabular-nums text-foreground-light">{q.length.toLocaleString(language())}</span> },
           {
-            header: 'Oldest message',
+            header: t('integrations:integrationsQueues.oldestMessage'),
             cell: (q) => <span className="text-foreground-light">{q.oldest_age === null ? '—' : age(q.oldest_age)}</span>,
           },
-          { header: 'Sent in total', className: 'text-right', cell: (q) => <span className="tabular-nums text-foreground-light">{q.total.toLocaleString()}</span> },
-          { header: 'Created', cell: (q) => <span className="text-foreground-light">{relativeTime(q.created_at)}</span> },
+          { header: t('integrations:integrationsQueues.sentInTotal'), className: 'text-right', cell: (q) => <span className="tabular-nums text-foreground-light">{q.total.toLocaleString(language())}</span> },
+          { header: t('integrations:integrationsQueues.created'), cell: (q) => <span className="text-foreground-light">{relativeTime(q.created_at)}</span> },
         ]}
         actions={[
-          { label: 'Open', onSelect: (q) => setOpen(q.name) },
+          { label: t('integrations:integrationsQueues.open'), onSelect: (q) => setOpen(q.name) },
           {
-            label: 'Purge messages',
+            label: t('integrations:integrationsQueues.purgeMessages'),
             hidden: () => !canChange,
-            confirm: (q) => ({ title: `Purge ${q.name}?`, description: `Deletes all ${q.length.toLocaleString()} messages waiting in it. The archive is kept.` }),
-            onSelect: (q) => ddl.mutate({ sql: purgeQueue(q.name), done: `Purged ${q.name}` }),
+            confirm: (q) => ({ title: t('integrations:integrationsQueues.purge', { name: q.name }), description: t('integrations:integrationsQueues.deletesAllMessagesWaitingInIt', { value: q.length.toLocaleString(language()) }) }),
+            onSelect: (q) => ddl.mutate({ sql: purgeQueue(q.name), done: t('integrations:integrationsQueues.purged', { name: q.name }) }),
           },
           {
-            label: 'Delete queue',
+            label: t('integrations:integrationsQueues.deleteQueue'),
             hidden: () => !canChange,
             confirm: (q) => ({
-              title: `Delete queue ${q.name}?`,
-              description: 'Drops the queue, its messages and its archive. This can’t be undone.',
+              title: t('integrations:integrationsQueues.deleteQueue2', { name: q.name }),
+              description: t('integrations:integrationsQueues.dropsTheQueueItsMessagesAnd'),
               confirmText: q.name,
             }),
-            onSelect: (q) => ddl.mutate({ sql: dropQueue(q.name), done: `Deleted ${q.name}` }),
+            onSelect: (q) => ddl.mutate({ sql: dropQueue(q.name), done: t('integrations:integrationsQueues.deleted', { name: q.name }) }),
           },
         ]}
       />
@@ -118,10 +119,10 @@ function QueuesPage() {
 }
 
 function age(seconds: number): string {
-  if (seconds < 60) return `${Math.round(seconds)} s`
-  if (seconds < 3600) return `${Math.round(seconds / 60)} min`
-  if (seconds < 86_400) return `${(seconds / 3600).toFixed(1)} h`
-  return `${(seconds / 86_400).toFixed(1)} days`
+  if (seconds < 60) return t('integrations:integrationsQueues.s', { round: Math.round(seconds) })
+  if (seconds < 3600) return t('integrations:integrationsQueues.min', { round: Math.round(seconds / 60) })
+  if (seconds < 86_400) return t('integrations:integrationsQueues.h', { fixed: (seconds / 3600).toFixed(1) })
+  return t('integrations:integrationsQueues.days', { fixed: (seconds / 86_400).toFixed(1) })
 }
 
 function CreateQueueSheet({ projectRef, onClose }: { projectRef: string; onClose: () => void }) {
@@ -134,31 +135,31 @@ function CreateQueueSheet({ projectRef, onClose }: { projectRef: string; onClose
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title="Create a queue"
+      title={t('integrations:integrationsQueues.createAQueue')}
       error={ddl.error}
-      submitLabel="Create queue"
+      submitLabel={t('integrations:integrationsQueues.createQueue')}
       submitting={ddl.isPending}
       disabled={!!problem}
-      onSubmit={() => ddl.mutate({ sql, done: `Created ${name}` }, { onSuccess: onClose })}
+      onSubmit={() => ddl.mutate({ sql, done: t('integrations:integrationsQueues.created2', { name }) }, { onSuccess: onClose })}
     >
-      <FormField label="Name" htmlFor="queue-name" description={problem && name ? <span className="text-destructive">{problem}</span> : "Can't be changed later."}>
+      <FormField label={t('integrations:integrationsQueues.name')} htmlFor="queue-name" description={problem && name ? <span className="text-destructive">{problem}</span> : t('integrations:integrationsQueues.canTBeChangedLater')}>
         <Input id="queue-name" autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} placeholder="emails" />
       </FormField>
       <FormField
-        label="Type"
+        label={t('integrations:integrationsQueues.type')}
         description={
           type === 'unlogged'
-            ? 'Faster, but messages are lost if Postgres crashes, and not copied to replicas.'
-            : 'Messages are written to the WAL and survive crashes.'
+            ? t('integrations:integrationsQueues.fasterButMessagesAreLostIf')
+            : t('integrations:integrationsQueues.messagesAreWrittenToTheWal')
         }
       >
         <Select value={type} onValueChange={(v) => setType(v as QueueType)}>
-          <SelectTrigger aria-label="Queue type">
+          <SelectTrigger aria-label={t('integrations:integrationsQueues.queueType')}>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="basic">Basic</SelectItem>
-            <SelectItem value="unlogged">Unlogged</SelectItem>
+            <SelectItem value="basic">{t('integrations:integrationsQueues.basic')}</SelectItem>
+            <SelectItem value="unlogged">{t('integrations:integrationsQueues.unlogged')}</SelectItem>
           </SelectContent>
         </Select>
       </FormField>
@@ -180,25 +181,25 @@ function QueueSheet({ projectRef, queue, canChange, onClose }: { projectRef: str
       <SheetContent size="xl" className="flex flex-col">
         <SheetHeader>
           <SheetTitle>{queue}</SheetTitle>
-          <SheetDescription>The first 100 messages, oldest first. Viewing them here doesn&apos;t read or hide them.</SheetDescription>
+          <SheetDescription>{t('integrations:integrationsQueues.theFirst100MessagesOldestFirst')}</SheetDescription>
         </SheetHeader>
         <div className="flex-1 overflow-y-auto">
           {canChange && (
             <SheetSection className="flex flex-col gap-3 border-b">
-              <FormField label="Send a message" htmlFor="queue-message" description={jsonOk ? 'A JSON object.' : <span className="text-destructive">Must be a JSON object</span>}>
+              <FormField label={t('integrations:integrationsQueues.sendAMessage')} htmlFor="queue-message" description={jsonOk ? t('integrations:integrationsQueues.aJsonObject') : <span className="text-destructive">{t('integrations:integrationsQueues.mustBeAJsonObject')}</span>}>
                 <Textarea id="queue-message" rows={4} className="font-mono text-xs" value={json} onChange={(e) => setJson(e.target.value)} />
               </FormField>
               <div className="flex items-end gap-2">
-                <FormField label="Delay (seconds)" htmlFor="queue-delay">
+                <FormField label={t('integrations:integrationsQueues.delaySeconds')} htmlFor="queue-delay">
                   <Input id="queue-delay" inputMode="numeric" className="w-32" value={delay} onChange={(e) => setDelay(e.target.value.replace(/\D/g, ''))} />
                 </FormField>
                 <Button
                   variant="primary"
                   disabled={!jsonOk}
                   loading={ddl.isPending}
-                  onClick={() => ddl.mutate({ sql: sendMessage(queue, json, Number(delay) || 0), done: `Sent to ${queue}` })}
+                  onClick={() => ddl.mutate({ sql: sendMessage(queue, json, Number(delay) || 0), done: t('integrations:integrationsQueues.sentTo', { queue }) })}
                 >
-                  Send message
+                  {t('integrations:integrationsQueues.sendMessage')}
                 </Button>
               </div>
             </SheetSection>
@@ -206,8 +207,8 @@ function QueueSheet({ projectRef, queue, canChange, onClose }: { projectRef: str
           <SheetSection className="flex flex-col gap-3">
             <Tabs value={view} onValueChange={(v) => setView(v as 'queue' | 'archive')}>
               <TabsList>
-                <TabsTrigger value="queue">Messages</TabsTrigger>
-                <TabsTrigger value="archive">Archive</TabsTrigger>
+                <TabsTrigger value="queue">{t('integrations:integrationsQueues.messages')}</TabsTrigger>
+                <TabsTrigger value="archive">{t('integrations:integrationsQueues.archive')}</TabsTrigger>
               </TabsList>
             </Tabs>
             {messages.error ? (
@@ -215,16 +216,16 @@ function QueueSheet({ projectRef, queue, canChange, onClose }: { projectRef: str
             ) : messages.isPending ? (
               <Skeleton className="h-32" />
             ) : messages.data.length === 0 ? (
-              <p className="py-8 text-center text-sm text-foreground-lighter">{view === 'archive' ? 'Nothing archived' : 'The queue is empty'}</p>
+              <p className="py-8 text-center text-sm text-foreground-lighter">{view === 'archive' ? t('integrations:integrationsQueues.nothingArchived') : t('integrations:integrationsQueues.theQueueIsEmpty')}</p>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>ID</TableHead>
-                    <TableHead>Message</TableHead>
-                    <TableHead className="text-right">Reads</TableHead>
-                    <TableHead className="whitespace-nowrap">Sent</TableHead>
-                    <TableHead className="whitespace-nowrap">Visible</TableHead>
+                    <TableHead>{t('integrations:integrationsQueues.id')}</TableHead>
+                    <TableHead>{t('integrations:integrationsQueues.message')}</TableHead>
+                    <TableHead className="text-right">{t('integrations:integrationsQueues.reads')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('integrations:integrationsQueues.sent')}</TableHead>
+                    <TableHead className="whitespace-nowrap">{t('integrations:integrationsQueues.visible')}</TableHead>
                     {canChange && view === 'queue' && <TableHead />}
                   </TableRow>
                 </TableHeader>
@@ -245,11 +246,11 @@ function QueueSheet({ projectRef, queue, canChange, onClose }: { projectRef: str
                       </TableCell>
                       {canChange && view === 'queue' && (
                         <TableCell className="text-right whitespace-nowrap">
-                          <Button variant="text" size="tiny" disabled={ddl.isPending} onClick={() => ddl.mutate({ sql: archiveMessage(queue, m.id), done: `Archived ${m.id}` })}>
-                            Archive
+                          <Button variant="text" size="tiny" disabled={ddl.isPending} onClick={() => ddl.mutate({ sql: archiveMessage(queue, m.id), done: t('integrations:integrationsQueues.archived', { id: m.id }) })}>
+                            {t('integrations:integrationsQueues.archive')}
                           </Button>
-                          <Button variant="text" size="tiny" disabled={ddl.isPending} onClick={() => ddl.mutate({ sql: deleteMessage(queue, m.id), done: `Deleted ${m.id}` })}>
-                            Delete
+                          <Button variant="text" size="tiny" disabled={ddl.isPending} onClick={() => ddl.mutate({ sql: deleteMessage(queue, m.id), done: t('integrations:integrationsQueues.deleted2', { id: m.id }) })}>
+                            {t('integrations:integrationsQueues.delete')}
                           </Button>
                         </TableCell>
                       )}

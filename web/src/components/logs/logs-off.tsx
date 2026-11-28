@@ -2,6 +2,7 @@ import { Link } from '@tanstack/react-router'
 
 import { Alert } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
+import { t } from '@/lib/i18n'
 
 /** A stack Supermixer created with its logs off: no Logflare or Vector. */
 export function LogsOffAlert({
@@ -13,18 +14,16 @@ export function LogsOffAlert({
 }) {
   return (
     <Alert
-      title="Logs are off for this project"
+      title={t('observability:logsOff.logsAreOffForThisProject')}
       actions={
         <Button asChild size="tiny" variant="default">
           <Link to="/project/$ref/settings/infrastructure" params={{ ref: projectRef }}>
-            Turn logs on
+            {t('observability:logsOff.turnLogsOn')}
           </Link>
         </Button>
       }
     >
-      {children ??
-        'Supermixer doesn’t run Logflare and Vector for this project, so nothing is being logged.'}{' '}
-      Turn logs on under Settings › Infrastructure.
+      {children ?? t('observability:logsOff.notLogged')} {t('observability:logsOff.turnLogsOnUnder')}
     </Alert>
   )
 }

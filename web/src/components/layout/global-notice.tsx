@@ -11,6 +11,7 @@ import type { Icon } from '@/components/icon'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { noticePlainText, parseNotice, type NoticeNode } from '@/lib/notice-markdown'
 import { cn } from '@/lib/utils'
+import { localized, t as tr } from '@/lib/i18n'
 
 export type NoticeType = Schemas['NoticeType']
 
@@ -18,38 +19,38 @@ export type NoticeType = Schemas['NoticeType']
 export const MAX_NOTICE_MESSAGE = 256
 
 /** Each type's name, icon and colours, in the order the admin page offers them. */
-export const NOTICE_TYPES: {
+export const NOTICE_TYPES = localized((): {
   value: NoticeType
   label: string
   icon: Icon
   band: string
   iconClass: string
-}[] = [
+}[] => [
   {
     value: 'info',
-    label: 'Info',
+    label: tr('common:globalNotice.info'),
     icon: InfoIcon,
     band: 'border-brand-500 bg-brand-300',
     iconClass: 'text-brand-600',
   },
   {
     value: 'warning',
-    label: 'Warning',
+    label: tr('common:globalNotice.warning'),
     icon: WarningIcon,
     band: 'border-warning-500 bg-warning-300',
     iconClass: 'text-warning-600',
   },
   {
     value: 'critical',
-    label: 'Critical',
+    label: tr('common:globalNotice.critical'),
     icon: ErrorIcon,
     band: 'border-destructive-500 bg-destructive-400',
     iconClass: 'text-destructive-600',
   },
-]
+])
 
 export const noticeTypeOf = (t: NoticeType) =>
-  NOTICE_TYPES.find((x) => x.value === t) ?? NOTICE_TYPES[0]!
+  NOTICE_TYPES().find((x) => x.value === t) ?? NOTICE_TYPES()[0]!
 
 /** Characters as the server counts them (code points, so an emoji is one). */
 export const noticeLength = (message: string) => [...normalizeNotice(message)].length
@@ -87,7 +88,7 @@ export function NoticeBand({
   return (
     <div
       role={live ? (type === 'critical' ? 'alert' : 'status') : undefined}
-      aria-label={live ? `${t.label} notice` : undefined}
+      aria-label={live ? tr('common:globalNotice.notice', { label: t.label }) : undefined}
       className={cn(
         'flex h-12 shrink-0 items-center justify-center gap-2.5 border-b px-4 text-sm text-foreground',
         t.band,

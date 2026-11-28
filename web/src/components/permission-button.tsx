@@ -2,6 +2,7 @@ import { forwardRef } from 'react'
 
 import { Button, type ButtonProps } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { t } from '@/lib/i18n'
 
 /**
  * A button that is disabled, with Studio's "You need additional permissions"
@@ -19,7 +20,7 @@ export const PermissionButton = forwardRef<
           <Button ref={ref} disabled {...props} />
         </span>
       </TooltipTrigger>
-      <TooltipContent>You need additional permissions to {action}</TooltipContent>
+      <TooltipContent>{t('common:permissionButton.youNeedAdditionalPermissionsTo', { action })}</TooltipContent>
     </Tooltip>
   )
 })

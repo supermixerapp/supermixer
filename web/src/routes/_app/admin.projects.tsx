@@ -19,6 +19,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { relativeTime } from '@/lib/auth-users'
 import { formatBytes } from '@/lib/storage-api'
+import { inEnglish, language, localized, t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/admin/projects')({
   component: ProjectsPage,
@@ -31,26 +32,26 @@ const DAY = 24 * 60 * 60 * 1000
 // As the table shows it: what Supermixer is doing to the stack, if anything,
 // else its state.
 const statusLabel = (p: Project) =>
-  (p.operation ? OPERATION_LABELS[p.operation] : p.status ? STACK_STATUS[p.status].label : 'Connected').replace('…', '')
+  (p.operation ? OPERATION_LABELS()[p.operation] : p.status ? STACK_STATUS()[p.status].label : t('admin:adminProjects.connected')).replace('…', '')
 const busy = (p: Project) => !!p.operation || p.status === 'provisioning' || p.status === 'deleting'
 
 // The state filter: the stack's state, or the backups'.
-const STATES: { value: string; label: string; match: (p: Project) => boolean }[] = [
-  { value: 'all', label: 'All', match: () => true },
-  { value: 'running', label: 'Running', match: (p) => p.status === 'running' && !p.operation },
-  { value: 'paused', label: 'Paused', match: (p) => p.status === 'paused' },
-  { value: 'failed', label: 'Failed', match: (p) => p.status === 'failed' },
-  { value: 'busy', label: 'Being created, changed or deleted', match: busy },
-  { value: 'connected', label: 'Connected', match: (p) => !p.managed },
-  { value: 'backup-failed', label: 'Last backup failed', match: (p) => p.last_backup?.status === 'failed' },
+const STATES = localized((): { value: string; label: string; match: (p: Project) => boolean }[] => [
+  { value: 'all', label: t('admin:adminProjects.all'), match: () => true },
+  { value: 'running', label: t('admin:adminProjects.running'), match: (p) => p.status === 'running' && !p.operation },
+  { value: 'paused', label: t('admin:adminProjects.paused'), match: (p) => p.status === 'paused' },
+  { value: 'failed', label: t('admin:adminProjects.failed'), match: (p) => p.status === 'failed' },
+  { value: 'busy', label: t('admin:adminProjects.beingCreatedChangedOrDeleted'), match: busy },
+  { value: 'connected', label: t('admin:adminProjects.connected'), match: (p) => !p.managed },
+  { value: 'backup-failed', label: t('admin:adminProjects.lastBackupFailed'), match: (p) => p.last_backup?.status === 'failed' },
   {
     value: 'no-backup',
-    label: 'No backup in 7 days',
+    label: t('admin:adminProjects.noBackupIn7Days'),
     match: (p) =>
       p.managed &&
       !(p.last_completed_backup_at && Date.now() - new Date(p.last_completed_backup_at).getTime() < 7 * DAY),
   },
-]
+])
 
 function ProjectsPage() {
   const { data: me } = useProfile()
@@ -67,7 +68,7 @@ function ProjectsPage() {
     a[1].localeCompare(b[1])
   )
   const needle = search.trim().toLowerCase()
-  const stateMatch = (STATES.find((s) => s.value === state) ?? STATES[0]).match
+  const stateMatch = (STATES().find((s) => s.value === state) ?? STATES()[0]).match
   const shown = all.filter(
     (p) =>
       stateMatch(p) &&
@@ -84,8 +85,8 @@ function ProjectsPage() {
 
   return (
     <AdminLayout
-      title="Projects"
-      description="Every project on this instance, for reports. Listing a project doesn't give you access to it: that stays with its organization's members."
+      title={t('admin:adminProjects.projects')}
+      description={t('admin:adminProjects.everyProjectOnThisInstanceFor')}
     >
       {list.isError ? (
         <Alert variant="destructive" title={list.error.message} />
@@ -94,34 +95,34 @@ function ProjectsPage() {
       ) : (
         <>
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat label="Projects" value={all.length} detail={`${managed.length} created by Supermixer`} />
-            <Stat label="Running" value={count('running')} detail={`of ${managed.length} created by Supermixer`} />
-            <Stat label="Paused" value={count('paused')} />
-            <Stat label="Failed" value={count('failed')} />
+            <Stat label={t('admin:adminProjects.projects')} value={all.length} detail={t('admin:adminProjects.createdBySupermixer', { length: managed.length })} />
+            <Stat label={t('admin:adminProjects.running')} value={count('running')} detail={t('admin:adminProjects.ofCreatedBySupermixer', { length: managed.length })} />
+            <Stat label={t('admin:adminProjects.paused')} value={count('paused')} />
+            <Stat label={t('admin:adminProjects.failed')} value={count('failed')} />
             <Stat
-              label="Backups kept"
+              label={t('admin:adminProjects.backupsKept')}
               value={formatBytes(backupBytes)}
-              detail={`${all.reduce((n, p) => n + p.backups, 0)} backups, compressed`}
+              detail={t('admin:adminProjects.backupsCompressed', { reduce: all.reduce((n, p) => n + p.backups, 0) })}
             />
           </div>
           <ReportToolbar
             search={search}
             onSearch={setSearch}
-            placeholder="Search projects"
+            placeholder={t('admin:adminProjects.searchProjects')}
             filters={
               <>
                 <FilterSelect
-                  label="Organization"
+                  label={t('admin:adminProjects.organization')}
                   value={org}
                   onChange={setOrg}
-                  choices={[{ value: 'all', label: 'All' }, ...orgs.map(([value, label]) => ({ value, label }))]}
+                  choices={[{ value: 'all', label: t('admin:adminProjects.all') }, ...orgs.map(([value, label]) => ({ value, label }))]}
                 />
-                <FilterSelect label="State" value={state} onChange={setState} choices={STATES} />
+                <FilterSelect label={t('admin:adminProjects.state')} value={state} onChange={setState} choices={STATES()} />
               </>
             }
             shown={shown.length}
             total={all.length}
-            noun={['project', 'projects']}
+            noun="projects"
             filtering={filtering}
             onClear={() => {
               setSearch('')
@@ -130,56 +131,58 @@ function ProjectsPage() {
             }}
             csv={{
               name: `supermixer-projects-${today()}.csv`,
-              header: [
-                'Project',
-                'Ref',
-                'Organization',
-                'Organization slug',
-                'State',
-                'Supabase version',
-                'Created',
-                'Created by',
-                'Last backup',
-                'Last backup status',
-                'Last completed backup',
-                'Backups kept',
-                'Backup bytes',
-              ],
+              header: inEnglish(() => [
+                t('admin:adminProjects.project'),
+                t('admin:adminProjects.ref'),
+                t('admin:adminProjects.organization'),
+                t('admin:adminProjects.organizationSlug'),
+                t('admin:adminProjects.state'),
+                t('admin:adminProjects.supabaseVersion'),
+                t('admin:adminProjects.created'),
+                t('admin:adminProjects.createdBy'),
+                t('admin:adminProjects.lastBackup'),
+                t('admin:adminProjects.lastBackupStatus'),
+                t('admin:adminProjects.lastCompletedBackup'),
+                t('admin:adminProjects.backupsKept'),
+                t('admin:adminProjects.backupBytes'),
+              ]),
               rows: () =>
-                shown.map((p) => [
-                  p.name,
-                  p.ref,
-                  p.organization_name,
-                  p.organization_slug,
-                  statusLabel(p),
-                  p.template ?? '',
-                  p.created_at,
-                  p.created_by ?? '',
-                  p.last_backup?.started_at ?? '',
-                  p.last_backup?.status ?? '',
-                  p.last_completed_backup_at ?? '',
-                  p.backups,
-                  p.backup_bytes,
-                ]),
+                inEnglish(() =>
+                  shown.map((p) => [
+                    p.name,
+                    p.ref,
+                    p.organization_name,
+                    p.organization_slug,
+                    statusLabel(p),
+                    p.template ?? '',
+                    p.created_at,
+                    p.created_by ?? '',
+                    p.last_backup?.started_at ?? '',
+                    p.last_backup?.status ?? '',
+                    p.last_completed_backup_at ?? '',
+                    p.backups,
+                    p.backup_bytes,
+                  ]),
+                ),
             }}
           />
           <Card>
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Project</TableHead>
-                  <TableHead>Organization</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>Last backup</TableHead>
-                  <TableHead className="text-right">Backups kept</TableHead>
+                  <TableHead>{t('admin:adminProjects.project')}</TableHead>
+                  <TableHead>{t('admin:adminProjects.organization')}</TableHead>
+                  <TableHead>{t('admin:adminProjects.state')}</TableHead>
+                  <TableHead>{t('admin:adminProjects.created')}</TableHead>
+                  <TableHead>{t('admin:adminProjects.lastBackup')}</TableHead>
+                  <TableHead className="text-right">{t('admin:adminProjects.backupsKept')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {shown.length === 0 && (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={6} className="py-10 text-center text-foreground-lighter">
-                      {all.length === 0 ? 'No projects yet.' : 'No projects match these filters.'}
+                      {all.length === 0 ? t('admin:adminProjects.noProjectsYet') : t('admin:adminProjects.noProjectsMatchTheseFilters')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -202,7 +205,7 @@ function ProjectsPage() {
                         {p.status ? (
                           <StackBadge stack={{ status: p.status, operation: p.operation }} />
                         ) : (
-                          <Badge title="Supermixer connects to it; it runs elsewhere">Connected</Badge>
+                          <Badge title={t('admin:adminProjects.supermixerConnectsToItItRuns')}>{t('admin:adminProjects.connected')}</Badge>
                         )}
                         {p.template && (
                           <span className="font-mono text-xs text-foreground-lighter" title={p.template}>
@@ -213,21 +216,21 @@ function ProjectsPage() {
                     </TableCell>
                     <TableCell className="text-foreground-light">
                       <span className="flex flex-col">
-                        <span title={new Date(p.created_at).toLocaleString()}>{relativeTime(p.created_at)}</span>
-                        {p.created_by && <span className="text-xs text-foreground-lighter">by {p.created_by}</span>}
+                        <span title={new Date(p.created_at).toLocaleString(language())}>{relativeTime(p.created_at)}</span>
+                        {p.created_by && <span className="text-xs text-foreground-lighter">{t('admin:adminProjects.by', { createdBy: p.created_by })}</span>}
                       </span>
                     </TableCell>
                     <TableCell className="text-foreground-light">
                       {p.last_backup ? (
                         <span className="flex flex-col items-start gap-1">
-                          <span title={new Date(p.last_backup.started_at).toLocaleString()}>
+                          <span title={new Date(p.last_backup.started_at).toLocaleString(language())}>
                             {relativeTime(p.last_backup.started_at)}
                           </span>
-                          {p.last_backup.status === 'failed' && <Badge variant="destructive">Failed</Badge>}
-                          {p.last_backup.status === 'running' && <Badge variant="warning">Running</Badge>}
+                          {p.last_backup.status === 'failed' && <Badge variant="destructive">{t('admin:adminProjects.failed')}</Badge>}
+                          {p.last_backup.status === 'running' && <Badge variant="warning">{t('admin:adminProjects.running')}</Badge>}
                         </span>
                       ) : (
-                        <span className="text-foreground-lighter">{p.managed ? 'None yet' : '—'}</span>
+                        <span className="text-foreground-lighter">{p.managed ? t('admin:adminProjects.noneYet') : '—'}</span>
                       )}
                     </TableCell>
                     <TableCell className="text-right text-foreground-light tabular-nums">
@@ -235,7 +238,7 @@ function ProjectsPage() {
                         <span className="flex flex-col items-end">
                           <span>{formatBytes(p.backup_bytes)}</span>
                           <span className="text-xs text-foreground-lighter">
-                            {p.backups} {p.backups === 1 ? 'backup' : 'backups'}
+                            {t('admin:adminProjects.backups', { count: p.backups })}
                           </span>
                         </span>
                       ) : (

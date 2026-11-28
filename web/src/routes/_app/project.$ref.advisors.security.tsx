@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { AdvisorPage } from '@/components/advisors/advisor-page'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/advisors/security')({
   component: SecurityAdvisorPage,
@@ -12,8 +13,8 @@ function SecurityAdvisorPage() {
     <AdvisorPage
       projectRef={ref}
       category="SECURITY"
-      title="Security Advisor"
-      description="Settings and objects that could expose data through the API, such as tables without Row Level Security."
+      title={t('observability:advisorsSecurity.securityAdvisor')}
+      description={t('observability:advisorsSecurity.settingsAndObjectsThatCouldExpose')}
     />
   )
 }

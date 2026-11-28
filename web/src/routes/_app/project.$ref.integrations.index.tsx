@@ -5,6 +5,7 @@ import { ApiIcon, BoltIcon, CableIcon, HistoryIcon, KeyIcon, ListIcon, SchemaIco
 import type { Icon } from '@/components/icon'
 import { Badge } from '@/components/ui/badge'
 import { usePg } from '@/lib/pg/run'
+import { localized, t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/integrations/')({
   component: IntegrationsPage,
@@ -22,19 +23,19 @@ interface Integration {
 }
 
 /** Studio's Supabase integrations (Integrations.constants.tsx), the ones a self-hosted stack can run. */
-const INTEGRATIONS: Integration[] = [
+const INTEGRATIONS = localized((): Integration[] => [
   {
     key: 'cron',
-    title: 'Cron',
-    description: 'Schedule recurring jobs in Postgres: SQL, database functions or HTTP requests.',
+    title: t('integrations:integrations.cron'),
+    description: t('integrations:integrations.scheduleRecurringJobsInPostgresSql'),
     icon: HistoryIcon,
     path: 'integrations/cron',
     extensions: ['pg_cron'],
   },
   {
     key: 'queues',
-    title: 'Queues',
-    description: 'Durable message queues in Postgres with guaranteed delivery, using pgmq.',
+    title: t('integrations:integrations.queues'),
+    description: t('integrations:integrations.durableMessageQueuesInPostgresWith'),
     icon: ListIcon,
     path: 'integrations/queues',
     extensions: ['pgmq'],
@@ -42,23 +43,23 @@ const INTEGRATIONS: Integration[] = [
   {
     key: 'vault',
     title: 'Vault',
-    description: 'Store secrets encrypted in the database and read them from SQL.',
+    description: t('integrations:integrations.storeSecretsEncryptedInTheDatabase'),
     icon: KeyIcon,
     path: 'integrations/vault',
     extensions: ['supabase_vault'],
   },
   {
     key: 'webhooks',
-    title: 'Database Webhooks',
-    description: 'Send an HTTP request when rows are inserted, updated or deleted.',
+    title: t('integrations:integrations.databaseWebhooks'),
+    description: t('integrations:integrations.sendAnHttpRequestWhenRows'),
     icon: BoltIcon,
     path: 'integrations/webhooks',
     extensions: ['pg_net'],
   },
   {
     key: 'wrappers',
-    title: 'Wrappers',
-    description: 'Query Stripe, S3, BigQuery, ClickHouse and other services as Postgres tables.',
+    title: t('integrations:integrations.wrappers'),
+    description: t('integrations:integrations.queryStripeS3BigqueryClickhouseAnd'),
     icon: CableIcon,
     path: 'integrations/wrappers',
     // Wrappers keep their credentials in Vault.
@@ -66,34 +67,34 @@ const INTEGRATIONS: Integration[] = [
   },
   {
     key: 'graphiql',
-    title: 'GraphiQL',
-    description: 'Query the database with GraphQL through pg_graphql.',
+    title: t('integrations:integrations.graphiql'),
+    description: t('integrations:integrationsIndex.queryTheDatabaseWithGraphqlThrough'),
     icon: SchemaIcon,
     path: 'integrations/graphiql',
     extensions: ['pg_graphql'],
   },
   {
     key: 'data_api',
-    title: 'Data API',
-    description: 'The REST API PostgREST serves for your tables, views and functions, with generated docs.',
+    title: t('integrations:integrations.dataApi'),
+    description: t('integrations:integrations.theRestApiPostgrestServesFor'),
     icon: ApiIcon,
     path: 'integrations/data_api/docs',
     extensions: [],
   },
-]
+])
 
 const INSTALLED_SQL = `select extname as name from pg_extension where extname = any($1::text[])`
 
 function IntegrationsPage() {
   const { ref } = Route.useParams()
-  const names = INTEGRATIONS.flatMap((i) => i.extensions)
+  const names = INTEGRATIONS().flatMap((i) => i.extensions)
   const installed = usePg<{ name: string }>(ref, ['integrations-installed'], INSTALLED_SQL, [`{${names.join(',')}}`])
   const has = new Set((installed.data ?? []).map((r) => r.name))
 
   return (
-    <DatabasePage title="Project Integrations" description="Extend the database with Supabase's Postgres modules. Each one runs inside this project's stack.">
+    <DatabasePage title={t('integrations:integrations.projectIntegrations')} description={t('integrations:integrations.extendTheDatabaseWithSupabaseS')}>
       <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {INTEGRATIONS.map((i) => {
+        {INTEGRATIONS().map((i) => {
           const on = i.extensions.every((e) => has.has(e))
           const IconC = i.icon
           const to: string = `/project/${ref}/${i.path}`
@@ -110,7 +111,7 @@ function IntegrationsPage() {
                   <span className="text-sm text-foreground">{i.title}</span>
                   {installed.data && (
                     <Badge className="ml-auto" variant={on ? 'success' : 'default'}>
-                      {i.extensions.length === 0 ? 'Built in' : on ? 'Installed' : 'Not installed'}
+                      {i.extensions.length === 0 ? t('integrations:integrations.builtIn') : on ? t('integrations:integrations.installed') : t('integrations:integrations.notInstalled')}
                     </Badge>
                   )}
                 </span>

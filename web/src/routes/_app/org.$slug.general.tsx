@@ -18,6 +18,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
 import { organizationLimitsQuery } from '@/lib/api/queries'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/general')({
   component: OrgGeneralPage,
@@ -40,14 +41,14 @@ function OrgGeneral({ org }: { org: Schemas['Organization'] }) {
   const save = useMutation({
     mutationFn: () => unwrap(api.PATCH('/organizations/{slug}', { params: { path: { slug } }, body: { name } })),
     onSuccess: async () => {
-      toast.success('Organization updated')
+      toast.success(t('org:general.organizationUpdated'))
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
   })
   const remove = useMutation({
     mutationFn: () => unwrap(api.DELETE('/organizations/{slug}', { params: { path: { slug } } })),
     onSuccess: async () => {
-      toast.success(`Deleted ${org.name}`)
+      toast.success(t('org:general.deleted', { name: org.name }))
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
       void navigate({ to: '/organizations' })
     },
@@ -59,32 +60,32 @@ function OrgGeneral({ org }: { org: Schemas['Organization'] }) {
 
   return (
     <>
-      <PageHeader title="General" size="small" />
+      <PageHeader title={t('org:general.general')} size="small" />
       <PageContainer size="small" className="flex flex-col gap-10 pb-16">
-        <SettingsSection title="Organization details">
+        <SettingsSection title={t('org:general.organizationDetails')}>
           <Card>
             <CardContent className="flex flex-col gap-6">
-              <FormField label="Organization name" htmlFor="org-name" layout="horizontal">
+              <FormField label={t('org:general.organizationName')} htmlFor="org-name" layout="horizontal">
                 <Input id="org-name" value={name} maxLength={64} disabled={!canUpdate} onChange={(e) => setName(e.target.value)} />
               </FormField>
-              <FormField label="Organization slug" layout="horizontal" description="Used in URLs. It does not change.">
+              <FormField label={t('org:general.organizationSlug')} layout="horizontal" description={t('org:general.usedInUrlsItDoesNot')}>
                 <CopyField value={org.slug} />
               </FormField>
               {save.error && <Alert variant="destructive" title={save.error.message} />}
             </CardContent>
             <CardFooter>
               <Button variant="default" disabled={name === org.name} onClick={() => setName(org.name)}>
-                Cancel
+                {t('org:general.cancel')}
               </Button>
               <PermissionButton
                 allowed={canUpdate}
-                action="update organization settings"
+                action={t('org:general.updateOrganizationSettings')}
                 variant="primary"
                 loading={save.isPending}
                 disabled={!name.trim() || name === org.name}
                 onClick={() => save.mutate()}
               >
-                Save
+                {t('org:general.save')}
               </PermissionButton>
             </CardFooter>
           </Card>
@@ -92,48 +93,39 @@ function OrgGeneral({ org }: { org: Schemas['Organization'] }) {
 
         <OrgLimits org={org} />
 
-        <SettingsSection title="Security">
-          <Alert title="Two-factor sign-in and single sign-on">
-            Require them for members under{' '}
-            <Link to="/org/$slug/security" params={{ slug }} className="text-link">
-              Organization Settings › Security
-            </Link>{' '}
-            and{' '}
-            <Link to="/org/$slug/sso" params={{ slug }} className="text-link">
-              SSO
-            </Link>
-            .
+        <SettingsSection title={t('org:general.security')}>
+          <Alert title={t('org:general.twoFactorSignInAndSingle')}>
+            <Trans i18nKey="org:general.requireThemForMembersUnderOrganization" components={{ link: <Link to="/org/$slug/security" params={{ slug }} className="text-link" />, link2: <Link to="/org/$slug/sso" params={{ slug }} className="text-link" /> }} />
           </Alert>
         </SettingsSection>
 
-        <SettingsSection title="Danger zone">
+        <SettingsSection title={t('org:general.dangerZone')}>
           <Alert
             variant="destructive"
-            title="Delete this organization"
+            title={t('org:general.deleteThisOrganization')}
             actions={
               <PermissionButton
                 allowed={can(org, 'org:delete')}
-                action="delete this organization"
+                action={t('org:general.deleteThisOrganization2')}
                 variant="danger"
                 onClick={() => setDeleting(true)}
               >
-                Delete organization
+                {t('org:general.deleteOrganization')}
               </PermissionButton>
             }
           >
-            Removes the organization, its members and invitations. Projects must be transferred or removed first;
             {org.project_count > 0
-              ? ` this organization still has ${org.project_count} project${org.project_count === 1 ? '' : 's'}.`
-              : ' it has none.'}
+              ? t('org:general.removesTheOrganizationStillHas', { count: org.project_count })
+              : t('org:general.removesTheOrganizationHasNone')}
           </Alert>
         </SettingsSection>
       </PageContainer>
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title={`Delete ${org.name}?`}
-        description="This cannot be undone."
-        confirmLabel="Delete organization"
+        title={t('org:general.delete', { name: org.name })}
+        description={t('org:general.thisCannotBeUndone')}
+        confirmLabel={t('org:general.deleteOrganization')}
         confirmText={org.slug}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}
@@ -146,7 +138,7 @@ function OrgGeneral({ org }: { org: Schemas['Organization'] }) {
 function OrgLimits({ org }: { org: Schemas['Organization'] }) {
   const limits = useQuery(organizationLimitsQuery(org.slug))
   return (
-    <SettingsSection title="Resource limits">
+    <SettingsSection title={t('org:general.resourceLimits')}>
       {limits.error ? (
         <Alert variant="destructive" title={limits.error.message} />
       ) : !limits.data ? (
@@ -173,7 +165,7 @@ function OrgLimitsForm({ org, saved }: { org: Schemas['Organization']; saved: Sc
         })
       ),
     onSuccess: async () => {
-      toast.success('Project limit saved')
+      toast.success(t('org:general.projectLimitSaved'))
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
   })
@@ -182,52 +174,52 @@ function OrgLimitsForm({ org, saved }: { org: Schemas['Organization']; saved: Sc
   return (
     <Card>
       <CardContent className="flex flex-col gap-6">
-        <FormField label="Projects" layout="horizontal">
+        <FormField label={t('org:general.projects')} layout="horizontal">
           <p className="pt-2 text-sm text-foreground">
             {limit === null
-              ? `${count} ${count === 1 ? 'project' : 'projects'}, no limit`
-              : `${count} of ${limit} ${limit === 1 ? 'project' : 'projects'} used`}
+              ? t('org:general.noLimit', { count })
+              : t('org:general.ofUsed', { used: count, count: limit })}
           </p>
         </FormField>
         <LimitField
           id="org-max-projects"
-          label="Project limit"
+          label={t('org:general.projectLimit')}
           unit="projects"
           draft={draft}
           disabled={!canChange}
           suggested={Math.max(count, 1)}
           description={
             instanceMax === null
-              ? 'The most projects this organization can have. This instance has no limit of its own.'
-              : `The most projects this organization can have, up to ${instanceMax}, this instance's limit. Unlimited means the instance's limit applies.`
+              ? t('org:general.theMostProjectsThisOrganizationCan')
+              : t('org:general.theMostProjectsThisOrganizationCan2', { instanceMax })
           }
           notice={
             draft.on &&
             draft.valid &&
             draft.value !== null &&
             draft.value < count && (
-              <Alert variant="warning" title={`This organization already has ${countOf(count, 'project', 'projects')}`}>
-                It keeps them, but can&apos;t add more until it&apos;s under the limit.
+              <Alert variant="warning" title={t('org:general.thisOrganizationAlreadyHas', { countOf: countOf(count, 'project', 'projects') })}>
+                {t('org:general.itKeepsThemButCanT')}
               </Alert>
             )
           }
         />
-        {!canChange && <p className="text-xs text-foreground-lighter">Only Owners and Administrators can change this.</p>}
+        {!canChange && <p className="text-xs text-foreground-lighter">{t('org:general.onlyOwnersAndAdministratorsCanChange')}</p>}
         {save.error && <Alert variant="destructive" title={save.error.message} />}
       </CardContent>
       <CardFooter>
         <Button variant="default" disabled={!draft.dirty} onClick={draft.reset}>
-          Cancel
+          {t('org:general.cancel')}
         </Button>
         <PermissionButton
           allowed={canChange}
-          action="change this organization's limits"
+          action={t('org:general.changeThisOrganizationSLimits')}
           variant="primary"
           loading={save.isPending}
           disabled={!draft.dirty || !draft.valid}
           onClick={() => save.mutate()}
         >
-          Save
+          {t('org:general.save')}
         </PermissionButton>
       </CardFooter>
     </Card>

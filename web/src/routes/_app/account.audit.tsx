@@ -13,6 +13,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { api, unwrap } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
+import { t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/account/audit')({
   component: AccountAuditPage,
@@ -30,10 +31,9 @@ function AccountAuditPage() {
   const logs = useInfiniteQuery(myAuditQuery)
   const entries = logs.data?.pages.flatMap((p) => p.entries) ?? []
   return (
-    <AccountLayout title="Audit Logs">
+    <AccountLayout title={t('account:audit.auditLogs')}>
       <p className="-mt-4 mb-6 text-sm text-foreground-light">
-        What you did, in any organization, and changes others made to your account. Entries by others don&apos;t show
-        their IP address.
+        {t('account:audit.whatYouDidInAnyOrganization')}
       </p>
       <Card>
         {logs.isPending ? (
@@ -44,24 +44,24 @@ function AccountAuditPage() {
         ) : logs.isError ? (
           <p className="px-4 py-10 text-center text-sm text-destructive">{logs.error.message}</p>
         ) : entries.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-foreground-lighter">Nothing recorded yet.</p>
+          <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{t('account:audit.nothingRecordedYet')}</p>
         ) : (
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Time</TableHead>
-                  <TableHead>Action</TableHead>
-                  <TableHead>Target</TableHead>
-                  <TableHead>Where</TableHead>
-                  <TableHead>By</TableHead>
-                  <TableHead>IP address</TableHead>
+                  <TableHead>{t('account:audit.time')}</TableHead>
+                  <TableHead>{t('account:audit.action')}</TableHead>
+                  <TableHead>{t('account:audit.target')}</TableHead>
+                  <TableHead>{t('account:audit.where')}</TableHead>
+                  <TableHead>{t('account:audit.by')}</TableHead>
+                  <TableHead>{t('account:audit.ipAddress')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {entries.map((e) => (
                   <TableRow key={e.id}>
-                    <TableCell className="whitespace-nowrap text-foreground-light">{new Date(e.created_at).toLocaleString()}</TableCell>
+                    <TableCell className="whitespace-nowrap text-foreground-light">{new Date(e.created_at).toLocaleString(language())}</TableCell>
                     <TableCell>
                       <Badge>{e.action}</Badge>
                     </TableCell>
@@ -79,11 +79,11 @@ function AccountAuditPage() {
                           {e.organization_slug}
                         </Link>
                       ) : (
-                        'Account'
+                        t('account:audit.account')
                       )}
                     </TableCell>
                     <TableCell className="text-foreground-light">
-                      {e.actor_id && e.actor_id === me?.id ? 'You' : e.actor_username || '—'}
+                      {e.actor_id && e.actor_id === me?.id ? t('account:audit.you') : e.actor_username || '—'}
                     </TableCell>
                     <TableCell className="font-mono text-xs text-foreground-lighter">{e.ip || '—'}</TableCell>
                   </TableRow>
@@ -95,7 +95,7 @@ function AccountAuditPage() {
       </Card>
       {logs.hasNextPage && (
         <Button variant="default" className="mt-4 self-center" loading={logs.isFetchingNextPage} onClick={() => logs.fetchNextPage()}>
-          Load older entries
+          {t('account:audit.loadOlderEntries')}
         </Button>
       )}
     </AccountLayout>

@@ -12,7 +12,7 @@ import { orgNav, orgSettingsMenu } from '@/lib/navigation'
 
 import { NotFound } from '../__root'
 
-const settingsPaths = orgSettingsMenu.groups.flatMap((g) => g.items.map((i) => i.path))
+const settingsPaths = () => orgSettingsMenu().groups.flatMap((g) => g.items.map((i) => i.path))
 
 export const Route = createFileRoute('/_app/org/$slug')({
   loader: async ({ context, params }) => {
@@ -28,7 +28,7 @@ function OrgLayout() {
   const { pathname } = useLocation()
   const base = `/org/${slug}`
   const sub = pathname.slice(base.length).replace(/^\/+|\/+$/g, '')
-  const inSettings = settingsPaths.includes(sub.split('/')[0])
+  const inSettings = settingsPaths().includes(sub.split('/')[0])
   const { data: me } = useProfile()
   const org = useQuery(organizationsQuery).data?.find((o) => o.slug === slug)
 
@@ -47,7 +47,7 @@ function OrgLayout() {
     )
   }
 
-  const links: SidebarLink[] = orgNav.map((r) => {
+  const links: SidebarLink[] = orgNav().map((r) => {
     const to = r.path ? `${base}/${r.path}` : base
     const active = r.key === 'settings' ? inSettings : r.path ? sub.startsWith(r.path) : sub === ''
     return { key: r.key, label: r.label, icon: r.icon, to, active }
@@ -55,8 +55,8 @@ function OrgLayout() {
 
   const menu = inSettings ? (
     <ProductMenu
-      title={orgSettingsMenu.title}
-      sections={orgSettingsMenu.groups.map((g) => ({
+      title={orgSettingsMenu().title}
+      sections={orgSettingsMenu().groups.map((g) => ({
         title: g.title,
         links: g.items.map((i) => ({ label: i.label, to: `${base}/${i.path}`, active: sub === i.path })),
       }))}

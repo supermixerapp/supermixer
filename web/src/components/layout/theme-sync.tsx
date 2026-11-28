@@ -10,6 +10,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { profileQuery } from '@/lib/api/queries'
 import { useTheme } from '@/lib/theme'
+import { t } from '@/lib/i18n'
 
 export function ThemeSync() {
   const { data: profile } = useProfile()
@@ -31,7 +32,7 @@ export function ThemeSync() {
         .then((p) => queryClient.setQueryData(profileQuery.queryKey, p))
         .catch((e: unknown) => {
           if (before) queryClient.setQueryData(profileQuery.queryKey, before)
-          toast.error(`Couldn't save your theme: ${e instanceof Error ? e.message : String(e)}`)
+          toast.error(t('common:themeSync.couldnTSaveYourTheme', { value: e instanceof Error ? e.message : String(e) }))
         })
     })
     return () => registerSave(null)

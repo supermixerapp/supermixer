@@ -1,3 +1,5 @@
+import { t } from '@/lib/i18n'
+
 /*
  * Vault integration: secrets stored encrypted by supabase_vault. Secret
  * values only ever travel as bound parameters, never inside the SQL text,
@@ -29,7 +31,7 @@ export const DELETE_SECRET_SQL = `delete from vault.secrets where id = $1::uuid`
 
 /** Postgres's limit on a secret name is the column's; keep names readable. */
 export function secretNameProblem(name: string, taken: string[]): string | null {
-  if (!name.trim()) return 'Enter a name'
-  if (taken.includes(name.trim())) return 'Another secret has this name'
+  if (!name.trim()) return t('integrations:vault.enterAName')
+  if (taken.includes(name.trim())) return t('integrations:vault.anotherSecretHasThisName')
   return null
 }

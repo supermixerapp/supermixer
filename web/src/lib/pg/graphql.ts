@@ -1,3 +1,5 @@
+import { t as tr } from '@/lib/i18n'
+
 /*
  * GraphiQL: GraphQL over pg_graphql, run through SQL with graphql.resolve so
  * it follows the same read-only rules as every other query. It runs as the
@@ -74,9 +76,9 @@ export function variablesProblem(s: string): string | null {
   if (!s.trim()) return null
   try {
     const v: unknown = JSON.parse(s)
-    return typeof v === 'object' && v !== null && !Array.isArray(v) ? null : 'Variables must be a JSON object'
+    return typeof v === 'object' && v !== null && !Array.isArray(v) ? null : tr('integrations:graphql.variablesMustBeAJsonObject')
   } catch {
-    return 'Variables must be valid JSON'
+    return tr('integrations:graphql.variablesMustBeValidJson')
   }
 }
 

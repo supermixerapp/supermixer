@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { setPublicationTable, TABLE_STATS_SQL, type TableStat } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
 import { dropTable } from '@/lib/pg/table-sql'
+import { t as tr, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/tables')({
   validateSearch: schemaSearch,
@@ -28,17 +29,17 @@ function TablesPage() {
 
   return (
     <DatabasePage
-      title="Tables"
-      description="The tables in each schema, their size and whether Row Level Security and Realtime are on."
+      title={tr('database:databaseTables.tables')}
+      description={tr('database:databaseTables.theTablesInEachSchemaTheir')}
       toolbar={
         <>
           <SchemaPicker projectRef={ref} value={schema} onChange={(s) => void navigate({ to: '.', search: { schema: s } })} />
-          <SearchBox value={search} onChange={setSearch} placeholder="Search for a table" />
+          <SearchBox value={search} onChange={setSearch} placeholder={tr('database:databaseTables.searchForATable')} />
         </>
       }
       actions={
-        <PermissionButton allowed={canChange} action="create tables here" variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-          New table
+        <PermissionButton allowed={canChange} action={tr('database:databaseTables.createTablesHere')} variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
+          {tr('database:databaseTables.newTable')}
         </PermissionButton>
       }
     >
@@ -47,54 +48,54 @@ function TablesPage() {
         loading={tables.isPending}
         error={tables.error}
         rowKey={(t) => t.name}
-        empty={search ? 'No tables match your search' : `No tables in ${schema}`}
+        empty={search ? tr('database:databaseTables.noTablesMatchYourSearch') : tr('database:databaseTables.noTablesIn', { schema })}
         columns={[
           {
-            header: 'Name',
+            header: tr('database:databaseTables.name'),
             cell: (t) => (
               <Link to="/project/$ref/editor/$id" params={{ ref, id: String(t.id) }} search={{ schema }} className="text-foreground hover:underline">
                 {t.name}
               </Link>
             ),
           },
-          { header: 'Description', cell: (t) => <span className="text-foreground-light">{t.comment ?? '—'}</span> },
-          { header: 'Rows (estimated)', cell: (t) => t.estimate.toLocaleString(), className: 'text-right whitespace-nowrap' },
-          { header: 'Size', cell: (t) => t.size, className: 'text-right whitespace-nowrap' },
-          { header: 'Columns', cell: (t) => t.columns, className: 'text-right whitespace-nowrap' },
+          { header: tr('database:databaseTables.description'), cell: (t) => <span className="text-foreground-light">{t.comment ?? '—'}</span> },
+          { header: tr('database:databaseTables.rowsEstimated'), cell: (t) => t.estimate.toLocaleString(language()), className: 'text-right whitespace-nowrap' },
+          { header: tr('database:databaseTables.size'), cell: (t) => t.size, className: 'text-right whitespace-nowrap' },
+          { header: tr('database:databaseTables.columns'), cell: (t) => t.columns, className: 'text-right whitespace-nowrap' },
           {
-            header: 'Security',
+            header: tr('database:databaseTables.security'),
             cell: (t) => (
               <span className="flex gap-1">
-                {t.rls ? <Badge variant="success">RLS on</Badge> : <Badge variant="warning">RLS off</Badge>}
-                {t.realtime && <Badge>Realtime</Badge>}
+                {t.rls ? <Badge variant="success">{tr('database:databaseTables.rlsOn')}</Badge> : <Badge variant="warning">{tr('database:databaseTables.rlsOff')}</Badge>}
+                {t.realtime && <Badge>{tr('database:databaseTables.realtime')}</Badge>}
               </span>
             ),
           },
         ]}
         actions={[
           {
-            label: 'View in Table Editor',
+            label: tr('database:databaseTables.viewInTableEditor'),
             onSelect: (t) => void navigate({ to: '/project/$ref/editor/$id', params: { ref, id: String(t.id) }, search: { schema } }),
           },
           {
-            label: 'Enable Realtime',
+            label: tr('database:databaseTables.enableRealtime'),
             hidden: (t) => !canChange || t.realtime,
-            onSelect: (t) => ddl.mutate({ sql: setPublicationTable('supabase_realtime', schema, t.name, true), done: `Realtime enabled for ${t.name}` }),
+            onSelect: (t) => ddl.mutate({ sql: setPublicationTable('supabase_realtime', schema, t.name, true), done: tr('database:databaseTables.realtimeEnabledFor', { name: t.name }) }),
           },
           {
-            label: 'Disable Realtime',
+            label: tr('database:databaseTables.disableRealtime'),
             hidden: (t) => !canChange || !t.realtime,
-            onSelect: (t) => ddl.mutate({ sql: setPublicationTable('supabase_realtime', schema, t.name, false), done: `Realtime disabled for ${t.name}` }),
+            onSelect: (t) => ddl.mutate({ sql: setPublicationTable('supabase_realtime', schema, t.name, false), done: tr('database:databaseTables.realtimeDisabledFor', { name: t.name }) }),
           },
           {
-            label: 'Delete table',
+            label: tr('database:databaseTables.deleteTable'),
             hidden: () => !canChange,
             confirm: (t) => ({
-              title: `Delete table ${t.name}?`,
-              description: 'The table and its data are dropped. Views or foreign keys that depend on it make this fail.',
+              title: tr('database:databaseTables.deleteTable2', { name: t.name }),
+              description: tr('database:databaseTables.theTableAndItsDataAre'),
               confirmText: t.name,
             }),
-            onSelect: (t) => ddl.mutate({ sql: dropTable(schema, t.name), done: `Deleted ${t.name}` }),
+            onSelect: (t) => ddl.mutate({ sql: dropTable(schema, t.name), done: tr('database:databaseTables.deleted', { name: t.name }) }),
           },
         ]}
       />

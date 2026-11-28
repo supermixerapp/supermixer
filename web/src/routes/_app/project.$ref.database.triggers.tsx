@@ -21,6 +21,7 @@ import {
   type TriggerRow,
 } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
+import { t as tr } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/triggers')({
   validateSearch: schemaSearch,
@@ -41,17 +42,17 @@ function TriggersPage() {
 
   return (
     <DatabasePage
-      title="Database Triggers"
-      description="Run a function automatically when rows are inserted, updated or deleted."
+      title={tr('database:databaseTriggers.databaseTriggers')}
+      description={tr('database:databaseTriggers.runAFunctionAutomaticallyWhenRows')}
       toolbar={
         <>
           <SchemaPicker projectRef={ref} value={schema} onChange={(s) => void navigate({ to: '.', search: { schema: s } })} />
-          <SearchBox value={search} onChange={setSearch} placeholder="Search for a trigger" />
+          <SearchBox value={search} onChange={setSearch} placeholder={tr('database:databaseTriggers.searchForATrigger')} />
         </>
       }
       actions={
-        <PermissionButton allowed={canChange} action="create triggers here" variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-          Create a new trigger
+        <PermissionButton allowed={canChange} action={tr('database:databaseTriggers.createTriggersHere')} variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
+          {tr('database:databaseTriggers.createANewTrigger')}
         </PermissionButton>
       }
     >
@@ -60,31 +61,31 @@ function TriggersPage() {
         loading={triggers.isPending}
         error={triggers.error}
         rowKey={(t) => `${t.table}.${t.name}`}
-        empty={search ? 'No triggers match your search' : `No triggers in ${schema}`}
+        empty={search ? tr('database:databaseTriggers.noTriggersMatchYourSearch') : tr('database:databaseTriggers.noTriggersIn', { schema })}
         columns={[
-          { header: 'Name', cell: (t) => <span className="text-foreground">{t.name}</span> },
-          { header: 'Table', cell: (t) => t.table },
-          { header: 'Function', cell: (t) => <Code>{`${t.function_schema}.${t.function_name}()`}</Code> },
-          { header: 'Events', cell: (t) => `${t.timing} ${t.events.join(' / ')}` },
-          { header: 'Orientation', cell: (t) => t.level },
-          { header: 'Enabled', cell: (t) => (t.enabled ? <Badge variant="success">Enabled</Badge> : <Badge>Disabled</Badge>) },
+          { header: tr('database:databaseTriggers.name'), cell: (t) => <span className="text-foreground">{t.name}</span> },
+          { header: tr('database:databaseTriggers.table'), cell: (t) => t.table },
+          { header: tr('database:databaseTriggers.function'), cell: (t) => <Code>{`${t.function_schema}.${t.function_name}()`}</Code> },
+          { header: tr('database:databaseTriggers.events'), cell: (t) => `${t.timing} ${t.events.join(' / ')}` },
+          { header: tr('database:databaseTriggers.orientation'), cell: (t) => t.level },
+          { header: tr('database:databaseTriggers.enabled'), cell: (t) => (t.enabled ? <Badge variant="success">{tr('database:databaseTriggers.enabled')}</Badge> : <Badge>{tr('database:databaseTriggers.disabled')}</Badge>) },
         ]}
         actions={[
           {
-            label: 'Enable trigger',
+            label: tr('database:databaseTriggers.enableTrigger'),
             hidden: (t) => !canChange || t.enabled,
-            onSelect: (t) => ddl.mutate({ sql: setTriggerEnabled(schema, t.table, t.name, true), done: `Enabled ${t.name}` }),
+            onSelect: (t) => ddl.mutate({ sql: setTriggerEnabled(schema, t.table, t.name, true), done: tr('database:databaseTriggers.enabled2', { name: t.name }) }),
           },
           {
-            label: 'Disable trigger',
+            label: tr('database:databaseTriggers.disableTrigger'),
             hidden: (t) => !canChange || !t.enabled,
-            onSelect: (t) => ddl.mutate({ sql: setTriggerEnabled(schema, t.table, t.name, false), done: `Disabled ${t.name}` }),
+            onSelect: (t) => ddl.mutate({ sql: setTriggerEnabled(schema, t.table, t.name, false), done: tr('database:databaseTriggers.disabled2', { name: t.name }) }),
           },
           {
-            label: 'Delete trigger',
+            label: tr('database:databaseTriggers.deleteTrigger'),
             hidden: () => !canChange,
-            confirm: (t) => ({ title: `Delete trigger ${t.name}?`, description: `It stops running on ${t.table}. The function stays.` }),
-            onSelect: (t) => ddl.mutate({ sql: dropTrigger(schema, t.table, t.name), done: `Deleted ${t.name}` }),
+            confirm: (t) => ({ title: tr('database:databaseTriggers.deleteTrigger2', { name: t.name }), description: tr('database:databaseTriggers.itStopsRunningOnTheFunction', { table: t.table }) }),
+            onSelect: (t) => ddl.mutate({ sql: dropTrigger(schema, t.table, t.name), done: tr('database:databaseTriggers.deleted', { name: t.name }) }),
           },
         ]}
       />
@@ -106,21 +107,21 @@ function TriggerSheet({ projectRef, schema, onClose }: { projectRef: string; sch
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title="Create a new trigger"
-      description="Trigger functions return trigger; create one on the Functions page first."
+      title={tr('database:databaseTriggers.createANewTrigger')}
+      description={tr('database:databaseTriggers.triggerFunctionsReturnTriggerCreateOne')}
       error={ddl.error}
-      submitLabel="Create trigger"
+      submitLabel={tr('database:databaseTriggers.createTrigger')}
       submitting={ddl.isPending}
       disabled={!sql}
-      onSubmit={() => ddl.mutate({ sql, done: `Created ${t.name}` }, { onSuccess: onClose })}
+      onSubmit={() => ddl.mutate({ sql, done: tr('database:databaseTriggers.created', { name: t.name }) }, { onSuccess: onClose })}
     >
-      <FormField label="Name" htmlFor="tg-name">
+      <FormField label={tr('database:databaseTriggers.name')} htmlFor="tg-name">
         <Input id="tg-name" autoFocus value={t.name} onChange={(e) => set({ name: e.target.value })} placeholder="set_updated_at" />
       </FormField>
-      <FormField label="Table">
+      <FormField label={tr('database:databaseTriggers.table')}>
         <Select value={t.table} onValueChange={(table) => set({ table })}>
           <SelectTrigger>
-            <SelectValue placeholder="Choose a table" />
+            <SelectValue placeholder={tr('database:databaseTriggers.chooseATable')} />
           </SelectTrigger>
           <SelectContent>
             {(tables.data ?? []).filter((x) => x.kind === 'r' || x.kind === 'p').map((x) => (
@@ -131,7 +132,7 @@ function TriggerSheet({ projectRef, schema, onClose }: { projectRef: string; sch
           </SelectContent>
         </Select>
       </FormField>
-      <FormField label="Events">
+      <FormField label={tr('database:databaseTriggers.events')}>
         <div className="flex gap-4 text-sm">
           {(['insert', 'update', 'delete'] as const).map((e) => (
             <label key={e} className="flex items-center gap-1.5 uppercase">
@@ -145,30 +146,30 @@ function TriggerSheet({ projectRef, schema, onClose }: { projectRef: string; sch
         </div>
       </FormField>
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Fires">
+        <FormField label={tr('database:databaseTriggers.fires')}>
           <Select value={t.timing} onValueChange={(v) => set({ timing: v as TriggerDef['timing'] })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="before">Before the event</SelectItem>
-              <SelectItem value="after">After the event</SelectItem>
+              <SelectItem value="before">{tr('database:databaseTriggers.beforeTheEvent')}</SelectItem>
+              <SelectItem value="after">{tr('database:databaseTriggers.afterTheEvent')}</SelectItem>
             </SelectContent>
           </Select>
         </FormField>
-        <FormField label="Orientation">
+        <FormField label={tr('database:databaseTriggers.orientation')}>
           <Select value={t.level} onValueChange={(v) => set({ level: v as TriggerDef['level'] })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="row">For each row</SelectItem>
-              <SelectItem value="statement">For each statement</SelectItem>
+              <SelectItem value="row">{tr('database:databaseTriggers.forEachRow')}</SelectItem>
+              <SelectItem value="statement">{tr('database:databaseTriggers.forEachStatement')}</SelectItem>
             </SelectContent>
           </Select>
         </FormField>
       </div>
-      <FormField label="Function">
+      <FormField label={tr('database:databaseTriggers.function')}>
         <Select
           // Values are list positions: names may contain dots.
           value={(() => {
@@ -181,7 +182,7 @@ function TriggerSheet({ projectRef, schema, onClose }: { projectRef: string; sch
           }}
         >
           <SelectTrigger>
-            <SelectValue placeholder="Choose a trigger function" />
+            <SelectValue placeholder={tr('database:databaseTriggers.chooseATriggerFunction')} />
           </SelectTrigger>
           <SelectContent>
             {userFunctions.map((f, i) => (

@@ -3,18 +3,19 @@
  * pg_stat_statements extension (Studio's Advisors › Query Performance).
  */
 import { ident } from './sql'
+import { localized, t } from '@/lib/i18n'
 
 /** Where pg_stat_statements is installed, if it is. */
 export const STATEMENTS_SCHEMA_SQL = `
 select n.nspname as schema from pg_extension e join pg_namespace n on n.oid = e.extnamespace
 where e.extname = 'pg_stat_statements'`
 
-export const QUERY_SORTS = {
-  total: { label: 'Most time consuming', column: 'total_exec_time' },
-  calls: { label: 'Most frequent', column: 'calls' },
-  mean: { label: 'Slowest execution', column: 'mean_exec_time' },
-} as const
-export type QuerySort = keyof typeof QUERY_SORTS
+export const QUERY_SORTS = localized(() => ({
+  total: { label: t('database:queryPerformance.mostTimeConsuming'), column: 'total_exec_time' },
+  calls: { label: t('database:queryPerformance.mostFrequent'), column: 'calls' },
+  mean: { label: t('database:queryPerformance.slowestExecution'), column: 'mean_exec_time' },
+}) as const)
+export type QuerySort = keyof ReturnType<typeof QUERY_SORTS>
 
 export interface QueryStat {
   id: string
@@ -51,7 +52,7 @@ left join pg_roles r on r.oid = s.userid
 where s.dbid = (select oid from pg_database where datname = current_database())
   and ($1 = '' or r.rolname = $1)
   and ($2 = '' or s.query ilike $2)
-order by s.${QUERY_SORTS[sort].column} desc
+order by s.${QUERY_SORTS()[sort].column} desc
 limit ${Math.max(1, Math.floor(limit))}`
 }
 

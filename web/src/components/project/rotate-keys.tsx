@@ -14,42 +14,43 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can } from '@/lib/api/hooks'
+import { localized, t } from '@/lib/i18n'
 
 type Rotation = 'secret_key' | 'publishable_key' | 'signing_key' | 'jwt_secret' | 'functions_db_password' | 's3_keys'
 
-const ROTATIONS: { id: Rotation; label: string; effect: string }[] = [
+const ROTATIONS = localized((): { id: Rotation; label: string; effect: string }[] => [
   {
     id: 'secret_key',
-    label: 'Secret key',
-    effect: 'Servers using the current sb_secret_ key stop working until they get the new one.',
+    label: t('project:rotateKeys.secretKey'),
+    effect: t('project:rotateKeys.serversUsingTheCurrentSbSecret'),
   },
   {
     id: 'publishable_key',
-    label: 'Publishable key',
-    effect: 'Apps using the current sb_publishable_ key stop working until they get the new one.',
+    label: t('project:rotateKeys.publishableKey'),
+    effect: t('project:rotateKeys.appsUsingTheCurrentSbPublishable'),
   },
   {
     id: 'signing_key',
-    label: 'JWT signing key',
+    label: t('project:rotateKeys.jwtSigningKey'),
     effect:
-      'New sessions are signed with a new key. Sessions signed with the current one stay valid until the next rotation.',
+      t('project:rotateKeys.newSessionsAreSignedWithA'),
   },
   {
     id: 'jwt_secret',
-    label: 'Legacy JWT secret',
-    effect: 'The legacy anon and service_role keys are replaced; anything using them stops working.',
+    label: t('project:rotateKeys.legacyJwtSecret'),
+    effect: t('project:rotateKeys.theLegacyAnonAndServiceRole'),
   },
   {
     id: 'functions_db_password',
-    label: 'Edge Functions database password',
-    effect: 'Edge Functions restart with the new password; nothing outside the stack uses it.',
+    label: t('project:rotateKeys.edgeFunctionsDatabasePassword'),
+    effect: t('project:rotateKeys.edgeFunctionsRestartWithTheNew'),
   },
   {
     id: 's3_keys',
-    label: 'Storage S3 access keys',
-    effect: 'S3 clients using the current keys stop working; Storage restarts with new ones (Storage › S3 Connection).',
+    label: t('project:rotateKeys.storageS3AccessKeys'),
+    effect: t('project:rotateKeys.s3ClientsUsingTheCurrentKeys'),
   },
-]
+])
 
 export function RotateKeys({ project }: { project: Schemas['Project'] }) {
   const ref = project.ref
@@ -75,7 +76,7 @@ export function RotateKeys({ project }: { project: Schemas['Project'] }) {
         api.POST('/projects/{ref}/stack/rotate-keys', { params: { path: { ref } }, body: { keys } })
       ),
     onSuccess: async () => {
-      toast.success('Rotating keys')
+      toast.success(t('project:rotateKeys.rotatingKeys'))
       setChosen([])
       await rotationStarted()
     },
@@ -89,22 +90,22 @@ export function RotateKeys({ project }: { project: Schemas['Project'] }) {
 
   const s = stack.data
   const notReady = !s
-    ? 'Loading'
+    ? t('project:rotateKeys.loading')
     : s.operation
-      ? 'The stack is busy; wait for it to finish'
+      ? t('project:rotateKeys.theStackIsBusyWaitFor')
       : s.status !== 'running' && s.status !== 'paused'
-        ? 'Start the stack first'
+        ? t('project:rotateKeys.startTheStackFirst')
         : null
   const toggle = (id: Rotation, on: boolean) =>
     setChosen((c) => (on ? [...c, id] : c.filter((x) => x !== id)))
 
   return (
     <SettingsSection
-      title="Rotate keys"
-      description="Replace keys that may have leaked. Supermixer writes the new values to the stack and restarts the services that use them."
+      title={t('project:rotateKeys.rotateKeys')}
+      description={t('project:rotateKeys.replaceKeysThatMayHaveLeaked')}
     >
       <Card className="flex flex-col divide-y text-sm">
-        {ROTATIONS.map((r) => (
+        {ROTATIONS().map((r) => (
           <label key={r.id} className="flex cursor-pointer items-start gap-3 px-5 py-3">
             <Checkbox
               className="mt-0.5"
@@ -120,18 +121,18 @@ export function RotateKeys({ project }: { project: Schemas['Project'] }) {
         ))}
         <div className="flex items-center justify-end gap-3 px-5 py-3">
           {s?.operation === 'rotating_keys' && (
-            <span className="text-xs text-foreground-lighter">Rotating…</span>
+            <span className="text-xs text-foreground-lighter">{t('project:rotateKeys.rotating')}</span>
           )}
           <PermissionButton
             allowed={allowed}
-            action="rotate this project's keys"
+            action={t('project:rotateKeys.rotateThisProjectSKeys')}
             variant="warning"
             disabled={chosen.length === 0 || !!notReady}
             title={notReady ?? undefined}
             loading={rotate.isPending}
             onClick={() => setConfirming(true)}
           >
-            Rotate {chosen.length > 0 ? chosen.length : ''} {chosen.length === 1 ? 'key' : 'keys'}
+            {chosen.length > 0 ? t('project:rotateKeys.rotateKeyCount', { count: chosen.length }) : t('project:rotateKeys.rotateNone')}
           </PermissionButton>
         </div>
       </Card>
@@ -141,17 +142,17 @@ export function RotateKeys({ project }: { project: Schemas['Project'] }) {
         open={confirming}
         onOpenChange={setConfirming}
         variant="warning"
-        title="Rotate these keys?"
+        title={t('project:rotateKeys.rotateTheseKeys')}
         description={
           <ul className="list-disc space-y-1 pl-4">
-            {ROTATIONS.filter((r) => chosen.includes(r.id)).map((r) => (
+            {ROTATIONS().filter((r) => chosen.includes(r.id)).map((r) => (
               <li key={r.id}>
                 <span className="text-foreground">{r.label}:</span> {r.effect}
               </li>
             ))}
           </ul>
         }
-        confirmLabel="Rotate"
+        confirmLabel={t('project:rotateKeys.rotate')}
         confirmText={project.name}
         loading={rotate.isPending}
         onConfirm={() => rotate.mutate(chosen)}

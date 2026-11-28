@@ -1,3 +1,5 @@
+import { t } from '@/lib/i18n'
+
 /**
  * Password lengths, as the server enforces them (NIST SP 800-63B-4): 15
  * characters for a password that's the only way to sign in, 8 with
@@ -13,16 +15,21 @@ export const MIN_SINGLE_FACTOR_PASSWORD = 15
  * `whose` is "your" or "their".
  */
 export function passwordRule(mfa: boolean | undefined, whose: 'your' | 'their' = 'your') {
-  const rest = `not a common password or ${whose} username`
-  if (mfa === true) return { min: MIN_PASSWORD, hint: `At least ${MIN_PASSWORD} characters (with two-factor sign-in on), and ${rest}` }
+  const v = { min: MIN_SINGLE_FACTOR_PASSWORD, mfaMin: MIN_PASSWORD }
+  if (mfa === true) {
+    return {
+      min: MIN_PASSWORD,
+      hint: whose === 'your' ? t('common:passwords.mfaYour', { min: MIN_PASSWORD }) : t('common:passwords.mfaTheir', { min: MIN_PASSWORD }),
+    }
+  }
   if (mfa === false) {
     return {
       min: MIN_SINGLE_FACTOR_PASSWORD,
-      hint: `At least ${MIN_SINGLE_FACTOR_PASSWORD} characters (${MIN_PASSWORD} with two-factor sign-in on), and ${rest}`,
+      hint: whose === 'your' ? t('common:passwords.singleYour', v) : t('common:passwords.singleTheir', v),
     }
   }
   return {
     min: MIN_PASSWORD,
-    hint: `At least ${MIN_SINGLE_FACTOR_PASSWORD} characters, or ${MIN_PASSWORD} if two-factor sign-in is on; ${rest}`,
+    hint: whose === 'your' ? t('common:passwords.unknownYour', v) : t('common:passwords.unknownTheir', v),
   }
 }

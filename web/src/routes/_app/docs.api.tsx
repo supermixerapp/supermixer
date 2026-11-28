@@ -18,6 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { localized, t as tr, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/docs/api')({
   component: ApiDocsPage,
@@ -36,122 +37,122 @@ type Spec = {
 const METHODS = ['get', 'post', 'put', 'patch', 'delete']
 
 // Sections in reading order, named for people rather than by tag.
-const TAGS: { tag: string; title: string }[] = [
-  { tag: 'System', title: 'System' },
-  { tag: 'Auth', title: 'Signing in' },
-  { tag: 'Profile', title: 'Your account' },
-  { tag: 'Users', title: 'Instance administration' },
-  { tag: 'Organizations', title: 'Organizations' },
-  { tag: 'Members', title: 'Members' },
-  { tag: 'Invitations', title: 'Invitations' },
-  { tag: 'Webhooks', title: 'Webhooks' },
-  { tag: 'Audit', title: 'Audit logs' },
-  { tag: 'Projects', title: 'Projects' },
-  { tag: 'Database', title: 'Database' },
-  { tag: 'Advisors', title: 'Advisors' },
-  { tag: 'Backups', title: 'Backups' },
-  { tag: 'Edge Functions', title: 'Edge Functions' },
-]
+const TAGS = localized((): { tag: string; title: string }[] => [
+  { tag: 'System', title: tr('docs:docsApi.system') },
+  { tag: 'Auth', title: tr('docs:docsApi.signingIn') },
+  { tag: 'Profile', title: tr('docs:docsApi.yourAccount') },
+  { tag: 'Users', title: tr('docs:docsApi.instanceAdministration') },
+  { tag: 'Organizations', title: tr('docs:docsApi.organizations') },
+  { tag: 'Members', title: tr('docs:docsApi.members') },
+  { tag: 'Invitations', title: tr('docs:docsApi.invitations') },
+  { tag: 'Webhooks', title: tr('docs:docsApi.webhooks') },
+  { tag: 'Audit', title: tr('docs:docsApi.auditLogs') },
+  { tag: 'Projects', title: tr('docs:docsApi.projects') },
+  { tag: 'Database', title: tr('docs:docsApi.database') },
+  { tag: 'Advisors', title: tr('docs:docsApi.advisors') },
+  { tag: 'Backups', title: tr('docs:docsApi.backups') },
+  { tag: 'Edge Functions', title: tr('docs:docsApi.edgeFunctions') },
+])
 
 // Routes the OpenAPI description doesn't cover: redirects, the gateway
 // proxy, the Supabase-style /v1 API and metrics.
-const EXTRA: Section[] = [
+const EXTRA = localized((): Section[] => [
   {
     id: 'outside-spec',
-    title: 'Other routes',
-    note: 'Under /api/v1, handled outside the OpenAPI description: redirects, and the proxy to each project’s own Supabase API.',
+    title: tr('docs:docsApi.otherRoutes'),
+    note: tr('docs:docsApi.underApiV1HandledOutsideThe'),
     rows: [
       {
         methods: ['GET'],
         path: '/openapi.json',
-        purpose: 'This API’s OpenAPI description, with request and response shapes',
+        purpose: tr('docs:docsApi.thisApiSOpenapiDescriptionWith'),
       },
       {
         methods: ['GET'],
         path: '/auth/sso/{provider}/start',
-        purpose: 'Begin signing in with a single sign-on provider',
+        purpose: tr('docs:docsApi.beginSigningInWithASingle'),
         public: true,
       },
       {
         methods: ['GET'],
         path: '/auth/sso/{provider}/callback',
-        purpose: 'Where the sign-on provider sends the person back',
+        purpose: tr('docs:docsApi.whereTheSignOnProviderSends'),
         public: true,
       },
       {
         methods: ['GET'],
         path: '/tls/ca.pem',
-        purpose: 'Supermixer’s own CA certificate, to trust its HTTPS and Postgres connections (only when it uses a private CA)',
+        purpose: tr('docs:docsApi.supermixerSOwnCaCertificateTo'),
         public: true,
       },
       {
         methods: ['POST'],
         path: '/profile/identities/{provider}/connect',
-        purpose: 'Connect a sign-in provider to your account',
+        purpose: tr('docs:docsApi.connectASignInProviderTo'),
       },
       {
         methods: ['ANY'],
         path: '/projects/{ref}/gateway/*',
         purpose:
-          'Proxy to the project’s own Supabase API: Auth users and invitations, Storage buckets and files, Realtime, calling Edge Functions. Roles are checked and changes audited.',
+          tr('docs:docsApi.proxyToTheProjectSOwn'),
       },
     ],
   },
   {
     id: 'management-api',
-    title: 'Supabase-style Management API',
-    note: 'Under /v1, not /api/v1: a subset of api.supabase.com/v1 with the same paths and response shapes, so scripts written for Supabase work. Any other path answers 404.',
+    title: tr('docs:docsApi.supabaseStyleManagementApi'),
+    note: tr('docs:docsApi.underV1NotApiV1A'),
     rows: [
-      { methods: ['GET'], path: '/v1/organizations', purpose: 'Your organizations' },
-      { methods: ['GET'], path: '/v1/organizations/{slug}', purpose: 'One organization' },
+      { methods: ['GET'], path: '/v1/organizations', purpose: tr('docs:docsApi.yourOrganizations') },
+      { methods: ['GET'], path: '/v1/organizations/{slug}', purpose: tr('docs:docsApi.oneOrganization') },
       {
         methods: ['GET'],
         path: '/v1/organizations/{slug}/members',
-        purpose: 'An organization’s members',
+        purpose: tr('docs:docsApi.anOrganizationSMembers'),
       },
-      { methods: ['GET'], path: '/v1/projects', purpose: 'Your projects' },
-      { methods: ['GET'], path: '/v1/projects/{ref}', purpose: 'One project' },
+      { methods: ['GET'], path: '/v1/projects', purpose: tr('docs:docsApi.yourProjects') },
+      { methods: ['GET'], path: '/v1/projects/{ref}', purpose: tr('docs:docsApi.oneProject') },
       {
         methods: ['GET'],
         path: '/v1/projects/{ref}/health',
-        purpose: 'Health of the project’s services',
+        purpose: tr('docs:docsApi.healthOfTheProjectSServices'),
       },
-      { methods: ['GET'], path: '/v1/projects/{ref}/api-keys', purpose: 'The project’s API keys' },
-      { methods: ['POST'], path: '/v1/projects/{ref}/database/query', purpose: 'Run SQL' },
-      { methods: ['GET'], path: '/v1/projects/{ref}/database/backups', purpose: 'Backups' },
-      { methods: ['GET'], path: '/v1/projects/{ref}/functions', purpose: 'Edge Functions' },
+      { methods: ['GET'], path: '/v1/projects/{ref}/api-keys', purpose: tr('docs:docsApi.theProjectSApiKeys') },
+      { methods: ['POST'], path: '/v1/projects/{ref}/database/query', purpose: tr('docs:docsApi.runSql') },
+      { methods: ['GET'], path: '/v1/projects/{ref}/database/backups', purpose: tr('docs:docsApi.backups') },
+      { methods: ['GET'], path: '/v1/projects/{ref}/functions', purpose: tr('docs:docsApi.edgeFunctions') },
       {
         methods: ['GET', 'DELETE'],
         path: '/v1/projects/{ref}/functions/{slug}',
-        purpose: 'One function; delete it',
+        purpose: tr('docs:docsApi.oneFunctionDeleteIt'),
       },
       {
         methods: ['GET', 'POST', 'DELETE'],
         path: '/v1/projects/{ref}/secrets',
-        purpose: 'Edge Function secrets',
+        purpose: tr('docs:docsApi.edgeFunctionSecrets'),
       },
-      { methods: ['POST'], path: '/v1/projects/{ref}/pause', purpose: 'Pause the stack' },
+      { methods: ['POST'], path: '/v1/projects/{ref}/pause', purpose: tr('docs:docsApi.pauseTheStack') },
       {
         methods: ['POST'],
         path: '/v1/projects/{ref}/restore',
-        purpose: 'Start a paused stack again',
+        purpose: tr('docs:docsApi.startAPausedStackAgain'),
       },
     ],
   },
   {
     id: 'metrics',
-    title: 'Metrics',
-    note: 'Served only when [metrics] listen is set, on that separate address, with no sign-in.',
+    title: tr('docs:docsApi.metrics'),
+    note: tr('docs:docsApi.servedOnlyWhenMetricsListenIs'),
     rows: [
       {
         methods: ['GET'],
         path: '/metrics',
-        purpose: 'Prometheus metrics: requests, sign-ins, emails, audit drains, counts, backups',
+        purpose: tr('docs:docsApi.prometheusMetricsRequestsSignInsEmails'),
         public: true,
       },
     ],
   },
-]
+])
 
 const METHOD_VARIANT: Record<string, BadgeProps['variant']> = {
   GET: 'default',
@@ -169,7 +170,7 @@ function sectionsOf(spec: Spec): Section[] {
     for (const method of METHODS) {
       const op = item[method]
       if (!op) continue
-      const tag = op.tags?.[0] ?? 'Other'
+      const tag = op.tags?.[0] ?? tr('docs:docsApi.other')
       const rows = byTag.get(tag) ?? []
       rows.push({
         methods: [method.toUpperCase()],
@@ -181,9 +182,9 @@ function sectionsOf(spec: Spec): Section[] {
     }
   }
   const notes = new Map((spec.tags ?? []).map((t) => [t.name, t.description]))
-  const known = TAGS.filter((t) => byTag.has(t.tag))
+  const known = TAGS().filter((t) => byTag.has(t.tag))
   const unknown = [...byTag.keys()]
-    .filter((t) => !TAGS.some((k) => k.tag === t))
+    .filter((t) => !TAGS().some((k) => k.tag === t))
     .map((tag) => ({ tag, title: tag }))
   return [...known, ...unknown].map(({ tag, title }) => ({
     id: tag.toLowerCase().replace(/\W+/g, '-'),
@@ -207,14 +208,14 @@ function ApiDocsPage() {
     queryKey: ['openapi'],
     queryFn: async (): Promise<Spec> => {
       const res = await fetch(SPEC_URL, { credentials: 'same-origin' })
-      if (!res.ok) throw new Error(`Couldn't load the API description (${res.status})`)
+      if (!res.ok) throw new Error(tr('docs:docsApi.couldnTLoadTheApiDescription', { status: res.status }))
       return (await res.json()) as Spec
     },
     staleTime: Infinity,
   })
   const [query, setQuery] = useState('')
 
-  const all = useMemo(() => (spec.data ? [...sectionsOf(spec.data), ...EXTRA] : []), [spec.data])
+  const all = useMemo(() => (spec.data ? [...sectionsOf(spec.data), ...EXTRA()] : []), [spec.data])
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   const shown = all
     .map((s) => ({
@@ -231,33 +232,22 @@ function ApiDocsPage() {
   const matching = shown.reduce((n, s) => n + count(s.rows), 0)
 
   return (
-    <AppShell title="API endpoints">
+    <AppShell title={tr('docs:docsApi.apiEndpoints')}>
       <div id="api-docs" className="overflow-y-auto">
         <PageHeader
-          title="API endpoints"
+          title={tr('docs:docsApi.apiEndpoints')}
           size="large"
           description={
             <>
-              The Supermixer app uses this API for everything it does. You can use it from your own
-              scripts too. Create a token under{' '}
-              <Link
+              <Trans i18nKey="docs:docsApi.theSupermixerAppUsesThisApi" components={{ link: <Link
                 to="/account/access-tokens"
-                className="text-foreground underline underline-offset-2"
-              >
-                Account › Access Tokens
-              </Link>{' '}
-              and send it with each request as{' '}
-              <code className="text-xs">Authorization: Bearer sbp_…</code>. Paths start with{' '}
-              <code className="text-xs">/api/v1</code>, unless a section says otherwise. Endpoints
-              marked <span className={badgeVariants({ variant: 'success' })}>public</span> work without signing in. The others
-              need you to be signed in or to use a token. The API enforces role-based access
-              control.
+                className="text-foreground underline underline-offset-2" />, code: <code className="text-xs" />, code2: <code className="text-xs" />, span: <span className={badgeVariants({ variant: 'success' })} /> }} />
             </>
           }
           actions={
             <Button asChild variant="default">
               <a href={SPEC_URL} target="_blank" rel="noreferrer">
-                OpenAPI description
+                {tr('docs:docsApi.openapiDescription')}
               </a>
             </Button>
           }
@@ -265,14 +255,14 @@ function ApiDocsPage() {
         <div className="sticky top-0 z-10 border-b bg-background">
           <PageContainer size="large" className="flex flex-col gap-3 py-3">
             <div className="flex items-center gap-3">
-              <SearchBox value={query} onChange={setQuery} placeholder="Search endpoints" />
+              <SearchBox value={query} onChange={setQuery} placeholder={tr('docs:docsApi.searchEndpoints')} />
               {spec.data && (
                 <span className="text-xs text-foreground-lighter tabular-nums">
-                  {words.length ? `${matching} of ${total}` : `${total} endpoints`}
+                  {words.length ? tr('docs:docsApi.of', { matching, tal: total }) : tr('docs:docsApi.endpoints', { tal: total })}
                 </span>
               )}
             </div>
-            <nav aria-label="Sections" className="flex flex-wrap gap-1.5">
+            <nav aria-label={tr('docs:docsApi.sections')} className="flex flex-wrap gap-1.5">
               {shown.map((s) => (
                 <a
                   key={s.id}
@@ -299,7 +289,7 @@ function ApiDocsPage() {
             <Skeleton className="h-96" />
           ) : shown.length === 0 ? (
             <p className="py-12 text-center text-sm text-foreground-lighter">
-              No endpoint matches “{query}”.
+              {tr('docs:docsApi.noEndpointMatches', { query })}
             </p>
           ) : (
             shown.map((s) => (
@@ -315,7 +305,7 @@ function ApiDocsPage() {
                     {s.title}
                     <span className="text-xs font-normal text-foreground-lighter tabular-nums">
                       {count(s.rows)}
-                      {count(s.rows) !== s.total && ` of ${s.total}`}
+                      {count(s.rows) !== s.total && tr('docs:docsApi.of2', { tal: s.total })}
                     </span>
                   </h2>
                   {s.note && <p className="max-w-3xl text-sm text-foreground-light">{s.note}</p>}
@@ -324,9 +314,9 @@ function ApiDocsPage() {
                   <Table className="min-w-[640px]">
                     <TableHeader>
                       <TableRow className="hover:bg-transparent">
-                        <TableHead className="w-px">Method</TableHead>
-                        <TableHead className="w-[44%]">Path</TableHead>
-                        <TableHead>Purpose</TableHead>
+                        <TableHead className="w-px">{tr('docs:docsApi.method')}</TableHead>
+                        <TableHead className="w-[44%]">{tr('docs:docsApi.path')}</TableHead>
+                        <TableHead>{tr('docs:docsApi.purpose')}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -355,7 +345,7 @@ function ApiDocsPage() {
                             {r.purpose}
                             {r.public && (
                               <Badge variant="success" className="ml-2">
-                                public
+                                {tr('docs:docsApi.public')}
                               </Badge>
                             )}
                           </TableCell>

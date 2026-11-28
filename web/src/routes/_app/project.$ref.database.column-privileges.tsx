@@ -26,6 +26,7 @@ import {
   type TablePrivileges,
 } from '@/lib/pg/column-privileges'
 import { pgQuery, usePg } from '@/lib/pg/run'
+import { localized, t as tr, Trans } from '@/lib/i18n'
 
 interface Search {
   schema?: string
@@ -42,13 +43,13 @@ export const Route = createFileRoute('/_app/project/$ref/database/column-privile
   component: ColumnPrivilegesPage,
 })
 
-const SOURCE_TITLE: Record<GrantSource, string> = {
-  public: 'Granted to PUBLIC, so every role has it',
-  locked: 'Granted by another role, so it can\'t be revoked here',
-  table: 'Granted on the whole table',
-  column: 'Granted on this column',
-  none: 'Not granted',
-}
+const SOURCE_TITLE = localized((): Record<GrantSource, string> => ({
+  public: tr('database:databaseColumnPrivileges.grantedToPublicSoEveryRole'),
+  locked: tr('database:databaseColumnPrivileges.grantedByAnotherRoleSoIt'),
+  table: tr('database:databaseColumnPrivileges.grantedOnTheWholeTable'),
+  column: tr('database:databaseColumnPrivileges.grantedOnThisColumn'),
+  none: tr('database:databaseColumnPrivileges.notGranted'),
+}))
 
 /** A column covered by the table grant: ticked, but quieter than its own grant. */
 const INHERITED = 'data-[state=checked]:border-foreground-lighter data-[state=checked]:bg-foreground-lighter data-[state=checked]:text-background'
@@ -97,28 +98,28 @@ function ColumnPrivilegesPage() {
   const toggleTable = (p: ColumnPrivilege, on: boolean) => {
     if (!t) return
     const sql = setTablePrivilege(target, p, on)
-    const done = `${on ? 'Granted' : 'Revoked'} ${p} on ${target.table} ${on ? 'to' : 'from'} ${target.role}`
+    const done = tr(on ? 'database:databaseColumnPrivileges.grantedOnTable' : 'database:databaseColumnPrivileges.revokedOnTable', { p, table: target.table, role: target.role })
     if (on) return ddl.mutate({ sql, done })
     setPending({
       sql,
       done,
-      title: `Revoke ${p} on all of ${target.table}?`,
-      description: `${target.role} loses ${p} on every column of ${schema}.${target.table}, including any granted column by column.`,
-      confirmLabel: `Revoke ${p}`,
+      title: tr('database:databaseColumnPrivileges.revokeOnAllOf', { p, table: target.table }),
+      description: tr('database:databaseColumnPrivileges.losesOnEveryColumnOfIncluding', { role: target.role, p, schema, table: target.table }),
+      confirmLabel: tr('database:databaseColumnPrivileges.revoke', { p }),
     })
   }
 
   const toggleColumn = (p: ColumnPrivilege, column: string, on: boolean) => {
     if (!t) return
     const sql = setColumnPrivilege(target, p, column, on, t)
-    const done = `${on ? 'Granted' : 'Revoked'} ${p} on ${column} ${on ? 'to' : 'from'} ${target.role}`
+    const done = tr(on ? 'database:databaseColumnPrivileges.grantedOnColumn' : 'database:databaseColumnPrivileges.revokedOnColumn', { p, column, role: target.role })
     if (on || columnGrant(t, column, p) !== 'table') return ddl.mutate({ sql, done })
     setPending({
       sql,
       done,
-      title: `Revoke ${p} on ${column}?`,
-      description: `${target.role} has ${p} on the whole table, which covers every column. To take ${column} away, the table grant is replaced by grants on each of the other ${t.columns.length - 1} columns. Columns added later won't get ${p} until you grant it.`,
-      confirmLabel: 'Revoke from column',
+      title: tr('database:databaseColumnPrivileges.revokeOn', { p, column }),
+      description: tr('database:databaseColumnPrivileges.hasOnTheWholeTableWhich', { role: target.role, p, column, length: t.columns.length - 1, p2: p }),
+      confirmLabel: tr('database:databaseColumnPrivileges.revokeFromColumn'),
     })
   }
 
@@ -127,9 +128,9 @@ function ColumnPrivilegesPage() {
     label: string,
     enabled: boolean,
     onChange: (on: boolean) => void,
-    { title = SOURCE_TITLE[source], quiet = source === 'table', grantors = [] as string[] } = {}
+    { title = SOURCE_TITLE()[source], quiet = source === 'table', grantors = [] as string[] } = {}
   ) => (
-    <span title={source === 'locked' && grantors.length ? `Granted by ${grantors.join(', ')}, so it can't be revoked here` : title} className="inline-flex">
+    <span title={source === 'locked' && grantors.length ? tr('database:databaseColumnPrivileges.grantedBySoItCanT', { join: grantors.join(', ') }) : title} className="inline-flex">
       <Checkbox
         aria-label={label}
         checked={source !== 'none'}
@@ -142,15 +143,15 @@ function ColumnPrivilegesPage() {
 
   return (
     <DatabasePage
-      title="Column Privileges"
-      description="Choose which columns of a table each role can read and write through the Data API and SQL."
+      title={tr('database:databaseColumnPrivileges.columnPrivileges')}
+      description={tr('database:databaseColumnPrivileges.chooseWhichColumnsOfATable')}
       toolbar={
         <>
           <SchemaPicker projectRef={ref} value={schema} onChange={(s) => setSearch({ schema: s, table: undefined })} />
           <Select value={table ?? ''} onValueChange={(v) => setSearch({ table: v })} disabled={!tables.data?.length}>
-            <SelectTrigger size="tiny" className="w-48" aria-label="Table">
-              <span className="text-foreground-lighter">table</span>
-              <SelectValue placeholder="None" />
+            <SelectTrigger size="tiny" className="w-48" aria-label={tr('database:databaseColumnPrivileges.table')}>
+              <span className="text-foreground-lighter">{tr('database:databaseColumnPrivileges.table2')}</span>
+              <SelectValue placeholder={tr('database:databaseColumnPrivileges.none')} />
             </SelectTrigger>
             <SelectContent>
               {(tables.data ?? []).map((x) => (
@@ -161,8 +162,8 @@ function ColumnPrivilegesPage() {
             </SelectContent>
           </Select>
           <Select value={roleName ?? ''} onValueChange={(v) => setSearch({ role: v })}>
-            <SelectTrigger size="tiny" className="w-56" aria-label="Role">
-              <span className="text-foreground-lighter">role</span>
+            <SelectTrigger size="tiny" className="w-56" aria-label={tr('database:databaseColumnPrivileges.role')}>
+              <span className="text-foreground-lighter">{tr('database:databaseColumnPrivileges.role2')}</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -176,21 +177,19 @@ function ColumnPrivilegesPage() {
         </>
       }
     >
-      <Alert title="A grant on the whole table covers every column">
-        Unticking one column of a privilege the role holds table-wide replaces the table grant with grants on each other column, and new
-        columns then aren&apos;t covered until you grant them. Privileges a role gets through membership of another role aren&apos;t shown.
-        Row Level Security still decides which rows a role sees.
+      <Alert title={tr('database:databaseColumnPrivileges.aGrantOnTheWholeTable')}>
+        {tr('database:databaseColumnPrivileges.untickingOneColumnOfAPrivilege')}
       </Alert>
-      {role?.superuser && <Alert variant="warning" title={`${role.name} is a superuser, so Postgres never checks its privileges.`} />}
+      {role?.superuser && <Alert variant="warning" title={tr('database:databaseColumnPrivileges.isASuperuserSoPostgresNever', { name: role.name })} />}
       {t && roleName === t.owner && (
-        <Alert title={`${t.owner} owns ${table}, so it can always grant itself these privileges back.`} />
+        <Alert title={tr('database:databaseColumnPrivileges.ownsSoItCanAlwaysGrant', { owner: t.owner, table })} />
       )}
       {tables.error || roles.error || privileges.error ? (
         <Alert variant="destructive" title={(tables.error ?? roles.error ?? privileges.error)!.message} />
       ) : (tables.data && tables.data.length === 0) || missing || roleMissing ? (
         <Card>
           <p className="px-4 py-10 text-center text-sm text-foreground-lighter">
-            {roleMissing ? `No role called ${roleName}` : missing ? `No table or view called ${table} in ${schema}` : `No tables or views in ${schema}`}
+            {roleMissing ? tr('database:databaseColumnPrivileges.noRoleCalled', { roleName }) : missing ? tr('database:databaseColumnPrivileges.noTableOrViewCalledIn', { table, schema }) : tr('database:databaseColumnPrivileges.noTablesOrViewsIn', { schema })}
           </p>
         </Card>
       ) : !t ? (
@@ -204,8 +203,8 @@ function ColumnPrivilegesPage() {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Column</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>{tr('database:databaseColumnPrivileges.column')}</TableHead>
+                <TableHead>{tr('database:databaseColumnPrivileges.type')}</TableHead>
                 {COLUMN_PRIVILEGES.map((p) => (
                   <TableHead key={p} className="w-28 text-center">
                     {p}
@@ -215,12 +214,12 @@ function ColumnPrivilegesPage() {
             </TableHeader>
             <TableBody>
               <TableRow className="bg-surface-75 hover:bg-surface-75">
-                <TableCell className="text-foreground">All columns</TableCell>
-                <TableCell className="text-xs text-foreground-lighter">table grant</TableCell>
+                <TableCell className="text-foreground">{tr('database:databaseColumnPrivileges.allColumns')}</TableCell>
+                <TableCell className="text-xs text-foreground-lighter">{tr('database:databaseColumnPrivileges.tableGrant')}</TableCell>
                 {COLUMN_PRIVILEGES.map((p) => (
                   <TableCell key={p} className="text-center">
-                    {cell(tableGrant(t, p), `${p} on all of ${table}`, applies(p), (on) => toggleTable(p, on), {
-                      title: tableGrant(t, p) === 'none' ? 'Not granted on the whole table' : SOURCE_TITLE[tableGrant(t, p)],
+                    {cell(tableGrant(t, p), tr('database:databaseColumnPrivileges.onAllOf', { p, table }), applies(p), (on) => toggleTable(p, on), {
+                      title: tableGrant(t, p) === 'none' ? tr('database:databaseColumnPrivileges.notGrantedOnTheWholeTable') : SOURCE_TITLE()[tableGrant(t, p)],
                       quiet: false,
                       grantors: lockedBy(t, p),
                     })}
@@ -233,7 +232,7 @@ function ColumnPrivilegesPage() {
                   <TableCell className="font-mono text-xs text-foreground-lighter">{c.type}</TableCell>
                   {COLUMN_PRIVILEGES.map((p) => (
                     <TableCell key={p} className="text-center">
-                      {cell(columnGrant(t, c.name, p), `${p} on ${c.name}`, applies(p), (on) => toggleColumn(p, c.name, on), {
+                      {cell(columnGrant(t, c.name, p), tr('database:databaseColumnPrivileges.on3', { p, name: c.name }), applies(p), (on) => toggleColumn(p, c.name, on), {
                         grantors: lockedBy(t, p, c.name),
                       })}
                     </TableCell>
@@ -244,10 +243,10 @@ function ColumnPrivilegesPage() {
           </Table>
           <p className="flex flex-wrap items-center gap-x-4 gap-y-1 border-t px-4 py-2 text-xs text-foreground-lighter">
             <span className="flex items-center gap-1.5">
-              <Checkbox checked disabled aria-hidden tabIndex={-1} className={`disabled:opacity-100 ${INHERITED}`} /> covered by the table grant
+              <Trans i18nKey="database:databaseColumnPrivileges.coveredByTheTableGrant" components={{ checkbox: <Checkbox checked disabled aria-hidden tabIndex={-1} className={`disabled:opacity-100 ${INHERITED}`} /> }} />
             </span>
             <span className="flex items-center gap-1.5">
-              <Checkbox checked disabled aria-hidden tabIndex={-1} className="disabled:opacity-100" /> granted on the column
+              <Trans i18nKey="database:databaseColumnPrivileges.grantedOnTheColumn" components={{ checkbox: <Checkbox checked disabled aria-hidden tabIndex={-1} className="disabled:opacity-100" /> }} />
             </span>
           </p>
         </Card>
@@ -258,7 +257,7 @@ function ColumnPrivilegesPage() {
         title={pending?.title ?? ''}
         description={pending?.description}
         variant="warning"
-        confirmLabel={pending?.confirmLabel ?? 'Revoke'}
+        confirmLabel={pending?.confirmLabel ?? tr('database:databaseColumnPrivileges.revoke2')}
         loading={ddl.isPending}
         onConfirm={() => pending && ddl.mutate({ sql: pending.sql, done: pending.done }, { onSettled: () => setPending(null) })}
       >

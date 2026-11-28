@@ -1,3 +1,5 @@
+import { t } from '@/lib/i18n'
+
 /*
  * A small client for Supabase Realtime's Phoenix socket (protocol 1.0.0:
  * JSON objects {topic, event, payload, ref}), for the Realtime Inspector.
@@ -56,21 +58,21 @@ export function describe(m: Message, id: number, at: number): LogEntry | null {
   switch (m.event) {
     case 'postgres_changes': {
       const d = (p.data ?? {}) as Record<string, unknown>
-      return { id, at, kind: 'postgres', title: `${String(d.type ?? 'change')} on ${String(d.schema ?? '')}.${String(d.table ?? '')}`, payload: d }
+      return { id, at, kind: 'postgres', title: t('realtime:realtime.postgresChange', { type: String(d.type ?? t('realtime:realtime.change')), table: `${String(d.schema ?? '')}.${String(d.table ?? '')}` }), payload: d }
     }
     case 'broadcast':
       return { id, at, kind: 'broadcast', title: `Broadcast: ${String(p.event ?? '')}`, payload: p.payload }
     case 'presence_state':
     case 'presence_diff':
-      return { id, at, kind: 'presence', title: m.event === 'presence_state' ? 'Presence state' : 'Presence change', payload: p }
+      return { id, at, kind: 'presence', title: m.event === 'presence_state' ? t('realtime:realtime.presenceState') : t('realtime:realtime.presenceChange'), payload: p }
     case 'system':
-      return { id, at, kind: p.status === 'error' ? 'error' : 'system', title: String(p.message ?? 'System message'), payload: p }
+      return { id, at, kind: p.status === 'error' ? 'error' : 'system', title: String(p.message ?? t('realtime:realtime.systemMessage')), payload: p }
     case 'phx_reply':
-      return p.status === 'ok' ? { id, at, kind: 'reply', title: 'Joined', payload: p.response } : { id, at, kind: 'error', title: 'Join refused', payload: p.response }
+      return p.status === 'ok' ? { id, at, kind: 'reply', title: t('realtime:realtime.joined'), payload: p.response } : { id, at, kind: 'error', title: t('realtime:realtime.joinRefused'), payload: p.response }
     case 'phx_error':
-      return { id, at, kind: 'error', title: 'Channel error', payload: p }
+      return { id, at, kind: 'error', title: t('realtime:realtime.channelError'), payload: p }
     case 'phx_close':
-      return { id, at, kind: 'system', title: 'Channel closed', payload: p }
+      return { id, at, kind: 'system', title: t('realtime:realtime.channelClosed'), payload: p }
     default:
       return { id, at, kind: 'system', title: m.event, payload: p }
   }
@@ -120,7 +122,7 @@ export class InspectorSocket {
     ws.onerror = () => {
       if (!current()) return
       failed = true
-      this.onState('error', 'The socket failed. Check that the stack runs Realtime.')
+      this.onState('error', t('realtime:realtime.theSocketFailedCheckThatThe'))
     }
     ws.onclose = (e) => {
       if (!current()) return

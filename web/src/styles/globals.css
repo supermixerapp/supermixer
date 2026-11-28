@@ -83,3 +83,9 @@
     -moz-appearance: textfield;
   }
 }
+
+/* Japanese breaks lines between phrases, not inside words, where the
+   browser can tell them apart. */
+:lang(ja) {
+  word-break: auto-phrase;
+}

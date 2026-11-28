@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
+import { t, Trans } from '@/lib/i18n'
 
 /**
  * Confirmation for destructive actions. With confirmText, the user must type
@@ -69,7 +70,7 @@ export function ConfirmDialog({
               <FormField
                 label={
                   <>
-                    Type <span className="font-mono text-foreground">{confirmText}</span> to confirm
+                    <Trans i18nKey="common:confirmDialog.typeToConfirm" values={{ confirmText }} components={{ span: <span className="font-mono text-foreground" /> }} />
                   </>
                 }
                 htmlFor="confirm-text"
@@ -81,7 +82,7 @@ export function ConfirmDialog({
         )}
         <DialogFooter>
           <Button variant="default" onClick={() => onOpenChange(false)} disabled={loading}>
-            Cancel
+            {t('common:confirmDialog.cancel')}
           </Button>
           <Button
             variant={variant}

@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { profileQuery, uiConfigQuery } from '@/lib/api/queries'
 import { safeRedirect } from '@/lib/redirect'
+import { localized, t, Trans } from '@/lib/i18n'
 
 
 export const Route = createFileRoute('/sign-in')({
@@ -31,15 +32,15 @@ export const Route = createFileRoute('/sign-in')({
 // "Welcome back" in a few languages, one picked at random on each visit.
 // All written in Latin letters, so anyone can read them; lang tells screen
 // readers how to say them.
-const GREETINGS = [
-  { text: 'Welcome back!', language: 'English', lang: 'en' },
-  { text: 'Bon retour !', language: 'French', lang: 'fr' },
-  { text: 'Willkommen zurück!', language: 'German', lang: 'de' },
-  { text: '¡Bienvenido de nuevo!', language: 'Spanish', lang: 'es' },
-  { text: 'Okaerinasai!', language: 'Japanese', lang: 'ja-Latn' },
-  { text: 'Namaste!', language: 'Hindi', lang: 'hi-Latn' },
-  { text: 'Ahlan wa sahlan!', language: 'Arabic', lang: 'ar-Latn' },
-]
+const GREETINGS = localized(() => [
+  { text: 'Welcome back!', language: t('auth:signIn.english'), lang: 'en' },
+  { text: 'Bon retour !', language: t('auth:signIn.french'), lang: 'fr' },
+  { text: 'Willkommen zurück!', language: t('auth:signIn.german'), lang: 'de' },
+  { text: '¡Bienvenido de nuevo!', language: t('auth:signIn.spanish'), lang: 'es' },
+  { text: 'Okaerinasai!', language: t('auth:signIn.japanese'), lang: 'ja-Latn' },
+  { text: 'Namaste!', language: t('auth:signIn.hindi'), lang: 'hi-Latn' },
+  { text: 'Ahlan wa sahlan!', language: t('auth:signIn.arabic'), lang: 'ar-Latn' },
+])
 
 function SignInPage() {
   const { redirect: target, sso_error: ssoError, mfa } = Route.useSearch()
@@ -51,7 +52,7 @@ function SignInPage() {
   const emailOn = useQuery(uiConfigQuery).data?.email_enabled
   const signUpOn = useQuery(uiConfigQuery).data?.sign_up_enabled
   // Chosen once per visit, so it doesn't change while they type.
-  const [greeting] = useState(() => GREETINGS[Math.floor(Math.random() * GREETINGS.length)])
+  const [greeting] = useState(() => GREETINGS()[Math.floor(Math.random() * GREETINGS().length)])
   // Set when the account has two-factor sign-in: the password was right.
   const [challenge, setChallenge] = useState<Schemas['MfaChallenge'] | null>(null)
 
@@ -97,10 +98,10 @@ function SignInPage() {
   return (
     <AuthLayout>
       <div className="mb-10">
-        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl" lang={greeting.lang} title={`Welcome back, in ${greeting.language}`}>
+        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl" lang={greeting.lang} title={t('auth:signIn.welcomeBackIn', { language: greeting.language })}>
           {greeting.text}
         </h1>
-        <h2 className="font-sans text-sm font-normal text-foreground-light">Sign in to your account</h2>
+        <h2 className="font-sans text-sm font-normal text-foreground-light">{t('auth:signIn.signInToYourAccount')}</h2>
       </div>
       {ssoError && <Alert variant="destructive" title={ssoError} className="mb-4" />}
       {providers.length > 0 && (
@@ -109,20 +110,18 @@ function SignInPage() {
             {providers.map((p) => (
               <Button key={p.id} asChild variant="default" size="large" block icon={p.type === 'github' ? <ProviderIcon type={p.type} /> : undefined}>
                 <a href={`/api/v1/auth/sso/${encodeURIComponent(p.id)}/start?redirect=${encodeURIComponent(safeRedirect(target))}`}>
-                  Continue with {p.name}
+                  {t('auth:signIn.continueWith', { name: p.name })}
                 </a>
               </Button>
             ))}
           </div>
           <div className="my-6 flex items-center gap-3 text-xs text-foreground-lighter">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
+            <Trans i18nKey="auth:signIn.or" components={{ span: <span className="h-px flex-1 bg-border" />, span2: <span className="h-px flex-1 bg-border" /> }} />
           </div>
         </>
       )}
       <form onSubmit={submit} className="flex flex-col gap-4">
-        <FormField label="Username" htmlFor="username">
+        <FormField label={t('auth:signIn.username')} htmlFor="username">
           <Input
             id="username"
             size="medium"
@@ -133,7 +132,7 @@ function SignInPage() {
             onChange={(e) => setUsername(e.target.value)}
           />
         </FormField>
-        <FormField label="Password" htmlFor="password">
+        <FormField label={t('auth:signIn.password')} htmlFor="password">
           <Input
             id="password"
             type="password"
@@ -146,29 +145,24 @@ function SignInPage() {
         </FormField>
         {emailOn && (
           <Link to="/forgot-password" className="-mt-2 self-end text-xs text-link">
-            Forgot your password?
+            {t('auth:signIn.forgotYourPassword')}
           </Link>
         )}
         {signIn.error && <Alert variant="destructive" title={signIn.error.message} />}
         <Button type="submit" variant="primary" size="large" block loading={signIn.isPending} className="mt-2">
-          Sign in
+          {t('auth:signIn.signIn')}
         </Button>
       </form>
       <div className="mt-8 flex flex-col gap-5 text-center text-sm text-foreground-lighter">
         {signUpOn ? (
           <p>
-            Don&apos;t have an account?{' '}
-            <Link to="/sign-up" search={{ token: undefined }} className="text-link">
-              Create one
-            </Link>
+            <Trans i18nKey="auth:signIn.donTHaveAnAccountCreate" components={{ link: <Link to="/sign-up" search={{ token: undefined }} className="text-link" /> }} />
           </p>
         ) : (
-          <p>No account yet? Ask your Supermixer admin, or use the invitation link you were sent.</p>
+          <p>{t('auth:signIn.noAccountYetAskYourSupermixer')}</p>
         )}
-        <Alert title="Setting up Supermixer for the first time?" className="text-left">
-          Sign in as <strong className="text-foreground">admin</strong>. The password is printed in the server&apos;s
-          log when Supermixer first starts. If a username or password was set in{' '}
-          <code className="font-mono text-xs">.env.toml</code>, use those instead.
+        <Alert title={t('auth:signIn.settingUpSupermixerForTheFirst')} className="text-left">
+          <Trans i18nKey="auth:signIn.signInAsAdminThePassword" components={{ strong: <strong className="text-foreground" />, code: <code className="font-mono text-xs" /> }} />
         </Alert>
       </div>
     </AuthLayout>
@@ -195,11 +189,11 @@ function MfaStep({
   return (
     <>
       <div className="mb-10">
-        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">Two-factor sign-in</h1>
+        <h1 className="mt-8 mb-2 text-2xl lg:text-3xl">{t('auth:signIn.twoFactorSignIn')}</h1>
         <h2 className="font-sans text-sm font-normal text-foreground-light">
           {recovery
-            ? 'Enter one of the recovery codes you saved when you set up two-factor sign-in. Each works once.'
-            : 'Enter the 6-digit code from your authenticator app.'}
+            ? t('auth:signIn.enterOneOfTheRecoveryCodes')
+            : t('auth:signIn.enterThe6DigitCodeFrom')}
         </h2>
       </div>
       <form
@@ -209,7 +203,7 @@ function MfaStep({
         }}
         className="flex flex-col gap-4"
       >
-        <FormField label={recovery ? 'Recovery code' : 'Code'} htmlFor="mfa-code">
+        <FormField label={recovery ? t('auth:signIn.recoveryCode') : t('auth:signIn.code')} htmlFor="mfa-code">
           <Input
             id="mfa-code"
             size="medium"
@@ -227,11 +221,11 @@ function MfaStep({
         {verify.error && <Alert variant="destructive" title={verify.error.message} />}
         {expired ? (
           <Button type="button" variant="primary" size="large" block onClick={onRestart} className="mt-2">
-            Sign in again
+            {t('auth:signIn.signInAgain')}
           </Button>
         ) : (
           <Button type="submit" variant="primary" size="large" block loading={verify.isPending} className="mt-2">
-            Verify
+            {t('auth:signIn.verify')}
           </Button>
         )}
       </form>
@@ -245,10 +239,10 @@ function MfaStep({
             verify.reset()
           }}
         >
-          {recovery ? 'Use the authenticator app' : 'Use a recovery code'}
+          {recovery ? t('auth:signIn.useTheAuthenticatorApp') : t('auth:signIn.useARecoveryCode')}
         </button>
         <button type="button" className="text-link" onClick={onRestart}>
-          Back
+          {t('auth:signIn.back')}
         </button>
       </p>
     </>

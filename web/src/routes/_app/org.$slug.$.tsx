@@ -4,6 +4,7 @@ import { ComingSoon } from '@/components/layout/page'
 import { orgSettingsMenu } from '@/lib/navigation'
 
 import { NotFoundContent } from '../__root'
+import { t } from '@/lib/i18n'
 
 /**
  * Organization pages not built yet show which stage brings them. Anything
@@ -16,7 +17,7 @@ export const Route = createFileRoute('/_app/org/$slug/$')({
 
 function OrgPlaceholder() {
   const { _splat } = Route.useParams()
-  const item = orgSettingsMenu.groups.flatMap((g) => g.items).find((i) => i.path === _splat?.replace(/\/+$/, ''))
+  const item = orgSettingsMenu().groups.flatMap((g) => g.items).find((i) => i.path === _splat?.replace(/\/+$/, ''))
   if (!item) return <NotFoundContent />
-  return <ComingSoon title={`Organization Settings: ${item.label}`} stage={item.stage} soon={item.soon} />
+  return <ComingSoon title={t('org:page.organizationSettings', { label: item.label })} stage={item.stage} soon={item.soon} />
 }

@@ -5,6 +5,7 @@ import { AuthConfigPage, AuthSection } from '@/components/auth-config/kit'
 import { AddIcon, DeleteIcon } from '@/components/icons'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/auth/url-configuration')({
   component: UrlConfigurationPage,
@@ -12,19 +13,19 @@ export const Route = createFileRoute('/_app/project/$ref/auth/url-configuration'
 
 function UrlConfigurationPage() {
   return (
-    <AuthConfigPage title="URL Configuration" description="Where Auth sends users after they sign in, confirm their email or reset their password.">
+    <AuthConfigPage title={t('authentication:authUrlConfiguration.urlConfiguration')} description={t('authentication:authUrlConfiguration.whereAuthSendsUsersAfterThey')}>
       {(ctx) => (
         <>
           <AuthSection
             ctx={ctx}
-            title="Site URL"
-            description="The default redirect URL, used when a request names none or one that isn't allowed. Also {{ .SiteURL }} in email templates."
-            fields={[{ name: 'site_url', label: 'Site URL', type: 'url', default: 'http://localhost:3000' }]}
+            title={t('authentication:authUrlConfiguration.siteUrl')}
+            description={t('authentication:authUrlConfiguration.theDefaultRedirectUrlUsedWhen', { siteUrl: '{{ .SiteURL }}' })}
+            fields={[{ name: 'site_url', label: t('authentication:authUrlConfiguration.siteUrl'), type: 'url', default: 'http://localhost:3000' }]}
           />
           <AuthSection
             ctx={ctx}
-            title="Redirect URLs"
-            description="Other URLs Auth may redirect to, such as preview deploys or a mobile app's deep link. Wildcards work: * matches within a path segment, ** across segments."
+            title={t('authentication:authUrlConfiguration.redirectUrls')}
+            description={t('authentication:authUrlConfiguration.otherUrlsAuthMayRedirectTo')}
             fields={[]}
           >
             {(d) => <UrlList value={(d.get('uri_allow_list') as string | null) ?? ''} onChange={(v) => d.set('uri_allow_list', v)} disabled={!ctx.canChange} />}
@@ -38,7 +39,7 @@ function UrlConfigurationPage() {
 function UrlList({ value, onChange, disabled }: { value: string; onChange: (v: string) => void; disabled: boolean }) {
   const urls = value.split(',').map((u) => u.trim()).filter(Boolean)
   const [adding, setAdding] = useState('')
-  const problem = adding.trim() && !/^(\*|[a-z][a-z0-9+.-]*:\/\/)\S*$/i.test(adding.trim()) ? 'Start with a scheme, like https:// or myapp://' : null
+  const problem = adding.trim() && !/^(\*|[a-z][a-z0-9+.-]*:\/\/)\S*$/i.test(adding.trim()) ? t('authentication:authUrlConfiguration.startWithAScheme') : null
   const add = () => {
     const u = adding.trim()
     if (!u || problem || urls.includes(u)) return
@@ -48,7 +49,7 @@ function UrlList({ value, onChange, disabled }: { value: string; onChange: (v: s
   return (
     <div className="flex flex-col gap-3">
       {urls.length === 0 ? (
-        <p className="text-sm text-foreground-lighter">No redirect URLs yet.</p>
+        <p className="text-sm text-foreground-lighter">{t('authentication:authUrlConfiguration.noRedirectUrlsYet')}</p>
       ) : (
         <ul className="flex flex-col divide-y rounded-md border">
           {urls.map((u) => (
@@ -58,7 +59,7 @@ function UrlList({ value, onChange, disabled }: { value: string; onChange: (v: s
                 type="button"
                 variant="text"
                 size="tiny"
-                aria-label={`Remove ${u}`}
+                aria-label={t('authentication:authUrlConfiguration.remove', { u })}
                 icon={<DeleteIcon />}
                 disabled={disabled}
                 onClick={() => onChange(urls.filter((x) => x !== u).join(','))}
@@ -70,9 +71,9 @@ function UrlList({ value, onChange, disabled }: { value: string; onChange: (v: s
       <div className="flex flex-col gap-1">
         <div className="flex gap-2">
           <Input
-            aria-label="Redirect URL to add"
+            aria-label={t('authentication:authUrlConfiguration.redirectUrlToAdd')}
             className="font-mono text-xs"
-            placeholder="https://app.example.com/**"
+            placeholder={'https://app.example.com/**'}
             value={adding}
             disabled={disabled}
             onChange={(e) => setAdding(e.target.value)}
@@ -84,7 +85,7 @@ function UrlList({ value, onChange, disabled }: { value: string; onChange: (v: s
             }}
           />
           <Button type="button" variant="default" icon={<AddIcon />} disabled={disabled || !adding.trim() || !!problem} onClick={add}>
-            Add URL
+            {t('authentication:authUrlConfiguration.addUrl')}
           </Button>
         </div>
         {problem && <span className="text-xs text-destructive">{problem}</span>}

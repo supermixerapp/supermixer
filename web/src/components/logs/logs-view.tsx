@@ -20,6 +20,7 @@ import { api, unwrap } from '@/lib/api/client'
 import { useSelectedProject } from '@/lib/api/hooks'
 import { levelOf, requestOf, SOURCE_LABELS, TIME_RANGES, type LogEntry, type LogSource } from '@/lib/logs'
 import { cn } from '@/lib/utils'
+import { t as tr, language } from '@/lib/i18n'
 
 const PAGE = 100
 
@@ -87,8 +88,8 @@ export function LogsView({
         <>
           {!fixedSource && (
             <Select value={picked} onValueChange={(v) => setPicked(v as LogSource)}>
-              <SelectTrigger size="tiny" className="w-44" aria-label="Source">
-                <span className="text-foreground-lighter">source</span>
+              <SelectTrigger size="tiny" className="w-44" aria-label={tr('observability:logsView.source')}>
+                <span className="text-foreground-lighter">{tr('observability:logsView.source2')}</span>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -107,20 +108,20 @@ export function LogsView({
               setUntil(Date.now())
             }}
           >
-            <SelectTrigger size="tiny" className="w-40" aria-label="Time range">
+            <SelectTrigger size="tiny" className="w-40" aria-label={tr('observability:logsView.timeRange')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {TIME_RANGES.map((r) => (
+              {TIME_RANGES().map((r) => (
                 <SelectItem key={r.minutes} value={String(r.minutes)}>
                   {r.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <SearchBox value={typed} onChange={setTyped} placeholder="Search messages" />
+          <SearchBox value={typed} onChange={setTyped} placeholder={tr('observability:logsView.searchMessages')} />
           <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={logs.isFetching && !logs.isFetchingNextPage} onClick={() => setUntil(Date.now())}>
-            Refresh
+            {tr('observability:logsView.refresh')}
           </Button>
         </>
       }
@@ -130,9 +131,8 @@ export function LogsView({
       ) : !available && project?.stack?.logs === false ? (
         <LogsOffAlert projectRef={projectRef} />
       ) : !available ? (
-        <Alert title="This stack doesn't run log analytics">
-          Supabase collects logs with Vector and stores them with Logflare, which the self-hosted stack only starts with
-          docker-compose.logs.yml. Start the stack with that file, and logs appear here.
+        <Alert title={tr('observability:logsView.thisStackDoesnTRunLog')}>
+          {tr('observability:logsView.supabaseCollectsLogsWithVectorAnd')}
         </Alert>
       ) : (
         <Card>
@@ -143,7 +143,7 @@ export function LogsView({
               <Skeleton className="h-5" />
             </div>
           ) : entries.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-foreground-lighter">No log entries in this time range{text && ' that match'}</p>
+            <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{tr('observability:logsView.noLogEntriesInThisTime')}{text && tr('observability:logsView.thatMatch')}</p>
           ) : (
             <ul className="divide-y">
               {entries.map((e) => (
@@ -154,7 +154,7 @@ export function LogsView({
           {logs.hasNextPage && (
             <div className="border-t px-4 py-2">
               <Button variant="default" size="tiny" loading={logs.isFetchingNextPage} onClick={() => void logs.fetchNextPage()}>
-                Load older entries
+                {tr('observability:logsView.loadOlderEntries')}
               </Button>
             </div>
           )}
@@ -165,8 +165,8 @@ export function LogsView({
           {open && (
             <>
               <SheetHeader>
-                <SheetTitle>Log entry</SheetTitle>
-                <SheetDescription>{new Date(open.timestamp).toLocaleString()}</SheetDescription>
+                <SheetTitle>{tr('observability:logsView.logEntry')}</SheetTitle>
+                <SheetDescription>{new Date(open.timestamp).toLocaleString(language())}</SheetDescription>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto">
                 <SheetSection className="flex flex-col gap-3">
@@ -189,7 +189,7 @@ function EntryRow({ entry, onOpen }: { entry: LogEntry; onOpen: () => void }) {
   return (
     <li>
       <button className="flex w-full items-center gap-3 px-4 py-1.5 text-left hover:bg-surface-200" onClick={onOpen}>
-        <span className="w-40 shrink-0 font-mono text-xs text-foreground-lighter tabular-nums">{new Date(entry.timestamp).toLocaleString()}</span>
+        <span className="w-40 shrink-0 font-mono text-xs text-foreground-lighter tabular-nums">{new Date(entry.timestamp).toLocaleString(language())}</span>
         {req ? (
           <>
             <Badge variant={req.status === null ? 'default' : req.status >= 400 ? 'destructive' : 'success'}>{req.status ?? '—'}</Badge>

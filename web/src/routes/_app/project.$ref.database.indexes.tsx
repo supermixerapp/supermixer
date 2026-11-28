@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { TABLE_SQL, TABLES_SQL, type TableInfo, type TableListRow } from '@/lib/pg/catalog'
 import { createIndex, dropIndex, INDEX_METHODS, INDEXES_SQL, type IndexRow } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
+import { t as tr, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/indexes')({
   validateSearch: schemaSearch,
@@ -32,17 +33,17 @@ function IndexesPage() {
 
   return (
     <DatabasePage
-      title="Indexes"
-      description="Speed up queries that filter or sort on these columns."
+      title={tr('database:databaseIndexes.indexes')}
+      description={tr('database:databaseIndexes.speedUpQueriesThatFilterOr')}
       toolbar={
         <>
           <SchemaPicker projectRef={ref} value={schema} onChange={(s) => void navigate({ to: '.', search: { schema: s } })} />
-          <SearchBox value={search} onChange={setSearch} placeholder="Search for an index" />
+          <SearchBox value={search} onChange={setSearch} placeholder={tr('database:databaseIndexes.searchForAnIndex')} />
         </>
       }
       actions={
-        <PermissionButton allowed={canChange} action="create indexes here" variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-          Create index
+        <PermissionButton allowed={canChange} action={tr('database:databaseIndexes.createIndexesHere')} variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
+          {tr('database:databaseIndexes.createIndex')}
         </PermissionButton>
       }
     >
@@ -51,27 +52,27 @@ function IndexesPage() {
         loading={indexes.isPending}
         error={indexes.error}
         rowKey={(i) => i.name}
-        empty={search ? 'No indexes match your search' : `No indexes in ${schema}`}
+        empty={search ? tr('database:databaseIndexes.noIndexesMatchYourSearch') : tr('database:databaseIndexes.noIndexesIn', { schema })}
         columns={[
-          { header: 'Table', cell: (i) => i.table },
+          { header: tr('database:databaseIndexes.table'), cell: (i) => i.table },
           {
-            header: 'Name',
+            header: tr('database:databaseIndexes.name'),
             cell: (i) => (
               <span className="flex items-center gap-2 text-foreground">
                 {i.name}
-                {i.primary ? <Badge>primary key</Badge> : i.unique ? <Badge>unique</Badge> : null}
+                {i.primary ? <Badge>{tr('database:databaseIndexes.primaryKey')}</Badge> : i.unique ? <Badge>{tr('database:databaseIndexes.unique')}</Badge> : null}
               </span>
             ),
           },
-          { header: 'Definition', cell: (i) => <Code title={i.definition}>{i.definition}</Code> },
-          { header: 'Size', cell: (i) => i.size, className: 'text-right whitespace-nowrap' },
+          { header: tr('database:databaseIndexes.definition'), cell: (i) => <Code title={i.definition}>{i.definition}</Code> },
+          { header: tr('database:databaseIndexes.size'), cell: (i) => i.size, className: 'text-right whitespace-nowrap' },
         ]}
         actions={[
           {
-            label: 'Delete index',
+            label: tr('database:databaseIndexes.deleteIndex'),
             hidden: (i) => !canChange || i.primary,
-            confirm: (i) => ({ title: `Delete index ${i.name}?`, description: 'Queries that relied on it may get slower. Constraints that own it make this fail.' }),
-            onSelect: (i) => ddl.mutate({ sql: dropIndex(schema, i.name), done: `Deleted ${i.name}` }),
+            confirm: (i) => ({ title: tr('database:databaseIndexes.deleteIndex2', { name: i.name }), description: tr('database:databaseIndexes.queriesThatReliedOnItMay') }),
+            onSelect: (i) => ddl.mutate({ sql: dropIndex(schema, i.name), done: tr('database:databaseIndexes.deleted', { name: i.name }) }),
           },
         ]}
       />
@@ -94,17 +95,17 @@ function IndexSheet({ projectRef, schema, onClose }: { projectRef: string; schem
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title="Create a new index"
+      title={tr('database:databaseIndexes.createANewIndex')}
       error={ddl.error}
-      submitLabel="Create index"
+      submitLabel={tr('database:databaseIndexes.createIndex')}
       submitting={ddl.isPending}
       disabled={!sql}
-      onSubmit={() => ddl.mutate({ sql, done: 'Index created' }, { onSuccess: onClose })}
+      onSubmit={() => ddl.mutate({ sql, done: tr('database:databaseIndexes.indexCreated') }, { onSuccess: onClose })}
     >
-      <FormField label="Table">
+      <FormField label={tr('database:databaseIndexes.table')}>
         <Select value={tableId} onValueChange={(v) => { setTableId(v); setColumns([]) }}>
           <SelectTrigger>
-            <SelectValue placeholder="Choose a table" />
+            <SelectValue placeholder={tr('database:databaseIndexes.chooseATable')} />
           </SelectTrigger>
           <SelectContent>
             {(tables.data ?? []).filter((t) => t.kind === 'r' || t.kind === 'p' || t.kind === 'm').map((t) => (
@@ -116,7 +117,7 @@ function IndexSheet({ projectRef, schema, onClose }: { projectRef: string; schem
         </Select>
       </FormField>
       {table && (
-        <FormField label="Columns" description="In index order: tick the leading column first.">
+        <FormField label={tr('database:databaseIndexes.columns')} description={tr('database:databaseIndexes.inIndexOrderTickTheLeading')}>
           <div className="flex flex-col gap-1.5 text-sm">
             {table.columns.map((c) => (
               <label key={c.name} className="flex items-center gap-2">
@@ -130,7 +131,7 @@ function IndexSheet({ projectRef, schema, onClose }: { projectRef: string; schem
         </FormField>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <FormField label="Method" description="btree suits most columns; gin for jsonb and arrays.">
+        <FormField label={tr('database:databaseIndexes.method')} description={tr('database:databaseIndexes.btreeSuitsMostColumnsGinFor')}>
           <Select value={method} onValueChange={(v) => setMethod(v as typeof method)}>
             <SelectTrigger>
               <SelectValue />
@@ -145,8 +146,7 @@ function IndexSheet({ projectRef, schema, onClose }: { projectRef: string; schem
           </Select>
         </FormField>
         <label className="flex items-center gap-2 self-center text-sm">
-          <Checkbox checked={unique} onCheckedChange={(c) => setUnique(c === true)} />
-          Unique
+          <Trans i18nKey="database:databaseIndexes.unique2" components={{ checkbox: <Checkbox checked={unique} onCheckedChange={(c) => setUnique(c === true)} /> }} />
         </label>
       </div>
       {sql && <SqlPreview sql={sql} />}

@@ -13,6 +13,7 @@ import { api, unwrap } from '@/lib/api/client'
 import { invitationQuery, profileQuery } from '@/lib/api/queries'
 import { roleLabel } from '@/lib/roles'
 import { passwordRule } from '@/lib/passwords'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/join')({
   validateSearch: (search: Record<string, unknown>) => ({
@@ -30,10 +31,9 @@ function JoinPage() {
     <AuthLayout>
       {!token || invitation.isError ? (
         <div className="flex flex-col gap-4">
-          <h1 className="text-2xl">Invitation not found</h1>
+          <h1 className="text-2xl">{t('auth:join.invitationNotFound')}</h1>
           <p className="text-sm text-foreground-light">
-            {invitation.error?.message ?? 'This link is missing its invitation token.'} Ask whoever invited you for a
-            new link.
+            {t('auth:join.askWhoeverInvitedYouForA', { message: invitation.error?.message ?? t('common:join.thisLinkIsMissingItsInvitation') })}
           </p>
         </div>
       ) : invitation.isPending || profile.isPending ? (
@@ -44,15 +44,15 @@ function JoinPage() {
       ) : (
         <>
           <div className="mb-8 flex flex-col gap-3">
-            <h1 className="text-2xl">Join {invitation.data.organization_name}</h1>
+            <h1 className="text-2xl">{t('auth:join.join', { organizationName: invitation.data.organization_name })}</h1>
             {/* A div: the badge is a div, which a <p> can't hold. */}
             <div className="text-sm text-foreground-light">
               {invitation.data.invited_by ? (
                 <>
-                  <span className="text-foreground">{invitation.data.invited_by}</span> invited you to join as{' '}
+                  <Trans i18nKey="auth:join.invitedYouToJoinAs" values={{ invitedBy: invitation.data.invited_by }} components={{ span: <span className="text-foreground" /> }} />
                 </>
               ) : (
-                'You have been invited to join as '
+                t('auth:join.youHaveBeenInvitedToJoin')
               )}
               <Badge variant="success" className="align-middle">
                 {roleLabel(invitation.data.role)}
@@ -60,8 +60,8 @@ function JoinPage() {
             </div>
           </div>
           {!invitation.data.valid ? (
-            <Alert variant="warning" title="This invitation can no longer be used">
-              It has expired or was already accepted. Ask for a new link.
+            <Alert variant="warning" title={t('auth:join.thisInvitationCanNoLongerBe')}>
+              {t('auth:join.itHasExpiredOrWasAlready')}
             </Alert>
           ) : profile.data ? (
             <AcceptAsCurrentUser token={token} username={profile.data.username} slug={invitation.data.organization_slug} />
@@ -92,13 +92,10 @@ function AcceptAsCurrentUser({ token, username, slug }: { token: string; usernam
     <div className="flex flex-col gap-4">
       {accept.error && <Alert variant="destructive" title={accept.error.message} />}
       <Button variant="primary" size="large" block loading={accept.isPending} onClick={() => accept.mutate()}>
-        Join organization
+        {t('auth:join.joinOrganization')}
       </Button>
       <p className="text-center text-sm text-foreground-lighter">
-        Signed in as <span className="text-foreground">{username}</span>.{' '}
-        <button type="button" className="text-link" onClick={() => signOut.mutate()}>
-          Not you?
-        </button>
+        <Trans i18nKey="auth:join.signedInAsNotYou" values={{ username }} components={{ span: <span className="text-foreground" />, button: <button type="button" className="text-link" onClick={() => signOut.mutate()} /> }} />
       </p>
     </div>
   )
@@ -134,16 +131,16 @@ function SignUp({ token, email }: { token: string; email: string }) {
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-4">
-      <FormField label="Username" htmlFor="su-username" description="3–40 characters: letters, digits, . _ -">
+      <FormField label={t('auth:join.username')} htmlFor="su-username" description={t('auth:join.n340CharactersLettersDigits')}>
         <Input id="su-username" autoComplete="username" required value={form.username} onChange={set('username')} />
       </FormField>
-      <FormField label="Display name" htmlFor="su-name">
+      <FormField label={t('auth:join.displayName')} htmlFor="su-name">
         <Input id="su-name" autoComplete="name" value={form.display_name} onChange={set('display_name')} />
       </FormField>
-      <FormField label="Email" htmlFor="su-email">
+      <FormField label={t('auth:join.email')} htmlFor="su-email">
         <Input id="su-email" type="email" autoComplete="email" value={form.email} onChange={set('email')} />
       </FormField>
-      <FormField label="Password" htmlFor="su-password" description={passwordRule(false).hint}>
+      <FormField label={t('auth:join.password')} htmlFor="su-password" description={passwordRule(false).hint}>
         <Input
           id="su-password"
           type="password"
@@ -156,13 +153,10 @@ function SignUp({ token, email }: { token: string; email: string }) {
       </FormField>
       {signUp.error && <Alert variant="destructive" title={signUp.error.message} />}
       <Button type="submit" variant="primary" size="large" block loading={signUp.isPending} className="mt-2">
-        Create account and join
+        {t('auth:join.createAccountAndJoin')}
       </Button>
       <p className="text-center text-sm text-foreground-lighter">
-        Already have an account?{' '}
-        <Link to="/sign-in" search={{ redirect: `/join?token=${encodeURIComponent(token)}` }} className="text-link">
-          Sign in
-        </Link>
+        <Trans i18nKey="auth:join.alreadyHaveAnAccountSignIn" components={{ link: <Link to="/sign-in" search={{ redirect: `/join?token=${encodeURIComponent(token)}` }} className="text-link" /> }} />
       </p>
     </form>
   )

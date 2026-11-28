@@ -39,6 +39,7 @@ import { useProfile } from '@/lib/api/hooks'
 import { uiConfigQuery, usersQuery } from '@/lib/api/queries'
 import { relativeTime } from '@/lib/auth-users'
 import { passwordRule } from '@/lib/passwords'
+import { localized, t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/admin/users')({
   component: UsersPage,
@@ -47,20 +48,20 @@ export const Route = createFileRoute('/_app/admin/users')({
 type User = Schemas['User']
 
 // The status filter above the users table, matching the table's badges.
-const STATUSES: { value: string; label: string; match: (u: User) => boolean }[] = [
-  { value: 'all', label: 'All', match: () => true },
-  { value: 'active', label: 'Active', match: (u) => !u.disabled },
-  { value: 'disabled', label: 'Disabled', match: (u) => u.disabled },
-  { value: 'admin', label: 'Instance admins', match: (u) => u.is_instance_admin },
-  { value: 'mfa', label: 'Two-factor on', match: (u) => u.mfa_enabled },
-  { value: 'no-mfa', label: 'Two-factor off', match: (u) => !u.mfa_enabled },
-  { value: 'sso', label: 'Single sign-on', match: (u) => u.identities.length > 0 },
+const STATUSES = localized((): { value: string; label: string; match: (u: User) => boolean }[] => [
+  { value: 'all', label: t('admin:adminUsers.all'), match: () => true },
+  { value: 'active', label: t('admin:adminUsers.active'), match: (u) => !u.disabled },
+  { value: 'disabled', label: t('admin:adminUsers.disabled'), match: (u) => u.disabled },
+  { value: 'admin', label: t('admin:adminUsers.instanceAdmins'), match: (u) => u.is_instance_admin },
+  { value: 'mfa', label: t('admin:adminUsers.twoFactorOn'), match: (u) => u.mfa_enabled },
+  { value: 'no-mfa', label: t('admin:adminUsers.twoFactorOff'), match: (u) => !u.mfa_enabled },
+  { value: 'sso', label: t('admin:adminUsers.singleSignOn'), match: (u) => u.identities.length > 0 },
   {
     value: 'password',
-    label: 'Must change password',
+    label: t('admin:adminUsers.mustChangePassword'),
     match: (u) => u.password_change_required || u.default_password,
   },
-]
+])
 
 function UsersPage() {
   const { data: me } = useProfile()
@@ -80,7 +81,7 @@ function UsersPage() {
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState('all')
   const needle = search.trim().toLowerCase()
-  const statusMatch = (STATUSES.find((s) => s.value === status) ?? STATUSES[0]).match
+  const statusMatch = (STATUSES().find((s) => s.value === status) ?? STATUSES()[0]).match
   const shown = active?.filter(
     (u) =>
       statusMatch(u) &&
@@ -91,7 +92,7 @@ function UsersPage() {
     mutationFn: (user: User) =>
       unwrap(api.POST('/admin/users/{user_id}/approval', { params: { path: { user_id: user.id } } })),
     onSuccess: (u) => {
-      toast.success(`Approved ${u.username}; they've been emailed that they can sign in`)
+      toast.success(t('admin:adminUsers.approvedTheyVeBeenEmailedThat', { username: u.username }))
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
     },
     onError: (e) => toast.error(e.message),
@@ -101,7 +102,7 @@ function UsersPage() {
       unwrap(api.DELETE('/admin/users/{user_id}/approval', { params: { path: { user_id: user.id } } })),
     onSuccess: (_, u) => {
       setDeclineOpen(false)
-      toast.success(`Declined ${u.username}; the account was removed`)
+      toast.success(t('admin:adminUsers.declinedTheAccountWasRemoved', { username: u.username }))
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
     },
     onError: (e) => toast.error(e.message),
@@ -112,7 +113,7 @@ function UsersPage() {
       unwrap(api.DELETE('/admin/users/{user_id}/mfa', { params: { path: { user_id: user.id } } })),
     onSuccess: (_, u) => {
       setResettingMfa(null)
-      toast.success(`Turned off two-factor sign-in for ${u.username}; they were signed out everywhere`)
+      toast.success(t('admin:adminUsers.turnedOffTwoFactorSignIn', { username: u.username }))
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
     },
     onError: (e) => toast.error(e.message),
@@ -122,7 +123,7 @@ function UsersPage() {
     mutationFn: ({ user, body }: { user: User; body: Schemas['UserUpdate'] }) =>
       unwrap(api.PATCH('/admin/users/{user_id}', { params: { path: { user_id: user.id } }, body })),
     onSuccess: (u) => {
-      toast.success(`Updated ${u.username}`)
+      toast.success(t('admin:adminUsers.updated', { username: u.username }))
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
     },
     onError: (e) => toast.error(e.message),
@@ -131,7 +132,7 @@ function UsersPage() {
     mutationFn: (user: User) =>
       unwrap(api.DELETE('/admin/users/{user_id}/sessions', { params: { path: { user_id: user.id } } })),
     onSuccess: (_, u) => {
-      toast.success(u.id === me?.id ? 'Signed out of your other sessions' : `Signed ${u.username} out everywhere`)
+      toast.success(u.id === me?.id ? t('admin:adminUsers.signedOutOfYourOtherSessions') : t('admin:adminUsers.signedOutEverywhere', { username: u.username }))
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
     },
     onError: (e) => toast.error(e.message),
@@ -139,20 +140,20 @@ function UsersPage() {
 
   return (
     <AdminLayout
-      title="Users"
-      description="Everyone who can sign in to this Supermixer instance. Organization access is managed on each organization's Team page."
+      title={t('admin:adminUsers.users')}
+      description={t('admin:adminUsers.everyoneWhoCanSignInTo')}
       actions={
         <Button variant="primary" icon={<AddIcon />} onClick={() => setCreating(true)}>
-          Add user
+          {t('admin:adminUsers.addUser')}
         </Button>
       }
     >
       {waiting.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle>Waiting for approval ({waiting.length})</CardTitle>
+            <CardTitle>{t('admin:adminUsers.waitingForApproval', { length: waiting.length })}</CardTitle>
             <CardDescription>
-              They signed up and can&apos;t sign in until you approve them. Either way, they&apos;re told by email.
+              {t('admin:adminUsers.theySignedUpAndCanT')}
             </CardDescription>
           </CardHeader>
           <ul className="divide-y border-t">
@@ -164,7 +165,7 @@ function UsersPage() {
                     {u.display_name && <span className="ml-2 text-xs text-foreground-lighter">{u.username}</span>}
                   </span>
                   <span className="truncate text-xs text-foreground-lighter">
-                    {u.email} · signed up {relativeTime(u.created_at)}
+                    {t('admin:adminUsers.signedUp', { email: u.email, relativeTime: relativeTime(u.created_at) })}
                   </span>
                 </span>
                 <span className="flex gap-2">
@@ -175,14 +176,14 @@ function UsersPage() {
                       setDeclineOpen(true)
                     }}
                   >
-                    Decline
+                    {t('admin:adminUsers.decline')}
                   </Button>
                   <Button
                     variant="primary"
                     loading={approve.isPending && approve.variables?.id === u.id}
                     onClick={() => approve.mutate(u)}
                   >
-                    Approve
+                    {t('admin:adminUsers.approve')}
                   </Button>
                 </span>
               </li>
@@ -192,14 +193,14 @@ function UsersPage() {
       )}
       {me && (
         <div className="flex flex-wrap items-center gap-2">
-          <SearchBox value={search} onChange={setSearch} placeholder="Search by username or email" />
+          <SearchBox value={search} onChange={setSearch} placeholder={t('admin:adminUsers.searchByUsernameOrEmail')} />
           <Select value={status} onValueChange={setStatus}>
-            <SelectTrigger size="tiny" className="w-56" aria-label="Status">
-              <span className="text-foreground-lighter">status</span>
+            <SelectTrigger size="tiny" className="w-56" aria-label={t('admin:adminUsers.status')}>
+              <span className="text-foreground-lighter">{t('admin:adminUsers.status2')}</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {STATUSES.map((s) => (
+              {STATUSES().map((s) => (
                 <SelectItem key={s.value} value={s.value}>
                   {s.label}
                 </SelectItem>
@@ -209,7 +210,7 @@ function UsersPage() {
           {filtering && active && (
             <>
               <span className="text-xs text-foreground-lighter tabular-nums">
-                {shown?.length} of {active.length} {active.length === 1 ? 'user' : 'users'}
+                {t('admin:adminUsers.shownOfUsers', { shown: shown?.length ?? 0, count: active.length })}
               </span>
               <Button
                 variant="text"
@@ -219,7 +220,7 @@ function UsersPage() {
                   setStatus('all')
                 }}
               >
-                Clear filters
+                {t('admin:adminUsers.clearFilters')}
               </Button>
             </>
           )}
@@ -236,10 +237,10 @@ function UsersPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="hover:bg-transparent">
-                      <TableHead>User</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Last active</TableHead>
+                      <TableHead>{t('admin:adminUsers.user')}</TableHead>
+                      <TableHead>{t('admin:adminUsers.email')}</TableHead>
+                      <TableHead>{t('admin:adminUsers.status')}</TableHead>
+                      <TableHead>{t('admin:adminUsers.lastActive')}</TableHead>
                       <TableHead className="w-12" />
                     </TableRow>
                   </TableHeader>
@@ -247,7 +248,7 @@ function UsersPage() {
                     {shown?.length === 0 && (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={5} className="py-10 text-center text-foreground-lighter">
-                          No users match these filters.
+                          {t('admin:adminUsers.noUsersMatchTheseFilters')}
                         </TableCell>
                       </TableRow>
                     )}
@@ -262,17 +263,17 @@ function UsersPage() {
                         <TableCell className="text-foreground-light">{u.email ?? '—'}</TableCell>
                         <TableCell>
                           <span className="flex flex-wrap gap-1">
-                            {u.disabled ? <Badge variant="destructive">Disabled</Badge> : <Badge variant="success">Active</Badge>}
-                            {u.is_instance_admin && <Badge>Instance admin</Badge>}
-                            {u.mfa_enabled && <Badge variant="success">2FA</Badge>}
+                            {u.disabled ? <Badge variant="destructive">{t('admin:adminUsers.disabled')}</Badge> : <Badge variant="success">{t('admin:adminUsers.active')}</Badge>}
+                            {u.is_instance_admin && <Badge>{t('admin:adminUsers.instanceAdmin')}</Badge>}
+                            {u.mfa_enabled && <Badge variant="success">{t('admin:adminUsers.n2fa')}</Badge>}
                             {u.identities.map((id) => (
-                              <Badge key={id} title="Signs in through this provider">
+                              <Badge key={id} title={t('admin:adminUsers.signsInThroughThisProvider')}>
                                 {providerNames.get(id) ?? id}
                               </Badge>
                             ))}
-                            {!u.has_password && <Badge title="Made through single sign-on; no password yet">No password</Badge>}
-                            {u.password_change_required && <Badge variant="warning">Must change password</Badge>}
-                            {u.default_password && <Badge variant="warning">Default password</Badge>}
+                            {!u.has_password && <Badge title={t('admin:adminUsers.madeThroughSingleSignOnNo')}>{t('admin:adminUsers.noPassword')}</Badge>}
+                            {u.password_change_required && <Badge variant="warning">{t('admin:adminUsers.mustChangePassword')}</Badge>}
+                            {u.default_password && <Badge variant="warning">{t('admin:adminUsers.defaultPassword')}</Badge>}
                           </span>
                         </TableCell>
                         <TableCell className="text-foreground-light">
@@ -280,50 +281,50 @@ function UsersPage() {
                             <span className="flex flex-col">
                               <span>{relativeTime(u.last_seen_at)}</span>
                               <span className="text-xs text-foreground-lighter">
-                                {u.sessions} {u.sessions === 1 ? 'session' : 'sessions'}
+                                {t('admin:adminUsers.sessions', { count: u.sessions })}
                               </span>
                             </span>
                           ) : (
-                            <span className="text-foreground-lighter">Not signed in</span>
+                            <span className="text-foreground-lighter">{t('admin:adminUsers.notSignedIn')}</span>
                           )}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="text" icon={<SettingsIcon />} aria-label={`Manage ${u.username}`} />
+                              <Button variant="text" icon={<SettingsIcon />} aria-label={t('admin:adminUsers.manage', { username: u.username })} />
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-60">
-                              <DropdownMenuItem onSelect={() => setResetting(u)}>Reset password</DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => setResetting(u)}>{t('admin:adminUsers.resetPassword')}</DropdownMenuItem>
                               <DropdownMenuItem
                                 disabled={u.id === me.id}
                                 onSelect={() =>
                                   update.mutate({ user: u, body: { password_change_required: !u.password_change_required } })
                                 }
                               >
-                                {u.password_change_required ? 'Don’t require a new password' : 'Require a new password'}
+                                {u.password_change_required ? t('admin:adminUsers.donTRequireANewPassword') : t('admin:adminUsers.requireANewPassword')}
                               </DropdownMenuItem>
                               {u.mfa_enabled && u.id !== me.id && (
-                                <DropdownMenuItem onSelect={() => setResettingMfa(u)}>Reset two-factor sign-in</DropdownMenuItem>
+                                <DropdownMenuItem onSelect={() => setResettingMfa(u)}>{t('admin:adminUsers.resetTwoFactorSignIn')}</DropdownMenuItem>
                               )}
                               <DropdownMenuItem
                                 disabled={u.id === me.id ? u.sessions <= 1 : u.sessions === 0}
                                 onSelect={() => signOut.mutate(u)}
                               >
-                                {u.id === me.id ? 'Sign out other sessions' : 'Sign out everywhere'}
+                                {u.id === me.id ? t('admin:adminUsers.signOutOtherSessions') : t('admin:adminUsers.signOutEverywhere')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 disabled={u.id === me.id}
                                 onSelect={() => update.mutate({ user: u, body: { is_instance_admin: !u.is_instance_admin } })}
                               >
-                                {u.is_instance_admin ? 'Remove instance admin' : 'Make instance admin'}
+                                {u.is_instance_admin ? t('admin:adminUsers.removeInstanceAdmin') : t('admin:adminUsers.makeInstanceAdmin')}
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem
                                 disabled={u.id === me.id}
                                 onSelect={() => update.mutate({ user: u, body: { disabled: !u.disabled } })}
                               >
-                                {u.disabled ? 'Enable account' : 'Disable account'}
+                                {u.disabled ? t('admin:adminUsers.enableAccount') : t('admin:adminUsers.disableAccount')}
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -340,18 +341,18 @@ function UsersPage() {
         open={resettingMfa !== null}
         onOpenChange={(o) => !o && setResettingMfa(null)}
         variant="warning"
-        title={`Reset two-factor sign-in for ${resettingMfa?.username}?`}
-        description="For someone who lost their authenticator app and recovery codes. Their password alone will sign them in until they set it up again, and they're signed out everywhere now. Check it's really them asking first."
-        confirmLabel="Reset"
+        title={t('admin:adminUsers.resetTwoFactorSignInFor', { username: resettingMfa?.username })}
+        description={t('admin:adminUsers.forSomeoneWhoLostTheirAuthenticator')}
+        confirmLabel={t('admin:adminUsers.reset')}
         loading={resetMfa.isPending}
         onConfirm={() => resettingMfa && resetMfa.mutate(resettingMfa)}
       />
       <ConfirmDialog
         open={declineOpen}
         onOpenChange={setDeclineOpen}
-        title={`Decline ${declining?.username}?`}
-        description="Their account is removed, and they're emailed that their sign-up wasn't accepted. They could sign up again later."
-        confirmLabel="Decline"
+        title={t('admin:adminUsers.decline2', { username: declining?.username })}
+        description={t('admin:adminUsers.theirAccountIsRemovedAndThey')}
+        confirmLabel={t('admin:adminUsers.decline')}
         loading={decline.isPending}
         onConfirm={() => declining && decline.mutate(declining)}
       />
@@ -367,7 +368,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
   const create = useMutation({
     mutationFn: () => unwrap(api.POST('/admin/users', { body: { ...form, email: form.email || null } })),
     onSuccess: (u) => {
-      toast.success(`Created ${u.username}`)
+      toast.success(t('admin:adminUsers.created', { username: u.username }))
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
       setForm(blank)
       onOpenChange(false)
@@ -382,22 +383,22 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
       <DialogContent size="medium">
         <form onSubmit={submit}>
           <DialogHeader>
-            <DialogTitle>Add a user</DialogTitle>
-            <DialogDescription>They can sign in right away. Share the password with them securely; by default it only lets them choose their own.</DialogDescription>
+            <DialogTitle>{t('admin:adminUsers.addAUser')}</DialogTitle>
+            <DialogDescription>{t('admin:adminUsers.theyCanSignInRightAway')}</DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
-            <FormField label="Username" htmlFor="nu-username" description="3–40 characters: letters, digits, . _ -">
+            <FormField label={t('admin:adminUsers.username')} htmlFor="nu-username" description={t('admin:adminUsers.n340CharactersLettersDigits')}>
               <Input id="nu-username" required autoFocus value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
             </FormField>
             <div className="grid gap-4 sm:grid-cols-2">
-              <FormField label="Display name" htmlFor="nu-name">
+              <FormField label={t('admin:adminUsers.displayName')} htmlFor="nu-name">
                 <Input id="nu-name" value={form.display_name} onChange={(e) => setForm({ ...form, display_name: e.target.value })} />
               </FormField>
-              <FormField label="Email" htmlFor="nu-email">
+              <FormField label={t('admin:adminUsers.email')} htmlFor="nu-email">
                 <Input id="nu-email" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
               </FormField>
             </div>
-            <FormField label="Password" htmlFor="nu-password" description={passwordRule(false, 'their').hint}>
+            <FormField label={t('admin:adminUsers.password')} htmlFor="nu-password" description={passwordRule(false, 'their').hint}>
               <Input
                 id="nu-password"
                 type="password"
@@ -414,7 +415,7 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                 checked={form.is_instance_admin}
                 onCheckedChange={(v) => setForm({ ...form, is_instance_admin: v === true })}
               />
-              <Label htmlFor="nu-admin">Instance admin (can manage users)</Label>
+              <Label htmlFor="nu-admin">{t('admin:adminUsers.instanceAdminCanManageUsers')}</Label>
             </div>
             <div className="flex items-center gap-2">
               <Checkbox
@@ -422,16 +423,16 @@ function CreateUserDialog({ open, onOpenChange }: { open: boolean; onOpenChange:
                 checked={form.require_password_change}
                 onCheckedChange={(v) => setForm({ ...form, require_password_change: v === true })}
               />
-              <Label htmlFor="nu-change">Ask them to choose their own password when they first sign in</Label>
+              <Label htmlFor="nu-change">{t('admin:adminUsers.askThemToChooseTheirOwn')}</Label>
             </div>
             {create.error && <Alert variant="destructive" title={create.error.message} />}
           </DialogSection>
           <DialogFooter>
             <Button variant="default" onClick={() => onOpenChange(false)}>
-              Cancel
+              {t('admin:adminUsers.cancel')}
             </Button>
             <Button type="submit" variant="primary" loading={create.isPending}>
-              Add user
+              {t('admin:adminUsers.addUser')}
             </Button>
           </DialogFooter>
         </form>
@@ -455,8 +456,8 @@ function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolea
     onSuccess: () => {
       toast.success(
         self
-          ? 'Password changed; your other sessions were signed out'
-          : `Password reset for ${user.username}; they were signed out everywhere`
+          ? t('admin:adminUsers.passwordChangedYourOtherSessionsWere')
+          : t('admin:adminUsers.passwordResetForTheyWereSigned', { username: user.username })
       )
       void queryClient.invalidateQueries({ queryKey: usersQuery.queryKey })
       onClose()
@@ -472,13 +473,13 @@ function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolea
           }}
         >
           <DialogHeader>
-            <DialogTitle>Reset password for {user.username}</DialogTitle>
+            <DialogTitle>{t('admin:adminUsers.resetPasswordFor', { username: user.username })}</DialogTitle>
             <DialogDescription>
-              {self ? 'Your other sessions will be signed out; this one stays.' : 'They will be signed out of every session.'}
+              {self ? t('admin:adminUsers.yourOtherSessionsWillBeSigned') : t('admin:adminUsers.theyWillBeSignedOutOf')}
             </DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-4 border-t">
-            <FormField label="New password" htmlFor="rp-password" description={passwordRule(user.mfa_enabled, 'their').hint}>
+            <FormField label={t('admin:adminUsers.newPassword')} htmlFor="rp-password" description={passwordRule(user.mfa_enabled, 'their').hint}>
               <Input
                 id="rp-password"
                 type="password"
@@ -493,17 +494,17 @@ function ResetPasswordDialog({ user, self, onClose }: { user: User; self: boolea
             {!self && (
               <div className="flex items-center gap-2">
                 <Checkbox id="rp-change" checked={requireChange} onCheckedChange={(v) => setRequireChange(v === true)} />
-                <Label htmlFor="rp-change">Ask them to choose their own password when they next sign in</Label>
+                <Label htmlFor="rp-change">{t('admin:adminUsers.askThemToChooseTheirOwn2')}</Label>
               </div>
             )}
             {reset.error && <Alert variant="destructive" title={reset.error.message} />}
           </DialogSection>
           <DialogFooter>
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {t('admin:adminUsers.cancel')}
             </Button>
             <Button type="submit" variant="primary" loading={reset.isPending}>
-              Reset password
+              {t('admin:adminUsers.resetPassword')}
             </Button>
           </DialogFooter>
         </form>

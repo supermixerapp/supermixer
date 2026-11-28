@@ -20,6 +20,7 @@ import { organizationLimitsQuery, projectHealthQuery } from '@/lib/api/queries'
 
 import { HealthBadge } from '@/components/health-badge'
 import { StackBadge, stackBusy, stackQuery, stackUp, useStackGone } from '@/components/project/stack'
+import { t, Trans, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/')({
   component: ProjectsPage,
@@ -50,11 +51,11 @@ function useView(): [View, (v: View) => void] {
 
 function ViewToggle({ view, onChange }: { view: View; onChange: (v: View) => void }) {
   const options = [
-    { value: 'grid', label: 'Toggle grid view', Icon: GridViewIcon },
-    { value: 'list', label: 'Toggle list view', Icon: ViewListIcon },
+    { value: 'grid', label: t('org:app.toggleGridView'), Icon: GridViewIcon },
+    { value: 'list', label: t('org:app.toggleListView'), Icon: ViewListIcon },
   ] as const
   return (
-    <div className="flex shrink-0 items-center rounded-md border border-control bg-surface-100 p-0.5" role="group" aria-label="Project view">
+    <div className="flex shrink-0 items-center rounded-md border border-control bg-surface-100 p-0.5" role="group" aria-label={t('org:app.projectView')}>
       {options.map(({ value, label, Icon }) => (
         <Tooltip key={value}>
           <TooltipTrigger asChild>
@@ -96,27 +97,27 @@ function ProjectsPage() {
 
   const newProject = canCreate && full ? (
     <BlockedButton
-      reason={`${org?.name ?? 'This organization'} has reached its limit of ${limit} ${limit === 1 ? 'project' : 'projects'}. Remove one, or raise the limit under Organization Settings › General.`}
+      reason={t('org:app.hasReachedItsLimitOfRemove', { name: org?.name ?? t('org:app.thisOrganization'), count: limit })}
       variant="primary"
       icon={<AddIcon />}
     >
-      New project
+      {t('org:app.newProject')}
     </BlockedButton>
   ) : (
     <PermissionButton
       allowed={canCreate}
-      action="add projects"
+      action={t('org:app.addProjects')}
       variant="primary"
       icon={<AddIcon />}
       onClick={() => navigate({ to: '/new/$slug', params: { slug } })}
     >
-      New project
+      {t('org:app.newProject')}
     </PermissionButton>
   )
 
   return (
     <>
-      <PageHeader title="Projects" size="large" />
+      <PageHeader title={t('org:app.projects')} size="large" />
       <PageContainer size="large" className="flex flex-col gap-4 pb-12">
         <div className="flex items-center justify-between gap-2">
           <div className="relative w-full max-w-64">
@@ -127,7 +128,7 @@ function ProjectsPage() {
             <Input
               size="tiny"
               className="pl-7"
-              placeholder="Search for a project"
+              placeholder={t('org:app.searchForAProject')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -135,7 +136,7 @@ function ProjectsPage() {
           <div className="flex items-center gap-2">
             {limit !== null && (
               <span className="text-xs text-foreground-lighter tabular-nums">
-                {used} of {limit} {limit === 1 ? 'project' : 'projects'}
+                {t('org:app.projectsUsed', { used, count: limit })}
               </span>
             )}
             <ViewToggle view={view} onChange={setView} />
@@ -150,10 +151,9 @@ function ProjectsPage() {
         ) : inOrg.length === 0 ? (
           <Card className="flex flex-col items-center gap-3 px-6 py-14 text-center">
             <DatabaseIcon size={28} className="text-foreground-lighter" />
-            <p className="text-sm text-foreground">No projects yet</p>
+            <p className="text-sm text-foreground">{t('org:app.noProjectsYet')}</p>
             <p className="max-w-md text-sm text-foreground-lighter">
-              A project is one self-hosted Supabase stack: its Postgres database plus Auth, Storage, Realtime and the
-              rest. Register a running stack to manage it here.
+              {t('org:app.aProjectIsOneSelfHosted')}
             </p>
             <div className="mt-2">{newProject}</div>
           </Card>
@@ -168,11 +168,11 @@ function ProjectsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('org:app.project')}</TableHead>
+                  <TableHead>{t('org:app.status')}</TableHead>
                   <TableHead>Postgres</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="w-px text-right">Settings</TableHead>
+                  <TableHead>{t('org:app.created')}</TableHead>
+                  <TableHead className="w-px text-right">{t('org:app.settings')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -184,7 +184,7 @@ function ProjectsPage() {
           </Card>
         )}
         {inOrg.length > 0 && visible.length === 0 && (
-          <p className="py-12 text-center text-sm text-foreground-lighter">No projects match your search.</p>
+          <p className="py-12 text-center text-sm text-foreground-lighter">{t('org:app.noProjectsMatchYourSearch')}</p>
         )}
       </PageContainer>
     </>
@@ -225,14 +225,14 @@ function ProjectRow({ project, onOpen }: { project: Schemas['Project']; onOpen: 
       </TableCell>
       <TableCell>{badge}</TableCell>
       <TableCell className="text-foreground-light">{postgres ?? '—'}</TableCell>
-      <TableCell className="whitespace-nowrap text-foreground-light">{new Date(project.created_at).toLocaleDateString()}</TableCell>
+      <TableCell className="whitespace-nowrap text-foreground-light">{new Date(project.created_at).toLocaleDateString(language())}</TableCell>
       <TableCell className="text-right">
         <Button asChild variant="text" size="tiny" icon={<SettingsIcon />} className="w-6.5">
           <Link
             to="/project/$ref/settings/general"
             params={{ ref: project.ref }}
-            aria-label={`Settings for ${project.name}`}
-            title="Settings"
+            aria-label={t('org:app.settingsFor', { name: project.name })}
+            title={t('org:app.settings')}
             onClick={(e) => e.stopPropagation()}
           />
         </Button>
@@ -254,7 +254,7 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
           </div>
           <div className="flex items-center gap-2">
             {badge}
-            {postgres && <span className="text-xs text-foreground-lighter">Postgres {postgres}</span>}
+            {postgres && <span className="text-xs text-foreground-lighter">{t('org:app.postgres', { postgres })}</span>}
           </div>
         </Card>
       </Link>
@@ -262,7 +262,7 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
       <div className="absolute top-3 right-3">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${project.name}`} />
+            <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={t('org:app.actionsFor', { name: project.name })} />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-40">
             {/* Starting, pausing and restarting: only for stacks Supermixer
@@ -270,15 +270,13 @@ function ProjectCard({ project }: { project: Schemas['Project'] }) {
             {project.stack && (
               <DropdownMenuItem asChild>
                 <Link to="/project/$ref/settings/infrastructure" params={{ ref: project.ref }}>
-                  <ServerIcon size={14} className="text-foreground-lighter" />
-                  Manage
+                  <Trans i18nKey="org:app.manage" components={{ servericon: <ServerIcon size={14} className="text-foreground-lighter" /> }} />
                 </Link>
               </DropdownMenuItem>
             )}
             <DropdownMenuItem asChild>
               <Link to="/project/$ref/settings/general" params={{ ref: project.ref }}>
-                <SettingsIcon size={14} className="text-foreground-lighter" />
-                Settings
+                <Trans i18nKey="org:app.settings2" components={{ settingsicon: <SettingsIcon size={14} className="text-foreground-lighter" /> }} />
               </Link>
             </DropdownMenuItem>
           </DropdownMenuContent>

@@ -22,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/storage/s3')({
   component: StorageS3Page,
@@ -38,8 +39,8 @@ function StorageS3Page() {
   if (!project) return null
   return (
     <DatabasePage
-      title="S3 Connection"
-      description="Storage speaks the S3 protocol, so S3 tools and SDKs can read and write its buckets."
+      title={t('storage:storageS3.s3Connection')}
+      description={t('storage:storageS3.storageSpeaksTheS3ProtocolSo')}
     >
       {s3.error ? (
         <Alert variant="destructive" title={s3.error.message} />
@@ -82,7 +83,7 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
   const rotate = useMutation({
     mutationFn: () => unwrap(api.POST('/projects/{ref}/stack/rotate-keys', { params: { path: { ref } }, body: { keys: ['s3_keys'] } })),
     onSuccess: async () => {
-      toast.success('Making new keys; Storage restarts with them')
+      toast.success(t('storage:storageS3.makingNewKeysStorageRestartsWith'))
       await rotationStarted()
     },
     onError: (e) => toast.error(e.message),
@@ -93,11 +94,11 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
   })
   const s = stack.data
   const notReady = !s
-    ? 'Loading'
+    ? t('storage:storageS3.loading')
     : s.operation
-      ? 'The stack is busy; wait for it to finish'
+      ? t('storage:storageS3.theStackIsBusyWaitFor')
       : s.status !== 'running' && s.status !== 'paused'
-        ? 'Start the stack first'
+        ? t('storage:storageS3.startTheStackFirst')
         : null
 
   const example = [
@@ -108,14 +109,14 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
 
   return (
     <>
-      <SettingsSection title="Connection">
+      <SettingsSection title={t('storage:storageS3.connection')}>
         <Card>
           <CardContent className="flex flex-col gap-6">
-            <FormField label="Endpoint" layout="horizontal">
+            <FormField label={t('storage:storageS3.endpoint')} layout="horizontal">
               <CopyField value={s3.endpoint} />
             </FormField>
             {s3.managed && (
-              <FormField label="Region" layout="horizontal" description="Storage accepts any region in requests; use this one.">
+              <FormField label={t('storage:storageS3.region')} layout="horizontal" description={t('storage:storageS3.storageAcceptsAnyRegionInRequests')}>
                 <CopyField value={s3.region ?? ''} />
               </FormField>
             )}
@@ -124,23 +125,20 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
       </SettingsSection>
 
       {!s3.managed ? (
-        <Alert title="Supermixer connects to this stack, so its S3 keys are where it runs">
-          Self-hosted Storage takes the access key pair from the stack&apos;s .env (
-          <code className="font-mono text-xs">S3_PROTOCOL_ACCESS_KEY_ID</code>,{' '}
-          <code className="font-mono text-xs">S3_PROTOCOL_ACCESS_KEY_SECRET</code>) and the region from{' '}
-          <code className="font-mono text-xs">REGION</code>.
+        <Alert title={t('storage:storageS3.supermixerConnectsToThisStackSo')}>
+          <Trans i18nKey="storage:storageS3.selfHostedStorageTakesTheAccess" components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" />, code3: <code className="font-mono text-xs" /> }} />
         </Alert>
       ) : (
         <SettingsSection
-          title="Access keys"
-          description="One key pair for the whole stack. It can read and write every bucket, past any Row Level Security policy, like the secret API key: keep it on servers."
+          title={t('storage:storageS3.accessKeys')}
+          description={t('storage:storageS3.oneKeyPairForTheWhole')}
         >
           <Card>
             <CardContent className="flex flex-col gap-6">
-              <FormField label="Access key ID" layout="horizontal">
+              <FormField label={t('storage:storageS3.accessKeyId')} layout="horizontal">
                 <CopyField value={s3.access_key_id ?? ''} />
               </FormField>
-              <FormField label="Secret access key" layout="horizontal">
+              <FormField label={t('storage:storageS3.secretAccessKey')} layout="horizontal">
                 <div className="flex flex-col gap-1">
                   <CopyField
                     value={secretKey ?? ''}
@@ -148,11 +146,11 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
                     actions={
                       reveal ? (
                         <Button size="tiny" variant="default" loading={secret.isFetching && !secretKey} onClick={hide}>
-                          Hide
+                          {t('storage:storageS3.hide')}
                         </Button>
                       ) : (
-                        <PermissionButton allowed={canSee} action="view the secret access key" size="tiny" variant="default" onClick={() => setReveal(true)}>
-                          Reveal
+                        <PermissionButton allowed={canSee} action={t('storage:storageS3.viewTheSecretAccessKey')} size="tiny" variant="default" onClick={() => setReveal(true)}>
+                          {t('storage:storageS3.reveal')}
                         </PermissionButton>
                       )
                     }
@@ -162,24 +160,24 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
               </FormField>
             </CardContent>
             <div className="flex items-center justify-end gap-3 border-t px-card py-3">
-              {s?.operation === 'rotating_keys' && <span className="text-xs text-foreground-lighter">Making new keys…</span>}
+              {s?.operation === 'rotating_keys' && <span className="text-xs text-foreground-lighter">{t('storage:storageS3.makingNewKeys')}</span>}
               <PermissionButton
                 allowed={canChange}
-                action="replace the S3 keys"
+                action={t('storage:storageS3.replaceTheS3Keys')}
                 variant="warning"
                 disabled={!!notReady}
                 title={notReady ?? undefined}
                 loading={rotate.isPending}
                 onClick={() => setConfirming(true)}
               >
-                New access keys
+                {t('storage:storageS3.newAccessKeys')}
               </PermissionButton>
             </div>
           </Card>
         </SettingsSection>
       )}
 
-      <SettingsSection title="Try it" description="With the AWS CLI; other S3 clients take the same endpoint, region and keys, with path-style addressing.">
+      <SettingsSection title={t('storage:storageS3.tryIt')} description={t('storage:storageS3.withTheAwsCliOtherS3')}>
         <CodeBlock code={example} />
       </SettingsSection>
 
@@ -187,9 +185,9 @@ function S3Details({ project, s3 }: { project: Schemas['Project']; s3: Schemas['
         open={confirming}
         onOpenChange={setConfirming}
         variant="warning"
-        title="Replace the S3 access keys?"
-        description="S3 clients using the current keys stop working. Storage restarts with the new ones, so uploads in progress may fail."
-        confirmLabel="Make new keys"
+        title={t('storage:storageS3.replaceTheS3AccessKeys')}
+        description={t('storage:storageS3.s3ClientsUsingTheCurrentKeys')}
+        confirmLabel={t('storage:storageS3.makeNewKeys')}
         loading={rotate.isPending}
         onConfirm={() => rotate.mutate()}
       />

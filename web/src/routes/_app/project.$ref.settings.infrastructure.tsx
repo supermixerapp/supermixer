@@ -34,6 +34,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { uiConfigQuery } from '@/lib/api/queries'
 import { relativeTime } from '@/lib/auth-users'
+import { localized, t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/settings/infrastructure')({
   component: InfrastructurePage,
@@ -43,14 +44,13 @@ function InfrastructurePage() {
   const project = useSelectedProject()
   return (
     <>
-      <PageHeader title="Infrastructure" size="small" />
+      <PageHeader title={t('project:settingsInfrastructure.infrastructure')} size="small" />
       <PageContainer size="small" className="flex flex-col gap-10 pb-16">
         {!project ? null : project.stack ? (
           <ManagedStack project={project} projectRef={project.ref} allowed={can(project, 'project:update')} />
         ) : (
-          <Alert title="Supermixer connects to this stack; it didn't create it">
-            Its containers, ports and upgrades are managed where it runs. Projects created with
-            “Create a new stack” are started, paused and restarted from here.
+          <Alert title={t('project:settingsInfrastructure.supermixerConnectsToThisStackIt')}>
+            {t('project:settingsInfrastructure.itsContainersPortsAndUpgradesAre')}
           </Alert>
         )}
       </PageContainer>
@@ -72,21 +72,21 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
   return (
     <>
       <SettingsSection
-        title="Stack"
-        description="Supermixer created this stack and runs it with Docker Compose on its server."
+        title={t('project:settingsInfrastructure.stack')}
+        description={t('project:settingsInfrastructure.supermixerCreatedThisStackAndRuns')}
       >
         <Card className="flex flex-col divide-y text-sm">
-          <Row label="Status">
+          <Row label={t('project:settingsInfrastructure.status')}>
             <span className="flex items-center gap-2">
               <StackBadge stack={s} />
               {s.status_at && (
                 <span className="text-xs text-foreground-lighter">
-                  since {relativeTime(s.status_at)}
+                  {t('project:settingsInfrastructure.since', { relativeTime: relativeTime(s.status_at) })}
                 </span>
               )}
             </span>
           </Row>
-          <Row label="Supabase">
+          <Row label={t('project:settingsInfrastructure.supabase')}>
             <a
               href={`https://github.com/supabase/supabase/tree/${s.template}/docker`}
               target="_blank"
@@ -94,51 +94,51 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
               className="font-mono text-xs text-foreground-light hover:text-foreground"
               title={s.template}
             >
-              supabase/docker @ {s.template.slice(0, 7)}
+              {t('project:settingsInfrastructure.supabaseDocker', { slice: s.template.slice(0, 7) })}
             </a>
           </Row>
-          <Row label="Ports">
+          <Row label={t('project:settingsInfrastructure.ports')}>
             <span className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-xs text-foreground-light">
-              <span>API {s.ports.api}</span>
-              <span>Postgres {s.ports.db}</span>
-              <span>Pooler (transaction) {s.ports.pooler}</span>
+              <span>{t('project:settingsInfrastructure.api', { api: s.ports.api })}</span>
+              <span>{t('project:settingsInfrastructure.postgres', { db: s.ports.db })}</span>
+              <span>{t('project:settingsInfrastructure.poolerTransaction', { pooler: s.ports.pooler })}</span>
             </span>
           </Row>
           <div className="flex items-center justify-end gap-2 px-5 py-3">
             {actions.includes('start') && (
               <PermissionButton
                 allowed={allowed}
-                action="start this stack"
+                action={t('project:settingsInfrastructure.startThisStack')}
                 variant="primary"
                 loading={act.isPending}
                 onClick={() => act.mutate('start')}
               >
-                {s.status === 'failed' ? 'Try again' : ACTION_LABELS.start}
+                {s.status === 'failed' ? t('project:settingsInfrastructure.tryAgain') : ACTION_LABELS().start}
               </PermissionButton>
             )}
             {actions.includes('restart') && (
               <PermissionButton
                 allowed={allowed}
-                action="restart this stack"
+                action={t('project:settingsInfrastructure.restartThisStack')}
                 variant="default"
                 onClick={() => setConfirm('restart')}
               >
-                {ACTION_LABELS.restart}
+                {ACTION_LABELS().restart}
               </PermissionButton>
             )}
             {actions.includes('stop') && (
               <PermissionButton
                 allowed={allowed}
-                action="pause this stack"
+                action={t('project:settingsInfrastructure.pauseThisStack')}
                 variant="warning"
                 onClick={() => setConfirm('stop')}
               >
-                {ACTION_LABELS.stop}
+                {ACTION_LABELS().stop}
               </PermissionButton>
             )}
             {actions.length === 0 && (
               <span className="text-xs text-foreground-lighter">
-                Busy; actions return when it finishes.
+                {t('project:settingsInfrastructure.busyActionsReturnWhenItFinishes')}
               </span>
             )}
           </div>
@@ -163,8 +163,8 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
       <StackTLS project={project} stack={s} allowed={allowed} />
 
       <SettingsSection
-        title="Containers"
-        description="As Docker Compose reports them, refreshed every 15 seconds."
+        title={t('project:settingsInfrastructure.containers')}
+        description={t('project:settingsInfrastructure.asDockerComposeReportsThemRefreshed')}
       >
         {s.services_error ? (
           <Alert variant="warning" title={s.services_error} />
@@ -173,16 +173,16 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Service</TableHead>
-                  <TableHead>State</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>{t('project:settingsInfrastructure.service')}</TableHead>
+                  <TableHead>{t('project:settingsInfrastructure.state')}</TableHead>
+                  <TableHead>{t('project:settingsInfrastructure.status')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {(s.services ?? []).length === 0 ? (
                   <TableRow className="hover:bg-transparent">
                     <TableCell colSpan={3} className="py-6 text-center text-foreground-lighter">
-                      No containers
+                      {t('project:settingsInfrastructure.noContainers')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -217,8 +217,8 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
       </SettingsSection>
 
       <SettingsSection
-        title="Output"
-        description="The end of Supermixer’s log of docker compose commands for this stack."
+        title={t('project:settingsInfrastructure.output')}
+        description={t('project:settingsInfrastructure.theEndOfSupermixerSLog')}
       >
         <StackLog log={s.log} />
       </SettingsSection>
@@ -227,13 +227,13 @@ function ManagedStack({ project, projectRef, allowed }: { project: Schemas['Proj
         open={confirm !== null}
         onOpenChange={(o) => !o && setConfirm(null)}
         variant="warning"
-        title={confirm === 'stop' ? 'Pause this stack?' : 'Restart this stack?'}
+        title={confirm === 'stop' ? t('project:settingsInfrastructure.pauseThisStack2') : t('project:settingsInfrastructure.restartThisStack2')}
         description={
           confirm === 'stop'
-            ? 'Its containers stop: the API and database go offline until you start it again. Data is kept.'
-            : 'Every service restarts; the API and database are briefly unavailable.'
+            ? t('project:settingsInfrastructure.itsContainersStopTheApiAnd')
+            : t('project:settingsInfrastructure.everyServiceRestartsTheApiAnd')
         }
-        confirmLabel={confirm === 'stop' ? 'Pause stack' : 'Restart stack'}
+        confirmLabel={confirm === 'stop' ? t('project:settingsInfrastructure.pauseStack') : t('project:settingsInfrastructure.restartStack')}
         loading={act.isPending}
         onConfirm={() => {
           if (confirm) act.mutate(confirm, { onSettled: () => setConfirm(null) })
@@ -263,22 +263,22 @@ function StackLogs({ projectRef, stack: s, allowed }: { projectRef: string; stac
   const running = s.status === 'running'
   return (
     <SettingsSection
-      title="Logs"
-      description="Supabase collects this project's logs with Vector and keeps them with Logflare, for Logs Explorer, the API report and log drains. Together they use about 800 MB of memory."
+      title={t('project:settingsInfrastructure.logs')}
+      description={t('project:settingsInfrastructure.supabaseCollectsThisProjectSLogs')}
     >
       <Card className="flex flex-col divide-y text-sm">
-        <Row label="Status">
-          <Badge variant={on ? 'success' : 'default'}>{on ? 'Collecting' : 'Off'}</Badge>
+        <Row label={t('project:settingsInfrastructure.status')}>
+          <Badge variant={on ? 'success' : 'default'}>{on ? t('project:settingsInfrastructure.collecting') : t('project:settingsInfrastructure.off')}</Badge>
         </Row>
         <div className="flex items-center justify-end gap-2 px-5 py-3">
           <PermissionButton
             allowed={allowed}
-            action="turn this project's logs on or off"
+            action={t('project:settingsInfrastructure.turnThisProjectSLogsOn')}
             variant={on ? 'warning' : 'default'}
             disabled={busy}
             onClick={() => setConfirm(true)}
           >
-            {on ? 'Turn logs off' : 'Turn logs on'}
+            {on ? t('project:settingsInfrastructure.turnLogsOff') : t('project:settingsInfrastructure.turnLogsOn')}
           </PermissionButton>
         </div>
       </Card>
@@ -286,14 +286,14 @@ function StackLogs({ projectRef, stack: s, allowed }: { projectRef: string; stac
         open={confirm}
         onOpenChange={setConfirm}
         variant={on ? 'warning' : 'primary'}
-        title={on ? 'Turn logs off?' : 'Turn logs on?'}
+        title={on ? t('project:settingsInfrastructure.turnLogsOff2') : t('project:settingsInfrastructure.turnLogsOn2')}
         description={
           (on
-            ? 'This stops Logflare and Vector and frees about 800 MB of memory. New logs won’t be saved, so Logs Explorer, the API report and log drains won’t work until you turn logs back on. Logs you already have are kept.'
-            : 'This starts Logflare and Vector again. They use about 800 MB of memory.') +
-          (running ? ' Your project stays online.' : ' This applies the next time you start the stack.')
+            ? t('project:settingsInfrastructure.thisStopsLogflareAndVectorAnd')
+            : t('project:settingsInfrastructure.thisStartsLogflareAndVectorAgain')) +
+          (running ? t('project:settingsInfrastructure.yourProjectStaysOnline') : t('project:settingsInfrastructure.thisAppliesTheNextTimeYou'))
         }
-        confirmLabel={on ? 'Turn logs off' : 'Turn logs on'}
+        confirmLabel={on ? t('project:settingsInfrastructure.turnLogsOff') : t('project:settingsInfrastructure.turnLogsOn')}
         loading={change.isPending}
         onConfirm={() => change.mutate(!on)}
       />
@@ -324,30 +324,30 @@ function StackTLS({ project, stack: s, allowed }: { project: Schemas['Project'];
   const newURL = project.api_url.replace(/^https?:/, on ? 'http:' : 'https:')
   return (
     <SettingsSection
-      title="Encryption"
-      description="Whether people and apps reach this project's API over HTTPS and its database over an encrypted connection, using Supermixer's certificate."
+      title={t('project:settingsInfrastructure.encryption')}
+      description={t('project:settingsInfrastructure.whetherPeopleAndAppsReachThis')}
     >
       <Card className="flex flex-col divide-y text-sm">
-        <Row label="Status">
-          <Badge variant={on ? 'success' : 'default'}>{on ? 'On' : 'Off'}</Badge>
+        <Row label={t('project:settingsInfrastructure.status')}>
+          <Badge variant={on ? 'success' : 'default'}>{on ? t('project:settingsInfrastructure.on') : t('project:settingsInfrastructure.off')}</Badge>
         </Row>
-        <Row label="Project URL">
+        <Row label={t('project:settingsInfrastructure.projectUrl')}>
           <span className="font-mono text-xs break-all">{project.api_url}</span>
         </Row>
         {!available && (
           <div className="px-5 py-3 text-foreground-lighter">
-            Supermixer doesn’t have a certificate yet. An instance admin sets one up in its settings first.
+            {t('project:settingsInfrastructure.supermixerDoesnTHaveACertificate')}
           </div>
         )}
         <div className="flex items-center justify-end gap-2 px-5 py-3">
           <PermissionButton
             allowed={allowed}
-            action="turn encryption on or off for this project"
+            action={t('project:settingsInfrastructure.turnEncryptionOnOrOffFor')}
             variant={on ? 'warning' : 'default'}
             disabled={busy || !available}
             onClick={() => setConfirm(true)}
           >
-            {on ? 'Turn encryption off' : 'Turn encryption on'}
+            {on ? t('project:settingsInfrastructure.turnEncryptionOff') : t('project:settingsInfrastructure.turnEncryptionOn')}
           </PermissionButton>
         </div>
       </Card>
@@ -355,16 +355,16 @@ function StackTLS({ project, stack: s, allowed }: { project: Schemas['Project'];
         open={confirm}
         onOpenChange={setConfirm}
         variant="warning"
-        title={on ? 'Turn encryption off?' : 'Turn encryption on?'}
+        title={on ? t('project:settingsInfrastructure.turnEncryptionOff2') : t('project:settingsInfrastructure.turnEncryptionOn2')}
         description={
           (on
-            ? `Connections to this project won’t be encrypted any more, and its URL becomes ${newURL}. `
-            : `Its URL becomes ${newURL}, and the database only accepts encrypted connections. `) +
-          'Update the URL in your apps, and any sign-in callback URLs you’ve given GitHub, Google and the like. ' +
-          'Database tools need the new connection string from Connect. People signed in to your apps may have to sign in again.' +
-          (running ? ' The API and database restart briefly.' : ' This applies the next time you start the stack.')
+            ? t('project:settingsInfrastructure.connectionsToThisProjectWonT', { newURL })
+            : t('project:settingsInfrastructure.itsUrlBecomesAndTheDatabase', { newURL })) +
+          t('project:settingsInfrastructure.updateTheUrlInYourApps') +
+          t('project:settingsInfrastructure.databaseToolsNeedTheNewConnection') +
+          (running ? t('project:settingsInfrastructure.theApiAndDatabaseRestartBriefly') : t('project:settingsInfrastructure.thisAppliesTheNextTimeYou'))
         }
-        confirmLabel={on ? 'Turn encryption off' : 'Turn encryption on'}
+        confirmLabel={on ? t('project:settingsInfrastructure.turnEncryptionOff') : t('project:settingsInfrastructure.turnEncryptionOn')}
         loading={change.isPending}
         onConfirm={() => change.mutate(!on)}
       />
@@ -381,11 +381,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   )
 }
 
-const STUDIO_BADGE = {
-  running: { label: 'Running', variant: 'success' },
-  stopped: { label: 'Stopped', variant: 'default' },
-  disabled: { label: 'Disabled', variant: 'default' },
-} as const
+const STUDIO_BADGE = localized(() => ({
+  running: { label: t('project:settingsInfrastructure.running'), variant: 'success' },
+  stopped: { label: t('project:settingsInfrastructure.stopped'), variant: 'default' },
+  disabled: { label: t('project:settingsInfrastructure.disabled'), variant: 'default' },
+}) as const)
 
 /** Studio sits behind basic auth with a login Supermixer generated. */
 function StudioLogin({
@@ -403,16 +403,14 @@ function StudioLogin({
   })
   return (
     <SettingsSection
-      title="Studio"
+      title={t('project:settingsInfrastructure.studio')}
       description={
         studio === 'disabled' ? (
           <>
-            Supabase Studio is off on this server. To run it in stacks Supermixer creates, set{' '}
-            <code className="text-xs">studio = true</code> under <code className="text-xs">[provisioning]</code> and
-            restart Supermixer.
+            <Trans i18nKey="project:settingsInfrastructure.supabaseStudioIsOffOnThis" components={{ code: <code className="text-xs" />, code2: <code className="text-xs" /> }} />
           </>
         ) : (
-          'Supabase Studio for this stack, at its API URL. It asks for this login.'
+          t('project:settingsInfrastructure.supabaseStudioForThisStackAt')
         )
       }
     >
@@ -420,13 +418,13 @@ function StudioLogin({
         {/* Without Studio there's nothing to open or sign in to. */}
         {project.stack?.studio !== false && (
           <>
-        <Row label="URL">
+        <Row label={t('project:settingsInfrastructure.url')}>
           <CopyField value={project.studio_url} />
         </Row>
-        <Row label="User name">
+        <Row label={t('project:settingsInfrastructure.userName')}>
           {reveal.data ? <CopyField value={reveal.data.username} /> : <span className="font-mono text-xs text-foreground-lighter">••••••••</span>}
         </Row>
-        <Row label="Password">
+        <Row label={t('project:settingsInfrastructure.password')}>
           {reveal.data ? (
             <CopyField value={reveal.data.password} />
           ) : (
@@ -434,13 +432,13 @@ function StudioLogin({
               <span className="font-mono text-xs text-foreground-lighter">••••••••••••</span>
               <PermissionButton
                 allowed={canReveal}
-                action="see this stack's Studio login"
+                action={t('project:settingsInfrastructure.seeThisStackSStudioLogin')}
                 variant="default"
                 size="tiny"
                 loading={reveal.isPending}
                 onClick={() => reveal.mutate()}
               >
-                Reveal
+                {t('project:settingsInfrastructure.reveal')}
               </PermissionButton>
             </span>
           )}
@@ -451,10 +449,10 @@ function StudioLogin({
           <div className="flex items-center justify-end gap-2 px-5 py-3">
             <Badge
               // Stopped while the stack runs is worth noticing; with the stack paused, it's expected.
-              variant={studio === 'stopped' && stackRunning ? 'warning' : STUDIO_BADGE[studio].variant}
-              aria-label={`Studio: ${STUDIO_BADGE[studio].label}`}
+              variant={studio === 'stopped' && stackRunning ? 'warning' : STUDIO_BADGE()[studio].variant}
+              aria-label={t('project:settingsInfrastructure.studio2', { label: STUDIO_BADGE()[studio].label })}
             >
-              {STUDIO_BADGE[studio].label}
+              {STUDIO_BADGE()[studio].label}
             </Badge>
           </div>
         )}

@@ -18,6 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Schemas } from '@/lib/api/client'
 import { cn } from '@/lib/utils'
+import { t, Trans } from '@/lib/i18n'
 
 export interface ConnectionValue {
   api_url: string
@@ -159,37 +160,37 @@ export function ConnectionFields({
   const set =
     (k: keyof ConnectionValue) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
       onChange({ ...value, [k]: e.target.value })
-  const secretPlaceholder = (present?: boolean) => (editing && present ? 'Unchanged' : '')
+  const secretPlaceholder = (present?: boolean) => (editing && present ? t('project:connectionForm.unchanged') : '')
 
   return (
     <>
       <Section
-        title="API"
-        description="The stack's API gateway: SUPABASE_PUBLIC_URL in the Supabase stack's .env (port 8000 by default)."
+        title={t('project:connectionForm.api')}
+        description={t('project:connectionForm.theStackSApiGatewaySupabase')}
       >
-        <FormField label="API URL" htmlFor="api_url">
+        <FormField label={t('project:connectionForm.apiUrl')} htmlFor="api_url">
           <Input id="api_url" placeholder="http://localhost:8000" required value={value.api_url} onChange={set('api_url')} />
         </FormField>
-        <FormField label="Studio URL (optional)" htmlFor="studio_url" description="Linked from the project overview.">
+        <FormField label={t('project:connectionForm.studioUrlOptional')} htmlFor="studio_url" description={t('project:connectionForm.linkedFromTheProjectOverview')}>
           <Input id="studio_url" placeholder="http://localhost:8000" value={value.studio_url} onChange={set('studio_url')} />
         </FormField>
       </Section>
       <Section
-        title="API keys"
-        description="Supabase stacks use legacy JWT keys, the newer publishable and secret keys, or both. Secret keys are encrypted at rest."
+        title={t('project:connectionForm.apiKeys')}
+        description={t('project:connectionForm.supabaseStacksUseLegacyJwtKeys')}
       >
         <Tabs value={keyMode} onValueChange={(v) => setKeyMode(v as 'legacy' | 'new')}>
           <TabsList>
-            <TabsTrigger value="legacy">Legacy JWT keys</TabsTrigger>
-            <TabsTrigger value="new">Publishable and secret keys</TabsTrigger>
+            <TabsTrigger value="legacy">{t('project:connectionForm.legacyJwtKeys')}</TabsTrigger>
+            <TabsTrigger value="new">{t('project:connectionForm.publishableAndSecretKeys')}</TabsTrigger>
           </TabsList>
         </Tabs>
         {keyMode === 'legacy' ? (
           <>
-            <FormField label="anon key" htmlFor="anon" description="ANON_KEY">
+            <FormField label={t('project:connectionForm.anonKey')} htmlFor="anon" description={t('project:connectionForm.anonKey2')}>
               <Input id="anon" className="font-mono" placeholder={secretPlaceholder(keysPresent?.anon)} value={value.anon} onChange={set('anon')} />
             </FormField>
-            <FormField label="service_role key" htmlFor="service_role" description="SERVICE_ROLE_KEY">
+            <FormField label={t('project:connectionForm.serviceRoleKey')} htmlFor="service_role" description={t('project:connectionForm.serviceRoleKey2')}>
               <Input
                 id="service_role"
                 type="password"
@@ -200,7 +201,7 @@ export function ConnectionFields({
                 onChange={set('service_role')}
               />
             </FormField>
-            <FormField label="JWT secret (optional)" htmlFor="jwt_secret" description="JWT_SECRET">
+            <FormField label={t('project:connectionForm.jwtSecretOptional')} htmlFor="jwt_secret" description={t('project:connectionForm.jwtSecret')}>
               <Input
                 id="jwt_secret"
                 type="password"
@@ -214,10 +215,10 @@ export function ConnectionFields({
           </>
         ) : (
           <>
-            <FormField label="Publishable key" htmlFor="publishable" description="SUPABASE_PUBLISHABLE_KEY (sb_publishable_…)">
+            <FormField label={t('project:connectionForm.publishableKey')} htmlFor="publishable" description={t('project:connectionForm.supabasePublishableKeySbPublishable')}>
               <Input id="publishable" className="font-mono" placeholder={secretPlaceholder(keysPresent?.publishable)} value={value.publishable} onChange={set('publishable')} />
             </FormField>
-            <FormField label="Secret key" htmlFor="secret" description="SUPABASE_SECRET_KEY (sb_secret_…)">
+            <FormField label={t('project:connectionForm.secretKey')} htmlFor="secret" description={t('project:connectionForm.supabaseSecretKeySbSecret')}>
               <Input
                 id="secret"
                 type="password"
@@ -232,43 +233,42 @@ export function ConnectionFields({
         )}
       </Section>
       <Section
-        title="Database"
+        title={t('project:connectionForm.database')}
         description={
           <>
-            Self-hosted stacks publish Postgres through Supavisor on POSTGRES_PORT; the user is{' '}
-            <code className="font-mono">postgres.&lt;POOLER_TENANT_ID&gt;</code>, both from the Supabase stack&apos;s .env.
+            <Trans i18nKey="project:connectionForm.selfHostedStacksPublishPostgresThrough" values={{ user: 'postgres.<POOLER_TENANT_ID>' }} components={{ code: <code className="font-mono" /> }} />
           </>
         }
       >
         <div className="grid gap-4 sm:grid-cols-3">
-          <FormField label="Host" htmlFor="db-host" className="sm:col-span-2">
+          <FormField label={t('project:connectionForm.host')} htmlFor="db-host" className="sm:col-span-2">
             <Input id="db-host" required value={value.host} onChange={set('host')} />
           </FormField>
-          <FormField label="Port" htmlFor="db-port" description="POSTGRES_PORT">
+          <FormField label={t('project:connectionForm.port')} htmlFor="db-port" description={t('project:connectionForm.postgresPort')}>
             <Input id="db-port" type="number" min={1} max={65535} required value={value.port} onChange={set('port')} />
           </FormField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Database" htmlFor="db-name" description="POSTGRES_DB">
+          <FormField label={t('project:connectionForm.database')} htmlFor="db-name" description={t('project:connectionForm.postgresDb')}>
             <Input id="db-name" required value={value.name} onChange={set('name')} />
           </FormField>
-          <FormField label="User" htmlFor="db-user">
+          <FormField label={t('project:connectionForm.user')} htmlFor="db-user">
             <Input id="db-user" required placeholder="postgres.your-tenant-id" value={value.user} onChange={set('user')} />
           </FormField>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <FormField label="Password" htmlFor="db-password" description="POSTGRES_PASSWORD">
+          <FormField label={t('project:connectionForm.password')} htmlFor="db-password" description={t('project:connectionForm.postgresPassword')}>
             <Input
               id="db-password"
               type="password"
               autoComplete="off"
               required={!editing}
-              placeholder={editing ? 'Unchanged' : ''}
+              placeholder={editing ? t('project:connectionForm.unchanged') : ''}
               value={value.password}
               onChange={set('password')}
             />
           </FormField>
-          <FormField label="SSL mode" htmlFor="db-sslmode">
+          <FormField label={t('project:connectionForm.sslMode')} htmlFor="db-sslmode">
             <Select value={value.sslmode} onValueChange={(v) => onChange({ ...value, sslmode: v as ConnectionValue['sslmode'] })}>
               <SelectTrigger id="db-sslmode">
                 <SelectValue />
@@ -304,28 +304,25 @@ export function EnvImportDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent size="large">
         <DialogHeader>
-          <DialogTitle>Fill from a Supabase .env file</DialogTitle>
+          <DialogTitle>{t('project:connectionForm.fillFromASupabaseEnvFile')}</DialogTitle>
           <DialogDescription>
-            Paste the self-hosted Supabase stack&apos;s <code className="font-mono">.env</code>: the file next to its{' '}
-            <code className="font-mono">docker-compose.yml</code> (<code className="font-mono">supabase/docker/.env</code> in a
-            Supabase checkout). This is not Supermixer&apos;s own <code className="font-mono">.env.toml</code>. It is read in
-            your browser; nothing is saved until you create the project.
+            <Trans i18nKey="project:connectionForm.pasteTheSelfHostedSupabaseStack" components={{ code: <code className="font-mono" />, code2: <code className="font-mono" />, code3: <code className="font-mono" />, code4: <code className="font-mono" /> }} />
           </DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-2 border-t">
           <Textarea
-            aria-label="Supabase .env contents"
+            aria-label={t('project:connectionForm.supabaseEnvContents')}
             className="min-h-60 font-mono text-xs"
             spellCheck={false}
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder={'SUPABASE_PUBLIC_URL=http://localhost:8000\nANON_KEY=…\nSERVICE_ROLE_KEY=…'}
           />
-          <p className="text-xs text-foreground-lighter">{found > 0 ? `Found ${found} values.` : 'No values found yet.'}</p>
+          <p className="text-xs text-foreground-lighter">{found > 0 ? t('project:connectionForm.foundValues', { found }) : t('project:connectionForm.noValuesFoundYet')}</p>
         </DialogSection>
         <DialogFooter>
           <Button variant="default" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('project:connectionForm.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -336,7 +333,7 @@ export function EnvImportDialog({
               onOpenChange(false)
             }}
           >
-            Fill in form
+            {t('project:connectionForm.fillInForm')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -350,12 +347,8 @@ export function HealthChecks({ report }: { report: Schemas['HealthReport'] }) {
   return (
     <div className="flex flex-col gap-3">
       {examples.length > 0 && (
-        <Alert variant="destructive" title="This stack uses Supabase's example secrets">
-          The {examples.join(', ')} {examples.length === 1 ? 'is' : 'are'} the public example from Supabase's
-          self-hosting files, so anyone can use {examples.length === 1 ? 'it' : 'them'}: with the example JWT secret,
-          anyone can sign a service_role token. Generate new secrets and restart the stack before you use it. Change the
-          other example values in its .env too (DASHBOARD_PASSWORD, SECRET_KEY_BASE, VAULT_ENC_KEY, PG_META_CRYPTO_KEY,
-          the Logflare tokens): Supermixer can't check those.
+        <Alert variant="destructive" title={t('project:connectionForm.thisStackUsesSupabaseSExample')}>
+          {t('project:connectionForm.exampleSecrets', { count: examples.length, names: examples.join(', ') })}
         </Alert>
       )}
       <HealthList report={report} />
@@ -380,7 +373,7 @@ function HealthList({ report }: { report: Schemas['HealthReport'] }) {
             <span className="text-foreground">{s.label}</span>
             {s.detail && <span className="text-xs break-words text-foreground-lighter">{s.detail}</span>}
           </div>
-          <span className="font-mono text-xs text-foreground-lighter">{s.latency_ms} ms</span>
+          <span className="font-mono text-xs text-foreground-lighter">{t('project:connectionForm.ms', { latencyMs: s.latency_ms })}</span>
         </li>
       ))}
     </ul>

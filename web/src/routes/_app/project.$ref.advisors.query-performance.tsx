@@ -28,6 +28,7 @@ import {
   type QueryStat,
 } from '@/lib/pg/query-performance'
 import { pgQuery, usePg } from '@/lib/pg/run'
+import { t as tr, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/advisors/query-performance')({
   component: QueryPerformancePage,
@@ -77,30 +78,29 @@ function QueryPerformancePage() {
 
   if (installed.error) {
     return (
-      <DatabasePage title="Query Performance">
+      <DatabasePage title={tr('observability:advisorsQueryPerformance.queryPerformance')}>
         <Alert variant="destructive" title={installed.error.message} />
       </DatabasePage>
     )
   }
   if (installed.data && !schema) {
     return (
-      <DatabasePage title="Query Performance" description="Which statements cost the database the most time.">
+      <DatabasePage title={tr('observability:advisorsQueryPerformance.queryPerformance')} description={tr('observability:advisorsQueryPerformance.whichStatementsCostTheDatabaseThe')}>
         <Alert
-          title="pg_stat_statements isn't enabled"
+          title={tr('observability:advisorsQueryPerformance.pgStatStatementsIsnTEnabled')}
           actions={
             canChange && (
               <Button
                 variant="default"
                 loading={ddl.isPending}
-                onClick={() => ddl.mutate({ sql: enableExtension('pg_stat_statements', 'extensions'), done: 'Enabled pg_stat_statements' })}
+                onClick={() => ddl.mutate({ sql: enableExtension('pg_stat_statements', 'extensions'), done: tr('observability:advisorsQueryPerformance.enabledPgStatStatements') })}
               >
-                Enable pg_stat_statements
+                {tr('observability:advisorsQueryPerformance.enablePgStatStatements')}
               </Button>
             )
           }
         >
-          Query Performance reads its statistics. Supabase stacks load it at startup; if enabling fails, add it to
-          shared_preload_libraries and restart Postgres.
+          {tr('observability:advisorsQueryPerformance.queryPerformanceReadsItsStatisticsSupabase')}
         </Alert>
       </DatabasePage>
     )
@@ -110,32 +110,32 @@ function QueryPerformancePage() {
   const hidden = rows.some((q) => q.query === HIDDEN)
   return (
     <DatabasePage
-      title="Query Performance"
+      title={tr('observability:advisorsQueryPerformance.queryPerformance')}
       description={
         <>
-          Which statements cost the database the most time, from pg_stat_statements.
-          {sinceAt && ` Collected since ${new Date(sinceAt).toLocaleString()}.`}
+          {tr('observability:advisorsQueryPerformance.whichStatementsCostTheDatabaseThe2')}
+          {sinceAt && tr('observability:advisorsQueryPerformance.collectedSince', { value: new Date(sinceAt).toLocaleString(language()) })}
         </>
       }
       toolbar={
         <>
           <Tabs value={sort} onValueChange={(v) => setSort(v as QuerySort)}>
             <TabsList className="border-b-0">
-              {Object.entries(QUERY_SORTS).map(([k, s]) => (
+              {Object.entries(QUERY_SORTS()).map(([k, s]) => (
                 <TabsTrigger key={k} value={k}>
                   {s.label}
                 </TabsTrigger>
               ))}
             </TabsList>
           </Tabs>
-          <SearchBox value={typed} onChange={setTyped} placeholder="Search queries" />
+          <SearchBox value={typed} onChange={setTyped} placeholder={tr('observability:advisorsQueryPerformance.searchQueries')} />
           <Select value={role} onValueChange={setRole}>
-            <SelectTrigger size="tiny" className="w-44" aria-label="Role">
-              <span className="text-foreground-lighter">role</span>
+            <SelectTrigger size="tiny" className="w-44" aria-label={tr('observability:advisorsQueryPerformance.role')}>
+              <span className="text-foreground-lighter">{tr('observability:advisorsQueryPerformance.role2')}</span>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value={ALL}>All roles</SelectItem>
+              <SelectItem value={ALL}>{tr('observability:advisorsQueryPerformance.allRoles')}</SelectItem>
               {(roles.data ?? []).map((r) => (
                 <SelectItem key={r.name} value={r.name}>
                   {r.name}
@@ -148,20 +148,19 @@ function QueryPerformancePage() {
       actions={
         <>
           <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={stats.isFetching && !stats.isPending} onClick={() => void stats.refetch()}>
-            Refresh
+            {tr('observability:advisorsQueryPerformance.refresh')}
           </Button>
           {canChange && (
             <Button variant="default" size="tiny" onClick={() => setConfirmReset(true)}>
-              Reset report
+              {tr('observability:advisorsQueryPerformance.resetReport')}
             </Button>
           )}
         </>
       }
     >
       {hidden && (
-        <Alert title="Some statement text is hidden">
-          Postgres shows other roles&apos; statements only to members of pg_read_all_stats. Read-only access uses a login
-          without it, so statements that may hold secrets, such as ALTER ROLE … PASSWORD, stay hidden.
+        <Alert title={tr('observability:advisorsQueryPerformance.someStatementTextIsHidden')}>
+          {tr('observability:advisorsQueryPerformance.postgresShowsOtherRolesStatementsOnly')}
         </Alert>
       )}
       {stats.error ? (
@@ -175,18 +174,18 @@ function QueryPerformancePage() {
               <Skeleton className="h-6" />
             </div>
           ) : rows.length === 0 ? (
-            <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{search || roleName ? 'No statements match' : 'No statements recorded yet'}</p>
+            <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{search || roleName ? tr('observability:advisorsQueryPerformance.noStatementsMatch') : tr('observability:advisorsQueryPerformance.noStatementsRecordedYet')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Query</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead className="text-right">Calls</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Total time</TableHead>
-                  <TableHead className="text-right">Mean</TableHead>
-                  <TableHead className="text-right">Max</TableHead>
-                  <TableHead className="text-right whitespace-nowrap">Cache hit</TableHead>
+                  <TableHead>{tr('observability:advisorsQueryPerformance.query')}</TableHead>
+                  <TableHead>{tr('observability:advisorsQueryPerformance.role')}</TableHead>
+                  <TableHead className="text-right">{tr('observability:advisorsQueryPerformance.calls')}</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">{tr('observability:advisorsQueryPerformance.totalTime')}</TableHead>
+                  <TableHead className="text-right">{tr('observability:advisorsQueryPerformance.mean')}</TableHead>
+                  <TableHead className="text-right">{tr('observability:advisorsQueryPerformance.max')}</TableHead>
+                  <TableHead className="text-right whitespace-nowrap">{tr('observability:advisorsQueryPerformance.cacheHit')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -209,7 +208,7 @@ function QueryPerformancePage() {
                       </code>
                     </TableCell>
                     <TableCell className="text-foreground-light">{q.role ?? '—'}</TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground-light">{q.calls.toLocaleString()}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground-light">{q.calls.toLocaleString(language())}</TableCell>
                     <TableCell className="text-right whitespace-nowrap tabular-nums text-foreground-light">
                       {formatMs(q.total_ms)}
                       {q.share !== null && <span className="ml-1 text-xs text-foreground-lighter">({q.share.toFixed(1)}%)</span>}
@@ -229,9 +228,9 @@ function QueryPerformancePage() {
           {open && (
             <>
               <SheetHeader>
-                <SheetTitle>Statement details</SheetTitle>
+                <SheetTitle>{tr('observability:advisorsQueryPerformance.statementDetails')}</SheetTitle>
                 <SheetDescription>
-                  Run as {open.role ?? 'an unknown role'}. Constants are replaced by $1, $2, … so similar queries are counted together.
+                  {tr('observability:advisorsQueryPerformance.runAsConstantsAreReplacedBy', { role: open.role ?? tr('observability:advisorsQueryPerformance.anUnknownRole') })}
                 </SheetDescription>
               </SheetHeader>
               <div className="flex-1 overflow-y-auto">
@@ -240,15 +239,15 @@ function QueryPerformancePage() {
                 </SheetSection>
                 <SheetSection className="border-t">
                   <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-3">
-                    <Metric label="Calls" value={open.calls.toLocaleString()} />
-                    <Metric label="Total time" value={formatMs(open.total_ms)} />
-                    <Metric label="Share of all time" value={open.share === null ? '—' : `${open.share.toFixed(1)}%`} />
-                    <Metric label="Mean" value={formatMs(open.mean_ms)} />
-                    <Metric label="Min" value={formatMs(open.min_ms)} />
-                    <Metric label="Max" value={formatMs(open.max_ms)} />
-                    <Metric label="Rows" value={open.rows.toLocaleString()} />
-                    <Metric label="Rows per call" value={open.calls ? (open.rows / open.calls).toFixed(open.rows < open.calls ? 2 : 1) : '—'} />
-                    <Metric label="Cache hit" value={percent(open.cache_hit)} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.calls')} value={open.calls.toLocaleString(language())} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.totalTime')} value={formatMs(open.total_ms)} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.shareOfAllTime')} value={open.share === null ? '—' : `${open.share.toFixed(1)}%`} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.mean')} value={formatMs(open.mean_ms)} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.min')} value={formatMs(open.min_ms)} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.max')} value={formatMs(open.max_ms)} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.rows')} value={open.rows.toLocaleString(language())} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.rowsPerCall')} value={open.calls ? (open.rows / open.calls).toFixed(open.rows < open.calls ? 2 : 1) : '—'} />
+                    <Metric label={tr('observability:advisorsQueryPerformance.cacheHit')} value={percent(open.cache_hit)} />
                   </dl>
                 </SheetSection>
               </div>
@@ -260,12 +259,12 @@ function QueryPerformancePage() {
         <ConfirmDialog
           open={confirmReset}
           onOpenChange={setConfirmReset}
-          title="Reset query statistics?"
-          description="Clears pg_stat_statements for the whole database server. Statistics start collecting again from now."
-          confirmLabel="Reset report"
+          title={tr('observability:advisorsQueryPerformance.resetQueryStatistics')}
+          description={tr('observability:advisorsQueryPerformance.clearsPgStatStatementsForThe')}
+          confirmLabel={tr('observability:advisorsQueryPerformance.resetReport')}
           variant="warning"
           loading={ddl.isPending}
-          onConfirm={() => ddl.mutate({ sql: resetStatsSql(schema), done: 'Statistics reset' }, { onSettled: () => setConfirmReset(false) })}
+          onConfirm={() => ddl.mutate({ sql: resetStatsSql(schema), done: tr('observability:advisorsQueryPerformance.statisticsReset') }, { onSettled: () => setConfirmReset(false) })}
         />
       )}
     </DatabasePage>

@@ -16,22 +16,19 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { collections, EXPLORER_QUERY, GRAPHQL_SQL, hasMutation, sampleQuery, variablesProblem, type ExplorerSchema } from '@/lib/pg/graphql'
 import { rowsOf, runSql } from '@/lib/pg/run'
 import { cn } from '@/lib/utils'
+import { localized, t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/integrations/graphiql')({
   component: GraphiqlPage,
 })
 
-const STARTER = `# Pick a collection on the left, or write a query.
-# Run it with the button or Ctrl/Cmd + Enter.
-query {
-  __typename
-}`
+const STARTER = localized(() => t('integrations:integrationsGraphiql.pickACollectionOnTheLeft'))
 
 function GraphiqlPage() {
   const { ref } = Route.useParams()
   const ext = useExtension(ref, 'pg_graphql')
   const canChange = useCanChange()
-  const [query, setQuery] = useState(STARTER)
+  const [query, setQuery] = useState(STARTER())
   const [variables, setVariables] = useState('')
   const [picked, setPicked] = useState<string | null>(null)
 
@@ -52,23 +49,23 @@ function GraphiqlPage() {
   return (
     <IntegrationPage
       projectRef={ref}
-      title="GraphiQL"
-      description="Query the database with GraphQL through pg_graphql. Queries run as the database user Supermixer connects with, so Row Level Security doesn't limit them."
+      title={t('integrations:integrationsGraphiql.graphiql')}
+      description={t('integrations:integrationsGraphiql.queryTheDatabaseWithGraphqlThrough')}
       extension={{ name: 'pg_graphql', schema: null }}
-      about="Creates the graphql schema. The API's /graphql/v1 endpoint then serves the same schema to your apps, following their roles and policies."
+      about={t('integrations:integrationsGraphiql.createsTheGraphqlSchemaTheApi')}
     >
       <div className="grid gap-4 lg:grid-cols-[14rem_minmax(0,1fr)]">
         <Card className="flex max-h-[36rem] flex-col overflow-hidden">
-          <p className="border-b px-4 py-2 text-xs text-foreground-lighter">Collections</p>
+          <p className="border-b px-4 py-2 text-xs text-foreground-lighter">{t('integrations:integrationsGraphiql.collections')}</p>
           <div className="flex-1 overflow-y-auto p-2">
             {explorer.error ? (
               <p className="px-2 text-xs text-destructive">{explorer.error.message}</p>
             ) : !explorer.data ? (
               <Skeleton className="h-24" />
             ) : !schema ? (
-              <p className="px-2 text-xs text-destructive">{explorer.data.errors?.[0]?.message ?? 'No schema'}</p>
+              <p className="px-2 text-xs text-destructive">{explorer.data.errors?.[0]?.message ?? t('integrations:integrationsGraphiql.noSchema')}</p>
             ) : collections(schema).length === 0 ? (
-              <p className="px-2 text-xs text-foreground-lighter">No tables are exposed to GraphQL. pg_graphql shows tables in the schemas on the search path.</p>
+              <p className="px-2 text-xs text-foreground-lighter">{t('integrations:integrationsGraphiql.noTablesAreExposedToGraphql')}</p>
             ) : (
               <ul>
                 {collections(schema).map((c) => (
@@ -96,14 +93,14 @@ function GraphiqlPage() {
           <div className="h-72 overflow-hidden rounded-md border">
             <CodeEditor language="graphql" value={query} onChange={setQuery} onRun={() => !varsProblem && !blockedMutation && run.mutate()} />
           </div>
-          <FormField label="Variables" htmlFor="gql-variables" description={varsProblem ? <span className="text-destructive">{varsProblem}</span> : 'Optional, as a JSON object.'}>
-            <Textarea id="gql-variables" rows={3} className="font-mono text-xs" value={variables} onChange={(e) => setVariables(e.target.value)} placeholder='{ "first": 10 }' />
+          <FormField label={t('integrations:integrationsGraphiql.variables')} htmlFor="gql-variables" description={varsProblem ? <span className="text-destructive">{varsProblem}</span> : t('integrations:integrationsGraphiql.optionalAsAJsonObject')}>
+            <Textarea id="gql-variables" rows={3} className="font-mono text-xs" value={variables} onChange={(e) => setVariables(e.target.value)} placeholder={'{ "first": 10 }'} />
           </FormField>
           <div className="flex items-center gap-3">
             <Button variant="primary" icon={<PlayIcon />} loading={run.isPending} disabled={!!varsProblem || blockedMutation} onClick={() => run.mutate()}>
-              Run
+              {t('integrations:integrationsGraphiql.run')}
             </Button>
-            {blockedMutation && <span className="text-xs text-foreground-lighter">Your role can only run queries, not mutations.</span>}
+            {blockedMutation && <span className="text-xs text-foreground-lighter">{t('integrations:integrationsGraphiql.yourRoleCanOnlyRunQueries')}</span>}
           </div>
           {run.error ? (
             <Alert variant="destructive" title={run.error.message} />

@@ -17,6 +17,8 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { relativeTime } from '@/lib/auth-users'
+import { localized, t, Trans, language } from '@/lib/i18n'
+import { formatDate } from '@/lib/i18n/format'
 
 export const Route = createFileRoute('/_app/admin/')({
   component: OverviewPage,
@@ -32,11 +34,11 @@ function OverviewPage() {
   const o = overview.data
   const testEmail = useMutation({
     mutationFn: () => unwrap(api.POST('/admin/email/test')),
-    onSuccess: (r) => toast.success(`Sent a test email to ${r.sent_to}`),
+    onSuccess: (r) => toast.success(t('admin:admin.sentATestEmailTo', { sentTo: r.sent_to })),
     onError: (e) => toast.error(e.message),
   })
   return (
-    <AdminLayout title="Overview" description="This Supermixer instance at a glance.">
+    <AdminLayout title={t('admin:admin.overview')} description={t('admin:admin.thisSupermixerInstanceAtAGlance')}>
       {overview.error ? (
         <Alert variant="destructive" title={overview.error.message} />
       ) : !o ? (
@@ -44,49 +46,48 @@ function OverviewPage() {
       ) : (
         <>
           {o.password_change_required > 0 && (
-            <Alert variant="warning" title={`${o.password_change_required} ${o.password_change_required === 1 ? 'account has' : 'accounts have'} still to choose a new password`}>
-              They can’t do anything else until they do. See <Link to="/admin/users" className="text-link">Users</Link>.
+            <Alert variant="warning" title={t('admin:admin.stillToChooseANewPassword', { count: o.password_change_required })}>
+              <Trans i18nKey="admin:admin.theyCanTDoAnythingElse" components={{ link: <Link to="/admin/users" className="text-link" /> }} />
             </Alert>
           )}
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-5">
-            <Stat label="Users" value={o.active_users} detail={`${o.users - o.active_users} disabled`} />
-            <Stat label="Instance admins" value={o.instance_admins} />
-            <Stat label="Two-factor sign-in" value={o.mfa_enabled} detail={`of ${o.active_users} active users`} />
-            <Stat label="Organizations" value={o.organizations} to="/admin/organizations" />
+            <Stat label={t('admin:admin.users')} value={o.active_users} detail={t('admin:admin.disabled', { users: o.users - o.active_users })} />
+            <Stat label={t('admin:admin.instanceAdmins')} value={o.instance_admins} />
+            <Stat label={t('admin:admin.twoFactorSignIn')} value={o.mfa_enabled} detail={t('admin:admin.ofActiveUsers', { activeUsers: o.active_users })} />
+            <Stat label={t('admin:admin.organizations')} value={o.organizations} to="/admin/organizations" />
             <Stat
-              label="Projects"
+              label={t('admin:admin.projects')}
               value={o.projects}
-              detail={`${o.managed_projects} created by Supermixer`}
+              detail={t('admin:admin.createdBySupermixer', { managedProjects: o.managed_projects })}
               to="/admin/projects"
             />
           </div>
-          <SettingsSection title="Settings" description="From the server's configuration file (.env.toml); restart Supermixer after changing them.">
+          <SettingsSection title={t('admin:admin.settings')} description={t('admin:admin.fromTheServerSConfigurationFile')}>
             <Card className="flex flex-col divide-y text-sm">
-              <Row label="Version">
+              <Row label={t('admin:admin.version')}>
                 <span className="font-mono text-xs">{o.version}</span>
               </Row>
-              <Row label="Creating stacks">
+              <Row label={t('admin:admin.creatingStacks')}>
                 {o.provisioning.enabled ? (
                   <span>
-                    On, in <span className="font-mono text-xs">{o.provisioning.stacks_dir}</span>, reached at{' '}
-                    <span className="font-mono text-xs">{o.provisioning.public_host}</span>
+                    <Trans i18nKey="admin:admin.onInReachedAt" values={{ stacksDir: o.provisioning.stacks_dir, publicHost: o.provisioning.public_host }} components={{ span: <span className="font-mono text-xs" />, span2: <span className="font-mono text-xs" /> }} />
                   </span>
                 ) : (
-                  'Off (provisioning.enabled)'
+                  t('admin:admin.offProvisioningEnabled')
                 )}
               </Row>
-              <Row label="Backups">
+              <Row label={t('admin:admin.backups')}>
                 {o.backups.interval_hours > 0
-                  ? `${every(o.backups.interval_hours)}, newest ${o.backups.keep} kept`
-                  : 'Scheduled backups off'}
-                , in <span className="font-mono text-xs">{o.backups.dir}</span>
+                  ? t('admin:admin.newestKept', { every: every(o.backups.interval_hours), keep: o.backups.keep })
+                  : t('admin:admin.scheduledBackupsOff')}
+                <Trans i18nKey="admin:admin.inDir" values={{ dir: o.backups.dir }} components={{ code: <span className="font-mono text-xs" /> }} />
               </Row>
-              <Row label="Backup copies">
-                {o.backups.s3 ? <span className="font-mono text-xs">{o.backups.s3}</span> : 'Not copied to a bucket'}
+              <Row label={t('admin:admin.backupCopies')}>
+                {o.backups.s3 ? <span className="font-mono text-xs">{o.backups.s3}</span> : t('admin:admin.notCopiedToABucket')}
               </Row>
-              <Row label="Single sign-on">
+              <Row label={t('admin:admin.singleSignOn')}>
                 {o.sso.length === 0 ? (
-                  'No providers (sso.providers)'
+                  t('admin:admin.noProvidersSsoProviders')
                 ) : (
                   <span className="flex flex-col gap-2">
                     {o.sso.map((p) => (
@@ -94,7 +95,7 @@ function OverviewPage() {
                         <span className="text-foreground">
                           {p.name}{' '}
                           <span className="text-xs text-foreground-lighter">
-                            {p.create_users ? 'creates accounts' : 'connected accounts only'}
+                            {p.create_users ? t('admin:admin.createsAccounts') : t('admin:admin.connectedAccountsOnly')}
                             {p.allowed_domains.length > 0 && <> · {p.allowed_domains.join(', ')}</>}
                           </span>
                         </span>
@@ -104,24 +105,23 @@ function OverviewPage() {
                   </span>
                 )}
               </Row>
-              <Row label="Email">
+              <Row label={t('admin:admin.email')}>
                 {o.email.enabled ? (
                   <span className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      As <span className="font-mono text-xs">{o.email.from}</span>, through{' '}
-                      <span className="font-mono text-xs">{o.email.server}</span>
+                      <Trans i18nKey="admin:admin.asThrough" values={{ from: o.email.from, server: o.email.server }} components={{ span: <span className="font-mono text-xs" />, span2: <span className="font-mono text-xs" /> }} />
                     </span>
                     <Button size="tiny" variant="default" loading={testEmail.isPending} onClick={() => testEmail.mutate()}>
-                      Send test email
+                      {t('admin:admin.sendTestEmail')}
                     </Button>
                   </span>
                 ) : (
-                  'Off (email.smtp_host): invitations give a link to share, and only admins reset passwords'
+                  t('admin:admin.offEmailSmtpHostInvitationsGive')
                 )}
               </Row>
-              <Row label="Audit log drains">
+              <Row label={t('admin:admin.auditLogDrains')}>
                 {o.audit_drains.length === 0 ? (
-                  'None (audit.drains): the audit log stays in Supermixer'
+                  t('admin:admin.noneAuditDrainsTheAuditLog')
                 ) : (
                   <span className="flex flex-col gap-2">
                     {o.audit_drains.map((d) => (
@@ -129,23 +129,23 @@ function OverviewPage() {
                         <span className="flex flex-wrap items-center gap-2 text-foreground">
                           {d.id}
                           {d.state === 'not_started' ? (
-                            <Badge variant="warning">Not started</Badge>
+                            <Badge variant="warning">{t('admin:admin.notStarted')}</Badge>
                           ) : d.state === 'unknown' ? (
-                            <Badge>Status unknown</Badge>
+                            <Badge>{t('admin:admin.statusUnknown')}</Badge>
                           ) : d.last_error ? (
-                            <Badge variant="destructive">Failing</Badge>
+                            <Badge variant="destructive">{t('admin:admin.failing')}</Badge>
                           ) : (
-                            d.last_success_at && <Badge variant="success">Delivering</Badge>
+                            d.last_success_at && <Badge variant="success">{t('admin:admin.delivering')}</Badge>
                           )}
                           <span className="text-xs text-foreground-lighter">
                             {d.state === 'not_started'
-                              ? 'starts when an instance takes on background work'
+                              ? t('admin:admin.startsWhenAnInstanceTakesOn')
                               : d.pending == null
                                 ? null
                                 : d.pending === 0
-                                  ? 'up to date'
-                                  : `${d.pending.toLocaleString()} to send`}
-                            {d.last_success_at && <> · last sent {relativeTime(d.last_success_at)}</>}
+                                  ? t('admin:admin.upToDate')
+                                  : t('admin:admin.toSend', { value: d.pending.toLocaleString(language()) })}
+                            {d.last_success_at && <> {t('admin:admin.lastSent', { relativeTime: relativeTime(d.last_success_at) })}</>}
                           </span>
                         </span>
                         <span className="font-mono text-xs break-all text-foreground-lighter">{d.target}</span>
@@ -155,15 +155,14 @@ function OverviewPage() {
                   </span>
                 )}
               </Row>
-              <Row label="Metrics">
+              <Row label={t('admin:admin.metrics')}>
                 {o.metrics_listen ? (
                   <span>
-                    <span className="font-mono text-xs">/metrics</span> on{' '}
-                    <span className="font-mono text-xs">{o.metrics_listen}</span>
-                    {o.metrics_listen.startsWith(':') && ' (every address of each replica)'}
+                    <Trans i18nKey="admin:admin.metricsOn" values={{ listen: o.metrics_listen }} components={{ code: <span className="font-mono text-xs" /> }} />
+                    {o.metrics_listen.startsWith(':') && t('admin:admin.everyAddressOfEachReplica')}
                   </span>
                 ) : (
-                  'Off (metrics.listen)'
+                  t('admin:admin.offMetricsListen')
                 )}
               </Row>
             </Card>
@@ -175,36 +174,36 @@ function OverviewPage() {
   )
 }
 
-const MODES = { off: 'Off (tls.mode)', files: 'Your own files (tls.mode = "files")', acme: 'Let’s Encrypt (tls.mode = "acme")' }
+const MODES = localized(() => ({ off: t('admin:admin.offTlsMode'), files: t('admin:admin.yourOwnFilesTlsModeFiles'), acme: t('admin:admin.letSEncryptTlsModeAcme') }))
 
 /** Where the certificate comes from, when it expires, and where it's used. */
 function Certificates({ tls }: { tls: Schemas['TlsStatus'] }) {
   return (
     <SettingsSection
-      title="Certificate"
-      description="Encrypts Supermixer’s own address and the stacks it creates ([tls] in the configuration file)."
+      title={t('admin:admin.certificate')}
+      description={t('admin:admin.encryptsSupermixerSOwnAddressAnd')}
     >
       <Card className="flex flex-col divide-y text-sm">
-        <Row label="Source">{MODES[tls.mode]}</Row>
+        <Row label={t('admin:admin.source')}>{MODES()[tls.mode]}</Row>
         {tls.mode !== 'off' && (
           <>
-            <Row label="Host names">
+            <Row label={t('admin:admin.hostNames')}>
               <span className="font-mono text-xs">{tls.names.join(', ')}</span>
             </Row>
             {tls.certificates.map((c) => (
-              <Row key={c.names.join(',')} label="Certificate">
+              <Row key={c.names.join(',')} label={t('admin:admin.certificate')}>
                 <span className="flex flex-col">
                   <span className="text-foreground">
                     {c.issuer}
-                    {tls.private_ca && <span className="text-xs text-foreground-lighter"> · your own CA</span>}
+                    {tls.private_ca && <span className="text-xs text-foreground-lighter"> {t('admin:admin.yourOwnCa')}</span>}
                   </span>
                   <span className={`text-xs ${expiresSoon(c.not_after) ? 'text-warning-600' : 'text-foreground-lighter'}`}>
-                    Expires {new Date(c.not_after).toLocaleDateString()}
+                    {t('admin:admin.expiresOn', { date: formatDate(c.not_after) })}
                     {expiresSoon(c.not_after) && (
                       <>
                         {' '}
                         ({relativeTime(c.not_after)}):{' '}
-                        {tls.mode === 'acme' ? 'it should have been renewed by now; see the server’s log' : 'replace the files soon'}
+                        {tls.mode === 'acme' ? t('admin:admin.itShouldHaveBeenRenewedBy') : t('admin:admin.replaceTheFilesSoon')}
                       </>
                     )}
                   </span>
@@ -212,12 +211,12 @@ function Certificates({ tls }: { tls: Schemas['TlsStatus'] }) {
               </Row>
             ))}
             {tls.missing.length > 0 && (
-              <Row label="Waiting for">
+              <Row label={t('admin:admin.waitingFor')}>
                 <span className="font-mono text-xs">{tls.missing.join(', ')}</span>
               </Row>
             )}
             {tls.last_error && (
-              <Row label="Last problem">
+              <Row label={t('admin:admin.lastProblem')}>
                 <span className="text-xs text-destructive">
                   {tls.last_error}
                   {tls.last_error_at && <> ({relativeTime(tls.last_error_at)})</>}
@@ -226,35 +225,35 @@ function Certificates({ tls }: { tls: Schemas['TlsStatus'] }) {
             )}
           </>
         )}
-        <Row label="HTTPS">
+        <Row label={t('admin:admin.https')}>
           {tls.https_listen ? (
             <span>
-              Served on <span className="font-mono text-xs">{tls.https_listen}</span>
+              <Trans i18nKey="admin:admin.servedOn" values={{ httpsListen: tls.https_listen }} components={{ span: <span className="font-mono text-xs" /> }} />
             </span>
           ) : (
-            'Not served by Supermixer (server.https_listen): plain HTTP, or HTTPS from a proxy in front'
+            t('admin:admin.notServedBySupermixerServerHttps')
           )}
         </Row>
-        <Row label="HSTS">
+        <Row label={t('admin:admin.hsts')}>
           {tls.hsts ? (
             <span className="font-mono text-xs">{tls.hsts}</span>
           ) : tls.hsts_blocked ? (
-            'Held back: a project on the same host name is still reached over plain HTTP'
+            t('admin:admin.heldBackAProjectOnThe')
           ) : (
-            'Not sent'
+            t('admin:admin.notSent')
           )}
         </Row>
         {tls.stacks_tls + tls.stacks_plain > 0 && (
-          <Row label="Stacks">
+          <Row label={t('admin:admin.stacks')}>
             <span className="flex flex-wrap items-center gap-2">
               {/* Design.md › Badge: success (brand) for a good state, warning for a risk, default (outline) for none. */}
-              <Badge variant={tls.stacks_tls > 0 ? 'success' : 'default'}>{tls.stacks_tls} encrypted</Badge>
+              <Badge variant={tls.stacks_tls > 0 ? 'success' : 'default'}>{t('admin:admin.encrypted', { stacksTls: tls.stacks_tls })}</Badge>
               <Badge variant={tls.stacks_plain > 0 ? 'warning' : 'default'}>
-                {tls.stacks_plain} unencrypted
+                {t('admin:admin.unencrypted', { stacksPlain: tls.stacks_plain })}
               </Badge>
               {tls.stacks_plain > 0 && tls.mode !== 'off' && (
                 <span className="text-xs text-foreground-lighter">
-                  each project turns it on under Settings › Infrastructure
+                  {t('admin:admin.eachProjectTurnsItOnUnder')}
                 </span>
               )}
             </span>
@@ -272,11 +271,11 @@ function expiresSoon(at: string) {
 
 /** "Every hour", "Every 6 hours", "Every 30 minutes". */
 function every(hours: number) {
-  if (hours === 1) return 'Every hour'
-  if (Number.isInteger(hours)) return `Every ${hours} hours`
+  if (hours === 1) return t('admin:admin.everyHour')
+  if (Number.isInteger(hours)) return t('admin:admin.everyHours', { hours })
   const minutes = Math.round(hours * 60)
-  if (minutes < 60) return minutes === 1 ? 'Every minute' : `Every ${minutes} minutes`
-  return `Every ${Math.floor(minutes / 60)} h ${minutes % 60} min`
+  if (minutes < 60) return minutes === 1 ? t('admin:admin.everyMinute') : t('admin:admin.everyMinutes', { minutes })
+  return t('admin:admin.everyHMin', { floor: Math.floor(minutes / 60), minutes: minutes % 60 })
 }
 
 function Row({ label, children }: { label: string; children: ReactNode }) {

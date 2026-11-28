@@ -24,6 +24,7 @@ import {
   UPDATE_SECRET_SQL,
   type VaultSecret,
 } from '@/lib/pg/vault'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/integrations/vault')({
   component: VaultPage,
@@ -50,7 +51,7 @@ function VaultPage() {
   const remove = useMutation<unknown, Error, VaultSecret>({
     mutationFn: (s) => runSql(ref, DELETE_SECRET_SQL, { params: [s.id] }),
     onSuccess: async (_, s) => {
-      toast.success(`Deleted ${s.name ?? 'the secret'}`)
+      toast.success(t('integrations:integrationsVault.deleted', { name: s.name ?? t('integrations:integrationsVault.theSecret') }))
       await queryClient.invalidateQueries({ queryKey: secretsKey(ref) })
     },
     onError: (e) => toast.error(e.message),
@@ -59,13 +60,13 @@ function VaultPage() {
   return (
     <IntegrationPage
       projectRef={ref}
-      title="Vault"
-      description="Secrets stored encrypted in the database. Read them in SQL from vault.decrypted_secrets, for example in cron jobs or webhooks."
+      title={t('integrations:integrationsVault.vault')}
+      description={t('integrations:integrationsVault.secretsStoredEncryptedInTheDatabase')}
       extension={{ name: 'supabase_vault', schema: 'vault' }}
-      about="Creates the vault schema. Secrets are encrypted with a key Postgres keeps outside the database."
+      about={t('integrations:integrationsVault.createsTheVaultSchemaSecretsAre')}
       actions={
-        <PermissionButton allowed={canChange} action="add secrets" variant="primary" icon={<AddIcon />} onClick={() => setEditing('new')}>
-          Add secret
+        <PermissionButton allowed={canChange} action={t('integrations:integrationsVault.addSecrets')} variant="primary" icon={<AddIcon />} onClick={() => setEditing('new')}>
+          {t('integrations:integrationsVault.addSecret')}
         </PermissionButton>
       }
     >
@@ -74,10 +75,10 @@ function VaultPage() {
         loading={secrets.isPending}
         error={secrets.error}
         rowKey={(s) => s.name ?? s.id}
-        empty="No secrets yet"
+        empty={t('integrations:integrationsVault.noSecretsYet')}
         columns={[
           {
-            header: 'Name',
+            header: t('integrations:integrationsVault.name'),
             cell: (s) => (
               <span className="flex flex-col">
                 <span className="font-mono text-xs text-foreground">{s.name ?? '—'}</span>
@@ -86,7 +87,7 @@ function VaultPage() {
             ),
           },
           {
-            header: 'Value',
+            header: t('integrations:integrationsVault.value'),
             className: 'w-96',
             cell: (s) =>
               revealed[s.id] !== undefined ? (
@@ -94,7 +95,7 @@ function VaultPage() {
                   value={revealed[s.id]!}
                   actions={
                     <Button variant="text" size="tiny" onClick={() => setRevealed(({ [s.id]: _, ...rest }) => rest)}>
-                      Hide
+                      {t('integrations:integrationsVault.hide')}
                     </Button>
                   }
                 />
@@ -109,22 +110,22 @@ function VaultPage() {
                       loading={reveal.isPending && reveal.variables === s.id}
                       onClick={() => reveal.mutate(s.id)}
                     >
-                      Reveal
+                      {t('integrations:integrationsVault.reveal')}
                     </Button>
                   )}
                 </span>
               ),
           },
-          { header: 'Updated', cell: (s) => <span className="whitespace-nowrap text-foreground-light">{relativeTime(s.updated_at)}</span> },
+          { header: t('integrations:integrationsVault.updated'), cell: (s) => <span className="whitespace-nowrap text-foreground-light">{relativeTime(s.updated_at)}</span> },
         ]}
         actions={[
-          { label: 'Edit secret', hidden: () => !canChange, onSelect: (s) => setEditing(s) },
+          { label: t('integrations:integrationsVault.editSecret'), hidden: () => !canChange, onSelect: (s) => setEditing(s) },
           {
-            label: 'Delete secret',
+            label: t('integrations:integrationsVault.deleteSecret'),
             hidden: () => !canChange,
             confirm: (s) => ({
-              title: `Delete ${s.name ?? 'this secret'}?`,
-              description: 'Anything that reads it from vault.decrypted_secrets stops finding it. This can’t be undone.',
+              title: t('integrations:integrationsVault.delete', { name: s.name ?? t('integrations:integrationsVault.thisSecret') }),
+              description: t('integrations:integrationsVault.anythingThatReadsItFromVault'),
             }),
             onSelect: (s) => remove.mutate(s),
           },
@@ -168,7 +169,7 @@ function SecretSheet({
         ? runSql(projectRef, UPDATE_SECRET_SQL, { params: [secret.id, value === '' ? null : value, name.trim(), description] })
         : runSql(projectRef, CREATE_SECRET_SQL, { params: [value, name.trim(), description] }),
     onSuccess: async () => {
-      toast.success(secret ? `Saved ${name.trim()}` : `Added ${name.trim()}`)
+      toast.success(secret ? t('integrations:integrationsVault.saved', { trim: name.trim() }) : t('integrations:integrationsVault.added', { trim: name.trim() }))
       if (secret) onSaved(secret.id)
       await queryClient.invalidateQueries({ queryKey: secretsKey(projectRef) })
       onClose()
@@ -178,18 +179,18 @@ function SecretSheet({
     <EditorSheet
       open
       onOpenChange={(o) => !o && onClose()}
-      title={secret ? `Edit ${secret.name ?? 'secret'}` : 'Add a secret'}
-      description="Stored encrypted. Anyone who can read vault.decrypted_secrets can read it."
+      title={secret ? t('integrations:integrationsVault.edit', { name: secret.name ?? t('integrations:integrationsVault.secret') }) : t('integrations:integrationsVault.addASecret')}
+      description={t('integrations:integrationsVault.storedEncryptedAnyoneWhoCanRead')}
       error={save.error}
-      submitLabel={secret ? 'Save secret' : 'Add secret'}
+      submitLabel={secret ? t('integrations:integrationsVault.saveSecret') : t('integrations:integrationsVault.addSecret')}
       submitting={save.isPending}
       disabled={!!problem || (!secret && value === '')}
       onSubmit={() => save.mutate()}
     >
-      <FormField label="Name" htmlFor="secret-name" description={problem && name ? <span className="text-destructive">{problem}</span> : 'How SQL finds it, e.g. stripe_api_key.'}>
+      <FormField label={t('integrations:integrationsVault.name')} htmlFor="secret-name" description={problem && name ? <span className="text-destructive">{problem}</span> : t('integrations:integrationsVault.howSqlFindsItEG')}>
         <Input id="secret-name" autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
       </FormField>
-      <FormField label="Value" htmlFor="secret-value" description={secret ? 'Leave empty to keep the current value.' : undefined}>
+      <FormField label={t('integrations:integrationsVault.value')} htmlFor="secret-value" description={secret ? t('integrations:integrationsVault.leaveEmptyToKeepTheCurrent') : undefined}>
         <Textarea
           id="secret-value"
           rows={3}
@@ -200,7 +201,7 @@ function SecretSheet({
           onChange={(e) => setValue(e.target.value)}
         />
       </FormField>
-      <FormField label="Description" htmlFor="secret-description">
+      <FormField label={t('integrations:integrationsVault.description')} htmlFor="secret-description">
         <Input id="secret-description" value={description} onChange={(e) => setDescription(e.target.value)} />
       </FormField>
     </EditorSheet>

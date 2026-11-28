@@ -13,11 +13,12 @@ import { toText } from '@/lib/pg/sql'
 import { addColumn, createTable, insertRow, updateRow, type ColumnDef } from '@/lib/pg/table-sql'
 
 import { ColumnEditor, ColumnList, defaultColumns, newColumn } from './column-fields'
+import { t, Trans } from '@/lib/i18n'
 
 export function SqlPreview({ sql }: { sql: string }) {
   return (
     <details className="rounded-md border bg-surface-100 text-xs">
-      <summary className="cursor-pointer px-3 py-2 text-foreground-light select-none">SQL that will run</summary>
+      <summary className="cursor-pointer px-3 py-2 text-foreground-light select-none">{t('database:sheets.sqlThatWillRun')}</summary>
       <pre className="overflow-x-auto border-t px-3 py-2 font-mono leading-5 text-foreground">{sql}</pre>
     </details>
   )
@@ -70,7 +71,7 @@ export function EditorSheet({
         </SheetSection>
         <SheetFooter>
           <Button variant="default" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t('database:sheets.cancel')}
           </Button>
           <Button variant="primary" loading={submitting} disabled={disabled} onClick={onSubmit}>
             {submitLabel}
@@ -123,30 +124,30 @@ export function CreateTableSheet({
     <EditorSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={`Create a new table under ${schema}`}
+      title={t('database:sheets.createANewTableUnder', { schema })}
       error={create.error}
-      submitLabel="Save"
+      submitLabel={t('database:sheets.save')}
       submitting={create.isPending}
       disabled={!valid}
       onSubmit={() => create.mutate()}
     >
-      <FormField label="Name" htmlFor="table-name">
+      <FormField label={t('database:sheets.name')} htmlFor="table-name">
         <Input id="table-name" autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="todos" />
       </FormField>
-      <FormField label="Description (optional)" htmlFor="table-comment">
+      <FormField label={t('database:sheets.descriptionOptional')} htmlFor="table-comment">
         <Input id="table-comment" value={comment} onChange={(e) => setComment(e.target.value)} />
       </FormField>
       <label htmlFor="table-rls" className="flex items-start gap-2 text-sm">
         <Checkbox id="table-rls" checked={rls} onCheckedChange={(c) => setRls(c === true)} className="mt-0.5" />
         <span>
-          <span className="text-foreground">Enable Row Level Security (recommended)</span>
+          <span className="text-foreground">{t('database:sheets.enableRowLevelSecurityRecommended')}</span>
           <span className="block text-xs text-foreground-lighter">
-            Without policies, the anon and authenticated roles can&apos;t read or write the table through the API.
+            {t('database:sheets.withoutPoliciesTheAnonAndAuthenticated')}
           </span>
         </span>
       </label>
       <div className="flex flex-col gap-2">
-        <h4 className="text-sm text-foreground">Columns</h4>
+        <h4 className="text-sm text-foreground">{t('database:sheets.columns')}</h4>
         <ColumnList projectRef={projectRef} schema={schema} columns={columns} onChange={setColumns} />
       </div>
       {sql && <SqlPreview sql={sql} />}
@@ -183,15 +184,15 @@ export function AddColumnSheet({
     <EditorSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={`Add a column to ${table.name}`}
+      title={t('database:sheets.addAColumnTo', { name: table.name })}
       error={add.error}
-      submitLabel="Save"
+      submitLabel={t('database:sheets.save')}
       submitting={add.isPending}
       disabled={!sql}
       onSubmit={() => add.mutate()}
     >
       <ColumnEditor projectRef={projectRef} schema={table.schema} value={column} onChange={setColumn} />
-      <FormField label="Description (optional)" htmlFor="col-comment">
+      <FormField label={t('database:sheets.descriptionOptional')} htmlFor="col-comment">
         <Input id="col-comment" value={comment} onChange={(e) => setComment(e.target.value)} />
       </FormField>
       {sql && <SqlPreview sql={sql} />}
@@ -261,9 +262,9 @@ export function RowSheet({
     <EditorSheet
       open={open}
       onOpenChange={onOpenChange}
-      title={editing ? `Update row in ${table.name}` : `Add a new row to ${table.name}`}
+      title={editing ? t('database:sheets.updateRowIn', { name: table.name }) : t('database:sheets.addANewRowTo', { name: table.name })}
       error={save.error}
-      submitLabel="Save"
+      submitLabel={t('database:sheets.save')}
       submitting={save.isPending}
       onSubmit={() => save.mutate()}
     >
@@ -280,7 +281,7 @@ export function RowSheet({
               <span className="flex items-center gap-2">
                 {c.name}
                 <span className="font-mono text-[11px] text-foreground-lighter">{c.type}</span>
-                {c.pk && <span className="text-[11px] text-brand-600">primary key</span>}
+                {c.pk && <span className="text-[11px] text-brand-600">{t('database:sheets.primaryKey')}</span>}
               </span>
             }
             htmlFor={`row-${c.name}`}
@@ -295,7 +296,7 @@ export function RowSheet({
                 onChange={(e) => type(e.target.value)}
               >
                 <option value="" disabled>
-                  Choose a value
+                  {t('database:sheets.chooseAValue')}
                 </option>
                 {c.enum.map((v) => (
                   <option key={v}>{v}</option>
@@ -323,14 +324,12 @@ export function RowSheet({
               <div className="mt-1 flex gap-4 text-xs text-foreground-lighter">
                 {c.nullable && (
                   <label className="flex items-center gap-1.5">
-                    <Checkbox checked={d.isNull} onCheckedChange={(v) => set(c.name, { isNull: v === true, useDefault: false })} />
-                    NULL
+                    <Trans i18nKey="database:sheets.null" components={{ checkbox: <Checkbox checked={d.isNull} onCheckedChange={(v) => set(c.name, { isNull: v === true, useDefault: false })} /> }} />
                   </label>
                 )}
                 {!editing && (c.default !== null || c.identity) && (
                   <label className="flex items-center gap-1.5">
-                    <Checkbox checked={d.useDefault} onCheckedChange={(v) => set(c.name, { useDefault: v === true, isNull: false })} />
-                    Use default
+                    <Trans i18nKey="database:sheets.useDefault" components={{ checkbox: <Checkbox checked={d.useDefault} onCheckedChange={(v) => set(c.name, { useDefault: v === true, isNull: false })} /> }} />
                   </label>
                 )}
               </div>

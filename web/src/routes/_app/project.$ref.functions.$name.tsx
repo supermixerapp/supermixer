@@ -28,6 +28,8 @@ import { toast } from '@/components/ui/toaster'
 import { api, isApiError, unwrap } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { relativeTime } from '@/lib/auth-users'
+import { t } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/_app/project/$ref/functions/$name')({
   validateSearch: (search: Record<string, unknown>): { new?: boolean } =>
@@ -59,6 +61,7 @@ function FunctionPage() {
   const dirty = !!files && !!saved && (isNew || !sameFiles(files, saved))
   const missingEntry = !!files && !files.some((f) => ENTRYPOINTS.includes(f.path)) && !(fn.data?.other_files ?? []).some((p) => ENTRYPOINTS.includes(p))
 
+  useUnsavedChanges(dirty)
   useEffect(() => {
     if (!dirty) return
     const warn = (e: BeforeUnloadEvent) => e.preventDefault()
@@ -79,7 +82,7 @@ function FunctionPage() {
         })
       ),
     onSuccess: async (res) => {
-      toast.success(res.restarted ? `Deployed ${name}` : `Saved ${name}; it takes effect when the stack starts`)
+      toast.success(res.restarted ? t('functions:functions.deployed', { name }) : t('functions:functions.savedItTakesEffectWhenThe', { name }))
       refresh()
       await queryClient.invalidateQueries({ queryKey: functionQuery(ref, name).queryKey })
       if (creating) void navigate({ to: '/project/$ref/functions/$name', params: { ref, name }, search: {}, replace: true })
@@ -94,7 +97,7 @@ function FunctionPage() {
   const remove = useMutation({
     mutationFn: () => unwrap(api.DELETE('/projects/{ref}/functions/{name}', { params: { path: { ref, name } } })),
     onSuccess: () => {
-      toast.success(`Deleted ${name}`)
+      toast.success(t('functions:functions.deleted', { name }))
       setDeleting(false)
       // The page stays, showing the kept versions to restore from.
       void queryClient.invalidateQueries({ queryKey: functionQuery(ref, name).queryKey })
@@ -106,7 +109,7 @@ function FunctionPage() {
   if (!project.stack) {
     return (
       <DatabasePage title={name}>
-        <Alert title="Supermixer connects to this stack, so it can't see its functions folder" />
+        <Alert title={t('functions:functions.supermixerConnectsToThisStackSo')} />
       </DatabasePage>
     )
   }
@@ -120,8 +123,8 @@ function FunctionPage() {
   if (fn.error && !isNew) {
     return (
       <DatabasePage title={name}>
-        <Alert variant={missing ? 'default' : 'destructive'} title={missing ? `There's no function called ${name}` : fn.error.message}>
-          {missing && 'If it was deleted, its kept versions are below; restoring one brings it back.'}
+        <Alert variant={missing ? 'default' : 'destructive'} title={missing ? t('functions:functions.thereSNoFunctionCalled', { name }) : fn.error.message}>
+          {missing && t('functions:functions.ifItWasDeletedItsKept')}
         </Alert>
         {missing && <FunctionVersions projectRef={ref} name={name} canDeploy={canDeploy} />}
       </DatabasePage>
@@ -137,37 +140,37 @@ function FunctionPage() {
         <>
           {dirty && !isNew && (
             <Button variant="default" disabled={deploy.isPending} onClick={() => setFiles(saved)}>
-              Discard changes
+              {t('functions:functions.discardChanges')}
             </Button>
           )}
           <PermissionButton
             allowed={canDeploy}
-            action="deploy functions"
+            action={t('functions:functions.deployFunctions')}
             variant="primary"
             loading={deploy.isPending}
             disabled={!files || !dirty || missingEntry}
             onClick={() => deploy.mutate()}
           >
-            {isNew ? 'Deploy function' : 'Deploy changes'}
+            {isNew ? t('functions:functions.deployFunction') : t('functions:functions.deployChanges')}
           </PermissionButton>
         </>
       }
     >
       {deploy.error && <Alert variant="destructive" title={deploy.error.message} />}
       {project.stack.status !== 'running' && (
-        <Alert title="The stack isn't running">Deployed changes take effect when it starts.</Alert>
+        <Alert title={t('functions:functions.theStackIsnTRunning')}>{t('functions:functions.deployedChangesTakeEffectWhenIt')}</Alert>
       )}
       <Tabs defaultValue="code">
         <TabsList>
-          <TabsTrigger value="code">Code{dirty ? ' •' : ''}</TabsTrigger>
+          <TabsTrigger value="code">{t('functions:functions.code')}{dirty ? ' •' : ''}</TabsTrigger>
           <TabsTrigger value="test" disabled={isNew}>
-            Test
+            {t('functions:functions.test')}
           </TabsTrigger>
           <TabsTrigger value="versions" disabled={isNew}>
-            Versions
+            {t('functions:functions.versions')}
           </TabsTrigger>
           <TabsTrigger value="details" disabled={isNew}>
-            Details
+            {t('functions:functions.details')}
           </TabsTrigger>
         </TabsList>
         <TabsContent value="code" className="flex flex-col gap-3">
@@ -184,17 +187,15 @@ function FunctionPage() {
             />
           )}
           {missingEntry && (
-            <Alert variant="warning" title="A function needs an index.ts (or index.js) at its top level" />
+            <Alert variant="warning" title={t('functions:functions.aFunctionNeedsAnIndexTs')} />
           )}
           {(fn.data?.other_files.length ?? 0) > 0 && (
             <p className="text-xs text-foreground-lighter">
-              Kept as they are, since they can’t be edited here: {fn.data!.other_files.join(', ')}
+              {t('functions:functions.keptAsTheyAreSinceThey', { join: fn.data!.other_files.join(', ') })}
             </p>
           )}
           <p className="text-xs text-foreground-lighter">
-            Deploying replaces the function’s files and restarts the stack’s functions service (a few seconds, for every
-            function). Secrets are in Edge Functions › Secrets. Function code can read the project’s keys, so deploying
-            needs the same access as revealing them.
+            {t('functions:functions.deployingReplacesTheFunctionSFiles')}
           </p>
         </TabsContent>
         <TabsContent value="test">
@@ -206,33 +207,32 @@ function FunctionPage() {
         <TabsContent value="details" className="flex flex-col gap-8">
           {fn.data && (
             <Card className="flex flex-col divide-y text-sm">
-              <Row label="URL">
+              <Row label={t('functions:functions.url')}>
                 <CopyField value={url} />
               </Row>
-              <Row label="Entrypoint">
+              <Row label={t('functions:functions.entrypoint')}>
                 <span className="font-mono text-xs">{fn.data.function.entrypoint ?? '—'}</span>
               </Row>
-              <Row label="Files">
+              <Row label={t('functions:functions.files')}>
                 {fn.data.function.files} · {formatBytes(fn.data.function.size)}
               </Row>
-              <Row label="Updated">{relativeTime(fn.data.function.updated_at)}</Row>
-              <Row label="Folder">
-                <span className="font-mono text-xs text-foreground-light">volumes/functions/{name}</span>
+              <Row label={t('functions:functions.updated')}>{relativeTime(fn.data.function.updated_at)}</Row>
+              <Row label={t('functions:functions.folder')}>
+                <span className="font-mono text-xs text-foreground-light">{t('functions:functions.volumesFunctions', { name })}</span>
               </Row>
             </Card>
           )}
-          <SettingsSection title="Danger zone">
+          <SettingsSection title={t('functions:functions.dangerZone')}>
             <Alert
               variant="destructive"
-              title="Delete this function"
+              title={t('functions:functions.deleteThisFunction')}
               actions={
-                <PermissionButton allowed={canDeploy} action="delete functions" variant="danger" onClick={() => setDeleting(true)}>
-                  Delete function
+                <PermissionButton allowed={canDeploy} action={t('functions:functions.deleteFunctions')} variant="danger" onClick={() => setDeleting(true)}>
+                  {t('functions:functions.deleteFunction')}
                 </PermissionButton>
               }
             >
-              Its folder is removed and its URL stops answering. Its last versions are kept on this page, so it can be
-              restored.
+              {t('functions:functions.itsFolderIsRemovedAndIts')}
             </Alert>
           </SettingsSection>
         </TabsContent>
@@ -240,9 +240,9 @@ function FunctionPage() {
       <ConfirmDialog
         open={deleting}
         onOpenChange={setDeleting}
-        title={`Delete ${name}?`}
-        description="Its files are deleted and the stack's functions service restarts. Its last versions are kept, so you can restore it from this page."
-        confirmLabel="Delete function"
+        title={t('functions:functions.delete', { name })}
+        description={t('functions:functions.itsFilesAreDeletedAndThe')}
+        confirmLabel={t('functions:functions.deleteFunction')}
         confirmText={name}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}

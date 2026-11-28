@@ -14,7 +14,9 @@ import { ConnectSheet } from '@/components/project/connect-sheet'
 
 import { CommandMenuTrigger } from './command-menu'
 import { OrganizationSwitcher, ProjectSwitcher } from './switchers'
+import { LanguageMenu } from './language-menu'
 import { UserDropdown } from './user-dropdown'
+import { t } from '@/lib/i18n'
 
 export function LayoutHeaderDivider({ className, ...props }: HTMLProps<HTMLSpanElement>) {
   return (
@@ -48,10 +50,10 @@ export function HomeLink() {
         >
           <AppIcon size={22} />
           <span className="font-heading text-[15px] font-semibold tracking-tight text-foreground">Supermixer</span>
-          <span className="sr-only">Back to organization home</span>
+          <span className="sr-only">{t('common:layoutHeader.backToOrganizationHome')}</span>
         </Link>
       </TooltipTrigger>
-      <TooltipContent>Back to organization home</TooltipContent>
+      <TooltipContent>{t('common:layoutHeader.backToOrganizationHome')}</TooltipContent>
     </Tooltip>
   )
 }
@@ -91,6 +93,7 @@ export function LayoutHeader({ title }: { title?: string }) {
         </div>
         <div className="flex items-center gap-x-2">
           <CommandMenuTrigger />
+          <LanguageMenu saveToAccount />
           <UserDropdown />
         </div>
       </div>

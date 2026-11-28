@@ -3,6 +3,8 @@
  * read-only path; schema/table names are always quoted; expressions the user
  * writes (function bodies, policy conditions) are inserted as SQL on purpose.
  */
+import { localized, t as tr } from '@/lib/i18n'
+
 import { ident, literal, qualified } from './sql'
 
 // ---------------------------------------------------------------- tables
@@ -426,9 +428,9 @@ export function storagePolicyTemplates(bucket: string): PolicyTemplate[] {
   const b = `bucket_id = ${literal(bucket)}`
   const ownFolder = `${b} and (select auth.uid()::text) = (storage.foldername(name))[1]`
   return [
-    { title: `Allow public read access to ${bucket}`, name: bucketPolicyName(bucket, 'public read'), command: 'SELECT', roles: [], using: b, check: '' },
+    { title: tr('database:policyTemplates.publicRead', { bucket }), name: bucketPolicyName(bucket, 'public read'), command: 'SELECT', roles: [], using: b, check: '' },
     {
-      title: `Allow authenticated uploads to ${bucket}`,
+      title: tr('database:policyTemplates.authenticatedUploads', { bucket }),
       name: bucketPolicyName(bucket, 'authenticated uploads'),
       command: 'INSERT',
       roles: ['authenticated'],
@@ -436,7 +438,7 @@ export function storagePolicyTemplates(bucket: string): PolicyTemplate[] {
       check: b,
     },
     {
-      title: `Give users access to their own folder in ${bucket}`,
+      title: tr('database:policyTemplates.ownFolder', { bucket }),
       name: bucketPolicyName(bucket, 'own folder'),
       command: 'ALL',
       roles: ['authenticated'],
@@ -444,7 +446,7 @@ export function storagePolicyTemplates(bucket: string): PolicyTemplate[] {
       check: ownFolder,
     },
     {
-      title: `Allow users to delete files they uploaded to ${bucket}`,
+      title: tr('database:policyTemplates.deleteOwnFiles', { bucket }),
       name: bucketPolicyName(bucket, 'delete own files'),
       command: 'DELETE',
       roles: ['authenticated'],
@@ -454,58 +456,63 @@ export function storagePolicyTemplates(bucket: string): PolicyTemplate[] {
   ]
 }
 
-export const POLICY_TEMPLATES: PolicyTemplate[] = [
-  { title: 'Enable read access for all users', command: 'SELECT', roles: [], using: 'true', check: '' },
-  { title: 'Enable insert for authenticated users only', command: 'INSERT', roles: ['authenticated'], using: '', check: 'true' },
+export const POLICY_TEMPLATES = localized((): PolicyTemplate[] => [
+  { title: tr('database:policyTemplates.readForAll'), name: 'Enable read access for all users', command: 'SELECT', roles: [], using: 'true', check: '' },
+  { title: tr('database:policyTemplates.insertForAuthenticated'), name: 'Enable insert for authenticated users only', command: 'INSERT', roles: ['authenticated'], using: '', check: 'true' },
   {
-    title: 'Enable update for users based on user_id',
+    title: tr('database:policyTemplates.updateByUserId'),
+    name: 'Enable update for users based on user_id',
     command: 'UPDATE',
     roles: ['authenticated'],
     using: '(select auth.uid()) = user_id',
     check: '(select auth.uid()) = user_id',
   },
-  { title: 'Enable delete for users based on user_id', command: 'DELETE', roles: ['authenticated'], using: '(select auth.uid()) = user_id', check: '' },
-]
+  { title: tr('database:policyTemplates.deleteByUserId'), name: 'Enable delete for users based on user_id', command: 'DELETE', roles: ['authenticated'], using: '(select auth.uid()) = user_id', check: '' },
+])
 
 /** Realtime Authorization: policies on realtime.messages for private channels. */
-export const REALTIME_POLICY_TEMPLATES: PolicyTemplate[] = [
+export const REALTIME_POLICY_TEMPLATES = localized((): PolicyTemplate[] => [
   {
-    title: 'Allow authenticated users to receive broadcasts',
+    title: tr('database:policyTemplates.receiveBroadcasts'),
+    name: 'Allow authenticated users to receive broadcasts',
     command: 'SELECT',
     roles: ['authenticated'],
     using: "realtime.messages.extension in ('broadcast')",
     check: '',
   },
   {
-    title: 'Allow authenticated users to send broadcasts',
+    title: tr('database:policyTemplates.sendBroadcasts'),
+    name: 'Allow authenticated users to send broadcasts',
     command: 'INSERT',
     roles: ['authenticated'],
     using: '',
     check: "realtime.messages.extension in ('broadcast')",
   },
   {
-    title: 'Allow authenticated users to listen to presence',
+    title: tr('database:policyTemplates.listenPresence'),
+    name: 'Allow authenticated users to listen to presence',
     command: 'SELECT',
     roles: ['authenticated'],
     using: "realtime.messages.extension in ('presence')",
     check: '',
   },
   {
-    title: 'Allow authenticated users to track presence',
+    title: tr('database:policyTemplates.trackPresence'),
+    name: 'Allow authenticated users to track presence',
     command: 'INSERT',
     roles: ['authenticated'],
     using: '',
     check: "realtime.messages.extension in ('presence')",
   },
   {
-    title: "Only on a channel named after the user's ID",
+    title: tr('database:policyTemplates.ownChannel'),
     name: 'Users can use their own channel',
     command: 'SELECT',
     roles: ['authenticated'],
     using: '(select realtime.topic()) = (select auth.uid())::text',
     check: '',
   },
-]
+])
 
 // ------------------------------------------------------------ migrations
 

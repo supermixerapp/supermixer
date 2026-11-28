@@ -27,6 +27,7 @@ import { can } from '@/lib/api/hooks'
 import { relativeTime } from '@/lib/auth-users'
 
 import { formatBytes, functionNameProblem, functionsQuery } from './api'
+import { t } from '@/lib/i18n'
 
 /** The functions of a stack Supermixer created. */
 export function FunctionList({ project }: { project: Schemas['Project'] }) {
@@ -36,17 +37,17 @@ export function FunctionList({ project }: { project: Schemas['Project'] }) {
 
   return (
     <DatabasePage
-      title="Edge Functions"
-      description="Server-side TypeScript functions run by the stack's Edge Runtime, at /functions/v1/<name>."
+      title={t('functions:functionList.edgeFunctions')}
+      description={t('functions:functionList.serverSideTypescriptFunctionsRunBy')}
       actions={
         <PermissionButton
           allowed={canDeploy}
-          action="deploy functions"
+          action={t('functions:functionList.deployFunctions')}
           variant="primary"
           icon={<AddIcon />}
           onClick={() => setCreating(true)}
         >
-          Deploy a new function
+          {t('functions:functionList.deployANewFunction')}
         </PermissionButton>
       }
     >
@@ -59,17 +60,17 @@ export function FunctionList({ project }: { project: Schemas['Project'] }) {
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
+                <TableHead>{t('functions:functionList.name')}</TableHead>
                 <TableHead>URL</TableHead>
-                <TableHead>Updated</TableHead>
-                <TableHead className="text-right">Files</TableHead>
+                <TableHead>{t('functions:functionList.updated')}</TableHead>
+                <TableHead className="text-right">{t('functions:functionList.files')}</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {fns.data.length === 0 ? (
                 <TableRow className="hover:bg-transparent">
                   <TableCell colSpan={4} className="py-8 text-center text-foreground-lighter">
-                    No functions yet
+                    {t('functions:functionList.noFunctionsYet')}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -83,7 +84,7 @@ export function FunctionList({ project }: { project: Schemas['Project'] }) {
                       >
                         {f.name}
                       </Link>
-                      {!f.entrypoint && <span className="ml-2 text-xs text-warning">no index.ts</span>}
+                      {!f.entrypoint && <span className="ml-2 text-xs text-warning">{t('functions:functionList.noIndexTs')}</span>}
                     </TableCell>
                     <TableCell className="max-w-80">
                       <CopyField value={f.url} />
@@ -114,7 +115,7 @@ function NewFunctionDialog({ projectRef, taken, onClose }: { projectRef: string;
   const navigate = useNavigate()
   const [name, setName] = useState('')
   const trimmed = name.trim()
-  const problem = functionNameProblem(trimmed) ?? (taken.includes(trimmed) ? 'There is a function of that name' : null)
+  const problem = functionNameProblem(trimmed) ?? (taken.includes(trimmed) ? t('functions:functionList.thereIsAFunctionOfThat') : null)
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="small">
@@ -130,14 +131,14 @@ function NewFunctionDialog({ projectRef, taken, onClose }: { projectRef: string;
           }}
         >
           <DialogHeader>
-            <DialogTitle>Deploy a new function</DialogTitle>
+            <DialogTitle>{t('functions:functionList.deployANewFunction')}</DialogTitle>
             <DialogDescription>
-              It starts from a small example; edit it, then deploy. The name is part of its URL.
+              {t('functions:functionList.itStartsFromASmallExample')}
             </DialogDescription>
           </DialogHeader>
           <DialogSection className="border-t">
             <FormField
-              label="Name"
+              label={t('functions:functionList.name')}
               htmlFor="fn-new-name"
               description={problem && name ? <span className="text-destructive">{problem}</span> : undefined}
             >
@@ -154,10 +155,10 @@ function NewFunctionDialog({ projectRef, taken, onClose }: { projectRef: string;
           </DialogSection>
           <DialogFooter>
             <Button type="button" variant="default" onClick={onClose}>
-              Cancel
+              {t('functions:functionList.cancel')}
             </Button>
             <Button type="submit" variant="primary" disabled={!!problem}>
-              Continue
+              {t('functions:functionList.continue')}
             </Button>
           </DialogFooter>
         </form>

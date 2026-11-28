@@ -25,6 +25,7 @@ import {
   type UserSort,
 } from '@/lib/auth-users'
 import { pgQuery } from '@/lib/pg/run'
+import { localized, t as tr, Trans, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/auth/users')({
   component: UsersPage,
@@ -32,19 +33,19 @@ export const Route = createFileRoute('/_app/project/$ref/auth/users')({
 
 const PAGE_SIZE = 50
 
-const FILTER_LABELS: Record<UserFilter, string> = {
-  all: 'All users',
-  verified: 'Verified',
-  unverified: 'Unverified',
-  anonymous: 'Anonymous',
-}
+const FILTER_LABELS = localized((): Record<UserFilter, string> => ({
+  all: tr('authentication:authUsers.allUsers'),
+  verified: tr('authentication:authUsers.verified'),
+  unverified: tr('authentication:authUsers.unverified'),
+  anonymous: tr('authentication:authUsers.anonymous'),
+}))
 
-const SORT_LABELS: Record<string, string> = {
-  'created_at:desc': 'Newest first',
-  'created_at:asc': 'Oldest first',
-  'last_sign_in_at:desc': 'Recently signed in',
-  'email:asc': 'Email A–Z',
-}
+const SORT_LABELS = localized((): Record<string, string> => ({
+  'created_at:desc': tr('authentication:authUsers.newestFirst'),
+  'created_at:asc': tr('authentication:authUsers.oldestFirst'),
+  'last_sign_in_at:desc': tr('authentication:authUsers.recentlySignedIn'),
+  'email:asc': tr('authentication:authUsers.emailAZ'),
+}))
 
 function UsersPage() {
   const { ref } = Route.useParams()
@@ -87,11 +88,11 @@ function UsersPage() {
 
   return (
     <DatabasePage
-      title="Users"
-      description="Everyone who has signed up to this project, from Auth's own tables."
+      title={tr('authentication:authUsers.users')}
+      description={tr('authentication:authUsers.everyoneWhoHasSignedUpTo')}
       toolbar={
         <>
-          <SearchBox value={typed} onChange={setTyped} placeholder="Search email, phone, name or ID" />
+          <SearchBox value={typed} onChange={setTyped} placeholder={tr('authentication:authUsers.searchEmailPhoneNameOrId')} />
           <Select
             value={filter}
             onValueChange={(v) => {
@@ -99,11 +100,11 @@ function UsersPage() {
               setPage(0)
             }}
           >
-            <SelectTrigger size="tiny" className="w-36" aria-label="Filter users">
+            <SelectTrigger size="tiny" className="w-36" aria-label={tr('authentication:authUsers.filterUsers')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(FILTER_LABELS).map(([v, label]) => (
+              {Object.entries(FILTER_LABELS()).map(([v, label]) => (
                 <SelectItem key={v} value={v}>
                   {label}
                 </SelectItem>
@@ -117,11 +118,11 @@ function UsersPage() {
               setPage(0)
             }}
           >
-            <SelectTrigger size="tiny" className="w-44" aria-label="Sort users">
+            <SelectTrigger size="tiny" className="w-44" aria-label={tr('authentication:authUsers.sortUsers')}>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(SORT_LABELS).map(([v, label]) => (
+              {Object.entries(SORT_LABELS()).map(([v, label]) => (
                 <SelectItem key={v} value={v}>
                   {label}
                 </SelectItem>
@@ -129,7 +130,7 @@ function UsersPage() {
             </SelectContent>
           </Select>
           <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={users.isFetching && !users.isPending} onClick={() => void users.refetch()}>
-            Refresh
+            {tr('authentication:authUsers.refresh')}
           </Button>
         </>
       }
@@ -138,21 +139,21 @@ function UsersPage() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="primary" iconRight={<ChevronDownIcon />}>
-                Add user
+                {tr('authentication:authUsers.addUser')}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-52">
               <DropdownMenuItem onSelect={() => setAdding('invite')}>
-                <MailIcon size={16} /> Send invitation
+                <Trans i18nKey="authentication:authUsers.sendInvitation" components={{ mailicon: <MailIcon size={16} /> }} />
               </DropdownMenuItem>
               <DropdownMenuItem onSelect={() => setAdding('create')}>
-                <PersonAddIcon size={16} /> Create new user
+                <Trans i18nKey="authentication:authUsers.createNewUser" components={{ personaddicon: <PersonAddIcon size={16} /> }} />
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         ) : (
-          <PermissionButton allowed={false} action="add users" variant="primary">
-            Add user
+          <PermissionButton allowed={false} action={tr('authentication:authUsers.addUsers')} variant="primary">
+            {tr('authentication:authUsers.addUser')}
           </PermissionButton>
         )
       }
@@ -170,20 +171,20 @@ function UsersPage() {
           ) : rows.length === 0 ? (
             <p className="px-4 py-10 text-center text-sm text-foreground-lighter">
               {page > 0
-                ? 'No users on this page'
+                ? tr('authentication:authUsers.noUsersOnThisPage')
                 : search || filter !== 'all'
-                  ? 'No users match'
-                  : 'No users yet. Users appear here when they sign up, or when you add them.'}
+                  ? tr('authentication:authUsers.noUsersMatch')
+                  : tr('authentication:authUsers.noUsersYetUsersAppearHere')}
             </p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>User</TableHead>
-                  <TableHead>Providers</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="whitespace-nowrap">Created</TableHead>
-                  <TableHead className="whitespace-nowrap">Last signed in</TableHead>
+                  <TableHead>{tr('authentication:authUsers.user')}</TableHead>
+                  <TableHead>{tr('authentication:authUsers.providers')}</TableHead>
+                  <TableHead>{tr('authentication:authUsers.status')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{tr('authentication:authUsers.created')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{tr('authentication:authUsers.lastSignedIn')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -192,7 +193,7 @@ function UsersPage() {
                     key={u.id}
                     className="cursor-pointer"
                     tabIndex={0}
-                    aria-label={`Open ${u.email ?? u.phone ?? u.id}`}
+                    aria-label={tr('authentication:authUsers.open', { email: u.email ?? u.phone ?? u.id })}
                     onClick={() => setOpenUser(u.id)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
@@ -203,7 +204,7 @@ function UsersPage() {
                   >
                     <TableCell>
                       <span className="flex flex-col">
-                        <span className="text-foreground">{u.email ?? u.phone ?? (u.anonymous ? 'Anonymous user' : '—')}</span>
+                        <span className="text-foreground">{u.email ?? u.phone ?? (u.anonymous ? tr('authentication:authUsers.anonymousUser') : '—')}</span>
                         <span className="font-mono text-xs text-foreground-lighter">
                           {u.display_name ? `${u.display_name} · ` : ''}
                           {u.id.slice(0, 8)}…
@@ -213,15 +214,15 @@ function UsersPage() {
                     <TableCell className="text-foreground-light">{u.providers.join(', ') || (u.anonymous ? 'anonymous' : '—')}</TableCell>
                     <TableCell>
                       <span className="flex flex-wrap gap-1">
-                        {isBanned(u) && <Badge variant="destructive">Banned</Badge>}
+                        {isBanned(u) && <Badge variant="destructive">{tr('authentication:authUsers.banned')}</Badge>}
                         {u.anonymous ? (
-                          <Badge>Anonymous</Badge>
+                          <Badge>{tr('authentication:authUsers.anonymous')}</Badge>
                         ) : isConfirmed(u) ? null : (
-                          <Badge variant="warning">{u.invited_at ? 'Invited' : 'Unverified'}</Badge>
+                          <Badge variant="warning">{u.invited_at ? tr('authentication:authUsers.invited') : tr('authentication:authUsers.unverified')}</Badge>
                         )}
                       </span>
                     </TableCell>
-                    <TableCell className="whitespace-nowrap text-foreground-light" title={new Date(u.created_at).toLocaleString()}>
+                    <TableCell className="whitespace-nowrap text-foreground-light" title={new Date(u.created_at).toLocaleString(language())}>
                       {relativeTime(u.created_at)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-foreground-light">{relativeTime(u.last_sign_in_at)}</TableCell>
@@ -232,13 +233,13 @@ function UsersPage() {
           )}
           {(total > 0 || page > 0) && (
             <div className="flex items-center gap-2 border-t px-4 py-2 text-xs text-foreground-light">
-              <span>{rows.length > 0 && `${from + 1}–${from + rows.length} of ${total.toLocaleString()} user${total === 1 ? '' : 's'}`}</span>
+              <span>{rows.length > 0 && tr('authentication:authUsers.ofUsers', { from: from + 1, to: from + rows.length, count: total })}</span>
               <span className="ml-auto flex gap-1">
                 <Button variant="default" size="tiny" disabled={page === 0} onClick={() => setPage((p) => p - 1)}>
-                  Previous
+                  {tr('authentication:authUsers.previous')}
                 </Button>
                 <Button variant="default" size="tiny" disabled={from + rows.length >= total} onClick={() => setPage((p) => p + 1)}>
-                  Next
+                  {tr('authentication:authUsers.next')}
                 </Button>
               </span>
             </div>

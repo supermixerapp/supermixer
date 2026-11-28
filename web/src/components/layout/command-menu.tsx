@@ -32,6 +32,7 @@ import { useProfile, useSelectedOrganization, useSelectedProject } from '@/lib/a
 import { orgNav, productMenus, projectNavGroups } from '@/lib/navigation'
 import { useTheme, type ThemePreference } from '@/lib/theme'
 import { cn } from '@/lib/utils'
+import { t, Trans } from '@/lib/i18n'
 
 const CommandMenuContext = createContext<{
   open: boolean
@@ -82,15 +83,15 @@ export function CommandMenuTrigger() {
         )}
       >
         <SearchIcon size={14} />
-        <span className="flex-1 text-left">Search...</span>
+        <span className="flex-1 text-left">{t('common:commandMenu.search')}</span>
         <kbd className="pr-1 font-sans text-[11px] text-foreground-lighter">
-          {isMac ? '⌘K' : 'Ctrl K'}
+          {isMac ? '⌘K' : t('common:commandMenu.ctrlK')}
         </kbd>
       </button>
       <Button
         variant="text"
         rounded
-        aria-label="Search and navigate"
+        aria-label={t('common:commandMenu.searchAndNavigate')}
         onClick={() => setOpen(true)}
         className="h-[26px] w-[26px] px-0 md:hidden [&_svg]:!h-5 [&_svg]:!w-5"
         icon={<SearchIcon />}
@@ -114,7 +115,7 @@ export function CommandMenu() {
   const { data: me } = useProfile()
 
   const projectEntries: Entry[] = project
-    ? projectNavGroups.flat().map((r) => ({
+    ? projectNavGroups().flat().map((r) => ({
         label: r.label,
         icon: r.icon,
         to: `/project/${project.ref}${r.path ? `/${r.path}` : ''}`,
@@ -122,8 +123,8 @@ export function CommandMenu() {
     : []
   // Every product-menu page, so the palette alone can reach the whole app.
   const projectPageEntries: Entry[] = project
-    ? Object.values(productMenus).flatMap((menu) => {
-        const route = projectNavGroups.flat().find((r) => productMenus[r.key] === menu)
+    ? Object.values(productMenus()).flatMap((menu) => {
+        const route = projectNavGroups().flat().find((r) => productMenus()[r.key] === menu)
         return menu.groups.flatMap((g) =>
           g.items.map((item) => ({
             label: `${menu.title}: ${item.label}`,
@@ -134,7 +135,7 @@ export function CommandMenu() {
       })
     : []
   const orgEntries: Entry[] = org
-    ? orgNav.map((r) => ({
+    ? orgNav().map((r) => ({
         label: r.label,
         icon: r.icon,
         to: `/org/${org.slug}${r.path ? `/${r.path}` : ''}`,
@@ -156,75 +157,75 @@ export function CommandMenu() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent size="large" hideClose className="overflow-hidden p-0">
-        <DialogTitle className="sr-only">Command menu</DialogTitle>
+        <DialogTitle className="sr-only">{t('common:commandMenu.commandMenu')}</DialogTitle>
         <Command loop>
-          <CommandInput placeholder="Type a command or search..." />
+          <CommandInput placeholder={t('common:commandMenu.typeACommandOrSearch')} />
           <CommandList className="max-h-[420px]">
-            <CommandEmpty>No results found.</CommandEmpty>
+            <CommandEmpty>{t('common:commandMenu.noResultsFound')}</CommandEmpty>
             {projectEntries.length > 0 && (
-              <CommandGroup heading={`Project: ${project?.name}`}>
+              <CommandGroup heading={t('common:commandMenu.project', { name: project?.name })}>
                 {projectEntries.map((e) => (
                   <NavItem key={e.to} entry={e} onSelect={go} />
                 ))}
               </CommandGroup>
             )}
             {projectPageEntries.length > 0 && (
-              <CommandGroup heading="Project pages">
+              <CommandGroup heading={t('common:commandMenu.projectPages')}>
                 {projectPageEntries.map((e) => (
                   <NavItem key={e.to} entry={e} onSelect={go} />
                 ))}
               </CommandGroup>
             )}
             {orgEntries.length > 0 && (
-              <CommandGroup heading={`Organization: ${org?.name}`}>
+              <CommandGroup heading={t('common:commandMenu.organization', { name: org?.name })}>
                 {orgEntries.map((e) => (
                   <NavItem key={e.to} entry={e} onSelect={go} />
                 ))}
               </CommandGroup>
             )}
-            <CommandGroup heading="Supermixer">
+            <CommandGroup heading={t('common:commandMenu.supermixer')}>
               <NavItem
-                entry={{ label: 'All organizations', icon: SearchIcon, to: '/organizations' }}
+                entry={{ label: t('common:commandMenu.allOrganizations'), icon: SearchIcon, to: '/organizations' }}
                 onSelect={go}
               />
               <NavItem
-                entry={{ label: 'Preferences', icon: TuneIcon, to: '/account/me' }}
+                entry={{ label: t('common:commandMenu.preferences'), icon: TuneIcon, to: '/account/me' }}
                 onSelect={go}
               />
               <NavItem
-                entry={{ label: 'Security (two-factor sign-in)', icon: VerifiedUserIcon, to: '/account/security' }}
+                entry={{ label: t('common:commandMenu.securityTwoFactorSignIn'), icon: VerifiedUserIcon, to: '/account/security' }}
                 onSelect={go}
               />
-              <NavItem entry={{ label: 'Access tokens', icon: KeyIcon, to: '/account/access-tokens' }} onSelect={go} />
+              <NavItem entry={{ label: t('common:commandMenu.accessTokens'), icon: KeyIcon, to: '/account/access-tokens' }} onSelect={go} />
               <NavItem
-                entry={{ label: 'Appearance', icon: DarkModeIcon, to: '/account/appearance' }}
+                entry={{ label: t('common:commandMenu.appearance'), icon: DarkModeIcon, to: '/account/appearance' }}
                 onSelect={go}
               />
               {me?.is_instance_admin && (
                 <>
-                  <NavItem entry={{ label: 'Instance overview', icon: ManageAccountsIcon, to: '/admin' }} onSelect={go} />
-                  <NavItem entry={{ label: 'Users', icon: ManageAccountsIcon, to: '/admin/users' }} onSelect={go} />
-                  <NavItem entry={{ label: 'Global notice', icon: ManageAccountsIcon, to: '/admin/notice' }} onSelect={go} />
-                  <NavItem entry={{ label: 'Resource limits', icon: ManageAccountsIcon, to: '/admin/limits' }} onSelect={go} />
-                  <NavItem entry={{ label: 'Sign-up', icon: ManageAccountsIcon, to: '/admin/sign-up' }} onSelect={go} />
-                  <NavItem entry={{ label: 'Instance audit log', icon: ManageAccountsIcon, to: '/admin/audit' }} onSelect={go} />
+                  <NavItem entry={{ label: t('common:commandMenu.instanceOverview'), icon: ManageAccountsIcon, to: '/admin' }} onSelect={go} />
+                  <NavItem entry={{ label: t('common:commandMenu.users'), icon: ManageAccountsIcon, to: '/admin/users' }} onSelect={go} />
+                  <NavItem entry={{ label: t('common:commandMenu.globalNotice'), icon: ManageAccountsIcon, to: '/admin/notice' }} onSelect={go} />
+                  <NavItem entry={{ label: t('common:commandMenu.resourceLimits'), icon: ManageAccountsIcon, to: '/admin/limits' }} onSelect={go} />
+                  <NavItem entry={{ label: t('common:commandMenu.signUp'), icon: ManageAccountsIcon, to: '/admin/sign-up' }} onSelect={go} />
+                  <NavItem entry={{ label: t('common:commandMenu.instanceAuditLog'), icon: ManageAccountsIcon, to: '/admin/audit' }} onSelect={go} />
                 </>
               )}
               <NavItem
-                entry={{ label: 'Design system', icon: PaletteIcon, to: '/design-system' }}
+                entry={{ label: t('common:commandMenu.designSystem'), icon: PaletteIcon, to: '/design-system' }}
                 onSelect={go}
               />
             </CommandGroup>
             <CommandSeparator />
-            <CommandGroup heading="Theme">
+            <CommandGroup heading={t('common:commandMenu.theme')}>
               <CommandItem onSelect={() => theme('dark')}>
-                <DarkModeIcon size={16} className="text-foreground-lighter" /> Use dark theme
+                <Trans i18nKey="common:commandMenu.useDarkTheme" components={{ darkmodeicon: <DarkModeIcon size={16} className="text-foreground-lighter" /> }} />
               </CommandItem>
               <CommandItem onSelect={() => theme('light')}>
-                <LightModeIcon size={16} className="text-foreground-lighter" /> Use light theme
+                <Trans i18nKey="common:commandMenu.useLightTheme" components={{ lightmodeicon: <LightModeIcon size={16} className="text-foreground-lighter" /> }} />
               </CommandItem>
               <CommandItem onSelect={() => theme('system')}>
-                <SystemThemeIcon size={16} className="text-foreground-lighter" /> Use system theme
+                <Trans i18nKey="common:commandMenu.useSystemTheme" components={{ systemthemeicon: <SystemThemeIcon size={16} className="text-foreground-lighter" /> }} />
               </CommandItem>
             </CommandGroup>
           </CommandList>

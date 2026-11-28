@@ -58,6 +58,7 @@ import {
   type Filter,
   type Sort,
 } from '@/lib/pg/table-sql'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/editor/$id')({
   component: TablePage,
@@ -82,7 +83,7 @@ function TablePage() {
     )
   }
   if (!table) {
-    return <p className="p-6 text-sm text-foreground-lighter">{info.error?.message ?? 'This table no longer exists.'}</p>
+    return <p className="p-6 text-sm text-foreground-lighter">{info.error?.message ?? t('database:editor.thisTableNoLongerExists')}</p>
   }
   // Remount per table so filters, sorts and paging start fresh.
   return <TableView key={table.id} projectRef={ref} table={table} />
@@ -180,51 +181,51 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
           <span className="text-foreground-lighter">{table.schema}.</span>
           {table.name}
         </h2>
-        {isTable && !table.rls && !isProtected && <Badge variant="warning">RLS disabled</Badge>}
-        {isTable && pk.length === 0 && <Badge>No primary key: read-only</Badge>}
-        {!isTable && <Badge>{table.kind === 'v' ? 'View' : table.kind === 'm' ? 'Materialized view' : 'Foreign table'}</Badge>}
+        {isTable && !table.rls && !isProtected && <Badge variant="warning">{t('database:editor.rlsDisabled')}</Badge>}
+        {isTable && pk.length === 0 && <Badge>{t('database:editor.noPrimaryKeyReadOnly')}</Badge>}
+        {!isTable && <Badge>{table.kind === 'v' ? t('database:editor.view') : table.kind === 'm' ? t('database:editor.materializedView') : t('database:editor.foreignTable')}</Badge>}
         <FilterPopover columns={table.columns} filters={filters} onApply={(f) => { setFilters(f); setPage(0) }} />
         <div className="ml-auto flex items-center gap-2">
           {selected.size > 0 && (
             <Button variant="danger" size="tiny" icon={<DeleteIcon />} onClick={() => setConfirm('rows')}>
-              Delete {selected.size} row{selected.size === 1 ? '' : 's'}
+              {t('database:editor.deleteRows', { count: selected.size })}
             </Button>
           )}
-          <Button variant="text" size="tiny" icon={<RefreshIcon />} aria-label="Refresh" onClick={() => { void refreshRows(); void refreshCounts() }} />
+          <Button variant="text" size="tiny" icon={<RefreshIcon />} aria-label={t('database:editor.refresh')} onClick={() => { void refreshRows(); void refreshCounts() }} />
           {canWrite && isTable && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="primary" size="tiny" icon={<AddIcon />}>
-                  Insert
+                  {t('database:editor.insert')}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
                 <DropdownMenuItem disabled={!editable} onSelect={() => setRowSheet({})}>
-                  Insert row
+                  {t('database:editor.insertRow')}
                 </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => setAddingColumn(true)}>Insert column</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setAddingColumn(true)}>{t('database:editor.insertColumn')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
           {canWrite && isTable && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label="Table actions" />
+                <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={t('database:editor.tableActions')} />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuItem onSelect={() => setRenaming(true)}>Rename table</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setRenaming(true)}>{t('database:editor.renameTable')}</DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() =>
                     sql.mutate(
-                      { sql: setRls(table.schema, table.name, !table.rls), done: `Row Level Security ${table.rls ? 'disabled' : 'enabled'}` },
+                      { sql: setRls(table.schema, table.name, !table.rls), done: (table.rls ? t('database:editor.rlsDisabled') : t('database:editor.rlsEnabled')) },
                       { onSuccess: () => void refreshCatalog() }
                     )
                   }
                 >
-                  {table.rls ? 'Disable Row Level Security' : 'Enable Row Level Security'}
+                  {table.rls ? t('database:editor.disableRowLevelSecurity') : t('database:editor.enableRowLevelSecurity')}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onSelect={() => setConfirm('table')}>Delete table</DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setConfirm('table')}>{t('database:editor.deleteTable')}</DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )}
@@ -256,7 +257,7 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
             renderers={{
               noRowsFallback: (
                 <div className="col-span-full p-8 text-center text-sm text-foreground-lighter">
-                  {filters.length ? 'No rows match these filters' : 'This table is empty'}
+                  {filters.length ? t('database:editor.noRowsMatchTheseFilters') : t('database:editor.thisTableIsEmpty')}
                 </div>
               ),
             }}
@@ -266,27 +267,26 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
       </div>
 
       <div className="flex shrink-0 items-center gap-2 border-t px-3 py-1.5 text-xs text-foreground-lighter">
-        <Button variant="text" size="tiny" icon={<ChevronLeftIcon />} aria-label="Previous page" disabled={page === 0} onClick={() => setPage((p) => p - 1)} />
+        <Button variant="text" size="tiny" icon={<ChevronLeftIcon />} aria-label={t('database:editor.previousPage')} disabled={page === 0} onClick={() => setPage((p) => p - 1)} />
         <span>
-          Page {page + 1}
-          {pages !== undefined && ` of ${pages}`}
+          {pages !== undefined ? t('database:editor.pageOf', { page: page + 1, pages }) : t('database:editor.page', { page: page + 1 })}
         </span>
         <Button
           variant="text"
           size="tiny"
           icon={<ChevronRightIcon />}
-          aria-label="Next page"
+          aria-label={t('database:editor.nextPage')}
           disabled={(rows.data?.length ?? 0) < PAGE_SIZE}
           onClick={() => setPage((p) => p + 1)}
         />
         <span className="ml-2">
-          {total === undefined ? 'Counting…' : `${exact ? '' : '~'}${total.toLocaleString()} record${total === 1 ? '' : 's'}`}
+          {total === undefined ? t('database:editor.counting') : t(exact ? 'database:editor.records' : 'database:editor.recordsAbout', { count: total })}
         </span>
-        {rows.isFetching && <span>Loading…</span>}
+        {rows.isFetching && <span>{t('database:editor.loading')}</span>}
         {!editable && isTable && !isProtected && can(project, 'project:data:write') && pk.length === 0 && (
-          <span className="ml-auto">Add a primary key to edit rows here.</span>
+          <span className="ml-auto">{t('database:editor.addAPrimaryKeyToEdit')}</span>
         )}
-        {!can(project, 'project:data:write') && <span className="ml-auto">Your role can view this table but not change it.</span>}
+        {!can(project, 'project:data:write') && <span className="ml-auto">{t('database:editor.yourRoleCanViewThisTable')}</span>}
       </div>
 
       {rowSheet && (
@@ -309,7 +309,7 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
           onClose={() => setRenaming(false)}
           onRename={(to) =>
             sql.mutate(
-              { sql: renameTable(table.schema, table.name, to), done: `Renamed to ${to}` },
+              { sql: renameTable(table.schema, table.name, to), done: t('database:editor.renamedTo', { value: to }) },
               { onSuccess: () => { setRenaming(false); void refreshCatalog() } }
             )
           }
@@ -321,17 +321,17 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
         onOpenChange={(o) => !o && setConfirm(null)}
         title={
           confirm === 'rows'
-            ? `Delete ${selected.size} row${selected.size === 1 ? '' : 's'}?`
+            ? t('database:editor.deleteRowsQuestion', { count: selected.size })
             : confirm === 'table'
-              ? `Delete table ${table.name}?`
-              : `Delete column ${typeof confirm === 'object' && confirm ? confirm.column : ''}?`
+              ? t('database:editor.deleteTable2', { name: table.name })
+              : t('database:editor.deleteColumn', { value: typeof confirm === 'object' && confirm ? confirm.column : '' })
         }
         description={
           confirm === 'table'
-            ? 'This drops the table and its data. Views or foreign keys that depend on it make this fail.'
-            : 'This cannot be undone.'
+            ? t('database:editor.thisDropsTheTableAndIts')
+            : t('database:editor.thisCannotBeUndone')
         }
-        confirmLabel="Delete"
+        confirmLabel={t('database:editor.delete')}
         {...(confirm === 'table' ? { confirmText: table.name } : {})}
         loading={sql.isPending}
         onConfirm={() => {
@@ -339,12 +339,12 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
             const keys = (rows.data ?? []).filter((r) => selected.has(keyOf(r)))
             const q = deleteRows(table.schema, table.name, keys.map((r) => Object.fromEntries(pk.map((c) => [c.name, toText(r[c.name])]))))
             sql.mutate(
-              { ...q, done: `Deleted ${keys.length} row${keys.length === 1 ? '' : 's'}` },
+              { ...q, done: t('database:editor.deletedRows', { count: keys.length }) },
               { onSettled: () => { setConfirm(null); setSelected(new Set()); void refreshRows(); void refreshCounts() } }
             )
           } else if (confirm === 'table') {
             sql.mutate(
-              { sql: dropTable(table.schema, table.name), done: `Deleted ${table.name}` },
+              { sql: dropTable(table.schema, table.name), done: t('database:editor.deleted', { name: table.name }) },
               {
                 onSuccess: async () => {
                   setConfirm(null)
@@ -356,7 +356,7 @@ function TableView({ projectRef, table }: { projectRef: string; table: TableInfo
             )
           } else if (confirm) {
             sql.mutate(
-              { sql: dropColumn(table.schema, table.name, confirm.column), done: `Deleted column ${confirm.column}` },
+              { sql: dropColumn(table.schema, table.name, confirm.column), done: t('database:editor.deletedColumn', { column: confirm.column }) },
               { onSettled: () => { setConfirm(null); void refreshCatalog() } }
             )
           }
@@ -377,7 +377,7 @@ function rowEditColumn(onEdit: (row: GridRow) => void): Column<GridRow> {
     resizable: false,
     renderCell: ({ row }) => (
       <button
-        aria-label="Edit row"
+        aria-label={t('database:editor.editRow')}
         className="flex h-full w-full items-center justify-center text-foreground-lighter hover:text-foreground"
         onClick={() => onEdit(row)}
       >
@@ -400,9 +400,9 @@ function HeaderCell({
 }) {
   return (
     <span className="group flex h-full items-center gap-1.5">
-      {column.pk && <KeyIcon size={12} className="shrink-0 text-brand-600" aria-label="primary key" />}
+      {column.pk && <KeyIcon size={12} className="shrink-0 text-brand-600" aria-label={t('database:editor.primaryKey')} />}
       {column.references && (
-        <LinkIcon size={12} className="shrink-0 text-foreground-lighter" aria-label={`references ${column.references.table}`} />
+        <LinkIcon size={12} className="shrink-0 text-foreground-lighter" aria-label={t('database:editor.references', { table: column.references.table })} />
       )}
       <span className="truncate text-foreground">{column.name}</span>
       <span className="truncate font-mono text-[11px] text-foreground-lighter">{column.type}</span>
@@ -411,12 +411,12 @@ function HeaderCell({
         <span className="ml-auto" onClick={(e) => e.stopPropagation()}>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button aria-label={`Actions for ${column.name}`} className="rounded p-0.5 text-foreground-lighter opacity-0 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100">
+              <button aria-label={t('database:editor.actionsFor', { name: column.name })} className="rounded p-0.5 text-foreground-lighter opacity-0 group-hover:opacity-100 hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100">
                 <MoreIcon size={14} />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onSelect={onDrop}>Delete column</DropdownMenuItem>
+              <DropdownMenuItem onSelect={onDrop}>{t('database:editor.deleteColumn2')}</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </span>
@@ -431,7 +431,7 @@ function TextCellEditor({ row, column, onRowChange, onClose }: RenderEditCellPro
   return (
     <input
       autoFocus
-      aria-label={`Edit ${column.key}`}
+      aria-label={t('database:editor.edit', { key: column.key })}
       className="h-full w-full bg-control px-2 font-mono text-xs text-foreground outline-none"
       defaultValue={initial}
       onKeyDown={(e) => {
@@ -462,7 +462,7 @@ function FilterPopover({ columns, filters, onApply }: { columns: ColumnInfo[]; f
     >
       <PopoverTrigger asChild>
         <Button variant={filters.length ? 'default' : 'text'} size="tiny" icon={<FilterIcon />}>
-          {filters.length ? `Filtered by ${filters.length} rule${filters.length === 1 ? '' : 's'}` : 'Filter'}
+          {filters.length ? t('database:editor.filteredByRules', { count: filters.length }) : t('database:editor.filter')}
         </Button>
       </PopoverTrigger>
       <PopoverContent align="start" className="w-[34rem] p-3">
@@ -473,7 +473,7 @@ function FilterPopover({ columns, filters, onApply }: { columns: ColumnInfo[]; f
             return (
               <div key={i} className="grid grid-cols-[10rem_7rem_1fr_auto] items-center gap-2">
                 <Select value={f.column} onValueChange={(column) => set({ column })}>
-                  <SelectTrigger size="tiny" aria-label="Column">
+                  <SelectTrigger size="tiny" aria-label={t('database:editor.column')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -485,7 +485,7 @@ function FilterPopover({ columns, filters, onApply }: { columns: ColumnInfo[]; f
                   </SelectContent>
                 </Select>
                 <Select value={f.op} onValueChange={(v) => set({ op: v as Filter['op'] })}>
-                  <SelectTrigger size="tiny" aria-label="Operator">
+                  <SelectTrigger size="tiny" aria-label={t('database:editor.operator')}>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -498,9 +498,9 @@ function FilterPopover({ columns, filters, onApply }: { columns: ColumnInfo[]; f
                 </Select>
                 <Input
                   size="tiny"
-                  aria-label="Value"
+                  aria-label={t('database:editor.value')}
                   disabled={!op.needsValue}
-                  placeholder={op.needsValue ? (f.op === 'like' || f.op === 'ilike' ? '%text%' : 'Value') : ''}
+                  placeholder={op.needsValue ? (f.op === 'like' || f.op === 'ilike' ? '%text%' : t('database:editor.value')) : ''}
                   value={f.value}
                   onChange={(e) => set({ value: e.target.value })}
                   onKeyDown={(e) => {
@@ -510,22 +510,22 @@ function FilterPopover({ columns, filters, onApply }: { columns: ColumnInfo[]; f
                     }
                   }}
                 />
-                <Button variant="text" size="tiny" aria-label="Remove filter" icon={<DeleteIcon />} onClick={() => setDraft((d) => d.filter((_, j) => j !== i))} />
+                <Button variant="text" size="tiny" aria-label={t('database:editor.removeFilter')} icon={<DeleteIcon />} onClick={() => setDraft((d) => d.filter((_, j) => j !== i))} />
               </div>
             )
           })}
           <div className="flex items-center justify-between pt-1">
             <Button variant="text" size="tiny" icon={<AddIcon />} onClick={add}>
-              Add filter
+              {t('database:editor.addFilter')}
             </Button>
             <div className="flex gap-2">
               {filters.length > 0 && (
                 <Button variant="default" size="tiny" onClick={() => { onApply([]); setOpen(false) }}>
-                  Clear
+                  {t('database:editor.clear')}
                 </Button>
               )}
               <Button variant="primary" size="tiny" onClick={() => { onApply(draft); setOpen(false) }}>
-                Apply filter
+                {t('database:editor.applyFilter')}
               </Button>
             </div>
           </div>
@@ -547,17 +547,17 @@ function RenameDialog({ name, onClose, onRename, saving }: { name: string; onClo
           }}
         >
           <DialogHeader>
-            <DialogTitle>Rename {name}</DialogTitle>
+            <DialogTitle>{t('database:editor.rename', { name })}</DialogTitle>
           </DialogHeader>
           <DialogSection className="border-t">
-            <Input autoFocus aria-label="New table name" value={value} onChange={(e) => setValue(e.target.value)} />
+            <Input autoFocus aria-label={t('database:editor.newTableName')} value={value} onChange={(e) => setValue(e.target.value)} />
           </DialogSection>
           <DialogFooter>
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {t('database:editor.cancel')}
             </Button>
             <Button type="submit" variant="primary" loading={saving} disabled={!value.trim() || value.trim() === name}>
-              Rename
+              {t('database:editor.rename2')}
             </Button>
           </DialogFooter>
         </form>

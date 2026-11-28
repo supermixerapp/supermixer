@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { downloadText, toCsv } from '@/lib/csv'
+import { t } from '@/lib/i18n'
 
 /** A figure at a glance; with `to`, it links to the list it counts. */
 export function Stat({ label, value, detail, to }: { label: string; value: ReactNode; detail?: string; to?: string }) {
@@ -72,6 +73,17 @@ export function FilterSelect({
  * The row above a report's table: search, filters, how many rows match, and
  * a CSV of the rows shown.
  */
+/**
+ * "5 projects", or "3 of 5 projects" while filtering: whole sentences, so
+ * each language orders and inflects them its own way.
+ */
+function count(noun: 'projects' | 'organizations', shown: number | null, total: number) {
+  if (noun === 'projects') {
+    return shown === null ? t('admin:reportParts.projects', { count: total }) : t('admin:reportParts.projectsOf', { shown, count: total })
+  }
+  return shown === null ? t('admin:reportParts.organizations', { count: total }) : t('admin:reportParts.organizationsOf', { shown, count: total })
+}
+
 export function ReportToolbar({
   search,
   onSearch,
@@ -90,8 +102,8 @@ export function ReportToolbar({
   filters: ReactNode
   shown: number
   total: number
-  /** Singular and plural, as in ['project', 'projects']. */
-  noun: [string, string]
+  /** What the rows are, for the count beside the filters. */
+  noun: 'projects' | 'organizations'
   filtering: boolean
   onClear: () => void
   csv: { name: string; header: string[]; rows: () => unknown[][] }
@@ -101,11 +113,11 @@ export function ReportToolbar({
       <SearchBox value={search} onChange={onSearch} placeholder={placeholder} />
       {filters}
       <span className="text-xs text-foreground-lighter tabular-nums">
-        {filtering ? `${shown} of ${total}` : total} {total === 1 ? noun[0] : noun[1]}
+        {count(noun, filtering ? shown : null, total)}
       </span>
       {filtering && (
         <Button variant="text" size="tiny" onClick={onClear}>
-          Clear filters
+          {t('admin:reportParts.clearFilters')}
         </Button>
       )}
       <Button
@@ -119,7 +131,7 @@ export function ReportToolbar({
           downloadText(csv.name, '\uFEFF' + toCsv(csv.header, csv.rows(), { guard: true }), 'text/csv;charset=utf-8')
         }
       >
-        Export CSV
+        {t('admin:reportParts.exportCsv')}
       </Button>
     </div>
   )

@@ -32,6 +32,7 @@ import {
   type GraphTable,
 } from '@/lib/pg/schema-graph'
 import { useTheme } from '@/lib/theme'
+import { localized, t as tr } from '@/lib/i18n'
 
 type TableNodeData = {
   projectRef: string
@@ -45,7 +46,7 @@ type TableNodeData = {
 }
 type TableNodeT = Node<TableNodeData, 'table'>
 
-const KIND_LABEL: Partial<Record<TableNodeData['kind'], string>> = { v: 'view', m: 'mat. view', f: 'foreign', external: 'other schema' }
+const KIND_LABEL = localized((): Partial<Record<TableNodeData['kind'], string>> => ({ v: 'view', m: tr('database:schemaDiagram.matView'), f: 'foreign', external: tr('database:schemaDiagram.otherSchema') }))
 
 function TableNode({ data }: NodeProps<TableNodeT>) {
   return (
@@ -62,17 +63,17 @@ function TableNode({ data }: NodeProps<TableNodeT>) {
             to="/project/$ref/editor/$id"
             params={{ ref: data.projectRef, id: String(data.tableId) }}
             className="nodrag truncate text-sm text-foreground hover:underline"
-            title="Open in the Table Editor"
+            title={tr('database:schemaDiagram.openInTheTableEditor')}
           >
             {data.title}
           </Link>
         ) : (
           <span className="truncate text-sm text-foreground">{data.title}</span>
         )}
-        {KIND_LABEL[data.kind] && <span className="ml-auto shrink-0 text-[10px] text-foreground-muted uppercase">{KIND_LABEL[data.kind]}</span>}
+        {KIND_LABEL()[data.kind] && <span className="ml-auto shrink-0 text-[10px] text-foreground-muted uppercase">{KIND_LABEL()[data.kind]}</span>}
       </div>
       <ul className="py-1">
-        {data.columns.length === 0 && <li className="px-3 py-1 text-foreground-lighter">No columns</li>}
+        {data.columns.length === 0 && <li className="px-3 py-1 text-foreground-lighter">{tr('database:schemaDiagram.noColumns')}</li>}
         {data.columns.map((c) => (
           <li key={c.name} className="relative flex h-[26px] items-center gap-1.5 px-3">
             <Handle type="target" position={Position.Left} id={`l-${c.name}`} isConnectable={false} />
@@ -222,7 +223,7 @@ export function SchemaDiagram({ projectRef, schema, tables, fks }: { projectRef:
             requestAnimationFrame(() => void flow?.fitView({ padding: 0.15, maxZoom: 1, duration: 300 }))
           }}
         >
-          Auto layout
+          {tr('database:schemaDiagram.autoLayout')}
         </Button>
       </div>
     </div>

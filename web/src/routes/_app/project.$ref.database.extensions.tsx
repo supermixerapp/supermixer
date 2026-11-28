@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { SCHEMAS_SQL, type SchemaRow } from '@/lib/pg/catalog'
 import { disableExtension, enableExtension, EXTENSIONS_SQL, type ExtensionRow } from '@/lib/pg/database'
 import { usePg } from '@/lib/pg/run'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/database/extensions')({
   component: ExtensionsPage,
@@ -33,9 +34,9 @@ function ExtensionsPage() {
 
   return (
     <DatabasePage
-      title="Extensions"
-      description="Postgres extensions available on this stack. Enabled ones are listed first."
-      toolbar={<SearchBox value={search} onChange={setSearch} placeholder="Search for an extension" />}
+      title={t('database:databaseExtensions.extensions')}
+      description={t('database:databaseExtensions.postgresExtensionsAvailableOnThisStack')}
+      toolbar={<SearchBox value={search} onChange={setSearch} placeholder={t('database:databaseExtensions.searchForAnExtension')} />}
     >
       {extensions.error ? (
         <Alert variant="destructive" title={extensions.error.message} />
@@ -48,7 +49,7 @@ function ExtensionsPage() {
               <div className="flex items-center justify-between gap-2">
                 <span className="truncate font-mono text-sm text-foreground">{e.name}</span>
                 <Switch
-                  aria-label={`${e.installed_version ? 'Disable' : 'Enable'} ${e.name}`}
+                  aria-label={`${e.installed_version ? t('common:actions.disable') : t('common:actions.enable')} ${e.name}`}
                   checked={!!e.installed_version}
                   disabled={!canChange || ddl.isPending}
                   onCheckedChange={(on) => (on ? setEnabling(e) : setDisabling(e))}
@@ -56,7 +57,7 @@ function ExtensionsPage() {
               </div>
               <p className="line-clamp-2 text-xs text-foreground-light">{e.comment}</p>
               <p className="mt-auto text-[11px] text-foreground-lighter">
-                {e.installed_version ? `v${e.installed_version} in ${e.schema}` : `v${e.default_version} available`}
+                {e.installed_version ? t('database:databaseExtensions.vIn', { installedVersion: e.installed_version, schema: e.schema }) : t('database:databaseExtensions.vAvailable', { defaultVersion: e.default_version })}
               </p>
             </Card>
           ))}
@@ -66,17 +67,17 @@ function ExtensionsPage() {
         open={!!enabling}
         onOpenChange={(o) => !o && setEnabling(null)}
         variant="warning"
-        title={`Enable ${enabling?.name}?`}
+        title={t('database:databaseExtensions.enable', { name: enabling?.name })}
         description={
           enabling?.required_schema ? (
             <span>
-              It installs into the <code className="font-mono">{enabling.required_schema}</code> schema, which it requires.
+              <Trans i18nKey="database:databaseExtensions.itInstallsIntoTheSchemaWhich" values={{ requiredSchema: enabling.required_schema }} components={{ code: <code className="font-mono" /> }} />
             </span>
           ) : (
           <span className="flex flex-col gap-3">
-            <span>Choose the schema its objects go in. Supabase keeps extensions in &quot;extensions&quot;.</span>
+            <span>{t('database:databaseExtensions.chooseTheSchemaItsObjectsGo')}</span>
             <Select value={schema} onValueChange={setSchema}>
-              <SelectTrigger aria-label="Schema">
+              <SelectTrigger aria-label={t('database:databaseExtensions.schema')}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -90,13 +91,13 @@ function ExtensionsPage() {
           </span>
           )
         }
-        confirmLabel="Enable extension"
+        confirmLabel={t('database:databaseExtensions.enableExtension')}
         loading={ddl.isPending}
         onConfirm={() =>
           enabling &&
           ddl.mutate(
             // A schema fixed by the control file must not be overridden.
-            { sql: enableExtension(enabling.name, enabling.required_schema ? null : schema), done: `Enabled ${enabling.name}` },
+            { sql: enableExtension(enabling.name, enabling.required_schema ? null : schema), done: t('database:databaseExtensions.enabled', { name: enabling.name }) },
             { onSettled: () => setEnabling(null) }
           )
         }
@@ -104,12 +105,12 @@ function ExtensionsPage() {
       <ConfirmDialog
         open={!!disabling}
         onOpenChange={(o) => !o && setDisabling(null)}
-        title={`Disable ${disabling?.name}?`}
-        description="Its functions and types are dropped. Objects that depend on them make this fail."
-        confirmLabel="Disable extension"
+        title={t('database:databaseExtensions.disable', { name: disabling?.name })}
+        description={t('database:databaseExtensions.itsFunctionsAndTypesAreDropped')}
+        confirmLabel={t('database:databaseExtensions.disableExtension')}
         loading={ddl.isPending}
         onConfirm={() =>
-          disabling && ddl.mutate({ sql: disableExtension(disabling.name), done: `Disabled ${disabling.name}` }, { onSettled: () => setDisabling(null) })
+          disabling && ddl.mutate({ sql: disableExtension(disabling.name), done: t('database:databaseExtensions.disabled', { name: disabling.name }) }, { onSettled: () => setDisabling(null) })
         }
       />
     </DatabasePage>

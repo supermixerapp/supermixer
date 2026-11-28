@@ -26,6 +26,7 @@ import { can, useSelectedProject } from '@/lib/api/hooks'
 import { PROTECTED_SCHEMAS, SCHEMAS_SQL, type SchemaRow } from '@/lib/pg/catalog'
 import { PARTIAL_GRANT } from '@/lib/pg/column-privileges'
 import { runSql, SqlError, usePg } from '@/lib/pg/run'
+import { t } from '@/lib/i18n'
 
 /** ?schema= on Database pages; defaults to public. */
 export function schemaSearch(search: Record<string, unknown>): { schema?: string } {
@@ -61,8 +62,8 @@ export function SchemaPicker({ projectRef, value, onChange }: { projectRef: stri
   const schemas = usePg<SchemaRow>(projectRef, ['schemas'], SCHEMAS_SQL)
   return (
     <Select value={value} onValueChange={onChange}>
-      <SelectTrigger size="tiny" className="w-44" aria-label="Schema">
-        <span className="text-foreground-lighter">schema</span>
+      <SelectTrigger size="tiny" className="w-44" aria-label={t('database:catalogPage.schema')}>
+        <span className="text-foreground-lighter">{t('database:catalogPage.schema2')}</span>
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -185,7 +186,7 @@ export function CatalogTable<T>({
                     {visibleActions(row).length > 0 && (
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${rowKey(row)}`} />
+                          <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={t('database:catalogPage.actionsFor', { rowKey: rowKey(row) })} />
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           {visibleActions(row).map((a) => (
@@ -211,7 +212,7 @@ export function CatalogTable<T>({
         onOpenChange={(o) => !o && setConfirming(null)}
         title={dialog?.title ?? ''}
         description={dialog?.description ?? ''}
-        confirmLabel={confirming?.action.label ?? 'Confirm'}
+        confirmLabel={confirming?.action.label ?? t('database:catalogPage.confirm')}
         {...(dialog?.confirmText ? { confirmText: dialog.confirmText } : {})}
         onConfirm={() => {
           if (confirming) confirming.action.onSelect(confirming.row)

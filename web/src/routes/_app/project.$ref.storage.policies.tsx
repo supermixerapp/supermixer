@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { PoliciesView } from '@/components/database/policies-view'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/storage/policies')({
   component: StoragePoliciesPage,
@@ -13,7 +14,7 @@ function StoragePoliciesPage() {
       projectRef={ref}
       schema="storage"
       storage
-      description="Policies on Storage's tables decide who can read, upload, change and delete files through the API. Without any, only the service key can."
+      description={t('storage:storagePolicies.policiesOnStorageSTablesDecide')}
     />
   )
 }

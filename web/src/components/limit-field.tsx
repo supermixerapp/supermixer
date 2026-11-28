@@ -7,6 +7,7 @@ import { useState, type ReactNode } from 'react'
 import { FormField } from '@/components/ui/form-field'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
+import { t, language } from '@/lib/i18n'
 
 /** "1 project", "3 projects". */
 export const countOf = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
@@ -54,7 +55,7 @@ export function LimitField({
   notice?: ReactNode
 }) {
   const error = !draft.valid
-    ? `Enter a whole number from 1 to ${draft.max.toLocaleString()}`
+    ? t('common:limitField.enterAWholeNumberFrom1', { value: draft.max.toLocaleString(language()) })
     : undefined
   return (
     <FormField
@@ -66,7 +67,7 @@ export function LimitField({
     >
       <div className="flex min-h-9 flex-wrap items-center gap-3">
         <Switch
-          aria-label={`Limit ${label.toLowerCase()}`}
+          aria-label={t('common:limitField.limit', { lowerCase: label.toLowerCase() })}
           checked={draft.on}
           disabled={disabled}
           onCheckedChange={(on) => {
@@ -93,7 +94,7 @@ export function LimitField({
           </div>
         ) : (
           <span id={id} className="text-sm text-foreground-light">
-            Unlimited
+            {t('common:limitField.unlimited')}
           </span>
         )}
       </div>

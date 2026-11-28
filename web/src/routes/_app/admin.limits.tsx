@@ -16,6 +16,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { resourceLimitsQuery } from '@/lib/api/queries'
+import { t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/admin/limits')({
   component: LimitsPage,
@@ -27,8 +28,8 @@ function LimitsPage() {
   const saved = limits.data
   return (
     <AdminLayout
-      title="Resource limits"
-      description="How much people can create on this instance. Lowering a limit keeps what already exists; it only stops new ones past it."
+      title={t('admin:adminLimits.resourceLimits')}
+      description={t('admin:adminLimits.howMuchPeopleCanCreateOn')}
     >
       {limits.error ? (
         <Alert variant="destructive" title={limits.error.message} />
@@ -61,7 +62,7 @@ function LimitsForm({ saved }: { saved: Schemas['ResourceLimits'] }) {
         })
       ),
     onSuccess: async (l) => {
-      toast.success('Resource limits saved')
+      toast.success(t('admin:adminLimits.resourceLimitsSaved'))
       queryClient.setQueryData(resourceLimitsQuery.queryKey, l)
       await queryClient.invalidateQueries({ queryKey: ['organizations'] })
     },
@@ -70,41 +71,41 @@ function LimitsForm({ saved }: { saved: Schemas['ResourceLimits'] }) {
   const over = (d: typeof orgs, most: number) => d.valid && d.value !== null && most > d.value
 
   return (
-    <SettingsSection title="Limits">
+    <SettingsSection title={t('admin:adminLimits.limits')}>
       <Card>
         <CardContent className="flex flex-col gap-8">
           <LimitField
             id="max-orgs"
-            label="Organizations per person"
+            label={t('admin:adminLimits.organizationsPerPerson')}
             unit="organizations"
             draft={orgs}
             suggested={Math.max(saved.most_organizations_by_one_person, 1)}
-            description="How many organizations one person can create. Instance admins aren't limited."
+            description={t('admin:adminLimits.howManyOrganizationsOnePersonCan')}
             notice={
               over(orgs, saved.most_organizations_by_one_person) && (
                 <Alert
                   variant="warning"
-                  title={`Someone has already created ${countOf(saved.most_organizations_by_one_person, 'organization', 'organizations')}`}
+                  title={t('admin:adminLimits.someoneHasAlreadyCreated', { countOf: countOf(saved.most_organizations_by_one_person, 'organization', 'organizations') })}
                 >
-                  They keep them, but can&apos;t create more until they&apos;re under the limit.
+                  {t('admin:adminLimits.theyKeepThemButCanT')}
                 </Alert>
               )
             }
           />
           <LimitField
             id="max-projects"
-            label="Projects per organization"
+            label={t('admin:adminLimits.projectsPerOrganization')}
             unit="projects"
             draft={projects}
             suggested={Math.max(saved.most_projects_in_one_organization, 1)}
-            description="How many projects any one organization can have. Its Owners and Administrators can set a lower limit for it."
+            description={t('admin:adminLimits.howManyProjectsAnyOneOrganization')}
             notice={
               over(projects, saved.most_projects_in_one_organization) && (
                 <Alert
                   variant="warning"
-                  title={`An organization already has ${countOf(saved.most_projects_in_one_organization, 'project', 'projects')}`}
+                  title={t('admin:adminLimits.anOrganizationAlreadyHas', { countOf: countOf(saved.most_projects_in_one_organization, 'project', 'projects') })}
                 >
-                  It keeps them, but can&apos;t add more until it&apos;s under the limit.
+                  {t('admin:adminLimits.itKeepsThemButCanT')}
                 </Alert>
               )
             }
@@ -120,7 +121,7 @@ function LimitsForm({ saved }: { saved: Schemas['ResourceLimits'] }) {
               projects.reset()
             }}
           >
-            Cancel
+            {t('admin:adminLimits.cancel')}
           </Button>
           <Button
             variant="primary"
@@ -128,7 +129,7 @@ function LimitsForm({ saved }: { saved: Schemas['ResourceLimits'] }) {
             loading={save.isPending}
             onClick={() => save.mutate()}
           >
-            Save
+            {t('admin:adminLimits.save')}
           </Button>
         </CardFooter>
       </Card>

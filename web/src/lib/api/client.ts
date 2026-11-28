@@ -1,6 +1,7 @@
 import createClient, { type Middleware } from 'openapi-fetch'
 
 import type { components, paths } from './schema.gen'
+import { t } from '@/lib/i18n'
 
 export type Schemas = components['schemas']
 
@@ -45,7 +46,7 @@ export async function unwrap<T>(
 ): Promise<T> {
   const { data, error, response } = await call
   if (!response.ok) {
-    let message = response.statusText || 'Request failed'
+    let message = response.statusText || t('common:client.requestFailed')
     let code: string | undefined
     if (typeof error === 'object' && error !== null && 'message' in error) {
       message = String(error.message)

@@ -18,6 +18,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
+import { localized, t } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/project/$ref/functions/secrets')({
   component: SecretsPage,
@@ -35,10 +36,10 @@ const BUILT_IN = [
 ]
 
 function nameProblem(name: string): string | null {
-  if (!/^[A-Za-z_][A-Za-z0-9_]{0,255}$/.test(name)) return 'Letters, digits and _, not starting with a digit'
+  if (!/^[A-Za-z_][A-Za-z0-9_]{0,255}$/.test(name)) return t('functions:functionsSecrets.lettersDigitsAndNotStartingWith')
   const upper = name.toUpperCase()
-  if (upper.startsWith('SUPABASE_') || upper.startsWith('SB_')) return 'SUPABASE_ and SB_ names are reserved'
-  if (upper === 'JWT_SECRET' || upper === 'VERIFY_JWT') return 'Set by the stack'
+  if (upper.startsWith('SUPABASE_') || upper.startsWith('SB_')) return t('functions:functionsSecrets.supabaseAndSbNamesAreReserved')
+  if (upper === 'JWT_SECRET' || upper === 'VERIFY_JWT') return t('functions:functionsSecrets.setByTheStack')
   return null
 }
 
@@ -52,25 +53,25 @@ function SecretsPage() {
   const project = useSelectedProject()
   if (!project) return null
   const description =
-    'Environment variables every function of this stack can read with Deno.env.get(). Values are never shown again; each is listed by its SHA-256 digest.'
+    t('functions:functionsSecrets.environmentVariablesEveryFunctionOfThis')
   if (!project.stack) {
     return (
-      <DatabasePage title="Edge Function Secrets" description={description}>
-        <Alert title="Supermixer connects to this stack, so it can't change its functions' environment">
-          Set secrets where the stack runs. Stacks created with “Create a new stack” manage their secrets here.
+      <DatabasePage title={t('functions:functionsSecrets.edgeFunctionSecrets')} description={description}>
+        <Alert title={t('functions:functionsSecrets.supermixerConnectsToThisStackSo')}>
+          {t('functions:functionsSecrets.setSecretsWhereTheStackRuns')}
         </Alert>
       </DatabasePage>
     )
   }
   if (!can(project, 'project:secrets:read')) {
     return (
-      <DatabasePage title="Edge Function Secrets" description={description}>
-        <Alert title="You need additional permissions to view function secrets" />
+      <DatabasePage title={t('functions:functionsSecrets.edgeFunctionSecrets')} description={description}>
+        <Alert title={t('functions:functionsSecrets.youNeedAdditionalPermissionsToView')} />
       </DatabasePage>
     )
   }
   return (
-    <DatabasePage title="Edge Function Secrets" description={description}>
+    <DatabasePage title={t('functions:functionsSecrets.edgeFunctionSecrets')} description={description}>
       <AdminAccess projectRef={ref} canChange={can(project, 'project:update')} />
       <DatabaseAccess projectRef={ref} canChange={can(project, 'project:update')} />
       <Secrets
@@ -89,7 +90,7 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
   const [removing, setRemoving] = useState<string | null>(null)
 
   const done = (restarted: boolean, what: string) => {
-    toast.success(restarted ? what : `${what}; they take effect when the stack starts`)
+    toast.success(restarted ? what : t('functions:functionsSecrets.theyTakeEffectWhenTheStack', { what }))
     void queryClient.invalidateQueries({ queryKey: functionSecretsQuery(ref).queryKey })
     void queryClient.invalidateQueries({ queryKey: ['projects', ref, 'stack'] })
   }
@@ -102,7 +103,7 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
         })
       ),
     onSuccess: (res) => {
-      done(res.restarted, rows.length === 1 ? `Saved ${rows[0]!.name.trim()}` : `Saved ${rows.length} secrets`)
+      done(res.restarted, rows.length === 1 ? t('functions:functionsSecrets.saved', { trim: rows[0]!.name.trim() }) : t('functions:functionsSecrets.savedSecrets', { length: rows.length }))
       setRows([{ name: '', value: '' }])
     },
   })
@@ -110,7 +111,7 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
     mutationFn: (name: string) =>
       unwrap(api.DELETE('/projects/{ref}/function-secrets', { params: { path: { ref } }, body: { names: [name] } })),
     onSuccess: (res, name) => {
-      done(res.restarted, `Removed ${name}`)
+      done(res.restarted, t('functions:functionsSecrets.removed', { name }))
       setRemoving(null)
     },
   })
@@ -126,10 +127,9 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
     <>
       <Card className="flex flex-col gap-4 p-5">
         <div className="flex flex-col gap-1">
-          <span className="text-sm text-foreground">Add or replace secrets</span>
+          <span className="text-sm text-foreground">{t('functions:functionsSecrets.addOrReplaceSecrets')}</span>
           <span className="text-xs text-foreground-lighter">
-            Paste the lines of a .env file into a name field to fill in several at once. Saving restarts the stack’s
-            functions service.
+            {t('functions:functionsSecrets.pasteTheLinesOfAEnv')}
           </span>
         </div>
         <form
@@ -143,11 +143,11 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
             <div key={i} className="flex flex-col gap-1">
               <div className="grid grid-cols-[1fr_1.5fr_auto] items-center gap-2">
                 <Input
-                  aria-label="Name"
+                  aria-label={t('functions:functionsSecrets.name')}
                   autoComplete="off"
                   spellCheck={false}
                   className="font-mono text-xs"
-                  placeholder="STRIPE_SECRET_KEY"
+                  placeholder={t('functions:functionsSecrets.stripeSecretKey')}
                   value={r.name}
                   disabled={!canChange || save.isPending}
                   onChange={(e) => update(i, { name: e.target.value })}
@@ -160,12 +160,12 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
                   }}
                 />
                 <Input
-                  aria-label="Value"
+                  aria-label={t('functions:functionsSecrets.value')}
                   type="password"
                   autoComplete="new-password"
                   spellCheck={false}
                   className="font-mono text-xs"
-                  placeholder="Value"
+                  placeholder={t('functions:functionsSecrets.value')}
                   value={r.value}
                   disabled={!canChange || save.isPending}
                   onChange={(e) => update(i, { value: e.target.value })}
@@ -174,7 +174,7 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
                   type="button"
                   variant="text"
                   size="tiny"
-                  aria-label="Remove this row"
+                  aria-label={t('functions:functionsSecrets.removeThisRow')}
                   icon={<DeleteIcon />}
                   disabled={rows.length === 1 || save.isPending}
                   onClick={() => setRows(rows.filter((_, j) => j !== i))}
@@ -182,11 +182,11 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
               </div>
               {problems[i] && <span className="text-xs text-destructive">{problems[i]}</span>}
               {!problems[i] && existing.has(r.name.trim()) && (
-                <span className="text-xs text-foreground-lighter">Replaces the current value</span>
+                <span className="text-xs text-foreground-lighter">{t('functions:functionsSecrets.replacesTheCurrentValue')}</span>
               )}
             </div>
           ))}
-          {duplicate && <span className="text-xs text-destructive">{duplicate} is listed twice</span>}
+          {duplicate && <span className="text-xs text-destructive">{t('functions:functionsSecrets.isListedTwice', { duplicate })}</span>}
           {save.error && <Alert variant="destructive" title={save.error.message} />}
           <div className="flex items-center justify-between gap-2 pt-1">
             <Button
@@ -197,15 +197,15 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
               disabled={!canChange || save.isPending}
               onClick={() => setRows([...rows, { name: '', value: '' }])}
             >
-              Add another
+              {t('functions:functionsSecrets.addAnother')}
             </Button>
-            <PermissionButton allowed={canChange} action="change function secrets" type="submit" variant="primary" loading={save.isPending} disabled={!ready}>
-              Save
+            <PermissionButton allowed={canChange} action={t('functions:functionsSecrets.changeFunctionSecrets')} type="submit" variant="primary" loading={save.isPending} disabled={!ready}>
+              {t('functions:functionsSecrets.save')}
             </PermissionButton>
           </div>
         </form>
       </Card>
-      {!running && <Alert title="The stack isn't running">Saved secrets take effect when it starts.</Alert>}
+      {!running && <Alert title={t('functions:functionsSecrets.theStackIsnTRunning')}>{t('functions:functionsSecrets.savedSecretsTakeEffectWhenIt')}</Alert>}
 
       {secrets.error ? (
         <Alert variant="destructive" title={secrets.error.message} />
@@ -216,8 +216,8 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
           <Table>
             <TableHeader>
               <TableRow className="hover:bg-transparent">
-                <TableHead>Name</TableHead>
-                <TableHead>Digest (SHA-256)</TableHead>
+                <TableHead>{t('functions:functionsSecrets.name')}</TableHead>
+                <TableHead>{t('functions:functionsSecrets.digestSha256')}</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -231,10 +231,10 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
                   <TableCell>
                     <PermissionButton
                       allowed={canChange}
-                      action="change function secrets"
+                      action={t('functions:functionsSecrets.changeFunctionSecrets')}
                       variant="text"
                       size="tiny"
-                      aria-label={`Remove ${s.name}`}
+                      aria-label={t('functions:functionsSecrets.remove', { name: s.name })}
                       icon={<DeleteIcon />}
                       onClick={() => setRemoving(s.name)}
                     />
@@ -245,7 +245,7 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
                 <TableRow key={name} className="hover:bg-transparent">
                   <TableCell className="font-mono text-xs text-foreground-lighter">{name}</TableCell>
                   <TableCell className="text-xs text-foreground-lighter" colSpan={2}>
-                    Set by the stack
+                    {t('functions:functionsSecrets.setByTheStack')}
                   </TableCell>
                 </TableRow>
               ))}
@@ -256,9 +256,9 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
       <ConfirmDialog
         open={removing !== null}
         onOpenChange={(o) => !o && setRemoving(null)}
-        title={`Remove ${removing}?`}
-        description="Functions stop seeing it once the functions service restarts."
-        confirmLabel="Remove secret"
+        title={t('functions:functionsSecrets.remove2', { removing })}
+        description={t('functions:functionsSecrets.functionsStopSeeingItOnceThe')}
+        confirmLabel={t('functions:functionsSecrets.removeSecret')}
         loading={remove.isPending}
         onConfirm={() => removing && remove.mutate(removing)}
       >
@@ -268,18 +268,18 @@ function Secrets({ projectRef: ref, running, canChange }: { projectRef: string; 
   )
 }
 
-const ADMIN: { value: boolean; title: string; text: string }[] = [
+const ADMIN = localized((): { value: boolean; title: string; text: string }[] => [
   {
     value: true,
-    title: 'Admin access (default)',
-    text: 'Functions get SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEYS and SUPABASE_DB_URL, and can bypass Row Level Security.',
+    title: t('functions:functionsSecrets.adminAccessDefault'),
+    text: t('functions:functionsSecrets.functionsGetSupabaseServiceRoleKey'),
   },
   {
     value: false,
-    title: 'Caller’s access only',
-    text: 'Functions get none of them: they act as whoever calls them, with the caller’s token and the publishable or anon key.',
+    title: t('functions:functionsSecrets.callerSAccessOnly'),
+    text: t('functions:functionsSecrets.functionsGetNoneOfThemThey'),
   },
-]
+])
 
 /** Whether functions get the admin keys and the database URL. */
 function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canChange: boolean }) {
@@ -291,8 +291,8 @@ function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canCh
       unwrap(api.PUT('/projects/{ref}/function-settings', { params: { path: { ref } }, body: { admin_access: on } })),
     onSuccess: (res) => {
       toast.success(
-        (res.admin_access ? 'Functions have admin access again' : 'Functions now act as their caller') +
-          (res.restarted ? '' : '; this takes effect when the stack starts')
+        (res.admin_access ? t('functions:functionsSecrets.functionsHaveAdminAccessAgain') : t('functions:functionsSecrets.functionsNowActAsTheirCaller')) +
+          (res.restarted ? '' : t('functions:functionsSecrets.thisTakesEffectWhenTheStack'))
       )
       setConfirm(false)
       void queryClient.invalidateQueries({ queryKey: functionSettingsQuery(ref).queryKey })
@@ -307,11 +307,10 @@ function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canCh
   return (
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-foreground">Admin access</span>
+        <span className="text-sm text-foreground">{t('functions:functionsSecrets.adminAccess')}</span>
         <span className="text-xs text-foreground-lighter">
-          Whether deployed code can act with full access. Without it, a malicious or careless deploy can’t bypass Row Level
-          Security or read the project’s secret keys.
-          {!canChange && ' Owners and Administrators can change it.'}
+          {t('functions:functionsSecrets.whetherDeployedCodeCanActWith')}
+          {!canChange && t('functions:functionsSecrets.ownersAndAdministratorsCanChangeIt')}
         </span>
       </div>
       {settings.error ? (
@@ -319,8 +318,8 @@ function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canCh
       ) : current === undefined ? (
         <Skeleton className="h-20" />
       ) : (
-        <div role="radiogroup" aria-label="Admin access" className="grid gap-3 sm:grid-cols-2">
-          {ADMIN.map((a) => (
+        <div role="radiogroup" aria-label={t('functions:functionsSecrets.adminAccess')} className="grid gap-3 sm:grid-cols-2">
+          {ADMIN().map((a) => (
             <button
               key={String(a.value)}
               type="button"
@@ -345,9 +344,9 @@ function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canCh
         open={confirm}
         onOpenChange={setConfirm}
         variant="warning"
-        title="Turn off the functions’ admin access?"
-        description="Functions stop getting SUPABASE_SERVICE_ROLE_KEY, SUPABASE_SECRET_KEYS and SUPABASE_DB_URL. Any function that uses Auth’s admin API, bypasses Row Level Security or connects to the database directly stops working until you turn it back on. Functions that act for the signed-in user keep working."
-        confirmLabel="Turn off admin access"
+        title={t('functions:functionsSecrets.turnOffTheFunctionsAdminAccess')}
+        description={t('functions:functionsSecrets.functionsStopGettingSupabaseServiceRole')}
+        confirmLabel={t('functions:functionsSecrets.turnOffAdminAccess')}
         loading={set.isPending}
         onConfirm={() => set.mutate(false)}
       >
@@ -359,18 +358,18 @@ function AdminAccess({ projectRef: ref, canChange }: { projectRef: string; canCh
 
 type Access = 'service_role' | 'postgres'
 
-const ACCESS: { value: Access; title: string; text: string }[] = [
+const ACCESS = localized((): { value: Access; title: string; text: string }[] => [
   {
     value: 'service_role',
-    title: 'Service role (recommended)',
-    text: 'Bypasses Row Level Security, like the service-role key functions already have. Can’t create roles or change Auth’s and Realtime’s tables.',
+    title: t('functions:functionsSecrets.serviceRoleRecommended'),
+    text: t('functions:functionsSecrets.bypassesRowLevelSecurityLikeThe'),
   },
   {
     value: 'postgres',
     title: 'postgres',
-    text: 'Administrative access: can also create roles and change auth.users and Realtime’s tables. Every deployed function gets it.',
+    text: t('functions:functionsSecrets.administrativeAccessCanAlsoCreateRoles'),
   },
-]
+])
 
 /** Which login SUPABASE_DB_URL gives functions. */
 function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; canChange: boolean }) {
@@ -382,8 +381,8 @@ function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; ca
       unwrap(api.PUT('/projects/{ref}/function-settings', { params: { path: { ref } }, body: { database_access: access } })),
     onSuccess: (res) => {
       toast.success(
-        `Functions now reach the database as ${res.database_access === 'postgres' ? 'postgres' : 'the service role'}` +
-          (res.restarted ? '' : '; this takes effect when the stack starts')
+        (res.database_access === 'postgres' ? t('functions:functionsSecrets.functionsNowReachAsPostgres') : t('functions:functionsSecrets.functionsNowReachAsServiceRole')) +
+          (res.restarted ? '' : t('functions:functionsSecrets.thisTakesEffectWhenTheStack'))
       )
       setConfirm(false)
       void queryClient.invalidateQueries({ queryKey: functionSettingsQuery(ref).queryKey })
@@ -399,11 +398,11 @@ function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; ca
   return (
     <Card className="flex flex-col gap-4 p-5">
       <div className="flex flex-col gap-1">
-        <span className="text-sm text-foreground">Database access</span>
+        <span className="text-sm text-foreground">{t('functions:functionsSecrets.databaseAccess')}</span>
         <span className="text-xs text-foreground-lighter">
-          The login in SUPABASE_DB_URL, which every function can read.
-          {withheld && ' Functions don’t get SUPABASE_DB_URL while admin access is off.'}
-          {!canChange && ' Owners and Administrators can change it.'}
+          {t('functions:functionsSecrets.theLoginInSupabaseDbUrl')}
+          {withheld && t('functions:functionsSecrets.functionsDonTGetSupabaseDb')}
+          {!canChange && t('functions:functionsSecrets.ownersAndAdministratorsCanChangeIt')}
         </span>
       </div>
       {settings.error ? (
@@ -411,8 +410,8 @@ function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; ca
       ) : !current ? (
         <Skeleton className="h-20" />
       ) : (
-        <div role="radiogroup" aria-label="Database access" className="grid gap-3 sm:grid-cols-2">
-          {ACCESS.map((a) => (
+        <div role="radiogroup" aria-label={t('functions:functionsSecrets.databaseAccess')} className="grid gap-3 sm:grid-cols-2">
+          {ACCESS().map((a) => (
             <button
               key={a.value}
               type="button"
@@ -437,9 +436,9 @@ function DatabaseAccess({ projectRef: ref, canChange }: { projectRef: string; ca
         open={confirm}
         onOpenChange={setConfirm}
         variant="warning"
-        title="Give functions the postgres login?"
-        description="Any function deployed to this project, by anyone allowed to deploy, could then create roles, change users’ passwords in auth.users and read Realtime’s settings. Choose it only if your functions need administrative access."
-        confirmLabel="Use postgres"
+        title={t('functions:functionsSecrets.giveFunctionsThePostgresLogin')}
+        description={t('functions:functionsSecrets.anyFunctionDeployedToThisProject')}
+        confirmLabel={t('functions:functionsSecrets.usePostgres')}
         loading={set.isPending}
         onConfirm={() => set.mutate('postgres')}
       >

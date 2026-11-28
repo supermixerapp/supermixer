@@ -16,6 +16,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useProfile } from '@/lib/api/hooks'
 import { healthQuery, profileQuery, sessionsQuery } from '@/lib/api/queries'
 import { passwordRule } from '@/lib/passwords'
+import { t, language } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/account/me')({
   component: PreferencesPage,
@@ -23,7 +24,7 @@ export const Route = createFileRoute('/_app/account/me')({
 
 function PreferencesPage() {
   return (
-    <AccountLayout title="Preferences">
+    <AccountLayout title={t('account:me.preferences')}>
       <ProfileSection />
       <PasswordSection />
       <SessionsSection />
@@ -35,12 +36,12 @@ function PreferencesPage() {
 function SystemSection() {
   const { data, isPending, error } = useQuery(healthQuery)
   return (
-    <SettingsSection title="System" description="Status of this Supermixer server and its database.">
+    <SettingsSection title={t('account:me.system')} description={t('account:me.statusOfThisSupermixerServerAnd')}>
       <Card>
         {error && !data ? (
           <dl className="text-sm">
-            <Row label="Server">
-              <Badge variant="destructive">unreachable</Badge>
+            <Row label={t('account:me.server')}>
+              <Badge variant="destructive">{t('account:me.unreachable')}</Badge>
             </Row>
             <p className="px-5 pb-3 text-xs text-foreground-lighter">{error.message}</p>
           </dl>
@@ -51,24 +52,24 @@ function SystemSection() {
           </div>
         ) : (
           <dl className="divide-y text-sm">
-            <Row label="Server">
+            <Row label={t('account:me.server')}>
               <Badge variant={data.status === 'healthy' ? 'success' : 'destructive'}>{data.status}</Badge>
             </Row>
-            <Row label="Version">
+            <Row label={t('account:me.version')}>
               <span className="font-mono text-xs">{data.version}</span>
             </Row>
-            <Row label="Database">
+            <Row label={t('account:me.database')}>
               <Badge variant={data.database.status === 'healthy' ? 'success' : 'destructive'}>
                 {data.database.status}
               </Badge>
             </Row>
             {data.database.schema_version != null && (
-              <Row label="Schema version">
+              <Row label={t('account:me.schemaVersion')}>
                 <span className="font-mono text-xs">{data.database.schema_version}</span>
               </Row>
             )}
             {data.database.installed_at && (
-              <Row label="Installed">{new Date(data.database.installed_at).toLocaleString()}</Row>
+              <Row label={t('account:me.installed')}>{new Date(data.database.installed_at).toLocaleString(language())}</Row>
             )}
           </dl>
         )}
@@ -99,28 +100,28 @@ function ProfileForm({ me }: { me: Schemas['Profile'] }) {
     mutationFn: () => unwrap(api.PATCH('/profile', { body: { display_name: displayName, email: email || null } })),
     onSuccess: (p) => {
       queryClient.setQueryData(profileQuery.queryKey, p)
-      toast.success('Profile saved')
+      toast.success(t('account:me.profileSaved'))
     },
   })
   const dirty = displayName !== me.display_name || email !== (me.email ?? '')
   return (
-    <SettingsSection title="Profile">
+    <SettingsSection title={t('account:me.profile')}>
       <Card>
         <CardContent className="flex flex-col gap-6">
-          <FormField label="Username" layout="horizontal" description="Used to sign in. It does not change.">
+          <FormField label={t('account:me.username')} layout="horizontal" description={t('account:me.usedToSignInItDoes')}>
             <Input value={me.username} readOnly />
           </FormField>
-          <FormField label="Display name" htmlFor="display-name" layout="horizontal">
+          <FormField label={t('account:me.displayName')} htmlFor="display-name" layout="horizontal">
             <Input id="display-name" maxLength={64} value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
           </FormField>
-          <FormField label="Email" htmlFor="email" layout="horizontal">
+          <FormField label={t('account:me.email')} htmlFor="email" layout="horizontal">
             <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
           </FormField>
           {save.error && <Alert variant="destructive" title={save.error.message} />}
         </CardContent>
         <CardFooter>
           <Button variant="primary" disabled={!dirty} loading={save.isPending} onClick={() => save.mutate()}>
-            Save
+            {t('account:me.save')}
           </Button>
         </CardFooter>
       </Card>
@@ -140,7 +141,7 @@ function PasswordSection() {
       setCurrent('')
       setNext('')
       setConfirm('')
-      toast.success('Password changed; your other sessions were signed out')
+      toast.success(t('account:me.passwordChangedYourOtherSessionsWere'))
       await queryClient.invalidateQueries({ queryKey: profileQuery.queryKey })
     },
   })
@@ -152,31 +153,30 @@ function PasswordSection() {
   return (
     <section id="password" className="scroll-mt-6">
       <SettingsSection
-        title="Password"
-        description="Changing it signs out your other sessions and revokes your access tokens. Connected sign-in providers (Account › Security) stay connected."
+        title={t('account:me.password')}
+        description={t('account:me.changingItSignsOutYourOther')}
       >
         {me?.default_password && (
-          <Alert variant="warning" title="You are still using the default password">
-            Anyone who knows the default can sign in as you. Choose a new password now.
+          <Alert variant="warning" title={t('account:me.youAreStillUsingTheDefault')}>
+            {t('account:me.anyoneWhoKnowsTheDefaultCan')}
           </Alert>
         )}
         {me && !me.has_password ? (
-          <Alert title="You sign in through a sign-in provider">
-            Your account doesn&apos;t have a password. To set one, sign out and use &ldquo;Forgot your password?&rdquo; (if
-            Supermixer sends email), or ask an instance admin.
+          <Alert title={t('account:me.youSignInThroughASign')}>
+            {t('account:me.yourAccountDoesnTHaveA')}
           </Alert>
         ) : (
         <form onSubmit={submit}>
           <Card>
             <CardContent className="flex flex-col gap-6">
               <input type="text" autoComplete="username" value={me?.username ?? ''} readOnly hidden />
-              <FormField label="Current password" htmlFor="pw-current" layout="horizontal">
+              <FormField label={t('account:me.currentPassword')} htmlFor="pw-current" layout="horizontal">
                 <Input id="pw-current" type="password" autoComplete="current-password" required value={current} onChange={(e) => setCurrent(e.target.value)} />
               </FormField>
-              <FormField label="New password" htmlFor="pw-new" layout="horizontal" description={passwordRule(me?.mfa_enabled).hint}>
+              <FormField label={t('account:me.newPassword')} htmlFor="pw-new" layout="horizontal" description={passwordRule(me?.mfa_enabled).hint}>
                 <Input id="pw-new" type="password" autoComplete="new-password" required minLength={passwordRule(me?.mfa_enabled).min} value={next} onChange={(e) => setNext(e.target.value)} />
               </FormField>
-              <FormField label="Confirm new password" htmlFor="pw-confirm" layout="horizontal" error={mismatch ? 'Passwords do not match' : undefined}>
+              <FormField label={t('account:me.confirmNewPassword')} htmlFor="pw-confirm" layout="horizontal" error={mismatch ? t('account:me.passwordsDoNotMatch') : undefined}>
                 <Input
                   id="pw-confirm"
                   type="password"
@@ -191,7 +191,7 @@ function PasswordSection() {
             </CardContent>
             <CardFooter>
               <Button type="submit" variant="primary" loading={change.isPending} disabled={!current || !next || mismatch}>
-                Change password
+                {t('account:me.changePassword')}
               </Button>
             </CardFooter>
           </Card>
@@ -211,7 +211,7 @@ function SessionsSection() {
     onError: (e) => toast.error(e.message),
   })
   return (
-    <SettingsSection title="Sessions" description="Browsers signed in to your account.">
+    <SettingsSection title={t('account:me.sessions')} description={t('account:me.browsersSignedInToYourAccount')}>
       <Card>
         {sessions.isPending ? (
           <div className="p-5">
@@ -224,15 +224,15 @@ function SessionsSection() {
                 <div className="flex min-w-0 flex-col">
                   <span className="flex items-center gap-2 text-foreground">
                     {describeAgent(s.user_agent)}
-                    {s.current && <Badge variant="success">This browser</Badge>}
+                    {s.current && <Badge variant="success">{t('account:me.thisBrowser')}</Badge>}
                   </span>
                   <span className="truncate text-xs text-foreground-lighter">
-                    {s.ip || 'unknown IP'} · last active {new Date(s.last_seen_at).toLocaleString()}
+                    {t('account:me.lastActive', { ip: s.ip || t('account:me.unknownIp'), value: new Date(s.last_seen_at).toLocaleString(language()) })}
                   </span>
                 </div>
                 {!s.current && (
                   <Button variant="default" loading={revoke.isPending && revoke.variables === s.id} onClick={() => revoke.mutate(s.id)}>
-                    Sign out
+                    {t('account:me.signOut')}
                   </Button>
                 )}
               </li>
@@ -245,7 +245,7 @@ function SessionsSection() {
 }
 
 function describeAgent(ua: string) {
-  const browser = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox' : /Safari\//.test(ua) ? 'Safari' : 'Browser'
-  const os = /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? 'Windows' : /Linux/.test(ua) ? 'Linux' : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? 'Android' : ''
-  return os ? `${browser} on ${os}` : browser
+  const browser = /Edg\//.test(ua) ? t('account:me.edge') : /Chrome\//.test(ua) ? t('account:me.chrome') : /Firefox\//.test(ua) ? t('account:me.firefox') : /Safari\//.test(ua) ? t('account:me.safari') : t('account:me.browser')
+  const os = /Mac OS X/.test(ua) ? 'macOS' : /Windows/.test(ua) ? t('account:me.windows') : /Linux/.test(ua) ? t('account:me.linux') : /iPhone|iPad/.test(ua) ? 'iOS' : /Android/.test(ua) ? t('account:me.android') : ''
+  return os ? t('account:me.on', { browser, os }) : browser
 }

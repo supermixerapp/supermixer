@@ -18,3 +18,7 @@ if (!window.matchMedia) {
       dispatchEvent: () => false,
     }) as MediaQueryList
 }
+
+// The app's text, in English, as main.tsx loads it before rendering.
+import { initI18n } from '@/lib/i18n'
+await initI18n('en')

@@ -4,6 +4,7 @@
  * through Supermixer's gateway proxy, which adds the stack's admin key.
  */
 import { ApiError, readCookie } from './client'
+import { t } from '@/lib/i18n'
 
 /** The message from a Supermixer, GoTrue or Storage error body. */
 function errorMessage(body: unknown, fallback: string): string {
@@ -58,7 +59,7 @@ export async function gatewayFetch(ref: string, path: string, init: GatewayInit 
     } catch {
       body = text
     }
-    throw new ApiError(res.status, errorMessage(body, res.statusText || `Request failed (${res.status})`))
+    throw new ApiError(res.status, errorMessage(body, res.statusText || t('common:gateway.requestFailed', { status: res.status })))
   }
   return res
 }

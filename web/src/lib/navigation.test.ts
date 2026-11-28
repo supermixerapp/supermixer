@@ -4,13 +4,13 @@ import { describeProjectPath, orgNav, productMenus, projectNavGroups } from './n
 
 describe('navigation', () => {
   it('has unique product menu paths', () => {
-    const paths = Object.values(productMenus).flatMap((m) => m.groups.flatMap((g) => g.items.map((i) => i.path)))
+    const paths = Object.values(productMenus()).flatMap((m) => m.groups.flatMap((g) => g.items.map((i) => i.path)))
     expect(new Set(paths).size).toBe(paths.length)
   })
 
   it('points every sidebar entry with a product menu at one of its pages', () => {
-    for (const route of projectNavGroups.flat()) {
-      const menu = productMenus[route.key]
+    for (const route of projectNavGroups().flat()) {
+      const menu = productMenus()[route.key]
       if (!menu) continue
       const paths = menu.groups.flatMap((g) => g.items.map((i) => i.path))
       expect(paths, route.key).toContain(route.path)
@@ -18,7 +18,7 @@ describe('navigation', () => {
   })
 
   it('mirrors Studio sidebar order', () => {
-    expect(projectNavGroups.flat().map((r) => r.label)).toEqual([
+    expect(projectNavGroups().flat().map((r) => r.label)).toEqual([
       'Project Overview',
       'Table Editor',
       'SQL Editor',
@@ -33,7 +33,7 @@ describe('navigation', () => {
       'Integrations',
       'Project Settings',
     ])
-    expect(orgNav.map((r) => r.label)).toEqual(['Projects', 'Team', 'Integrations', 'Usage', 'Organization Settings'])
+    expect(orgNav().map((r) => r.label)).toEqual(['Projects', 'Team', 'Integrations', 'Usage', 'Organization Settings'])
   })
 
   it('describes known paths and rejects unknown ones', () => {

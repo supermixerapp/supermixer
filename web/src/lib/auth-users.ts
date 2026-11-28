@@ -1,3 +1,5 @@
+import { localized, t as tr, language } from '@/lib/i18n'
+
 /*
  * Auth › Users. The list is read with SQL on auth.users, as Studio does, so it
  * can search, filter and sort freely; changes go through Auth's admin API so
@@ -97,13 +99,13 @@ export interface AuthUser {
 }
 
 /** Ban lengths offered, as Auth's ban_duration (Go durations). */
-export const BAN_DURATIONS: { label: string; value: string; phrase: string }[] = [
-  { label: '1 hour', value: '1h', phrase: 'for 1 hour' },
-  { label: '24 hours', value: '24h', phrase: 'for 24 hours' },
-  { label: '7 days', value: '168h', phrase: 'for 7 days' },
-  { label: '30 days', value: '720h', phrase: 'for 30 days' },
-  { label: 'Permanently (100 years)', value: '876000h', phrase: 'permanently (100 years)' },
-]
+export const BAN_DURATIONS = localized((): { label: string; value: string; phrase: string }[] => [
+  { label: tr('authentication:authUsers.oneHour'), value: '1h', phrase: tr('authentication:authUsers.for1Hour') },
+  { label: tr('authentication:authUsers.hours24'), value: '24h', phrase: tr('authentication:authUsers.for24Hours') },
+  { label: tr('authentication:authUsers.days7'), value: '168h', phrase: tr('authentication:authUsers.for7Days') },
+  { label: tr('authentication:authUsers.days30'), value: '720h', phrase: tr('authentication:authUsers.for30Days') },
+  { label: tr('authentication:authUsers.permanently100Years'), value: '876000h', phrase: tr('authentication:authUsers.permanently100Years2') },
+])
 
 /** Admin API path for one user; ids are UUIDs, but escape anyway. */
 export const userPath = (id: string, rest = '') => `auth/v1/admin/users/${encodeURIComponent(id)}${rest}`
@@ -117,7 +119,7 @@ export function isConfirmed(u: { email_confirmed_at?: string | null; phone_confi
 }
 
 /** "3 minutes ago", "in 2 days", or the date when far away. */
-export function relativeTime(iso: string | null | undefined, now = Date.now(), locale?: string): string {
+export function relativeTime(iso: string | null | undefined, now = Date.now(), locale: string = language()): string {
   if (!iso) return '—'
   const t = new Date(iso).getTime()
   if (Number.isNaN(t)) return '—'

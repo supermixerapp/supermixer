@@ -36,6 +36,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { relativeTime } from '@/lib/auth-users'
 import { cn } from '@/lib/utils'
+import { t as tr, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/admin/notice')({
   component: NoticePage,
@@ -49,7 +50,7 @@ function NoticePage() {
   const remove = useMutation({
     mutationFn: () => unwrap(api.DELETE('/admin/notice')),
     onSuccess: () => {
-      toast.success('Notice taken down')
+      toast.success(tr('admin:adminNotice.noticeTakenDown'))
       queryClient.setQueryData(noticeQuery.queryKey, { notice: null })
     },
     onError: (e) => toast.error(e.message),
@@ -57,8 +58,8 @@ function NoticePage() {
   })
   return (
     <AdminLayout
-      title="Global notice"
-      description="A message for everyone signed in, such as planned downtime."
+      title={tr('admin:adminNotice.globalNotice')}
+      description={tr('admin:adminNotice.aMessageForEveryoneSignedIn')}
     >
       {notice.error ? (
         <Alert variant="destructive" title={notice.error.message} />
@@ -76,9 +77,9 @@ function NoticePage() {
         open={confirmingRemove}
         onOpenChange={setConfirmingRemove}
         variant="warning"
-        title="Take the notice down?"
-        description={`Nobody will see “${noticeTypeOf(current?.type ?? 'info').label}: ${current?.message ?? ''}” any more.`}
-        confirmLabel="Take down"
+        title={tr('admin:adminNotice.takeTheNoticeDown')}
+        description={tr('admin:adminNotice.nobodyWillSeeAnyMore', { label: noticeTypeOf(current?.type ?? 'info').label, message: current?.message ?? '' })}
+        confirmLabel={tr('admin:adminNotice.takeDown')}
         loading={remove.isPending}
         onConfirm={() => remove.mutate()}
       />
@@ -105,7 +106,7 @@ function NoticeForm({
     mutationFn: () => unwrap(api.PUT('/admin/notice', { body: { type, message } })),
     onSuccess: (n) => {
       toast.success(
-        current ? 'Notice updated' : 'Notice posted; everyone signed in sees it within a minute'
+        current ? tr('admin:adminNotice.noticeUpdated') : tr('admin:adminNotice.noticePostedEveryoneSignedInSees')
       )
       queryClient.setQueryData(noticeQuery.queryKey, { notice: n })
     },
@@ -114,14 +115,14 @@ function NoticeForm({
   return (
     <>
       <SettingsSection
-        title="Preview"
-        description="The notice as everyone will see it, as you edit."
+        title={tr('admin:adminNotice.preview')}
+        description={tr('admin:adminNotice.theNoticeAsEveryoneWillSee')}
       >
         {/* As the Showing now card was: the band, then a line about it. */}
         <Card className="overflow-hidden">
           {empty ? (
             <div className="flex h-12 items-center justify-center border-b px-4 text-sm text-foreground-lighter">
-              Write a message to see the notice.
+              {tr('admin:adminNotice.writeAMessageToSeeThe')}
             </div>
           ) : (
             <NoticeBand type={type} message={normalizeNotice(message)} live={false} />
@@ -129,35 +130,35 @@ function NoticeForm({
           <div className="flex items-center justify-between gap-3 px-card py-3">
             <p className="text-xs text-foreground-lighter">
               {current && !dirty
-                ? `Showing now; posted by ${current.posted_by} ${relativeTime(current.posted_at)}.`
+                ? tr('admin:adminNotice.showingNowPostedBy', { postedBy: current.posted_by, relativeTime: relativeTime(current.posted_at) })
                 : current
-                  ? `Not posted yet: ${current.posted_by}’s notice shows until you update it.`
-                  : 'Not posted yet: nobody sees it until you post it.'}
+                  ? tr('admin:adminNotice.notPostedYetSNoticeShows', { postedBy: current.posted_by })
+                  : tr('admin:adminNotice.notPostedYetNobodySeesIt')}
             </p>
             {current && (
               <Button variant="danger" onClick={onTakeDown}>
-                Take down
+                {tr('admin:adminNotice.takeDown')}
               </Button>
             )}
           </div>
         </Card>
       </SettingsSection>
 
-      <SettingsSection title={current ? 'Change the notice' : 'Post a notice'}>
+      <SettingsSection title={current ? tr('admin:adminNotice.changeTheNotice') : tr('admin:adminNotice.postANotice')}>
         <Card>
           <CardContent className="flex flex-col gap-6">
             <FormField
-              label="Notice type"
+              label={tr('admin:adminNotice.noticeType')}
               htmlFor="notice-type"
               layout="horizontal"
-              description="Sets the notice's colour and icon."
+              description={tr('admin:adminNotice.setsTheNoticeSColourAnd')}
             >
               <Select value={type} onValueChange={(v) => setType(v as NoticeType)}>
                 <SelectTrigger id="notice-type" className="w-48">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {NOTICE_TYPES.map((t) => (
+                  {NOTICE_TYPES().map((t) => (
                     <SelectItem key={t.value} value={t.value}>
                       <span className="flex items-center gap-2">
                         <t.icon size={16} className={t.iconClass} />
@@ -169,16 +170,13 @@ function NoticeForm({
               </Select>
             </FormField>
             <FormField
-              label="Message"
+              label={tr('admin:adminNotice.message')}
               htmlFor="notice-message"
               layout="horizontal"
-              error={tooLong ? `${length - MAX_NOTICE_MESSAGE} characters too many` : undefined}
+              error={tooLong ? tr('admin:adminNotice.charactersTooMany', { length: length - MAX_NOTICE_MESSAGE }) : undefined}
               description={
                 <>
-                  Shown on one line; line breaks become spaces. Supports{' '}
-                  <code className="font-mono">**bold**</code> and{' '}
-                  <code className="font-mono">[links](https://…)</code>, to https://, mailto: or a
-                  path here such as /account/security.
+                  <Trans i18nKey="admin:adminNotice.shownOnOneLineLineBreaks" components={{ code: <code className="font-mono" />, code2: <code className="font-mono" /> }} />
                 </>
               }
             >
@@ -187,7 +185,7 @@ function NoticeForm({
                 rows={3}
                 value={message}
                 aria-invalid={tooLong || undefined}
-                placeholder="Supermixer will be down for an upgrade on Saturday, 22:00–23:00 UTC."
+                placeholder={tr('admin:adminNotice.supermixerWillBeDownForAn')}
                 onChange={(e) => setMessage(e.target.value)}
               />
               <p
@@ -211,7 +209,7 @@ function NoticeForm({
                   setMessage(current.message)
                 }}
               >
-                Cancel
+                {tr('admin:adminNotice.cancel')}
               </Button>
             )}
             <Button
@@ -220,7 +218,7 @@ function NoticeForm({
               loading={post.isPending}
               onClick={() => post.mutate()}
             >
-              {current ? 'Update notice' : 'Post notice'}
+              {current ? tr('admin:adminNotice.updateNotice') : tr('admin:adminNotice.postNotice')}
             </Button>
           </CardFooter>
         </Card>

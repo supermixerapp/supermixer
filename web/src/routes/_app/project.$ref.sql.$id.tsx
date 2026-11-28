@@ -16,6 +16,8 @@ import { can, useSelectedProject } from '@/lib/api/hooks'
 import { snippetQuery, snippetsQuery } from '@/lib/api/queries'
 import { runSql, SqlError, usePg, type QueryResponse } from '@/lib/pg/run'
 import { SQL_TEMPLATES } from '@/lib/sql-templates'
+import { t as tr, Trans } from '@/lib/i18n'
+import { useUnsavedChanges } from '@/lib/unsaved'
 
 export const Route = createFileRoute('/_app/project/$ref/sql/$id')({
   component: SqlEditorPage,
@@ -40,7 +42,7 @@ function SqlEditorPage() {
     )
   }
   if (!snippet.data) {
-    return <p className="p-6 text-sm text-foreground-lighter">{snippet.error?.message ?? 'Query not found'}</p>
+    return <p className="p-6 text-sm text-foreground-lighter">{snippet.error?.message ?? tr('database:sql.queryNotFound')}</p>
   }
   return <SqlWorkspace key={snippet.data.id} projectRef={ref} snippet={snippet.data} />
 }
@@ -58,7 +60,7 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
     }
   }
   const [content, setContent] = useState(() => snippet?.content ?? readFromStorage())
-  const [name, setName] = useState(snippet?.name ?? 'Untitled query')
+  const [name, setName] = useState(snippet?.name ?? tr('database:sql.untitledQuery'))
   const [saved, setSaved] = useState({ content: snippet?.content ?? '', name: snippet?.name ?? '' })
   const [lastRun, setLastRun] = useState<Runnable | null>(null)
   const canWrite = can(project, 'project:data:write')
@@ -97,7 +99,7 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
       queryClient.setQueryData(snippetQuery(projectRef, s.id).queryKey, s)
       void refreshList()
     },
-    onError: (e) => toast.error(`Could not save: ${e.message}`),
+    onError: (e) => toast.error(tr('database:sql.couldNotSave', { message: e.message })),
   })
 
   // Saved queries autosave like Studio's; a new one keeps a local draft.
@@ -117,6 +119,9 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
   }, [content, name, snippet, editable, saved])
 
   const dirty = snippet ? content !== saved.content || name !== saved.name : content.trim() !== ''
+  // A new query's draft is kept in this browser; a saved one's changes wait
+  // for the autosave.
+  useUnsavedChanges(!!snippet && dirty)
   const sqlError = run.error instanceof SqlError ? run.error : null
   const errorAt =
     sqlError?.position && lastRun ? { offset: sqlError.position, base: lastRun.base, message: sqlError.message } : null
@@ -125,24 +130,24 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
     <div className="flex h-full min-h-0 flex-col">
       <div className="flex min-h-(--header-height) shrink-0 items-center gap-2 border-b px-3">
         <input
-          aria-label="Query name"
+          aria-label={tr('database:sql.queryName')}
           className="min-w-0 flex-1 rounded bg-transparent px-1 py-0.5 text-sm text-foreground outline-none hover:bg-surface-200 focus:bg-surface-200 disabled:hover:bg-transparent"
           value={name}
           disabled={!editable}
           onChange={(e) => setName(e.target.value)}
         />
-        {snippet && !editable && <Badge>Shared by {snippet.owner_username}</Badge>}
+        {snippet && !editable && <Badge>{tr('database:sql.sharedBy', { ownerUsername: snippet.owner_username })}</Badge>}
         {snippet && editable && (
-          <span className="text-xs text-foreground-lighter">{save.isPending ? 'Saving…' : dirty ? 'Unsaved' : 'Saved'}</span>
+          <span className="text-xs text-foreground-lighter">{save.isPending ? tr('database:sql.saving') : dirty ? tr('database:sql.unsaved') : tr('database:sql.saved')}</span>
         )}
         {!canWrite && (
           <Tooltip>
             <TooltipTrigger asChild>
               <span>
-                <Badge variant="warning">Read-only</Badge>
+                <Badge variant="warning">{tr('database:sql.readOnly')}</Badge>
               </span>
             </TooltipTrigger>
-            <TooltipContent>Your role can run one read-only statement at a time.</TooltipContent>
+            <TooltipContent>{tr('database:sql.yourRoleCanRunOneRead')}</TooltipContent>
           </Tooltip>
         )}
         {snippet && editable && (
@@ -152,12 +157,12 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
             icon={snippet.visibility === 'project' ? <PublicIcon /> : <LockIcon />}
             onClick={() => save.mutate({ visibility: snippet.visibility === 'project' ? 'private' : 'project' })}
           >
-            {snippet.visibility === 'project' ? 'Shared' : 'Private'}
+            {snippet.visibility === 'project' ? tr('database:sql.shared') : tr('database:sql.private')}
           </Button>
         )}
         {!snippet && (
           <Button variant="default" size="tiny" icon={<SaveIcon />} loading={create.isPending} disabled={!content.trim()} onClick={() => create.mutate()}>
-            Save
+            {tr('database:sql.save')}
           </Button>
         )}
         <Button
@@ -168,7 +173,7 @@ function SqlWorkspace({ projectRef, snippet }: { projectRef: string; snippet?: S
           disabled={!content.trim()}
           onClick={() => editor.current && run.mutate(editor.current.runnable())}
         >
-          Run <span className="ml-1 text-[11px] opacity-70">⌘↵</span>
+          <Trans i18nKey="database:sql.run" components={{ span: <span className="ml-1 text-[11px] opacity-70" /> }} />
         </Button>
       </div>
       <SplitPane
@@ -196,9 +201,9 @@ function Templates({ onPick }: { onPick: (sql: string) => void }) {
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-6">
       <div className="pointer-events-auto w-full max-w-2xl rounded-lg border bg-surface-100 p-3 shadow-sm">
-        <p className="mb-2 px-1 text-xs text-foreground-lighter">Start from a template</p>
+        <p className="mb-2 px-1 text-xs text-foreground-lighter">{tr('database:sql.startFromATemplate')}</p>
         <div className="grid gap-1 sm:grid-cols-2">
-          {SQL_TEMPLATES.map((t) => (
+          {SQL_TEMPLATES().map((t) => (
             <button
               key={t.title}
               onClick={() => onPick(t.sql)}
@@ -239,7 +244,7 @@ function SplitPane({ top, bottom }: { top: React.ReactNode; bottom: React.ReactN
       <div
         role="separator"
         aria-orientation="horizontal"
-        aria-label="Resize results"
+        aria-label={tr('database:sql.resizeResults')}
         tabIndex={0}
         onPointerDown={onPointerDown}
         onKeyDown={(e) => {

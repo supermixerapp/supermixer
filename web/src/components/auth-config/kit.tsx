@@ -21,6 +21,7 @@ import { toast } from '@/components/ui/toaster'
 import { api, isApiError, unwrap, type Schemas } from '@/lib/api/client'
 import { can, useSelectedProject } from '@/lib/api/hooks'
 import { cn } from '@/lib/utils'
+import { t } from '@/lib/i18n'
 
 export type AuthConfig = Schemas['AuthConfig']
 type Value = boolean | number | string | null
@@ -67,9 +68,8 @@ export function AuthConfigPage({
   return (
     <DatabasePage title={title} description={description}>
       {!project.stack ? (
-        <Alert title="Supermixer connects to this stack, so its Auth settings are set where it runs">
-          Self-hosted Auth reads its settings from environment variables in the stack’s .env and compose file. Projects
-          created with “Create a new stack” are configured here.
+        <Alert title={t('authentication:kit.supermixerConnectsToThisStackSo')}>
+          {t('authentication:kit.selfHostedAuthReadsItsSettings')}
         </Alert>
       ) : config.error ? (
         <Alert variant="destructive" title={config.error.message} />
@@ -78,10 +78,10 @@ export function AuthConfigPage({
       ) : (
         <>
           {!can(project, 'project:update') && (
-            <Alert title="Only Owners and Administrators can change Auth settings" />
+            <Alert title={t('authentication:kit.onlyOwnersAndAdministratorsCanChange')} />
           )}
           {project.stack.status !== 'running' && (
-            <Alert title="The stack isn't running">Saved settings take effect when it starts.</Alert>
+            <Alert title={t('authentication:kit.theStackIsnTRunning')}>{t('authentication:kit.savedSettingsTakeEffectWhenIt')}</Alert>
           )}
           {children({ projectRef: project.ref, config: config.data, canChange: can(project, 'project:update') })}
         </>
@@ -104,7 +104,7 @@ export function useSaveAuthConfig(ref: string) {
       unwrap(api.PATCH('/projects/{ref}/auth-config', { params: { path: { ref } }, body: changes })),
     onSuccess: (data) => {
       queryClient.setQueryData(authConfigQuery(ref).queryKey, data)
-      toast.success(data.restarted ? 'Saved; Auth restarted' : 'Saved; it takes effect when the stack starts')
+      toast.success(data.restarted ? t('authentication:kit.savedAuthRestarted') : t('authentication:kit.savedItTakesEffectWhenThe'))
     },
     // A failed restart (502) still saved the change: show what's saved now.
     onError: () => void queryClient.invalidateQueries({ queryKey: authConfigQuery(ref).queryKey }),
@@ -179,11 +179,11 @@ export function AuthSection({
           <div className="flex gap-2">
             {dirty && (
               <Button type="button" variant="default" disabled={save.isPending} onClick={() => setDraft({})}>
-                Cancel
+                {t('authentication:kit.cancel')}
               </Button>
             )}
-            <PermissionButton allowed={ctx.canChange} action="change Auth settings" type="submit" variant="primary" loading={save.isPending} disabled={!dirty}>
-              Save
+            <PermissionButton allowed={ctx.canChange} action={t('authentication:kit.changeAuthSettings')} type="submit" variant="primary" loading={save.isPending} disabled={!dirty}>
+              {t('authentication:kit.save')}
             </PermissionButton>
           </div>
         </div>
@@ -219,7 +219,7 @@ function FieldInput({ field: f, ctx, draft, disabled }: { field: Field; ctx: Aut
     case 'number': {
       const scale = f.scale ?? 1
       const shown = typeof v === 'number' ? String(Number((v / scale).toFixed(4))) : ''
-      const placeholder = f.default !== undefined ? `Default: ${Number((f.default / scale).toFixed(4))}` : 'Auth’s default'
+      const placeholder = f.default !== undefined ? t('authentication:kit.default', { number: Number((f.default / scale).toFixed(4)) }) : t('authentication:kit.authSDefault')
       return (
         <FormField label={f.label} htmlFor={id} description={f.description} layout="horizontal">
           <div className="flex items-center gap-2">
@@ -254,7 +254,7 @@ function FieldInput({ field: f, ctx, draft, disabled }: { field: Field; ctx: Aut
             autoComplete="off"
             spellCheck={false}
             value={typeof v === 'string' ? v : ''}
-            placeholder={f.placeholder ?? (f.default ? `Default: ${f.default}` : undefined)}
+            placeholder={f.placeholder ?? (f.default ? t('authentication:kit.default2', { default: f.default }) : undefined)}
             disabled={disabled}
             onChange={(e) => draft.set(f.name, e.target.value === '' ? null : e.target.value)}
           />
@@ -273,10 +273,10 @@ function FieldInput({ field: f, ctx, draft, disabled }: { field: Field; ctx: Aut
             onValueChange={(x) => draft.set(f.name, x === '__default' ? null : x === '__none' ? '' : x)}
           >
             <SelectTrigger id={id} className="w-full">
-              <SelectValue placeholder="Choose…" />
+              <SelectValue placeholder={t('authentication:kit.choose')} />
             </SelectTrigger>
             <SelectContent>
-              {f.default === undefined && !f.required && <SelectItem value="__default">Auth’s default</SelectItem>}
+              {f.default === undefined && !f.required && <SelectItem value="__default">{t('authentication:kit.authSDefault')}</SelectItem>}
               {f.options.map((o) => (
                 <SelectItem key={o.value || '__none'} value={o.value || '__none'}>
                   {o.label}
@@ -302,7 +302,7 @@ function SecretInput({ id, field: f, ctx, draft, disabled }: { id: string; field
           autoComplete="new-password"
           spellCheck={false}
           className="font-mono"
-          placeholder={isSet ? '•••••••• (set; type to replace)' : 'Not set'}
+          placeholder={isSet ? t('authentication:kit.setTypeToReplace') : t('authentication:kit.notSet')}
           value={editing && typeof v === 'string' ? v : ''}
           disabled={disabled}
           onChange={(e) => draft.set(f.name, e.target.value)}
@@ -315,7 +315,7 @@ function SecretInput({ id, field: f, ctx, draft, disabled }: { id: string; field
             disabled={disabled || (editing && v === null)}
             onClick={() => draft.set(f.name, null)}
           >
-            {editing && v === null ? 'Will be removed' : 'Remove'}
+            {editing && v === null ? t('authentication:kit.willBeRemoved') : t('authentication:kit.remove')}
           </Button>
         )}
       </div>
@@ -325,7 +325,7 @@ function SecretInput({ id, field: f, ctx, draft, disabled }: { id: string; field
 
 /** "Enabled" / "Disabled" for a provider or hook in a list. */
 export function OnOffBadge({ on }: { on: boolean }) {
-  return <Badge variant={on ? 'success' : 'default'}>{on ? 'Enabled' : 'Disabled'}</Badge>
+  return <Badge variant={on ? 'success' : 'default'}>{on ? t('authentication:kit.enabled') : t('authentication:kit.disabled')}</Badge>
 }
 
 /** A row that opens to show its settings (providers, hooks). */

@@ -48,6 +48,8 @@ import {
   type StorageItem,
 } from '@/lib/storage-api'
 import { cn } from '@/lib/utils'
+import { t, language } from '@/lib/i18n'
+import { formatList } from '@/lib/i18n/format'
 
 export const Route = createFileRoute('/_app/project/$ref/storage/buckets/$bucket')({
   validateSearch: (search: Record<string, unknown>): { path?: string } =>
@@ -104,7 +106,7 @@ function FileBrowser() {
   // Every file is tried; then successes, failures and duplicates are reported together.
   const upload = useMutation<void, Error, { files: File[]; upsert: boolean }>({
     mutationFn: async ({ files, upsert }) => {
-      const toastId = toast.loading(`Uploading ${files.length} file${files.length === 1 ? '' : 's'}…`)
+      const toastId = toast.loading(t('storage:storageBuckets.uploadingFiles', { count: files.length }))
       const duplicates: File[] = []
       const failures: string[] = []
       let done = 0
@@ -116,14 +118,14 @@ function FileBrowser() {
           if (!upsert && isDuplicate(e)) duplicates.push(f)
           else failures.push(`${f.name}: ${e instanceof Error ? e.message : String(e)}`)
         }
-        toast.loading(`Uploading… ${i + 1} of ${files.length}`, { id: toastId })
+        toast.loading(t('storage:storageBuckets.uploadingOf', { i: i + 1, length: files.length }), { id: toastId })
       }
       toast.dismiss(toastId)
       await refresh()
-      if (done) toast.success(`Uploaded ${done} file${done === 1 ? '' : 's'}`)
+      if (done) toast.success(t('storage:storageBuckets.uploadedFiles', { count: done }))
       if (failures.length) {
-        toast.error(`${failures.length} file${failures.length === 1 ? '' : 's'} failed to upload`, {
-          description: failures.slice(0, 5).join('\n') + (failures.length > 5 ? `\n…and ${failures.length - 5} more` : ''),
+        toast.error(t('storage:storageBuckets.filesFailedToUpload', { count: failures.length }), {
+          description: failures.slice(0, 5).join('\n') + (failures.length > 5 ? t('storage:storageBuckets.andMore', { length: failures.length - 5 }) : ''),
           duration: 15_000,
         })
       }
@@ -144,7 +146,7 @@ function FileBrowser() {
       return n
     },
     onSuccess: async (n) => {
-      toast.success(`Deleted ${n} file${n === 1 ? '' : 's'}`)
+      toast.success(t('storage:storageBuckets.deletedFiles', { count: n }))
       setSelected(new Set())
       await refresh()
     },
@@ -192,9 +194,9 @@ function FileBrowser() {
   if (buckets.isSuccess && !bucket) {
     return (
       <PageContainer size="large" className="py-12">
-        <Alert variant="warning" title={`There is no bucket called ${bucketId}.`}>
+        <Alert variant="warning" title={t('storage:storageBuckets.thereIsNoBucketCalled', { bucketId })}>
           <Link to="/project/$ref/storage/buckets" params={{ ref }} className="underline">
-            Back to buckets
+            {t('storage:storageBuckets.backToBuckets')}
           </Link>
         </Alert>
       </PageContainer>
@@ -204,15 +206,15 @@ function FileBrowser() {
   return (
     <div className="h-full overflow-y-auto">
       <PageContainer size="large" className="flex flex-col gap-4 pt-8 pb-16">
-        <nav aria-label="Folder" className="flex flex-wrap items-center gap-1 text-sm">
+        <nav aria-label={t('storage:storageBuckets.folder')} className="flex flex-wrap items-center gap-1 text-sm">
           <Link to="/project/$ref/storage/buckets" params={{ ref }} className="text-foreground-light hover:text-foreground">
-            Buckets
+            {t('storage:storageBuckets.buckets')}
           </Link>
           <ChevronRightIcon size={14} className="text-foreground-lighter" />
           <button className={cn('hover:text-foreground', path ? 'text-foreground-light' : 'text-foreground')} onClick={() => goTo('')}>
             {bucket?.name ?? bucketId}
           </button>
-          {bucket && (bucket.public ? <Badge variant="warning">Public</Badge> : <Badge>Private</Badge>)}
+          {bucket && (bucket.public ? <Badge variant="warning">{t('storage:storageBuckets.public')}</Badge> : <Badge>{t('storage:storageBuckets.private')}</Badge>)}
           {pathParts(path).map((part, i, all) => (
             <span key={i} className="flex items-center gap-1">
               <ChevronRightIcon size={14} className="text-foreground-lighter" />
@@ -229,22 +231,22 @@ function FileBrowser() {
         <div className="flex flex-wrap items-center gap-2">
           <div className="relative w-full max-w-56">
             <SearchIcon size={14} className="pointer-events-none absolute top-1/2 left-2.5 -translate-y-1/2 text-foreground-lighter" />
-            <Input size="tiny" className="pl-7" placeholder="Filter this folder" value={filter} onChange={(e) => setFilter(e.target.value)} />
+            <Input size="tiny" className="pl-7" placeholder={t('storage:storageBuckets.filterThisFolder')} value={filter} onChange={(e) => setFilter(e.target.value)} />
           </div>
           <Button variant="default" size="tiny" icon={<RefreshIcon />} loading={items.isFetching && !items.isPending} onClick={() => void refresh()}>
-            Refresh
+            {t('storage:storageBuckets.refresh')}
           </Button>
           {chosen.length > 0 && (
             <span className="flex items-center gap-2 text-xs text-foreground-light">
-              {chosen.length} selected
+              {t('storage:storageBuckets.selectedCount', { count: chosen.length })}
               {chosen.some((n) => files.some((f) => f.name === n)) && (
                 <Button variant="default" size="tiny" onClick={() => void downloadSelected()}>
-                  Download
+                  {t('storage:storageBuckets.download')}
                 </Button>
               )}
               {canChange && (
                 <Button variant="danger" size="tiny" onClick={() => askDelete(chosen)}>
-                  Delete
+                  {t('storage:storageBuckets.delete')}
                 </Button>
               )}
             </span>
@@ -252,22 +254,22 @@ function FileBrowser() {
           <div className="ml-auto flex items-center gap-2">
             {canChange && bucket && (
               <Button variant="text" size="tiny" onClick={() => setEditingBucket(true)}>
-                Bucket settings
+                {t('storage:storageBuckets.bucketSettings')}
               </Button>
             )}
-            <PermissionButton allowed={canChange} action="create folders" variant="default" size="tiny" icon={<AddIcon />} onClick={() => setNewFolder(true)}>
-              New folder
+            <PermissionButton allowed={canChange} action={t('storage:storageBuckets.createFolders')} variant="default" size="tiny" icon={<AddIcon />} onClick={() => setNewFolder(true)}>
+              {t('storage:storageBuckets.newFolder')}
             </PermissionButton>
             <PermissionButton
               allowed={canChange}
-              action="upload files"
+              action={t('storage:storageBuckets.uploadFiles2')}
               variant="primary"
               size="tiny"
               icon={<UploadIcon />}
               loading={upload.isPending}
               onClick={() => fileInput.current?.click()}
             >
-              Upload files
+              {t('storage:storageBuckets.uploadFiles')}
             </PermissionButton>
             <input
               ref={fileInput}
@@ -305,7 +307,7 @@ function FileBrowser() {
             </div>
           ) : visible.length === 0 ? (
             <p className="px-4 py-14 text-center text-sm text-foreground-lighter">
-              {filter ? 'Nothing here matches your filter' : canChange ? 'This folder is empty. Drop files here, or use Upload files.' : 'This folder is empty.'}
+              {filter ? t('storage:storageBuckets.nothingHereMatchesYourFilter') : canChange ? t('storage:storageBuckets.thisFolderIsEmptyDropFiles') : t('storage:storageBuckets.thisFolderIsEmpty')}
             </p>
           ) : (
             <Table>
@@ -313,15 +315,15 @@ function FileBrowser() {
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-10">
                     <Checkbox
-                      aria-label="Select all"
+                      aria-label={t('storage:storageBuckets.selectAll')}
                       checked={allSelected}
                       onCheckedChange={(c) => setSelected(c === true ? new Set(visible.map((i) => i.name)) : new Set())}
                     />
                   </TableHead>
-                  <TableHead>Name</TableHead>
-                  <TableHead className="text-right">Size</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead className="whitespace-nowrap">Last modified</TableHead>
+                  <TableHead>{t('storage:storageBuckets.name')}</TableHead>
+                  <TableHead className="text-right">{t('storage:storageBuckets.size')}</TableHead>
+                  <TableHead>{t('storage:storageBuckets.type')}</TableHead>
+                  <TableHead className="whitespace-nowrap">{t('storage:storageBuckets.lastModified')}</TableHead>
                   <TableHead className="w-12" />
                 </TableRow>
               </TableHeader>
@@ -333,7 +335,7 @@ function FileBrowser() {
                   return (
                     <TableRow key={item.name} data-state={selected.has(item.name) ? 'selected' : undefined}>
                       <TableCell>
-                        <Checkbox aria-label={`Select ${item.name}`} checked={selected.has(item.name)} onCheckedChange={(c) => toggle(item.name, c === true)} />
+                        <Checkbox aria-label={t('storage:storageBuckets.select', { name: item.name })} checked={selected.has(item.name)} onCheckedChange={(c) => toggle(item.name, c === true)} />
                       </TableCell>
                       <TableCell>
                         <button className="flex items-center gap-2 text-left text-foreground hover:underline" onClick={openItem}>
@@ -348,17 +350,17 @@ function FileBrowser() {
                         </button>
                       </TableCell>
                       <TableCell className="text-right whitespace-nowrap text-foreground-light">{folder ? '' : formatBytes(item.metadata?.size)}</TableCell>
-                      <TableCell className="text-foreground-light">{folder ? 'Folder' : (mime ?? '')}</TableCell>
+                      <TableCell className="text-foreground-light">{folder ? t('storage:storageBuckets.folder') : (mime ?? '')}</TableCell>
                       <TableCell className="whitespace-nowrap text-foreground-light">
-                        {item.updated_at ? new Date(item.updated_at).toLocaleString() : ''}
+                        {item.updated_at ? new Date(item.updated_at).toLocaleString(language()) : ''}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={`Actions for ${item.name}`} />
+                            <Button variant="text" size="tiny" icon={<MoreIcon />} aria-label={t('storage:storageBuckets.actionsFor', { name: item.name })} />
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-44">
-                            <DropdownMenuItem onSelect={openItem}>{folder ? 'Open folder' : 'Details'}</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={openItem}>{folder ? t('storage:storageBuckets.openFolder') : t('storage:storageBuckets.details')}</DropdownMenuItem>
                             {!folder && (
                               <DropdownMenuItem
                                 onSelect={() =>
@@ -368,10 +370,10 @@ function FileBrowser() {
                                   )
                                 }
                               >
-                                Download
+                                {t('storage:storageBuckets.download')}
                               </DropdownMenuItem>
                             )}
-                            {canChange && <DropdownMenuItem onSelect={() => askDelete([item.name])}>{folder ? 'Delete folder' : 'Delete'}</DropdownMenuItem>}
+                            {canChange && <DropdownMenuItem onSelect={() => askDelete([item.name])}>{folder ? t('storage:storageBuckets.deleteFolder') : t('storage:storageBuckets.delete')}</DropdownMenuItem>}
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -383,12 +385,12 @@ function FileBrowser() {
           )}
           {dragging && (
             <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-md bg-background/80 text-sm text-foreground">
-              Drop to upload to {path ? `${bucket?.name ?? bucketId}/${path}` : (bucket?.name ?? bucketId)}
+              {t('storage:storageBuckets.dropToUploadTo', { place: path ? `${bucket?.name ?? bucketId}/${path}` : (bucket?.name ?? bucketId) })}
             </div>
           )}
         </Card>
         {(items.data?.length ?? 0) >= 1000 && (
-          <p className="text-xs text-foreground-lighter">Showing the first 1,000 items in this folder.</p>
+          <p className="text-xs text-foreground-lighter">{t('storage:storageBuckets.showingTheFirst1000Items')}</p>
         )}
       </PageContainer>
 
@@ -409,7 +411,7 @@ function FileBrowser() {
           onClose={() => setNewFolder(false)}
           onCreate={async (name) => {
             await createFolder(ref, bucketId, joinPath(path, name))
-            toast.success(`Created ${name}`)
+            toast.success(t('storage:storageBuckets.created', { name }))
             await refresh()
             goTo(joinPath(path, name))
           }}
@@ -419,13 +421,13 @@ function FileBrowser() {
       <ConfirmDialog
         open={!!deleting}
         onOpenChange={(o) => !o && setDeleting(null)}
-        title={`Delete ${describe(deleting)}?`}
+        title={t('storage:storageBuckets.delete2', { describe: describe(deleting) })}
         description={
           deleting?.folders.length
-            ? 'Folders are deleted with everything inside them. This can’t be undone.'
-            : 'This can’t be undone; links to these files stop working.'
+            ? t('storage:storageBuckets.foldersAreDeletedWithEverythingInside')
+            : t('storage:storageBuckets.thisCanTBeUndoneLinks')
         }
-        confirmLabel="Delete"
+        confirmLabel={t('storage:storageBuckets.delete')}
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting, { onSettled: () => setDeleting(null) })}
       />
@@ -433,9 +435,9 @@ function FileBrowser() {
         open={!!replacing}
         onOpenChange={(o) => !o && setReplacing(null)}
         variant="warning"
-        title={`Replace ${replacing?.length === 1 ? replacing[0]!.name : `${replacing?.length} files`}?`}
-        description="Files with these names already exist in this folder. Replacing them overwrites the old versions."
-        confirmLabel="Replace"
+        title={t('storage:storageBuckets.replace', { value: replacing?.length === 1 ? replacing[0]!.name : `${replacing?.length} files` })}
+        description={t('storage:storageBuckets.filesWithTheseNamesAlreadyExist')}
+        confirmLabel={t('storage:storageBuckets.replace2')}
         onConfirm={() => {
           if (replacing) upload.mutate({ files: replacing, upsert: true })
           setReplacing(null)
@@ -450,9 +452,9 @@ function describe(d: { files: string[]; folders: string[] } | null): string {
   const total = d.files.length + d.folders.length
   if (total === 1) return (d.files[0] ?? d.folders[0] ?? '').split('/').pop() ?? ''
   const parts = []
-  if (d.files.length) parts.push(`${d.files.length} file${d.files.length === 1 ? '' : 's'}`)
-  if (d.folders.length) parts.push(`${d.folders.length} folder${d.folders.length === 1 ? '' : 's'}`)
-  return parts.join(' and ')
+  if (d.files.length) parts.push(t('storage:storageBuckets.fileCount', { count: d.files.length }))
+  if (d.folders.length) parts.push(t('storage:storageBuckets.folders', { count: d.folders.length }))
+  return formatList(parts)
 }
 
 function NewFolderDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (name: string) => Promise<void> }) {
@@ -469,21 +471,21 @@ function NewFolderDialog({ onClose, onCreate }: { onClose: () => void; onCreate:
           }}
         >
           <DialogHeader>
-            <DialogTitle>New folder</DialogTitle>
-            <DialogDescription>Folders are kept with an empty placeholder file, as in Supabase Studio.</DialogDescription>
+            <DialogTitle>{t('storage:storageBuckets.newFolder')}</DialogTitle>
+            <DialogDescription>{t('storage:storageBuckets.foldersAreKeptWithAnEmpty')}</DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-3 border-t">
             {create.error && <Alert variant="destructive" title={create.error.message} />}
-            <FormField label="Name" htmlFor="folder-name" description={problem && name ? <span className="text-destructive">{problem}</span> : undefined}>
+            <FormField label={t('storage:storageBuckets.name')} htmlFor="folder-name" description={problem && name ? <span className="text-destructive">{problem}</span> : undefined}>
               <Input id="folder-name" autoFocus autoComplete="off" value={name} onChange={(e) => setName(e.target.value)} />
             </FormField>
           </DialogSection>
           <DialogFooter>
             <Button type="button" variant="default" onClick={onClose}>
-              Cancel
+              {t('storage:storageBuckets.cancel')}
             </Button>
             <Button type="submit" variant="primary" disabled={!!problem} loading={create.isPending}>
-              Create folder
+              {t('storage:storageBuckets.createFolder')}
             </Button>
           </DialogFooter>
         </form>

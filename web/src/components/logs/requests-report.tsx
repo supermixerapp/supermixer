@@ -15,6 +15,7 @@ import { api, unwrap, type Schemas } from '@/lib/api/client'
 import { useSelectedProject } from '@/lib/api/hooks'
 import { useNow } from '@/lib/use-now'
 import { cn } from '@/lib/utils'
+import { t, language } from '@/lib/i18n'
 
 type Stats = Schemas['RequestStats']
 const HOUR = 3_600_000
@@ -48,12 +49,11 @@ export function RequestsReport({ projectRef }: { projectRef: string }) {
   if (stats.error) return <Alert variant="destructive" title={stats.error.message} />
   if (!s) return <Skeleton className="h-48" />
   if (!s.available && project?.stack?.logs === false)
-    return <LogsOffAlert projectRef={projectRef}>The request reports come from the API gateway&apos;s logs.</LogsOffAlert>
+    return <LogsOffAlert projectRef={projectRef}>{t('observability:requestsReport.theRequestReportsComeFromThe')}</LogsOffAlert>
   if (!s.available)
     return (
-      <Alert title="Request reports need log analytics">
-        They come from the API gateway&apos;s logs, which a self-hosted stack keeps only when it runs Logflare and Vector
-        (docker-compose.logs.yml).
+      <Alert title={t('observability:requestsReport.requestReportsNeedLogAnalytics')}>
+        {t('observability:requestsReport.theyComeFromTheApiGateway')}
       </Alert>
     )
 
@@ -62,25 +62,25 @@ export function RequestsReport({ projectRef }: { projectRef: string }) {
   return (
     <div className="flex flex-col gap-4">
       <div className="grid gap-4 sm:grid-cols-3">
-        <Stat label="Requests, last 24 hours" value={s.total.toLocaleString()} />
-        <Stat label="Errors (status 400 and above)" value={errors.toLocaleString()} hint={s.total ? `${((errors / s.total) * 100).toFixed(1)}% of requests` : undefined} />
-        <Stat label="Busiest hour" value={Math.max(0, ...series.map((h) => h.count)).toLocaleString()} hint="requests" />
+        <Stat label={t('observability:requestsReport.requestsLast24Hours')} value={s.total.toLocaleString(language())} />
+        <Stat label={t('observability:requestsReport.errorsStatus400AndAbove')} value={errors.toLocaleString(language())} hint={s.total ? t('observability:requestsReport.ofRequests', { fixed: ((errors / s.total) * 100).toFixed(1) }) : undefined} />
+        <Stat label={t('observability:requestsReport.busiestHour')} value={Math.max(0, ...series.map((h) => h.count)).toLocaleString(language())} hint={t('observability:requestsReport.requestsHint')} />
       </div>
       <Card className="p-4">
         <HourlyBars series={series} />
       </Card>
       <div className="grid gap-4 lg:grid-cols-[1fr_16rem]">
         <Card>
-          <p className="border-b px-4 py-2 text-xs text-foreground-lighter">Busiest paths</p>
+          <p className="border-b px-4 py-2 text-xs text-foreground-lighter">{t('observability:requestsReport.busiestPaths')}</p>
           {s.paths.length === 0 ? (
-            <p className="px-4 py-6 text-center text-sm text-foreground-lighter">No requests yet</p>
+            <p className="px-4 py-6 text-center text-sm text-foreground-lighter">{t('observability:requestsReport.noRequestsYet')}</p>
           ) : (
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead>Path</TableHead>
-                  <TableHead className="text-right">Requests</TableHead>
-                  <TableHead className="text-right">Errors</TableHead>
+                  <TableHead>{t('observability:requestsReport.path')}</TableHead>
+                  <TableHead className="text-right">{t('observability:requestsReport.requests')}</TableHead>
+                  <TableHead className="text-right">{t('observability:requestsReport.errors')}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -91,8 +91,8 @@ export function RequestsReport({ projectRef }: { projectRef: string }) {
                         <span className="text-foreground-lighter">{p.method}</span> {p.path}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right tabular-nums text-foreground-light">{p.count.toLocaleString()}</TableCell>
-                    <TableCell className={cn('text-right tabular-nums', p.errors ? 'text-destructive' : 'text-foreground-light')}>{p.errors.toLocaleString()}</TableCell>
+                    <TableCell className="text-right tabular-nums text-foreground-light">{p.count.toLocaleString(language())}</TableCell>
+                    <TableCell className={cn('text-right tabular-nums', p.errors ? 'text-destructive' : 'text-foreground-light')}>{p.errors.toLocaleString(language())}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -100,12 +100,12 @@ export function RequestsReport({ projectRef }: { projectRef: string }) {
           )}
         </Card>
         <Card>
-          <p className="border-b px-4 py-2 text-xs text-foreground-lighter">Status codes</p>
+          <p className="border-b px-4 py-2 text-xs text-foreground-lighter">{t('observability:requestsReport.statusCodes')}</p>
           <ul className="divide-y">
             {s.statuses.map((st) => (
               <li key={st.status} className="flex items-center justify-between px-4 py-2 text-sm">
-                <Badge variant={st.status >= 500 ? 'destructive' : st.status >= 400 ? 'warning' : 'success'}>{st.status || 'none'}</Badge>
-                <span className="tabular-nums text-foreground-light">{st.count.toLocaleString()}</span>
+                <Badge variant={st.status >= 500 ? 'destructive' : st.status >= 400 ? 'warning' : 'success'}>{st.status || t('observability:requestsReport.noStatus')}</Badge>
+                <span className="tabular-nums text-foreground-light">{st.count.toLocaleString(language())}</span>
               </li>
             ))}
           </ul>
@@ -123,10 +123,10 @@ function HourlyBars({ series }: { series: { at: number; count: number; errors: n
   const h = hover === null ? null : series[hover]
   return (
     <figure className="flex flex-col gap-2">
-      <figcaption className="text-xs text-foreground-lighter">Requests per hour</figcaption>
+      <figcaption className="text-xs text-foreground-lighter">{t('observability:requestsReport.requestsPerHour')}</figcaption>
       <div className="relative flex gap-2">
         <div className="flex h-40 w-10 shrink-0 flex-col justify-between text-right text-xs text-foreground-lighter tabular-nums" aria-hidden>
-          <span>{max.toLocaleString()}</span>
+          <span>{max.toLocaleString(language())}</span>
           <span>0</span>
         </div>
         <div className="relative h-40 flex-1">
@@ -155,8 +155,8 @@ function HourlyBars({ series }: { series: { at: number; count: number; errors: n
               }}
             >
               <span className="text-foreground-lighter">{fmtHour(h.at)}</span>{' '}
-              <span className="text-foreground tabular-nums">{h.count.toLocaleString()} requests</span>
-              {h.errors > 0 && <span className="text-foreground-light tabular-nums"> · {h.errors.toLocaleString()} errors</span>}
+              <span className="text-foreground tabular-nums">{t('observability:requestsReport.requests2', { value: h.count.toLocaleString(language()) })}</span>
+              {h.errors > 0 && <span className="text-foreground-light tabular-nums"> {t('observability:requestsReport.errors2', { value: h.errors.toLocaleString(language()) })}</span>}
             </div>
           )}
         </div>
@@ -167,21 +167,21 @@ function HourlyBars({ series }: { series: { at: number; count: number; errors: n
         <span>{fmtHour(series[series.length - 1]!.at)}</span>
       </div>
       <details className="text-xs">
-        <summary className="cursor-pointer text-foreground-light select-none">Show as a table</summary>
+        <summary className="cursor-pointer text-foreground-light select-none">{t('observability:requestsReport.showAsATable')}</summary>
         <table className="mt-2 w-full text-left tabular-nums">
           <thead className="text-foreground-lighter">
             <tr>
-              <th className="font-normal">Hour</th>
-              <th className="text-right font-normal">Requests</th>
-              <th className="text-right font-normal">Errors</th>
+              <th className="font-normal">{t('observability:requestsReport.hour')}</th>
+              <th className="text-right font-normal">{t('observability:requestsReport.requests')}</th>
+              <th className="text-right font-normal">{t('observability:requestsReport.errors')}</th>
             </tr>
           </thead>
           <tbody className="text-foreground-light">
             {series.map((p) => (
               <tr key={p.at}>
                 <td>{fmtHour(p.at)}</td>
-                <td className="text-right">{p.count.toLocaleString()}</td>
-                <td className="text-right">{p.errors.toLocaleString()}</td>
+                <td className="text-right">{p.count.toLocaleString(language())}</td>
+                <td className="text-right">{p.errors.toLocaleString(language())}</td>
               </tr>
             ))}
           </tbody>

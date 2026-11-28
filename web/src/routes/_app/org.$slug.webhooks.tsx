@@ -40,6 +40,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { toast } from '@/components/ui/toaster'
 import { api, unwrap } from '@/lib/api/client'
 import { can, useSelectedOrganization } from '@/lib/api/hooks'
+import { t, Trans } from '@/lib/i18n'
 
 export const Route = createFileRoute('/_app/org/$slug/webhooks')({
   component: OrgWebhooksPage,
@@ -70,7 +71,7 @@ function OrgWebhooksPage() {
   const toggle = useMutation({
     mutationFn: (h: Webhook) => unwrap(api.PATCH('/organizations/{slug}/webhooks/{webhook_id}', { ...path(h), body: { enabled: !h.enabled } })),
     onSuccess: (h) => {
-      toast.success(h.enabled ? 'Webhook turned on: it sends new events from now' : 'Webhook turned off')
+      toast.success(h.enabled ? t('org:webhooks.webhookTurnedOnItSendsNew') : t('org:webhooks.webhookTurnedOff'))
       void refresh()
     },
     onError: (e) => toast.error(e.message),
@@ -78,8 +79,8 @@ function OrgWebhooksPage() {
   const test = useMutation({
     mutationFn: (h: Webhook) => unwrap(api.POST('/organizations/{slug}/webhooks/{webhook_id}/test', path(h))),
     onSuccess: (d) => {
-      if (d.error) toast.error(`Test event: ${d.error}`)
-      else toast.success(`Test event delivered (${d.status}, ${d.duration_ms} ms)`)
+      if (d.error) toast.error(t('org:webhooks.testEvent', { error: d.error }))
+      else toast.success(t('org:webhooks.testEventDeliveredMs', { status: d.status, durationMs: d.duration_ms }))
     },
     onError: (e) => toast.error(e.message),
   })
@@ -91,7 +92,7 @@ function OrgWebhooksPage() {
   const remove = useMutation({
     mutationFn: (h: Webhook) => unwrap(api.DELETE('/organizations/{slug}/webhooks/{webhook_id}', path(h))),
     onSuccess: () => {
-      toast.success('Webhook deleted')
+      toast.success(t('org:webhooks.webhookDeleted'))
       setDeleting(null)
       void refresh()
     },
@@ -104,19 +105,19 @@ function OrgWebhooksPage() {
   if (!org) return null
   return (
     <>
-      <PageHeader title="Webhooks" size="small" />
+      <PageHeader title={t('org:webhooks.webhooks')} size="small" />
       <PageContainer size="small" className="flex flex-col gap-10 pb-16">
         <SettingsSection
-          title="Webhooks"
-          description="Send this organization's events (what its audit log records) to a URL as they happen: one POST per event, in order, signed with the webhook's secret. A receiver that fails is retried, holding later events back."
+          title={t('org:webhooks.webhooks')}
+          description={t('org:webhooks.sendThisOrganizationSEventsWhat')}
         >
           {!isOwner ? (
-            <Alert title="Only Owners manage webhooks">They send the organization's events outside Supermixer.</Alert>
+            <Alert title={t('org:webhooks.onlyOwnersManageWebhooks')}>{t('org:webhooks.theySendTheOrganizationSEvents')}</Alert>
           ) : (
             <>
               <div className="flex justify-end">
-                <PermissionButton allowed={isOwner} action="manage webhooks" variant="primary" onClick={() => setEditing('new')}>
-                  Add webhook
+                <PermissionButton allowed={isOwner} action={t('org:webhooks.manageWebhooks')} variant="primary" onClick={() => setEditing('new')}>
+                  {t('org:webhooks.addWebhook')}
                 </PermissionButton>
               </div>
               <Card>
@@ -128,7 +129,7 @@ function OrgWebhooksPage() {
                 ) : hooks.isError ? (
                   <p className="px-4 py-8 text-center text-sm text-destructive">{hooks.error.message}</p>
                 ) : hooks.data.length === 0 ? (
-                  <p className="px-4 py-10 text-center text-sm text-foreground-lighter">No webhooks yet.</p>
+                  <p className="px-4 py-10 text-center text-sm text-foreground-lighter">{t('org:webhooks.noWebhooksYet')}</p>
                 ) : (
                   <div className="flex flex-col divide-y">
                     {hooks.data.map((h) => (
@@ -148,22 +149,22 @@ function OrgWebhooksPage() {
                         {h.last_error && h.enabled && <p className="text-xs break-all text-destructive">{h.last_error}</p>}
                         <div className="flex flex-wrap gap-2">
                           <Button size="tiny" variant="default" loading={test.isPending && test.variables?.id === h.id} onClick={() => test.mutate(h)}>
-                            Send test event
+                            {t('org:webhooks.sendTestEvent')}
                           </Button>
                           <Button size="tiny" variant="default" onClick={() => setDeliveries(h)}>
-                            Deliveries
+                            {t('org:webhooks.deliveries')}
                           </Button>
                           <Button size="tiny" variant="default" onClick={() => setEditing(h)}>
-                            Edit
+                            {t('org:webhooks.edit')}
                           </Button>
                           <Button size="tiny" variant="default" loading={toggle.isPending && toggle.variables?.id === h.id} onClick={() => toggle.mutate(h)}>
-                            {h.enabled ? 'Turn off' : 'Turn on'}
+                            {h.enabled ? t('org:webhooks.turnOff') : t('org:webhooks.turnOn')}
                           </Button>
                           <Button size="tiny" variant="default" loading={rotate.isPending && rotate.variables?.id === h.id} onClick={() => rotate.mutate(h)}>
-                            New secret
+                            {t('org:webhooks.newSecret')}
                           </Button>
                           <Button size="tiny" variant="danger" onClick={() => setDeleting(h)}>
-                            Delete
+                            {t('org:webhooks.delete')}
                           </Button>
                         </div>
                       </div>
@@ -194,9 +195,9 @@ function OrgWebhooksPage() {
         open={deleting !== null}
         onOpenChange={(o) => !o && setDeleting(null)}
         variant="danger"
-        title="Delete this webhook?"
-        description={`Events stop going to ${deleting?.url}. Its delivery history goes too.`}
-        confirmLabel="Delete webhook"
+        title={t('org:webhooks.deleteThisWebhook')}
+        description={t('org:webhooks.eventsStopGoingToItsDelivery', { url: deleting?.url })}
+        confirmLabel={t('org:webhooks.deleteWebhook')}
         loading={remove.isPending}
         onConfirm={() => deleting && remove.mutate(deleting)}
       />
@@ -233,7 +234,7 @@ function WebhookDialog({
       return { hook: r.webhook, secret: r.secret }
     },
     onSuccess: (created) => {
-      toast.success(hook ? 'Webhook saved' : 'Webhook added')
+      toast.success(hook ? t('org:webhooks.webhookSaved') : t('org:webhooks.webhookAdded'))
       onSaved(created)
     },
   })
@@ -247,16 +248,16 @@ function WebhookDialog({
           }}
         >
           <DialogHeader>
-            <DialogTitle>{hook ? 'Edit webhook' : 'Add a webhook'}</DialogTitle>
+            <DialogTitle>{hook ? t('org:webhooks.editWebhook') : t('org:webhooks.addAWebhook')}</DialogTitle>
             <DialogDescription>
-              {hook ? 'Changes apply to the next event.' : 'It sends events from now on, not ones from before.'}
+              {hook ? t('org:webhooks.changesApplyToTheNextEvent') : t('org:webhooks.itSendsEventsFromNowOn')}
             </DialogDescription>
           </DialogHeader>
           <DialogSection className="flex flex-col gap-5 border-t">
-            <FormField label="URL" htmlFor="wh-url" description="Where events are POSTed, as JSON.">
+            <FormField label={t('org:webhooks.url')} htmlFor="wh-url" description={t('org:webhooks.whereEventsArePostedAsJson')}>
               <Input id="wh-url" required autoFocus placeholder="https://example.com/hooks/supermixer" value={url} onChange={(e) => setUrl(e.target.value)} />
             </FormField>
-            <FormField label="Description (optional)" htmlFor="wh-desc">
+            <FormField label={t('org:webhooks.descriptionOptional')} htmlFor="wh-desc">
               <Input id="wh-desc" maxLength={200} value={description} onChange={(e) => setDescription(e.target.value)} />
             </FormField>
             <EventsFieldset events={events} onChange={setEvents} />
@@ -264,10 +265,10 @@ function WebhookDialog({
           </DialogSection>
           <DialogFooter>
             <Button variant="default" onClick={onClose}>
-              Cancel
+              {t('org:webhooks.cancel')}
             </Button>
             <Button type="submit" variant="primary" loading={save.isPending} disabled={!url.trim() || events.length === 0}>
-              {hook ? 'Save' : 'Add webhook'}
+              {hook ? t('org:webhooks.save') : t('org:webhooks.addWebhook')}
             </Button>
           </DialogFooter>
         </form>
@@ -281,10 +282,9 @@ function SecretDialog({ hook, secret, onClose }: { hook: Webhook; secret: string
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent size="medium">
         <DialogHeader>
-          <DialogTitle>Signing secret</DialogTitle>
+          <DialogTitle>{t('org:webhooks.signingSecret')}</DialogTitle>
           <DialogDescription>
-            For {hook.url}. Copy it into the receiver now: it won&apos;t be shown again. Any earlier secret no longer
-            works.
+            {t('org:webhooks.forCopyItIntoTheReceiver', { url: hook.url })}
           </DialogDescription>
         </DialogHeader>
         <DialogSection className="flex flex-col gap-3 border-t">
@@ -292,7 +292,7 @@ function SecretDialog({ hook, secret, onClose }: { hook: Webhook; secret: string
         </DialogSection>
         <DialogFooter>
           <Button variant="primary" onClick={onClose}>
-            Done
+            {t('org:webhooks.done')}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -303,18 +303,13 @@ function SecretDialog({ hook, secret, onClose }: { hook: Webhook; secret: string
 function VerifyHelp() {
   return (
     <details className="text-sm text-foreground-light">
-      <summary className="cursor-pointer text-foreground">Checking that a request came from Supermixer</summary>
+      <summary className="cursor-pointer text-foreground">{t('org:webhooks.checkingThatARequestCameFrom')}</summary>
       <div className="mt-3 flex flex-col gap-2">
         <p>
-          Each request has <code className="font-mono text-xs">X-Supermixer-Signature: t=&lt;unix time&gt;,v1=&lt;signature&gt;</code>. The
-          signature is the hex HMAC-SHA256 of <code className="font-mono text-xs">&lt;t&gt;.&lt;request body&gt;</code> with the
-          webhook&apos;s secret. Compare it in constant time, and refuse old timestamps (say, over 5 minutes).
+          <Trans i18nKey="org:webhooks.eachRequestHasXSupermixerSignature" values={{ header: 'X-Supermixer-Signature: t=<unix time>,v1=<signature>', signed: '<t>.<request body>' }} components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" /> }} />
         </p>
         <p>
-          <code className="font-mono text-xs">X-Supermixer-Event</code> is the event, such as{' '}
-          <code className="font-mono text-xs">project.created</code>, and{' '}
-          <code className="font-mono text-xs">X-Supermixer-Delivery</code> its id, the same when it&apos;s retried: use it to
-          ignore repeats. Answer with any 2xx.
+          <Trans i18nKey="org:webhooks.xSupermixerEventIsTheEvent" components={{ code: <code className="font-mono text-xs" />, code2: <code className="font-mono text-xs" />, code3: <code className="font-mono text-xs" /> }} />
         </p>
       </div>
     </details>
