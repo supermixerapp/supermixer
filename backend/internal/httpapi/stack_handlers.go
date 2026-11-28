@@ -138,10 +138,17 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 	if err := checkNetworkRoom(ctx, pv.Docker); err != nil {
 		return api.Project{}, err
 	}
-	// With a certificate, new stacks use TLS from the start.
-	tlsOn := h.deps.TLS.Enabled()
+	// With a certificate, new stacks use TLS from the start. If they can't
+	// yet (no certificate for public_host, or Compose too old), they start
+	// without, and can turn it on later; unless browsers would refuse a
+	// plain stack there (HSTS).
+	tlsOn, tlsSkipped := h.deps.TLS.Enabled(), ""
 	if err := h.checkStackTLS(ctx, tlsOn); err != nil {
-		return api.Project{}, err
+		if h.hstsPinsStacks() {
+			return api.Project{}, err
+		}
+		tlsOn, tlsSkipped = false, err.Error()
+		h.deps.Logger.WarnContext(ctx, "creating a stack without TLS", "reason", tlsSkipped)
 	}
 	now := time.Now()
 	secrets, err := provision.GenerateSecrets(now)
@@ -185,7 +192,10 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 		if err != nil {
 			return err
 		}
-		meta := map[string]any{"api_url": project.ApiUrl, "managed": true, "template": project.StackTemplate}
+		meta := map[string]any{"api_url": project.ApiUrl, "managed": true, "template": project.StackTemplate, "tls": tlsOn}
+		if tlsSkipped != "" {
+			meta["tls_skipped"] = tlsSkipped
+		}
 		for k, v := range auditMeta {
 			meta[k] = v
 		}
@@ -223,6 +233,7 @@ func (h *handlers) createStack(ctx context.Context, a *orgAccess, rawName string
 		return api.Project{}, err
 	}
 
+	h.hsts.forget()
 	timeout := h.deps.Config.Provisioning.StartTimeout
 	if stage != nil {
 		timeout = h.restoreTimeout()

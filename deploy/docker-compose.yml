@@ -71,8 +71,14 @@ services:
         read_only: true
         bind:
           create_host_path: false
-      # Let's Encrypt's account and certificates ([tls] mode = "acme").
-      - supermixer-acme:/var/lib/supermixer/acme
+      # Let's Encrypt's account and certificates ([tls] mode = "acme"), in
+      # a private folder of the user the container runs as (make app
+      # creates it).
+      - type: bind
+        source: ../.acme
+        target: /var/lib/supermixer/acme
+        bind:
+          create_host_path: false
     environment:
       SUPERMIXER_DATABASE_URL: postgres://supermixer:${SUPERMIXER_DB_PASSWORD:-supermixer}@db:5432/supermixer?sslmode=disable
       SUPERMIXER_SERVER_LISTEN: ":8080"
@@ -88,4 +94,3 @@ services:
 
 volumes:
   supermixer-db:
-  supermixer-acme:

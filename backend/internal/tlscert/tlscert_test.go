@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -216,6 +217,7 @@ func TestFilesReload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	m.filesRetry = time.Millisecond
 	changes := 0
 	m.OnChange(func() { changes++ })
 	first := m.Certificate("sm.test").Certificate[0]
@@ -240,8 +242,15 @@ func TestFilesReload(t *testing.T) {
 	if changes != 1 || string(m.Certificate("sm.test").Certificate[0]) != string(second) {
 		t.Fatal("a broken pair replaced the certificate")
 	}
+	failedAt := m.Status().LastErrorAt
 	if s := m.Status(); !strings.Contains(s.LastError, "tls.cert_file and tls.key_file") {
 		t.Errorf("last error %q", s.LastError)
+	}
+	// The same broken files aren't tried, and reported, again.
+	time.Sleep(10 * time.Millisecond)
+	m.reloadFiles()
+	if !m.Status().LastErrorAt.Equal(failedAt) {
+		t.Error("the same broken pair was reported again")
 	}
 
 	// Fixing it clears the error.
@@ -379,5 +388,61 @@ func TestACMEReadsStorage(t *testing.T) {
 	}
 	if m.loadACME(t.Context()) {
 		t.Error("unchanged certificate reported as changed")
+	}
+}
+
+// Exports at the same moment (start-up, and a stack starting) leave one
+// complete set of files.
+func TestExportConcurrently(t *testing.T) {
+	dir := t.TempDir()
+	c := newCA(t, "Test CA")
+	cert, key := c.issue(t, "sm.test", "db.test")
+	cfg := filesConfig(t, dir, cert, key, c.pem)
+	m, err := New(cfg, quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			m.mu.Lock()
+			m.exported = [32]byte{} // as if nothing had been written yet
+			m.mu.Unlock()
+			if err := m.Export(); err != nil {
+				t.Error(err)
+			}
+		}()
+	}
+	wg.Wait()
+	out := filepath.Join(cfg.Provisioning.StacksDir, ExportDirName)
+	if _, err := tls.LoadX509KeyPair(filepath.Join(out, FullchainFile), filepath.Join(out, KeyFile)); err != nil {
+		t.Fatalf("after concurrent exports: %v", err)
+	}
+	// stacks_dir, made here, keeps other users out of the key.
+	st, err := os.Stat(cfg.Provisioning.StacksDir)
+	if err != nil || st.Mode().Perm() != 0o700 {
+		t.Errorf("stacks_dir mode %v, %v", st.Mode().Perm(), err)
+	}
+}
+
+// An ACME folder Supermixer can't write stops start-up, not the first
+// certificate.
+func TestACMEStorageNotWritable(t *testing.T) {
+	if os.Getuid() == 0 {
+		t.Skip("root can write anywhere")
+	}
+	dir := filepath.Join(t.TempDir(), "acme")
+	if err := os.Mkdir(dir, 0o500); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Default()
+	cfg.Server.PublicURL = "https://sm.example.com"
+	cfg.TLS.Mode = config.TLSACME
+	cfg.TLS.ACME.AgreeTOS = true
+	cfg.TLS.ACME.StorageDir = dir
+	if _, err := New(&cfg, quiet); err == nil || !strings.Contains(err.Error(), "isn't writable by user") {
+		t.Errorf("New = %v", err)
 	}
 }

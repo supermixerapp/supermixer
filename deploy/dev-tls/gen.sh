@@ -49,8 +49,8 @@ openssl x509 -req -in cert.csr -CA ca.pem -CAkey ca.key -CAcreateserial -days 39
 	-extfile cert.ext -out cert.pem.new 2>/dev/null
 cat cert.pem.new >fullchain.pem.new
 rm -f cert.csr cert.ext cert.pem.new ca.srl
-# Swap both at once, so Supermixer never reads a new certificate with the
-# old key.
+# Replaced one right after the other. Supermixer may read them in between
+# (a new key with the old certificate); it then tries again a moment later.
 chmod 600 key.pem.new
 mv key.pem.new key.pem
 mv fullchain.pem.new fullchain.pem

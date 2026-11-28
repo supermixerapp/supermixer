@@ -186,7 +186,12 @@ func writeTLSFiles(stackDir string, tls bool) error {
 	}
 	pooler, err := poolerWithTLS(string(b))
 	if err != nil {
-		return err
+		if tls {
+			return err
+		}
+		// A template this doesn't know: a stack without TLS runs its own
+		// script as it is (only a stack that had TLS needs enforce_ssl reset).
+		pooler = string(b)
 	}
 	out := filepath.Join(stackDir, filepath.FromSlash(poolerScriptFile))
 	if err := os.MkdirAll(filepath.Dir(out), 0o755); err != nil {

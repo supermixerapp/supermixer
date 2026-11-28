@@ -70,7 +70,7 @@ func (h *handlers) transportSecurity(next http.Handler) http.Handler {
 			redirectToPublic(w, r, srv.PublicURL)
 			return
 		}
-		if hsts != "" && h.secureRequest(r) && h.hsts.safe(r.Context(), h, pu.Hostname()) {
+		if hsts != "" && h.secureRequest(r) && h.hsts.safe(h, pu.Hostname()) {
 			w.Header().Set("Strict-Transport-Security", hsts)
 		}
 		next.ServeHTTP(w, r)
@@ -105,40 +105,61 @@ func namedHost(host string) bool {
 // HSTS would cut browsers off from it.
 type hstsGate struct {
 	mu      sync.Mutex
-	checked time.Time
-	ok      bool
+	checked time.Time // when ok was last worked out (or tried)
+	ok      bool      // false until the first check: no HSTS while unsure
+	running bool      // a check is under way
 }
 
-func (g *hstsGate) safe(ctx context.Context, h *handlers, host string) bool {
+// safe answers at once, from the last check, and starts a new check in the
+// background once that's a minute old: requests never wait on the
+// database. Without a database (tests) it's always safe.
+func (g *hstsGate) safe(h *handlers, host string) bool {
+	if h.deps.Store == nil {
+		return true
+	}
 	g.mu.Lock()
 	defer g.mu.Unlock()
-	if time.Since(g.checked) < hstsRecheck {
-		return g.ok
+	if time.Since(g.checked) >= hstsRecheck && !g.running {
+		g.running = true
+		go func() {
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			g.check(ctx, h, host)
+		}()
 	}
+	return g.ok
+}
+
+// check works out whether HSTS is safe now. A failed query keeps the last
+// answer, and isn't tried again for a minute.
+func (g *hstsGate) check(ctx context.Context, h *handlers, host string) bool {
 	if h.deps.Store == nil {
-		g.ok, g.checked = true, time.Now()
-		return g.ok
+		return true
 	}
 	rows, err := h.deps.Store.Queries.ListPlainHTTPURLs(ctx)
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.running, g.checked = false, time.Now()
 	if err != nil {
-		return g.ok // keep the last answer; try again next request
+		return g.ok
 	}
 	var urls []string
 	for _, row := range rows {
 		urls = append(urls, row.ApiUrl, row.StudioUrl)
 	}
 	ok := !plainOnHost(urls, host)
-	if !ok && (g.checked.IsZero() || g.ok) {
-		h.deps.Logger.Info("not sending HSTS: a project on " + host + " is still reached over plain HTTP")
+	if !ok && g.ok {
+		h.deps.Logger.Info("not sending HSTS: a project on " + host + " is now reached over plain HTTP")
 	}
-	g.ok, g.checked = ok, time.Now()
+	g.ok = ok
 	return ok
 }
 
-// forget makes the next request check again (after a stack's TLS changes).
+// forget stops HSTS until the next check, which the next request starts
+// (after a stack's addresses change).
 func (g *hstsGate) forget() {
 	g.mu.Lock()
-	g.checked = time.Time{}
+	g.ok, g.checked = false, time.Time{}
 	g.mu.Unlock()
 }
 

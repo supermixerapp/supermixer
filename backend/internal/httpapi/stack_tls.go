@@ -27,6 +27,24 @@ func (h *handlers) stackTLSEnv(p db.Project, on bool) map[string]string {
 	return map[string]string{"SUPABASE_PUBLIC_URL": public, "API_EXTERNAL_URL": public + "/auth/v1"}
 }
 
+// hstsPinsStacks reports whether browsers may have been told to reach the
+// stacks' host name only over HTTPS: Supermixer sends HSTS for public_url,
+// and the stacks share its host name. A stack there can't serve plain HTTP:
+// those browsers would refuse it until the HSTS they saw expires.
+func (h *handlers) hstsPinsStacks() bool {
+	if h.hstsHeader() == "" {
+		return false
+	}
+	pu, err := url.Parse(h.deps.Config.Server.PublicURL)
+	return err == nil && strings.EqualFold(pu.Hostname(), strings.Trim(h.deps.Config.Provisioning.PublicHost, "[]"))
+}
+
+func (h *handlers) errHSTSPinned() error {
+	return conflict("browsers have been told to reach %s only over HTTPS (HSTS), so they couldn't reach this project over "+
+		"plain HTTP. To allow it, an instance admin first sets server.hsts_max_age = \"0s\" and waits out the old value",
+		strings.Trim(h.deps.Config.Provisioning.PublicHost, "[]"))
+}
+
 // checkStackTLS refuses TLS for a stack when this server can't give it:
 // no certificate for public_host yet, or a Docker Compose too old for the
 // overlay's !override.
@@ -61,6 +79,11 @@ func (h *handlers) prepareStackTLS(ctx context.Context, ref string, log io.Write
 	}
 	if !h.deps.TLS.Enabled() {
 		fmt.Fprintln(log, "TLS is off in Supermixer's settings, so this stack switches to plain HTTP")
+		if h.hstsPinsStacks() {
+			fmt.Fprintln(log, "warning: browsers that saw HSTS for this host name will refuse it until that expires")
+			h.deps.Logger.WarnContext(ctx, "tls: a stack goes back to plain HTTP on a host name with HSTS; browsers that saw it will refuse the stack",
+				"project", ref)
+		}
 		row, err := h.deps.Store.Queries.GetProjectByRef(ctx, ref)
 		if err != nil {
 			return err
@@ -98,6 +121,9 @@ func (h *handlers) SetStackTls(ctx context.Context, req api.SetStackTlsRequestOb
 	}
 	on := req.Body.Enabled
 	if h.stackTLS(p.Ref) != on {
+		if !on && h.hstsPinsStacks() {
+			return nil, h.errHSTSPinned()
+		}
 		if on && !h.deps.TLS.Enabled() {
 			return nil, conflict("Supermixer has no certificate: an instance admin sets one up under [tls] in its settings")
 		}
@@ -222,7 +248,7 @@ func (h *handlers) tlsStatus(ctx context.Context) api.TlsStatus {
 		out.HttpsListen = &l
 	}
 	if hsts := h.hstsHeader(); hsts != "" {
-		if pu, err := url.Parse(h.deps.Config.Server.PublicURL); err == nil && h.hsts.safe(ctx, h, pu.Hostname()) {
+		if pu, err := url.Parse(h.deps.Config.Server.PublicURL); err == nil && h.hsts.check(ctx, h, pu.Hostname()) {
 			out.Hsts = &hsts
 		} else {
 			out.HstsBlocked = true

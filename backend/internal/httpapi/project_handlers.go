@@ -273,6 +273,7 @@ func (h *handlers) CreateProject(ctx context.Context, req api.CreateProjectReque
 	if err != nil {
 		return nil, err
 	}
+	h.hsts.forget() // a new address, perhaps plain HTTP on Supermixer's host
 	out, err := h.toProject(project, a.Org.Slug, a.Org.Name, rbac.EffectiveProjectRole(a.Role, nil))
 	if err != nil {
 		return nil, err
@@ -338,6 +339,7 @@ func (h *handlers) UpdateProject(ctx context.Context, req api.UpdateProjectReque
 	}
 	h.health.forget(p.Ref)
 	h.pools.Forget(p.Ref)
+	h.hsts.forget()
 	h.audit(ctx, nil, auditEntry{OrgID: &p.OrganizationID, ProjectID: &p.ID, Action: "project.updated", TargetType: "project",
 		TargetID: p.Ref, TargetName: updated.Name, Metadata: map[string]any{"changed": changed}})
 	out, err := h.toProject(updated, a.Row.OrganizationSlug, a.Row.OrganizationName, a.Role)

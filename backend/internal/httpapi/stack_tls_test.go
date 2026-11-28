@@ -255,3 +255,70 @@ func TestServedPostgres(t *testing.T) {
 		t.Fatalf("served %d bytes, %v", len(got), err)
 	}
 }
+
+// When a new stack can't have TLS yet, it's created without, unless
+// browsers have been told to use only HTTPS on its host name (HSTS): then
+// a plain stack would be unreachable, so it's refused, as is turning TLS
+// off there.
+func TestStackTLSFallbackAndHSTS(t *testing.T) {
+	certFile, keyFile, caFile := testCA(t, t.TempDir(), "stacks.example", "supermixer.example")
+	setup := func(t *testing.T, publicURL string) *client {
+		stacks := t.TempDir()
+		t.Setenv("FAKE_DOCKER_LOG", filepath.Join(t.TempDir(), "docker.log"))
+		fake, _ := filepath.Abs("testdata/fake-docker.sh")
+		env := newTestEnvDeps(t, testDatabase(t), func(c *config.Config) {
+			c.Server.PublicURL = publicURL
+			c.Provisioning.Enabled = true
+			c.Provisioning.StacksDir = stacks
+			c.Provisioning.Docker = fake
+			c.Provisioning.PublicHost = "stacks.example"
+			c.Provisioning.APIPorts = "8200-8203"
+			c.Provisioning.DBPorts = "54400-54403"
+			c.Provisioning.PoolerPorts = "64400-64403"
+			c.TLS = config.TLS{Mode: config.TLSFiles, CertFile: certFile, KeyFile: keyFile, CAFile: caFile}
+		}, func(d *Deps) {
+			m, err := tlscert.New(d.Config, slog.New(slog.NewTextHandler(io.Discard, nil)))
+			if err != nil {
+				t.Fatal(err)
+			}
+			d.TLS = m
+		})
+		admin := env.client(t)
+		admin.signIn("admin", adminPassword)
+		admin.must(201, "POST", "/organizations", map[string]string{"name": "Stacks"}, nil)
+		return admin
+	}
+	type project struct {
+		Ref    string
+		APIURL string `json:"api_url"`
+		Stack  *struct{ TLS bool }
+	}
+
+	t.Run("another host name: falls back to plain", func(t *testing.T) {
+		admin := setup(t, "https://supermixer.example")
+		t.Setenv("FAKE_COMPOSE_VERSION", "2.24.3") // too old for TLS stacks
+		var p project
+		admin.must(202, "POST", "/organizations/stacks/projects/new-stack", map[string]string{"name": "Plain"}, &p)
+		if p.APIURL != "http://stacks.example:8201" || p.Stack == nil || p.Stack.TLS {
+			t.Errorf("created %+v", p)
+		}
+	})
+
+	t.Run("the same host name, with HSTS", func(t *testing.T) {
+		admin := setup(t, "https://stacks.example")
+		// Compose too old for TLS (checked once per start, so first).
+		t.Setenv("FAKE_COMPOSE_VERSION", "2.24.3")
+		if code := admin.do("POST", "/organizations/stacks/projects/new-stack", map[string]string{"name": "No TLS"}, nil); code == 202 {
+			t.Error("created a plain stack on a host name with HSTS")
+		}
+		t.Setenv("FAKE_COMPOSE_VERSION", "2.29.1")
+		var p project
+		admin.must(202, "POST", "/organizations/stacks/projects/new-stack", map[string]string{"name": "Pinned"}, &p)
+		waitStack(t, admin, p.Ref)
+		var refused struct{ Message string }
+		if code := admin.do("PUT", "/projects/"+p.Ref+"/stack/tls", map[string]bool{"enabled": false}, &refused); code != 409 ||
+			!strings.Contains(refused.Message, "hsts_max_age") {
+			t.Errorf("turning TLS off: %d %q", code, refused.Message)
+		}
+	})
+}

@@ -162,3 +162,25 @@ func boolStr(b bool) string {
 	}
 	return "false"
 }
+
+// A pooler script this doesn't recognise stops only stacks with TLS, which
+// need the patch; others run the script as it is.
+func TestUnknownPoolerScript(t *testing.T) {
+	dir := writtenStack(t)
+	unknown := "IO.puts(:a_new_template)\n"
+	if err := os.WriteFile(filepath.Join(dir, filepath.FromSlash(poolerScript)), []byte(unknown), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := RefreshOverlay(dir); err != nil {
+		t.Fatalf("a stack without TLS: %v", err)
+	}
+	if b, _ := os.ReadFile(filepath.Join(dir, filepath.FromSlash(poolerScriptFile))); string(b) != unknown {
+		t.Errorf("mounted script %q", b)
+	}
+	if err := UpdateEnv(dir, map[string]string{TLSEnv: "true"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := RefreshOverlay(dir); err == nil || !strings.Contains(err.Error(), "update poolerWithTLS") {
+		t.Errorf("a stack with TLS: %v", err)
+	}
+}

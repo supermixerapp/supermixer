@@ -55,10 +55,18 @@ type Manager struct {
 	challenges []string
 
 	reload chan struct{}
+	// exportMu runs one Export at a time: each cleans up the folders of
+	// earlier ones.
+	exportMu sync.Mutex
+	// filesRetry is how long reloadFiles waits before trying a pair that
+	// didn't load again: writers replace the certificate and key one after
+	// the other.
+	filesRetry time.Duration
 
 	mu        sync.RWMutex
 	certs     map[string]*tls.Certificate // by name
 	sum       [32]byte                    // files mode: the files last loaded
+	failedSum [32]byte                    // files mode: files that didn't load, not tried again until they change
 	exported  [32]byte                    // the certificate last exported
 	lastErr   string
 	lastErrAt time.Time
@@ -98,6 +106,8 @@ func New(cfg *config.Config, log *slog.Logger) (*Manager, error) {
 		log:    log.With("component", "tls"),
 		reload: make(chan struct{}, 1),
 		certs:  map[string]*tls.Certificate{},
+		// Not long: a writer swapping two files is done within a moment.
+		filesRetry: 2 * time.Second,
 	}
 	if pv := cfg.Provisioning; pv.Enabled {
 		m.exportName = strings.ToLower(strings.Trim(pv.PublicHost, "[]"))
@@ -394,10 +404,17 @@ func (m *Manager) check(cert tls.Certificate) error {
 	}
 }
 
+// seen reports whether the files with sum were loaded already, or failed.
+func (m *Manager) seen(sum [32]byte) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return sum == m.sum || sum == m.failedSum
+}
+
 func (m *Manager) setFiles(cert *tls.Certificate, sum [32]byte) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.sum = sum
+	m.sum, m.failedSum = sum, [32]byte{}
 	for _, n := range m.names {
 		m.certs[n] = cert
 	}
@@ -422,18 +439,25 @@ func (m *Manager) watchFiles(ctx context.Context) {
 }
 
 // reloadFiles loads the files if they changed. A bad pair keeps the
-// certificate in use and records why.
+// certificate in use and records why, once: the same files aren't tried
+// again until they change.
 func (m *Manager) reloadFiles() {
 	cert, sum, err := m.loadFiles()
-	m.mu.RLock()
-	same := sum == m.sum
-	m.mu.RUnlock()
-	if same {
+	if err != nil && !m.seen(sum) {
+		// Perhaps caught between the certificate and the key being
+		// replaced: a moment later they match.
+		time.Sleep(m.filesRetry)
+		cert, sum, err = m.loadFiles()
+	}
+	if m.seen(sum) {
 		return
 	}
 	if err != nil {
 		m.log.Error("keeping the current certificate: the new files don't work", "err", err)
 		m.fail(err)
+		m.mu.Lock()
+		m.failedSum = sum
+		m.mu.Unlock()
 		return
 	}
 	m.setFiles(cert, sum)
@@ -448,6 +472,13 @@ func (m *Manager) setupACME(cfg *config.Config) error {
 	if err := os.MkdirAll(a.StorageDir, 0o700); err != nil {
 		return fmt.Errorf("tls.acme.storage_dir: %w", err)
 	}
+	// Found out now, not when a certificate arrives and can't be kept.
+	probe, err := os.CreateTemp(a.StorageDir, ".write-check-*")
+	if err != nil {
+		return fmt.Errorf("tls.acme.storage_dir %s isn't writable by user %d: %w", a.StorageDir, os.Getuid(), err)
+	}
+	probe.Close()
+	_ = os.Remove(probe.Name())
 	zl := zap.New(slogCore{l: m.log})
 	var magic *certmagic.Config
 	cache := certmagic.NewCache(certmagic.CacheOptions{

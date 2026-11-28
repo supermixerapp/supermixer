@@ -68,6 +68,10 @@ func (h *handlers) plainStacks(ctx context.Context) {
 		if !h.stackTLS(p.Ref) || !h.stacks.begin(p.Ref, api.StackOperationUpdating) {
 			continue
 		}
+		if h.hstsPinsStacks() {
+			h.deps.Logger.WarnContext(ctx, "tls: a stack goes back to plain HTTP on a host name with HSTS; browsers that saw it will refuse the stack",
+				"project", p.Ref)
+		}
 		err := func() error {
 			ctx, cancel := context.WithTimeout(ctx, h.deps.Config.Provisioning.StartTimeout)
 			defer cancel()

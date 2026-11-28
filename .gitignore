@@ -3,6 +3,8 @@ plans/
 
 # Local configuration and secrets
 .env.toml
+# Let's Encrypt's account and certificates (make app)
+/.acme/
 
 # Build output
 /bin/

@@ -54,6 +54,8 @@ func (m *Manager) Export() error {
 	if m == nil || m.exportDir == "" {
 		return nil
 	}
+	m.exportMu.Lock()
+	defer m.exportMu.Unlock()
 	cert := m.Certificate(m.exportName)
 	if cert == nil {
 		return nil // not obtained yet
@@ -76,11 +78,19 @@ func (m *Manager) Export() error {
 	if same && fileExists(filepath.Join(dir, "..data", FullchainFile)) {
 		return nil
 	}
+	// The key is readable by all inside the folder (the stacks' containers
+	// run as various users), so stacks_dir itself must keep everyone else
+	// out. Created here first, it's created private.
+	if err := os.MkdirAll(filepath.Dir(dir), 0o700); err != nil {
+		return err
+	}
+	if st, err := os.Stat(filepath.Dir(dir)); err == nil && st.Mode().Perm()&0o077 != 0 {
+		m.log.Warn("other users of this machine can read the stacks' private key: chmod 700 provisioning.stacks_dir",
+			"dir", filepath.Dir(dir), "mode", st.Mode().Perm().String())
+	}
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	// The stacks' containers run as various users, so the files are
-	// readable by all; stacks_dir itself keeps everyone else out.
 	ts := "..ts_" + time.Now().UTC().Format("20060102T150405.000000000")
 	tsDir := filepath.Join(dir, ts)
 	if err := os.Mkdir(tsDir, 0o755); err != nil {

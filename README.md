@@ -171,7 +171,7 @@ email = "ops@example.com"
 agree_tos = true
 ```
 
-With Docker, `SUPERMIXER_HTTP_PORT=80 SUPERMIXER_HTTPS_PORT=443 make app` publishes the ports Let's Encrypt needs; its account and certificates live in the `supermixer-acme` volume.
+With Docker, `SUPERMIXER_HTTP_PORT=80 SUPERMIXER_HTTPS_PORT=443 make app` publishes the ports Let's Encrypt needs; its account and certificates live in `.acme/`, a private folder `make app` creates.
 
 **Supermixer itself.** With `https_listen`, Supermixer serves HTTPS there (TLS 1.2 or later, HTTP/2), and its plain `listen` port only redirects to `public_url`, answers Let's Encrypt's checks, and serves `/api/v1/health` for probes. Behind a proxy or Kubernetes Ingress that ends TLS instead, leave `https_listen` empty and set `trust_proxy = true`: Supermixer then redirects requests the proxy says came over plain HTTP, and treats the rest as secure. Either way, sign-in cookies are marked `Secure`.
 
