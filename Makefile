@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate webui build release mixer test test-integration lint stack stack-down stack-check-logs image helm-lint e2e
+.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate webui build release mixer test test-integration lint stack stack-down stack-check-logs image image-push helm-lint e2e
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -124,6 +124,13 @@ release: webui ## Linux release archives (amd64, arm64) in bin/release: binaries
 
 image: ## Build the container image, tagged with the version; IMAGE=registry/name to name it for a registry
 	docker build --build-arg VERSION=$(VERSION) -t $(or $(IMAGE),supermixer):$(VERSION) .
+
+image-push: ## Build the image for amd64 and arm64 and push it to Docker Hub as supermixer/supermixer:<version> (docker login first; a v* tag does this in GitHub Actions)
+	@git diff --quiet HEAD 2>/dev/null || echo "warning: uncommitted changes; the image is built from the working tree" >&2
+	@# Docker's default builder can't build for two platforms at once.
+	@docker buildx inspect supermixer-multi >/dev/null 2>&1 || docker buildx create --name supermixer-multi --driver docker-container >/dev/null
+	docker buildx build --builder supermixer-multi --platform linux/amd64,linux/arm64 --build-arg VERSION=$(VERSION) \
+	  -t $(or $(IMAGE),supermixer/supermixer):$(VERSION) --push .
 
 helm-lint: ## Lint and render the Helm chart (deploy/helm/supermixer), using Helm in a container
 	docker run --rm -v "$(CURDIR)/deploy/helm:/apps" -w /apps alpine/helm:3.16.3 lint supermixer
