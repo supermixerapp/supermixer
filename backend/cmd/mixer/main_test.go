@@ -4,9 +4,12 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"encoding/pem"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -228,6 +231,7 @@ func TestHelpAndVersion(t *testing.T) {
 		"help --json":                    "Usage: mixer [options] <command>",
 		"help -q health":                 "Usage: mixer [options] health",
 		"help --server https://x health": "Usage: mixer [options] health",
+		"help --cacert ca.pem health":    "Usage: mixer [options] health",
 	} {
 		code, out, errb := mixer(t, nil, strings.Fields(args)...)
 		if code != exitOK || errb != "" || !strings.HasPrefix(out, want) {
@@ -254,6 +258,41 @@ func TestServerURL(t *testing.T) {
 		u, err := serverURL(in)
 		if err != nil || u.String() != want {
 			t.Errorf("serverURL(%q) = %v, %v; want %s", in, u, err, want)
+		}
+	}
+}
+
+// A server with a certificate from its own CA: trusted only with --cacert.
+func TestCACert(t *testing.T) {
+	s := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(healthy))
+	}))
+	defer s.Close()
+	dir := t.TempDir()
+	ca := filepath.Join(dir, "ca.pem")
+	if err := os.WriteFile(ca, pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: s.Certificate().Raw}), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	code, _, errb := mixer(t, nil, "--server", s.URL, "health")
+	if code != exitUnreachable || !strings.Contains(errb, "pass --cacert") || !strings.Contains(errb, s.URL+"/api/v1/tls/ca.pem") {
+		t.Errorf("without --cacert: code %d, stderr %q", code, errb)
+	}
+
+	code, out, errb := mixer(t, nil, "--server", s.URL, "health", "--cacert", ca)
+	if code != exitOK || errb != "" || fields(out)["tls"] == "" {
+		t.Errorf("with --cacert: code %d, stderr %q\n%s", code, errb, out)
+	}
+	if code, _, errb := mixer(t, map[string]string{"SUPERMIXER_CACERT": ca}, "--server", s.URL, "health"); code != exitOK {
+		t.Errorf("with SUPERMIXER_CACERT: code %d, stderr %q", code, errb)
+	}
+
+	notPEM := filepath.Join(dir, "not.pem")
+	_ = os.WriteFile(notPEM, []byte("hello"), 0o600)
+	for file, want := range map[string]string{notPEM: "has no PEM certificates", filepath.Join(dir, "missing.pem"): "--cacert: open"} {
+		if code, out, errb := mixer(t, nil, "--server", s.URL, "--cacert", file, "health"); code != exitUsage || out != "" || !strings.Contains(errb, want) {
+			t.Errorf("--cacert %s: code %d, stderr %q", file, code, errb)
 		}
 	}
 }

@@ -35,3 +35,7 @@ __pycache__/
 
 # Development certificates (deploy/dev-tls/gen.sh)
 /deploy/dev-tls/out/
+
+# Go binaries built inside a command's folder (go build ./ there)
+/backend/cmd/*/mixer
+/backend/cmd/*/supermixer

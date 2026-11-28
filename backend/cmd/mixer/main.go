@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -47,6 +48,9 @@ const optionsHelp = `Options (before or after the command):
   --json                Print one JSON object instead of "key value" lines
   -q, --quiet           Print nothing; report through the exit status only
   --timeout DURATION    Give up after this long (default 10s)
+  --cacert FILE         Also trust this CA (PEM), for a server whose
+                        certificate is from its own CA; Supermixer offers
+                        it at /api/v1/tls/ca.pem (default: $SUPERMIXER_CACERT)
   -h, --help            Print help
 `
 
@@ -119,6 +123,7 @@ type options struct {
 	json    bool
 	quiet   bool
 	timeout time.Duration
+	cacert  string
 }
 
 // flags makes a flag set for the options every command takes, starting
@@ -131,11 +136,12 @@ func (o *options) flags(name string) *flag.FlagSet {
 	fs.BoolVar(&o.quiet, "quiet", o.quiet, "")
 	fs.BoolVar(&o.quiet, "q", o.quiet, "")
 	fs.DurationVar(&o.timeout, "timeout", o.timeout, "")
+	fs.StringVar(&o.cacert, "cacert", o.cacert, "")
 	return fs
 }
 
 func run(ctx context.Context, args []string, e env) int {
-	o := options{server: e.getenv("SUPERMIXER_URL"), timeout: 10 * time.Second}
+	o := options{server: e.getenv("SUPERMIXER_URL"), cacert: e.getenv("SUPERMIXER_CACERT"), timeout: 10 * time.Second}
 	var showVersion bool
 	fs := o.flags("mixer")
 	fs.BoolVar(&showVersion, "version", false, "")
@@ -208,7 +214,11 @@ func runHealth(ctx context.Context, o options, e env) int {
 	if err != nil {
 		return e.fail(exitUsage, "%v", err)
 	}
-	res, err := checkHealth(ctx, base, o.timeout)
+	roots, err := rootCAs(o.cacert)
+	if err != nil {
+		return e.fail(exitUsage, "%v", err)
+	}
+	res, err := checkHealth(ctx, base, o.timeout, roots)
 	if err != nil {
 		if ctx.Err() != nil {
 			return e.fail(exitInterrupted, "interrupted")
@@ -233,6 +243,27 @@ func runHealth(ctx context.Context, o options, e env) int {
 		return exitUnhealthy
 	}
 	return exitOK
+}
+
+// rootCAs is the system's CAs plus the one in file, if given; nil (the
+// system's alone) without one.
+func rootCAs(file string) (*x509.CertPool, error) {
+	file = strings.TrimSpace(file)
+	if file == "" {
+		return nil, nil
+	}
+	b, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("--cacert: %v", err)
+	}
+	pool, err := x509.SystemCertPool()
+	if err != nil || pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if !pool.AppendCertsFromPEM(b) {
+		return nil, fmt.Errorf("--cacert: %s has no PEM certificates", file)
+	}
+	return pool, nil
 }
 
 // apiSuffixes are API addresses people paste for --server, longest first:
@@ -298,7 +329,7 @@ type timings struct {
 	Total     float64  `json:"total"`
 }
 
-func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*result, error) {
+func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration, roots *x509.CertPool) (*result, error) {
 	target := base.JoinPath("api/v1/health")
 	res := &result{Server: base.String()}
 
@@ -360,8 +391,13 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 		via = " through proxy " + res.Link.Proxy
 	}
 
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if roots != nil {
+		transport.TLSClientConfig = &tls.Config{RootCAs: roots}
+	}
 	client := &http.Client{
-		Timeout: timeout,
+		Timeout:   timeout,
+		Transport: transport,
 		// A redirect is reported, not followed: it's part of the link, and
 		// timings across two requests would mislead.
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
@@ -380,7 +416,12 @@ func checkHealth(ctx context.Context, base *url.URL, timeout time.Duration) (*re
 		if errors.As(err, &ue) {
 			err = ue.Err
 		}
-		return nil, fmt.Errorf("can't reach %s%s: %v", base, via, err)
+		hint := ""
+		var unknown x509.UnknownAuthorityError
+		if errors.As(err, &unknown) && roots == nil {
+			hint = fmt.Sprintf("\nIf it uses its own CA, download it from %s and pass --cacert.", base.JoinPath("api/v1/tls/ca.pem"))
+		}
+		return nil, fmt.Errorf("can't reach %s%s: %v%s", base, via, err, hint)
 	}
 	defer resp.Body.Close()
 	// The client's timeout covers reading the body too.
