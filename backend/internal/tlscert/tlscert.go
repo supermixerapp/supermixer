@@ -13,6 +13,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -27,6 +28,11 @@ import (
 
 	"supermixer/internal/config"
 )
+
+// expiryWarning is how close to expiring a certificate is when the log
+// starts warning, once a day: renewal should have happened by then (Let's
+// Encrypt renews with 30 days left). Instance › Overview uses the same.
+const expiryWarning = 21 * 24 * time.Hour
 
 // filesInterval is how often files mode looks for changed files.
 const filesInterval = 30 * time.Second
@@ -71,6 +77,7 @@ type Manager struct {
 	lastErr   string
 	lastErrAt time.Time
 	onChange  []func()
+	warnedAt  time.Time // the last expiry warning
 }
 
 // Status describes the certificate, for Instance › Overview.
@@ -93,8 +100,8 @@ type CertStatus struct {
 }
 
 // New makes the manager for cfg, or nil with TLS off. In files mode it
-// loads the files now, so a mistake stops start-up; acme mode starts
-// obtaining certificates in Start.
+// loads the files now, so a mistake stops start-up (files that don't exist
+// yet are waited for); acme mode starts obtaining certificates in Start.
 func New(cfg *config.Config, log *slog.Logger) (*Manager, error) {
 	t := cfg.TLS
 	if !t.Enabled() {
@@ -128,10 +135,18 @@ func New(cfg *config.Config, log *slog.Logger) (*Manager, error) {
 			m.roots, m.caPEM = pool, b
 		}
 		cert, sum, err := m.loadFiles()
-		if err != nil {
+		switch {
+		case errors.Is(err, fs.ErrNotExist):
+			// Not there yet (the certbot hook hasn't run): wait for them,
+			// rather than stop. Nothing needing the certificate works
+			// until then.
+			m.log.Warn("waiting for the certificate files", "err", err)
+			m.fail(err)
+		case err != nil:
 			return nil, err
+		default:
+			m.setFiles(cert, sum)
 		}
-		m.setFiles(cert, sum)
 	case config.TLSACME:
 		m.challenges = cfg.ACMEChallenges()
 		if err := m.setupACME(cfg); err != nil {
@@ -435,6 +450,20 @@ func (m *Manager) watchFiles(ctx context.Context) {
 		case <-m.reload:
 		}
 		m.reloadFiles()
+		m.warnExpiry(time.Now())
+	}
+}
+
+// warnExpiry logs, at most once a day, a certificate that expires soon.
+func (m *Manager) warnExpiry(now time.Time) {
+	if now.Sub(m.warnedAt) < 24*time.Hour {
+		return
+	}
+	for name, at := range m.Expiry() {
+		if at.Sub(now) < expiryWarning {
+			m.log.Warn("the certificate expires soon and hasn't been renewed", "name", name, "expires", at)
+			m.warnedAt = now
+		}
 	}
 }
 
@@ -539,6 +568,7 @@ func (m *Manager) watchACME(ctx context.Context) {
 		if m.loadACME(ctx) {
 			m.changed()
 		}
+		m.warnExpiry(time.Now())
 	}
 }
 

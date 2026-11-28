@@ -255,16 +255,23 @@ type Log struct {
 
 type Database struct {
 	URL string `toml:"url"`
+	// PasswordFile holds the password instead of URL (a mounted secret).
+	PasswordFile string `toml:"password_file"`
 	// MaxConnections caps Supermixer's own pool; 0 uses pgx's default.
 	MaxConnections int `toml:"max_connections"`
+	// MigrationBackupsDir, when set, gets a pg_dump of the database before
+	// new migrations are applied (an upgrade).
+	MigrationBackupsDir string `toml:"migration_backups_dir"`
 }
 
 type Security struct {
 	// EncryptionKey is a base64-encoded 32-byte key that encrypts stored
 	// project credentials (AES-256-GCM).
-	EncryptionKey string        `toml:"encryption_key"`
-	SessionTTL    time.Duration `toml:"session_ttl"`
-	SignIn        SignIn        `toml:"sign_in"`
+	EncryptionKey string `toml:"encryption_key"`
+	// EncryptionKeyFile holds the key instead (a mounted secret).
+	EncryptionKeyFile string        `toml:"encryption_key_file"`
+	SessionTTL        time.Duration `toml:"session_ttl"`
+	SignIn            SignIn        `toml:"sign_in"`
 }
 
 // SignIn limits password guessing, per client IP and per username.
@@ -728,9 +735,29 @@ func (c *Config) validate() error {
 	}
 	if c.Database.URL == "" {
 		fail("database.url is required (or set %s)", EnvName([]string{"database", "url"}))
+	} else if c.Database.PasswordFile != "" {
+		if b, err := os.ReadFile(c.Database.PasswordFile); err != nil {
+			fail("database.password_file: %v", err)
+		} else if u, err := url.Parse(c.Database.URL); err != nil || (u.Scheme != "postgres" && u.Scheme != "postgresql") {
+			fail("database.password_file needs database.url in the form postgres://user@host/db")
+		} else if _, set := u.User.Password(); set {
+			fail("database: set the password in url or password_file, not both")
+		} else {
+			u.User = url.UserPassword(u.User.Username(), strings.TrimSpace(string(b)))
+			c.Database.URL = u.String()
+		}
 	}
 	if c.Database.MaxConnections < 0 {
 		fail("database.max_connections must not be negative")
+	}
+	if c.Security.EncryptionKeyFile != "" {
+		if c.Security.EncryptionKey != "" {
+			fail("security: set encryption_key or encryption_key_file, not both")
+		} else if b, err := os.ReadFile(c.Security.EncryptionKeyFile); err != nil {
+			fail("security.encryption_key_file: %v", err)
+		} else {
+			c.Security.EncryptionKey = strings.TrimSpace(string(b))
+		}
 	}
 	if c.Security.EncryptionKey == "" {
 		fail("security.encryption_key is required (generate one with: openssl rand -base64 32)")

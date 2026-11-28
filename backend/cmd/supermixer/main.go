@@ -29,7 +29,18 @@ import (
 	"supermixer/internal/webui"
 )
 
+// databaseWait is how long start-up waits for the database to be
+// reachable.
+const databaseWait = 3 * time.Minute
+
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "init" {
+		if err := runInit(os.Args[2:]); err != nil {
+			fmt.Fprintln(os.Stderr, "supermixer init:", err)
+			os.Exit(1)
+		}
+		return
+	}
 	configFile := flag.String("config", "", "TOML config file (default: $SUPERMIXER_CONFIG, else ./.env.toml)")
 	flag.Parse()
 
@@ -78,11 +89,20 @@ func run(configFile string) error {
 		return err
 	}
 
-	st, err := store.Open(ctx, cfg.Database.URL, cfg.Database.MaxConnections, logger)
+	st, err := store.OpenWait(ctx, cfg.Database.URL, cfg.Database.MaxConnections, databaseWait, logger)
 	if err != nil {
 		return err
 	}
 	defer st.Close()
+	if dir := cfg.Database.MigrationBackupsDir; dir != "" {
+		path, err := st.BackupBeforeMigrate(ctx, cfg.Database.URL, dir)
+		if err != nil {
+			return fmt.Errorf("backing up the database before migrating it (database.migration_backups_dir): %w", err)
+		}
+		if path != "" {
+			logger.Info("backed up the database before migrating it", "path", path)
+		}
+	}
 	if err := st.Migrate(ctx); err != nil {
 		return err
 	}

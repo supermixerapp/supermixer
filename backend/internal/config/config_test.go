@@ -2,6 +2,7 @@ package config
 
 import (
 	"bufio"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -401,5 +402,50 @@ func TestTLS(t *testing.T) {
 			// Without https_listen, only http-01 can be answered.
 			t.Errorf("acme defaults: %+v, %v", cfg.TLS.ACME, cfg.ACMEChallenges())
 		}
+	}
+}
+
+// The container install keeps its generated secrets in files.
+func TestSecretFiles(t *testing.T) {
+	dir := t.TempDir()
+	keyFile := filepath.Join(dir, "encryption_key")
+	pwFile := filepath.Join(dir, "db_password")
+	_ = os.WriteFile(keyFile, []byte(validKey+"\n"), 0o600)
+	_ = os.WriteFile(pwFile, []byte("s3cr/t@x\n"), 0o600)
+	t.Setenv("SUPERMIXER_DATABASE_URL", "postgres://supermixer@db:5432/supermixer?sslmode=disable")
+	t.Setenv("SUPERMIXER_DATABASE_PASSWORD_FILE", pwFile)
+	t.Setenv("SUPERMIXER_SECURITY_ENCRYPTION_KEY_FILE", keyFile)
+	cfg, err := Load("", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Security.EncryptionKey != validKey {
+		t.Errorf("encryption key %q", cfg.Security.EncryptionKey)
+	}
+	u, _ := url.Parse(cfg.Database.URL)
+	if pw, _ := u.User.Password(); pw != "s3cr/t@x" || u.User.Username() != "supermixer" || u.Host != "db:5432" || u.RawQuery != "sslmode=disable" {
+		t.Errorf("database.url %q", cfg.Database.URL)
+	}
+
+	for _, tc := range []struct {
+		env  map[string]string
+		want string
+	}{
+		{map[string]string{"SUPERMIXER_SECURITY_ENCRYPTION_KEY": validKey}, "encryption_key or encryption_key_file, not both"},
+		{map[string]string{"SUPERMIXER_SECURITY_ENCRYPTION_KEY_FILE": filepath.Join(dir, "missing")}, "security.encryption_key_file"},
+		{map[string]string{"SUPERMIXER_DATABASE_URL": "postgres://u:pw@db/x"}, "in url or password_file, not both"},
+		{map[string]string{"SUPERMIXER_DATABASE_URL": "host=db user=u"}, "postgres://user@host/db"},
+		{map[string]string{"SUPERMIXER_DATABASE_PASSWORD_FILE": filepath.Join(dir, "missing")}, "database.password_file"},
+	} {
+		for k, v := range tc.env {
+			t.Setenv(k, v)
+		}
+		if _, err := Load("", false); err == nil || !strings.Contains(err.Error(), tc.want) {
+			t.Errorf("%v: %v, want %q", tc.env, err, tc.want)
+		}
+		t.Setenv("SUPERMIXER_DATABASE_URL", "postgres://supermixer@db:5432/supermixer?sslmode=disable")
+		t.Setenv("SUPERMIXER_DATABASE_PASSWORD_FILE", pwFile)
+		t.Setenv("SUPERMIXER_SECURITY_ENCRYPTION_KEY_FILE", keyFile)
+		t.Setenv("SUPERMIXER_SECURITY_ENCRYPTION_KEY", "")
 	}
 }

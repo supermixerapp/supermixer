@@ -446,3 +446,64 @@ func TestACMEStorageNotWritable(t *testing.T) {
 		t.Errorf("New = %v", err)
 	}
 }
+
+// Files that don't exist yet (the certbot hook hasn't copied them) are
+// waited for: start-up goes on, and they're loaded when they appear.
+func TestFilesNotThereYet(t *testing.T) {
+	dir := t.TempDir()
+	c := newCA(t, "Test CA")
+	cert, key := c.issue(t, "sm.test", "db.test")
+	cfg := filesConfig(t, dir, cert, key, c.pem)
+	_ = os.Remove(cfg.TLS.CertFile)
+	_ = os.Remove(cfg.TLS.KeyFile)
+
+	m, err := New(cfg, quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	m.filesRetry = time.Millisecond
+	if m.Ready("db.test") || m.Status().LastError == "" {
+		t.Fatalf("ready without files, or no error: %+v", m.Status())
+	}
+	m.reloadFiles() // still missing: quiet
+	if m.Ready("db.test") {
+		t.Fatal("ready without files")
+	}
+
+	changes := 0
+	m.OnChange(func() { changes++ })
+	writeFile(t, cfg.TLS.CertFile, cert)
+	writeFile(t, cfg.TLS.KeyFile, key)
+	m.reloadFiles()
+	if !m.Ready("db.test") || !m.Ready("sm.test") || changes != 1 || m.Status().LastError != "" {
+		t.Fatalf("not loaded: %d changes, %+v", changes, m.Status())
+	}
+	if _, err := os.Stat(filepath.Join(cfg.Provisioning.StacksDir, ExportDirName, "fullchain.pem")); err != nil {
+		t.Fatalf("not exported to the stacks: %v", err)
+	}
+}
+
+func TestExpiryWarningOncePerDay(t *testing.T) {
+	c := newCA(t, "Test CA")
+	cert, key := c.issue(t, "sm.test", "db.test")
+	var log strings.Builder
+	m, err := New(filesConfig(t, t.TempDir(), cert, key, c.pem), slog.New(slog.NewTextHandler(&log, nil)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	expires := m.Certificate("sm.test").Leaf.NotAfter
+	m.warnExpiry(expires.Add(-30 * 24 * time.Hour))
+	if strings.Contains(log.String(), "expires soon") {
+		t.Fatal("warned 30 days ahead")
+	}
+	soon := expires.Add(-10 * 24 * time.Hour)
+	m.warnExpiry(soon)
+	m.warnExpiry(soon.Add(time.Hour))
+	if n := strings.Count(log.String(), "expires soon"); n != 2 { // one line per name, once
+		t.Fatalf("%d warnings, want one per name:\n%s", n, log.String())
+	}
+	m.warnExpiry(soon.Add(25 * time.Hour))
+	if n := strings.Count(log.String(), "expires soon"); n != 4 {
+		t.Fatalf("not warned again the next day: %d", n)
+	}
+}
