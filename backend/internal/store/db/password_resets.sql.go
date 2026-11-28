@@ -75,7 +75,7 @@ func (q *Queries) GetPasswordReset(ctx context.Context, tokenHash []byte) (Passw
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval FROM users WHERE lower(email) = lower($1)
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language FROM users WHERE lower(email) = lower($1)
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error) {
@@ -100,6 +100,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, lower string) (User, error
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }

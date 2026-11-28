@@ -562,3 +562,34 @@ func TestProfileTheme(t *testing.T) {
 		t.Fatalf("after renaming: %+v", p)
 	}
 }
+
+func TestProfileLanguage(t *testing.T) {
+	env := newTestEnv(t)
+	admin := env.client(t)
+	admin.signIn("admin", adminPassword)
+
+	type profile struct {
+		Theme    *string `json:"theme"`
+		Language *string `json:"language"`
+	}
+	var p profile
+	admin.must(200, "GET", "/profile", nil, &p)
+	if p.Language != nil {
+		t.Fatalf("a new user has language %q; want none, so the browser's applies", *p.Language)
+	}
+	admin.must(200, "PATCH", "/profile", map[string]any{"language": "ja", "theme": "dark"}, &p)
+	if p.Language == nil || *p.Language != "ja" || p.Theme == nil || *p.Theme != "dark" {
+		t.Fatalf("after saving ja and dark: %+v", p)
+	}
+	p = profile{}
+	admin.must(200, "GET", "/profile", nil, &p)
+	if p.Language == nil || *p.Language != "ja" {
+		t.Fatalf("language wasn't kept: %+v", p)
+	}
+	admin.must(400, "PATCH", "/profile", map[string]any{"language": "it"}, nil)
+	// Changing the theme leaves the language alone.
+	admin.must(200, "PATCH", "/profile", map[string]any{"theme": "light"}, &p)
+	if p.Language == nil || *p.Language != "ja" {
+		t.Fatalf("after changing the theme: %+v", p)
+	}
+}

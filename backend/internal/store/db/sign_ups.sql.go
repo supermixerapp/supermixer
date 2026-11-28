@@ -13,7 +13,7 @@ import (
 )
 
 const approveUser = `-- name: ApproveUser :one
-UPDATE users SET waiting_approval = false, updated_at = now() WHERE id = $1 AND waiting_approval RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+UPDATE users SET waiting_approval = false, updated_at = now() WHERE id = $1 AND waiting_approval RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 func (q *Queries) ApproveUser(ctx context.Context, id uuid.UUID) (User, error) {
@@ -38,6 +38,7 @@ func (q *Queries) ApproveUser(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }
@@ -92,7 +93,7 @@ func (q *Queries) DeleteSignUpsForEmail(ctx context.Context, email string) error
 }
 
 const deleteWaitingUser = `-- name: DeleteWaitingUser :one
-DELETE FROM users WHERE id = $1 AND waiting_approval RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+DELETE FROM users WHERE id = $1 AND waiting_approval RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 // Declining a sign-up: only an account still waiting for approval, which
@@ -119,6 +120,7 @@ func (q *Queries) DeleteWaitingUser(ctx context.Context, id uuid.UUID) (User, er
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }

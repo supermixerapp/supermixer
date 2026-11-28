@@ -70,6 +70,10 @@ func toProfile(u db.User) api.Profile {
 		t := api.ThemePreference(*u.Theme)
 		p.Theme = &t
 	}
+	if u.Language != nil {
+		l := api.Language(*u.Language)
+		p.Language = &l
+	}
 	return p
 }
 
@@ -209,6 +213,9 @@ func (h *handlers) UpdateProfile(ctx context.Context, req api.UpdateProfileReque
 	if req.Body.Theme != nil && !req.Body.Theme.Valid() {
 		return nil, badRequest("theme must be dark, light or system")
 	}
+	if req.Body.Language != nil && !req.Body.Language.Valid() {
+		return nil, badRequest("language must be en, ja, fr, es or de")
+	}
 	updated := u
 	if req.Body.DisplayName != nil || req.Body.Email != nil {
 		updated, err = h.deps.Store.Queries.UpdateUser(ctx, db.UpdateUserParams{
@@ -225,6 +232,12 @@ func (h *handlers) UpdateProfile(ctx context.Context, req api.UpdateProfileReque
 	if req.Body.Theme != nil {
 		theme := string(*req.Body.Theme)
 		if updated, err = h.deps.Store.Queries.SetUserTheme(ctx, db.SetUserThemeParams{ID: u.ID, Theme: &theme}); err != nil {
+			return nil, err
+		}
+	}
+	if req.Body.Language != nil {
+		language := string(*req.Body.Language)
+		if updated, err = h.deps.Store.Queries.SetUserLanguage(ctx, db.SetUserLanguageParams{ID: updated.ID, Language: &language}); err != nil {
 			return nil, err
 		}
 	}

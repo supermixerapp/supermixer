@@ -46,7 +46,7 @@ func (q *Queries) AddIdentity(ctx context.Context, arg AddIdentityParams) (UserI
 const createSSOUser = `-- name: CreateSSOUser :one
 INSERT INTO users (username, email, display_name, password_hash, has_password, waiting_approval)
 VALUES ($1, $2, $3, $4, false, $5)
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 type CreateSSOUserParams struct {
@@ -85,6 +85,7 @@ func (q *Queries) CreateSSOUser(ctx context.Context, arg CreateSSOUserParams) (U
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }

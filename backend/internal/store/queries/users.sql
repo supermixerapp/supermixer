@@ -54,6 +54,10 @@ SELECT username FROM users WHERE default_password AND disabled_at IS NULL;
 UPDATE users SET theme = $2, updated_at = now() WHERE id = $1
 RETURNING *;
 
+-- name: SetUserLanguage :one
+UPDATE users SET language = $2, updated_at = now() WHERE id = $1
+RETURNING *;
+
 -- name: RehashUserPassword :exec
 -- The same password, hashed again (normalized); only if it hasn't changed since.
 UPDATE users SET password_hash = @new_hash WHERE id = @id AND password_hash = @old_hash;

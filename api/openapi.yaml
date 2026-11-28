@@ -2957,16 +2957,25 @@ components:
           allOf: [{ $ref: "#/components/schemas/ThemePreference" }]
           nullable: true
           description: The theme the user chose; null if they haven't, and the instance default applies.
+        language:
+          allOf: [{ $ref: "#/components/schemas/Language" }]
+          nullable: true
+          description: The web app's language the user chose; null if they haven't, and their browser's applies.
         created_at: { type: string, format: date-time }
     ThemePreference:
       type: string
       enum: [dark, light, system]
+    Language:
+      type: string
+      enum: [en, ja, fr, es, de]
+      description: English, Japanese, French, Spanish or German.
     ProfileUpdate:
       type: object
       properties:
         display_name: { type: string, maxLength: 64 }
         email: { type: string, nullable: true }
         theme: { $ref: "#/components/schemas/ThemePreference" }
+        language: { $ref: "#/components/schemas/Language" }
     PasswordChange:
       type: object
       required: [current_password, new_password]

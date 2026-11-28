@@ -38,7 +38,7 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (username, email, display_name, password_hash, is_instance_admin, default_password, password_change_required, waiting_approval)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 type CreateUserParams struct {
@@ -83,12 +83,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval FROM users WHERE id = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
@@ -113,12 +114,13 @@ func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }
 
 const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval FROM users WHERE username = $1
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language FROM users WHERE username = $1
 `
 
 func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User, error) {
@@ -143,6 +145,7 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username string) (User,
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }
@@ -210,7 +213,7 @@ func (q *Queries) ListDefaultPasswordUsers(ctx context.Context) ([]string, error
 }
 
 const listUsers = `-- name: ListUsers :many
-SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval FROM users ORDER BY username
+SELECT id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language FROM users ORDER BY username
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -241,6 +244,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 			&i.MfaEnabledAt,
 			&i.HasPassword,
 			&i.WaitingApproval,
+			&i.Language,
 		); err != nil {
 			return nil, err
 		}
@@ -270,7 +274,7 @@ func (q *Queries) RehashUserPassword(ctx context.Context, arg RehashUserPassword
 
 const setPasswordChangeRequired = `-- name: SetPasswordChangeRequired :one
 UPDATE users SET password_change_required = $2, updated_at = now() WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 type SetPasswordChangeRequiredParams struct {
@@ -300,6 +304,44 @@ func (q *Queries) SetPasswordChangeRequired(ctx context.Context, arg SetPassword
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
+	)
+	return i, err
+}
+
+const setUserLanguage = `-- name: SetUserLanguage :one
+UPDATE users SET language = $2, updated_at = now() WHERE id = $1
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
+`
+
+type SetUserLanguageParams struct {
+	ID       uuid.UUID `json:"id"`
+	Language *string   `json:"language"`
+}
+
+func (q *Queries) SetUserLanguage(ctx context.Context, arg SetUserLanguageParams) (User, error) {
+	row := q.db.QueryRow(ctx, setUserLanguage, arg.ID, arg.Language)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Username,
+		&i.Email,
+		&i.DisplayName,
+		&i.PasswordHash,
+		&i.IsInstanceAdmin,
+		&i.DefaultPassword,
+		&i.DisabledAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Theme,
+		&i.PasswordChangeRequired,
+		&i.TotpSecret,
+		&i.TotpPending,
+		&i.TotpLastStep,
+		&i.MfaEnabledAt,
+		&i.HasPassword,
+		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }
@@ -327,7 +369,7 @@ func (q *Queries) SetUserPassword(ctx context.Context, arg SetUserPasswordParams
 
 const setUserTheme = `-- name: SetUserTheme :one
 UPDATE users SET theme = $2, updated_at = now() WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 type SetUserThemeParams struct {
@@ -357,6 +399,7 @@ func (q *Queries) SetUserTheme(ctx context.Context, arg SetUserThemeParams) (Use
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }
@@ -365,7 +408,7 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET display_name = $2, email = $3, is_instance_admin = $4, disabled_at = $5, updated_at = now()
 WHERE id = $1
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 type UpdateUserParams struct {
@@ -404,6 +447,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }

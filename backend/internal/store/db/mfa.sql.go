@@ -72,7 +72,7 @@ const enableTOTP = `-- name: EnableTOTP :one
 UPDATE users
 SET totp_secret = totp_pending, totp_pending = NULL, totp_last_step = $2, mfa_enabled_at = now(), updated_at = now()
 WHERE id = $1 AND totp_pending IS NOT NULL AND totp_secret IS NULL
-RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval
+RETURNING id, username, email, display_name, password_hash, is_instance_admin, default_password, disabled_at, created_at, updated_at, theme, password_change_required, totp_secret, totp_pending, totp_last_step, mfa_enabled_at, has_password, waiting_approval, language
 `
 
 type EnableTOTPParams struct {
@@ -103,6 +103,7 @@ func (q *Queries) EnableTOTP(ctx context.Context, arg EnableTOTPParams) (User, e
 		&i.MfaEnabledAt,
 		&i.HasPassword,
 		&i.WaitingApproval,
+		&i.Language,
 	)
 	return i, err
 }

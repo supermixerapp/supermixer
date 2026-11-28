@@ -545,6 +545,7 @@ type User struct {
 	MfaEnabledAt           *time.Time `json:"mfa_enabled_at"`
 	HasPassword            bool       `json:"has_password"`
 	WaitingApproval        bool       `json:"waiting_approval"`
+	Language               *string    `json:"language"`
 }
 
 type UserIdentity struct {

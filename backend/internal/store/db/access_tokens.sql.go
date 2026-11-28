@@ -99,7 +99,7 @@ func (q *Queries) DeleteUserAccessTokens(ctx context.Context, userID uuid.UUID) 
 }
 
 const getActiveAccessToken = `-- name: GetActiveAccessToken :one
-SELECT t.id, t.user_id, t.name, t.token_hash, t.prefix, t.created_at, t.expires_at, t.last_used_at, t.last_used_ip, t.sso_provider, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password, u.waiting_approval
+SELECT t.id, t.user_id, t.name, t.token_hash, t.prefix, t.created_at, t.expires_at, t.last_used_at, t.last_used_ip, t.sso_provider, u.id, u.username, u.email, u.display_name, u.password_hash, u.is_instance_admin, u.default_password, u.disabled_at, u.created_at, u.updated_at, u.theme, u.password_change_required, u.totp_secret, u.totp_pending, u.totp_last_step, u.mfa_enabled_at, u.has_password, u.waiting_approval, u.language
 FROM access_tokens t
 JOIN users u ON u.id = t.user_id
 WHERE t.token_hash = $1 AND t.expires_at > now() AND u.disabled_at IS NULL AND NOT u.waiting_approval
@@ -143,6 +143,7 @@ func (q *Queries) GetActiveAccessToken(ctx context.Context, tokenHash []byte) (G
 		&i.User.MfaEnabledAt,
 		&i.User.HasPassword,
 		&i.User.WaitingApproval,
+		&i.User.Language,
 	)
 	return i, err
 }

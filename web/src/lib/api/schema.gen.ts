@@ -2619,15 +2619,23 @@ export interface components {
             has_password: boolean;
             /** @description The theme the user chose; null if they haven't, and the instance default applies. */
             theme?: components["schemas"]["ThemePreference"] | null;
+            /** @description The web app's language the user chose; null if they haven't, and their browser's applies. */
+            language?: components["schemas"]["Language"] | null;
             /** Format: date-time */
             created_at: string;
         };
         /** @enum {string} */
         ThemePreference: "dark" | "light" | "system";
+        /**
+         * @description English, Japanese, French, Spanish or German.
+         * @enum {string}
+         */
+        Language: "en" | "ja" | "fr" | "es" | "de";
         ProfileUpdate: {
             display_name?: string;
             email?: string | null;
             theme?: components["schemas"]["ThemePreference"];
+            language?: components["schemas"]["Language"];
         };
         PasswordChange: {
             current_password: string;

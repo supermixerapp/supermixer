@@ -226,6 +226,7 @@ type Querier interface {
 	// After an upgrade: the template the stack's files now come from.
 	SetStackTemplate(ctx context.Context, arg SetStackTemplateParams) error
 	SetTOTPPending(ctx context.Context, arg SetTOTPPendingParams) error
+	SetUserLanguage(ctx context.Context, arg SetUserLanguageParams) (User, error)
 	SetUserPassword(ctx context.Context, arg SetUserPasswordParams) error
 	SetUserTheme(ctx context.Context, arg SetUserThemeParams) (User, error)
 	SetWebhookSecret(ctx context.Context, arg SetWebhookSecretParams) error
