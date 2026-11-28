@@ -1,0 +1,270 @@
+{
+  "language": {
+    "label": "Sprache",
+    "switched": "Die App ist jetzt auf Deutsch",
+    "notLoaded": "Die Sprache konnte nicht geladen werden. Prüfen Sie Ihre Verbindung und versuchen Sie es erneut.",
+    "unsavedTitle": "Zu {{name}} wechseln?",
+    "unsavedText": "Diese Seite hat nicht gespeicherte Änderungen. Beim Wechsel der Sprache wird die Seite neu aufgebaut, und sie gehen verloren.",
+    "switchAnyway": "Trotzdem wechseln"
+  },
+  "confirmDialog": {
+    "typeToConfirm": "Geben Sie <span>{{confirmText}}</span> zur Bestätigung ein",
+    "cancel": "Abbrechen"
+  },
+  "healthBadge": {
+    "healthy": "Fehlerfrei",
+    "degraded": "Beeinträchtigt",
+    "unhealthy": "Gestört",
+    "checking": "Wird geprüft…",
+    "unknown": "Unbekannt"
+  },
+  "accountLayout": {
+    "preferences": "Einstellungen",
+    "security": "Sicherheit",
+    "accessTokens": "Zugriffstoken",
+    "appearance": "Darstellung",
+    "auditLogs": "Audit-Logs",
+    "account": "Konto",
+    "accountSettings": "Kontoeinstellungen"
+  },
+  "adminLayout": {
+    "organizations": "Organisationen",
+    "projects": "Projekte",
+    "overview": "Übersicht",
+    "users": "Benutzer",
+    "signUp": "Registrierung",
+    "globalNotice": "Globaler Hinweis",
+    "resourceLimits": "Ressourcenlimits",
+    "auditLog": "Audit-Log",
+    "instance": "Instanz",
+    "administration": "Verwaltung",
+    "usage": "Nutzung",
+    "onlyInstanceAdminsCanSeeThis": "Nur Instanz-Admins können dies sehen"
+  },
+  "appShell": {
+    "youAreSignedInWithThe": "<warningicon/>Sie sind mit dem Standardpasswort angemeldet.<link>Jetzt ändern</link>"
+  },
+  "authLayout": {
+    "theManagementPlaneForYourSelf": "Die Verwaltungsebene für Ihr selbst gehostetes Supabase.",
+    "organizationsProjectsTeamsAndAccessControl": "Organisationen, Projekte, Teams und Zugriffskontrolle für jeden Stack, den Sie betreiben."
+  },
+  "commandMenu": {
+    "search": "Suchen…",
+    "ctrlK": "Strg K",
+    "searchAndNavigate": "Suchen und navigieren",
+    "commandMenu": "Befehlsmenü",
+    "typeACommandOrSearch": "Befehl eingeben oder suchen…",
+    "noResultsFound": "Keine Ergebnisse.",
+    "project": "Projekt: {{name}}",
+    "projectPages": "Projektseiten",
+    "organization": "Organisation: {{name}}",
+    "supermixer": "Supermixer",
+    "allOrganizations": "Alle Organisationen",
+    "preferences": "Einstellungen",
+    "securityTwoFactorSignIn": "Sicherheit (Zwei-Faktor-Anmeldung)",
+    "accessTokens": "Zugriffstoken",
+    "appearance": "Darstellung",
+    "instanceOverview": "Instanzübersicht",
+    "users": "Benutzer",
+    "globalNotice": "Globaler Hinweis",
+    "resourceLimits": "Ressourcenlimits",
+    "signUp": "Registrierung",
+    "instanceAuditLog": "Audit-Log der Instanz",
+    "designSystem": "Designsystem",
+    "theme": "Design",
+    "useDarkTheme": "<darkmodeicon/> Dunkles Design",
+    "useLightTheme": "<lightmodeicon/> Helles Design",
+    "useSystemTheme": "<systemthemeicon/> Systemdesign"
+  },
+  "globalNotice": {
+    "info": "Info",
+    "warning": "Warnung",
+    "critical": "Kritisch",
+    "notice": "Hinweis: {{label}}"
+  },
+  "layoutHeader": {
+    "backToOrganizationHome": "Zurück zur Organisationsstartseite"
+  },
+  "page": {
+    "comingSoon": "Demnächst",
+    "stage": "Stufe {{stage}}",
+    "thisPageIsComingSoon": "Diese Seite kommt bald.",
+    "thisPageIsPartOfStage": "Diese Seite gehört zu Stufe {{stage}} des Supermixer-Plans. Supermixer ist derzeit auf Stufe {{cURRENTSTAGE}}."
+  },
+  "sidebar": {
+    "main": "Hauptmenü",
+    "sidebarControl": "Seitenleiste",
+    "expanded": "Ausgeklappt",
+    "collapsed": "Eingeklappt",
+    "expandOnHover": "Beim Überfahren ausklappen"
+  },
+  "switchers": {
+    "findOrganization": "Organisation suchen…",
+    "noOrganizationsFound": "Keine Organisationen gefunden",
+    "allOrganizations": "Alle Organisationen",
+    "newOrganization": "<addicon/>Neue Organisation",
+    "showProjects": "Projekte anzeigen",
+    "findProject": "Projekt suchen…",
+    "noProjectsFound": "Keine Projekte gefunden",
+    "allProjects": "Alle Projekte",
+    "newProject": "<addicon/>Neues Projekt",
+    "showOrganizations": "Organisationen anzeigen"
+  },
+  "themeSync": {
+    "couldnTSaveYourTheme": "Ihr Design konnte nicht gespeichert werden: {{value}}"
+  },
+  "userDropdown": {
+    "accountMenu": "Kontomenü",
+    "chosenProjects": "Ausgewählte Projekte",
+    "in": "in {{name}}",
+    "instanceAdmin": "Instanz-Admin",
+    "managesThisSupermixerInstanceSAccounts": "Verwaltet die Konten und Einstellungen dieser Supermixer-Instanz",
+    "preferences": "<tuneicon/>Einstellungen",
+    "instanceAdmin2": "<manageaccountsicon/>Instanzverwaltung",
+    "apiEndpoints": "<apiicon/>API-Endpunkte",
+    "theme": "Design",
+    "dark": "Dunkel",
+    "light": "Hell",
+    "system": "System",
+    "logOut": "<logouticon/>Abmelden"
+  },
+  "limitField": {
+    "enterAWholeNumberFrom1": "Geben Sie eine ganze Zahl von 1 bis {{value}} ein",
+    "limit": "{{lowerCase}} begrenzen",
+    "unlimited": "Unbegrenzt"
+  },
+  "permissionButton": {
+    "youNeedAdditionalPermissionsTo": "Sie benötigen zusätzliche Berechtigungen, um {{action}}"
+  },
+  "copy": {
+    "couldNotCopyToTheClipboard": "Konnte nicht in die Zwischenablage kopiert werden",
+    "copied": "Kopiert",
+    "copy": "Kopieren"
+  },
+  "dataGrid": {
+    "null": "NULL",
+    "empty": "EMPTY"
+  },
+  "dialog": {
+    "close": "Schließen"
+  },
+  "sheet": {
+    "close": "Schließen"
+  },
+  "navigation": {
+    "projectOverview": "Projektübersicht",
+    "tableEditor": "Tabelleneditor",
+    "sqlEditor": "SQL-Editor",
+    "database": "Datenbank",
+    "authentication": "Authentifizierung",
+    "storage": "Speicher",
+    "edgeFunctions": "Edge Functions",
+    "realtime": "Realtime",
+    "advisors": "Berater",
+    "observability": "Observability",
+    "logs": "Logs",
+    "integrations": "Integrationen",
+    "projectSettings": "Projekteinstellungen",
+    "projects": "Projekte",
+    "team": "Team",
+    "usage": "Nutzung",
+    "organizationSettings": "Organisationseinstellungen",
+    "databaseManagement": "Datenbankverwaltung",
+    "schemaVisualizer": "Schema-Visualisierung",
+    "tables": "Tabellen",
+    "functions": "Funktionen",
+    "triggers": "Trigger",
+    "enumeratedTypes": "Aufzählungstypen",
+    "extensions": "Erweiterungen",
+    "indexes": "Indizes",
+    "publications": "Publikationen",
+    "accessControl": "Zugriffskontrolle",
+    "policies": "Richtlinien",
+    "roles": "Rollen",
+    "columnPrivileges": "Spaltenberechtigungen",
+    "configuration": "Konfiguration",
+    "settings": "Einstellungen",
+    "platform": "Plattform",
+    "backups": "Backups",
+    "migrations": "Migrationen",
+    "manage": "Verwalten",
+    "users": "Benutzer",
+    "notifications": "Benachrichtigungen",
+    "emails": "E-Mails",
+    "signInProviders": "Anmeldung / Anbieter",
+    "sessions": "Sitzungen",
+    "rateLimits": "Ratenlimits",
+    "multiFactor": "Mehrfaktor",
+    "urlConfiguration": "URL-Konfiguration",
+    "attackProtection": "Angriffsschutz",
+    "authHooks": "Auth-Hooks",
+    "auditLogs": "Audit-Logs",
+    "secrets": "Secrets",
+    "buckets": "Buckets",
+    "s3Connection": "S3-Verbindung",
+    "tools": "Werkzeuge",
+    "inspector": "Inspektor",
+    "securityAdvisor": "Sicherheitsberater",
+    "performanceAdvisor": "Performance-Berater",
+    "queryPerformance": "Abfrageleistung",
+    "changes": "Änderungen",
+    "reports": "Berichte",
+    "apiGateway": "API-Gateway",
+    "collections": "Sammlungen",
+    "logsExplorer": "Log-Explorer",
+    "pooler": "Pooler",
+    "auth": "Auth",
+    "cron": "Cron",
+    "general": "Allgemein",
+    "infrastructure": "Infrastruktur",
+    "apiKeys": "API-Schlüssel",
+    "jwtKeys": "JWT-Schlüssel",
+    "logDrains": "Log-Drains",
+    "dataApi": "Data API",
+    "security": "Sicherheit",
+    "webhooks": "Webhooks",
+    "oauthApps": "OAuth-Apps"
+  },
+  "root": {
+    "pageNotFound": "Seite nicht gefunden",
+    "thePageYouAreLookingFor": "Die gesuchte Seite existiert nicht.",
+    "goToOrganizations": "Zu den Organisationen"
+  },
+  "actions": {
+    "enable": "Aktivieren",
+    "disable": "Deaktivieren"
+  },
+  "optionalLabel": "{{label}} (optional)",
+  "client": {
+    "requestFailed": "Anfrage fehlgeschlagen"
+  },
+  "gateway": {
+    "requestFailed": "Anfrage fehlgeschlagen ({{status}})"
+  },
+  "queries": {
+    "supermixerServerIsUnreachable": "Der Supermixer-Server ist nicht erreichbar"
+  },
+  "roles": {
+    "fullAccessIncludingOrganizationSettingsAnd": "Vollzugriff, einschließlich Organisationseinstellungen und Verwaltung der Inhaber.",
+    "fullAccessExceptOrganizationSettingsTransferring": "Vollzugriff außer Organisationseinstellungen, Übertragen von Projekten und Verwaltung der Inhaber.",
+    "worksWithProjectDataAndKeys": "Arbeitet mit Projektdaten und Schlüsseln und stellt Edge Functions bereit; kann keine Einstellungen ändern.",
+    "canViewEverythingExceptSecretApi": "Kann alles sehen außer geheimen API-Schlüsseln.",
+    "noAccess": "Kein Zugriff",
+    "seesOnlyTheProjectsGivenTo": "Sieht nur die unten zugewiesenen Projekte.",
+    "owner": "Inhaber",
+    "administrator": "Administrator",
+    "developer": "Entwickler",
+    "readOnly": "Nur Lesen"
+  },
+  "join": {
+    "thisLinkIsMissingItsInvitation": "Diesem Link fehlt das Einladungstoken."
+  },
+  "passwords": {
+    "mfaYour": "Mindestens {{min}} Zeichen (mit eingeschalteter Zwei-Faktor-Anmeldung), kein gängiges Passwort und nicht Ihr Benutzername",
+    "mfaTheir": "Mindestens {{min}} Zeichen (mit eingeschalteter Zwei-Faktor-Anmeldung), kein gängiges Passwort und nicht der eigene Benutzername",
+    "singleYour": "Mindestens {{min}} Zeichen ({{mfaMin}} mit eingeschalteter Zwei-Faktor-Anmeldung), kein gängiges Passwort und nicht Ihr Benutzername",
+    "singleTheir": "Mindestens {{min}} Zeichen ({{mfaMin}} mit eingeschalteter Zwei-Faktor-Anmeldung), kein gängiges Passwort und nicht der eigene Benutzername",
+    "unknownYour": "Mindestens {{min}} Zeichen, oder {{mfaMin}}, wenn die Zwei-Faktor-Anmeldung an ist; kein gängiges Passwort und nicht Ihr Benutzername",
+    "unknownTheir": "Mindestens {{min}} Zeichen, oder {{mfaMin}}, wenn die Zwei-Faktor-Anmeldung an ist; kein gängiges Passwort und nicht der eigene Benutzername"
+  }
+}

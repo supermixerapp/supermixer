@@ -1,0 +1,49 @@
+{
+  "realtimeInspector": {
+    "notConnected": "Nicht verbunden",
+    "connecting": "Wird verbunden…",
+    "listening": "Hört zu",
+    "disconnected": "Getrennt",
+    "error": "Fehler",
+    "realtimeInspector": "Realtime-Inspektor",
+    "joinAChannelToWatchBroadcast": "Treten Sie einem Kanal bei, um Broadcast, Presence und Postgres Changes live zu verfolgen und Test-Broadcasts zu senden. Der Socket nutzt die Service-Rolle, Richtlinien schränken also nicht ein, was Sie sehen.",
+    "theSocketCanSendAsWell": "Der Socket kann mit der Service-Rolle senden und zuhören.",
+    "watchingRealtimeNeedsARoleThat": "Realtime zu verfolgen braucht eine Rolle, die Daten ändern kann",
+    "channel": "Kanal",
+    "postgresChanges": "Postgres-Änderungen",
+    "table": "Tabelle",
+    "donTListen": "Nicht zuhören",
+    "allTables": "Alle Tabellen",
+    "privateChannel": "<checkbox/>Privater Kanal",
+    "leave": "Verlassen",
+    "joinChannel": "Kanal beitreten",
+    "watchRealtime": "Realtime zu verfolgen",
+    "broadcastEvent": "Broadcast-Ereignis",
+    "payload": "Nutzlast",
+    "mustBeAJsonObject": "Muss ein JSON-Objekt sein",
+    "sendBroadcast": "Broadcast senden",
+    "theLatest500": " (die letzten 500)",
+    "clear": "Leeren",
+    "waitingForMessages": "Warte auf Nachrichten…",
+    "joinAChannelToSeeMessages": "Treten Sie einem Kanal bei, um hier Nachrichten zu sehen",
+    "messages_one": "{{count}} Nachricht",
+    "messages_other": "{{count}} Nachrichten",
+    "schemaNotPublished": "Keine Tabelle in {{schema}} ist in der Publikation supabase_realtime, daher kommen keine Änderungen an. Fügen Sie sie unter <link>Datenbank › Publikationen</link> hinzu.",
+    "tableNotPublished": "{{schema}}.{{table}} ist nicht in der Publikation supabase_realtime, daher kommen keine Änderungen an. Fügen Sie sie unter <link>Datenbank › Publikationen</link> hinzu."
+  },
+  "realtimePolicies": {
+    "policiesOnRealtimeMessagesDecideWho": "Richtlinien auf realtime.messages legen fest, wer Broadcast- und Presence-Nachrichten in privaten Kanälen empfangen und senden darf. Öffentliche Kanäle und Postgres Changes nutzen sie nicht."
+  },
+  "realtime": {
+    "presenceState": "Presence-Status",
+    "presenceChange": "Presence-Änderung",
+    "systemMessage": "Systemnachricht",
+    "joinRefused": "Beitritt abgelehnt",
+    "channelError": "Kanalfehler",
+    "channelClosed": "Kanal geschlossen",
+    "theSocketFailedCheckThatThe": "Der Socket ist fehlgeschlagen. Prüfen Sie, ob der Stack Realtime ausführt.",
+    "joined": "Beigetreten",
+    "postgresChange": "{{type}} in {{table}}",
+    "change": "Änderung"
+  }
+}

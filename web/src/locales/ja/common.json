@@ -1,0 +1,270 @@
+{
+  "language": {
+    "label": "言語",
+    "switched": "表示言語を日本語に切り替えました",
+    "notLoaded": "言語を読み込めませんでした。接続を確認して、もう一度お試しください。",
+    "unsavedTitle": "{{name}} に切り替えますか？",
+    "unsavedText": "このページには保存されていない変更があります。言語を切り替えるとページが表示し直され、変更は失われます。",
+    "switchAnyway": "切り替える"
+  },
+  "confirmDialog": {
+    "typeToConfirm": "確認のため <span>{{confirmText}}</span> と入力してください",
+    "cancel": "キャンセル"
+  },
+  "healthBadge": {
+    "healthy": "正常",
+    "degraded": "低下",
+    "unhealthy": "異常",
+    "checking": "確認中…",
+    "unknown": "不明"
+  },
+  "accountLayout": {
+    "preferences": "個人設定",
+    "security": "セキュリティ",
+    "accessTokens": "アクセストークン",
+    "appearance": "外観",
+    "auditLogs": "監査ログ",
+    "account": "アカウント",
+    "accountSettings": "アカウント設定"
+  },
+  "adminLayout": {
+    "organizations": "組織",
+    "projects": "プロジェクト",
+    "overview": "概要",
+    "users": "ユーザー",
+    "signUp": "サインアップ",
+    "globalNotice": "全体のお知らせ",
+    "resourceLimits": "リソース上限",
+    "auditLog": "監査ログ",
+    "instance": "インスタンス",
+    "administration": "管理",
+    "usage": "使用状況",
+    "onlyInstanceAdminsCanSeeThis": "インスタンス管理者のみ表示できます"
+  },
+  "appShell": {
+    "youAreSignedInWithThe": "<warningicon/>既定のパスワードでサインインしています。<link>今すぐ変更</link>"
+  },
+  "authLayout": {
+    "theManagementPlaneForYourSelf": "セルフホストの Supabase のための管理プレーン。",
+    "organizationsProjectsTeamsAndAccessControl": "運用するすべてのスタックの組織、プロジェクト、チーム、アクセス制御。"
+  },
+  "commandMenu": {
+    "search": "検索…",
+    "ctrlK": "Ctrl K",
+    "searchAndNavigate": "検索と移動",
+    "commandMenu": "コマンドメニュー",
+    "typeACommandOrSearch": "コマンドを入力するか検索…",
+    "noResultsFound": "結果が見つかりません。",
+    "project": "プロジェクト: {{name}}",
+    "projectPages": "プロジェクトのページ",
+    "organization": "組織: {{name}}",
+    "supermixer": "Supermixer",
+    "allOrganizations": "すべての組織",
+    "preferences": "個人設定",
+    "securityTwoFactorSignIn": "セキュリティ（2 段階認証）",
+    "accessTokens": "アクセストークン",
+    "appearance": "外観",
+    "instanceOverview": "インスタンスの概要",
+    "users": "ユーザー",
+    "globalNotice": "全体のお知らせ",
+    "resourceLimits": "リソース上限",
+    "signUp": "サインアップ",
+    "instanceAuditLog": "インスタンスの監査ログ",
+    "designSystem": "デザインシステム",
+    "theme": "テーマ",
+    "useDarkTheme": "<darkmodeicon/> ダークテーマを使う",
+    "useLightTheme": "<lightmodeicon/> ライトテーマを使う",
+    "useSystemTheme": "<systemthemeicon/> システムのテーマを使う"
+  },
+  "globalNotice": {
+    "info": "情報",
+    "warning": "警告",
+    "critical": "重大",
+    "notice": "{{label}}のお知らせ"
+  },
+  "layoutHeader": {
+    "backToOrganizationHome": "組織のホームに戻る"
+  },
+  "page": {
+    "comingSoon": "近日公開",
+    "stage": "ステージ {{stage}}",
+    "thisPageIsComingSoon": "このページは近日公開予定です。",
+    "thisPageIsPartOfStage": "このページは Supermixer の計画のステージ {{stage}} に含まれます。Supermixer は現在ステージ {{cURRENTSTAGE}} です。"
+  },
+  "sidebar": {
+    "main": "メイン",
+    "sidebarControl": "サイドバーの表示",
+    "expanded": "展開",
+    "collapsed": "折りたたみ",
+    "expandOnHover": "ホバーで展開"
+  },
+  "switchers": {
+    "findOrganization": "組織を検索…",
+    "noOrganizationsFound": "組織が見つかりません",
+    "allOrganizations": "すべての組織",
+    "newOrganization": "<addicon/>新しい組織",
+    "showProjects": "プロジェクトを表示",
+    "findProject": "プロジェクトを検索…",
+    "noProjectsFound": "プロジェクトが見つかりません",
+    "allProjects": "すべてのプロジェクト",
+    "newProject": "<addicon/>新しいプロジェクト",
+    "showOrganizations": "組織を表示"
+  },
+  "themeSync": {
+    "couldnTSaveYourTheme": "テーマを保存できませんでした: {{value}}"
+  },
+  "userDropdown": {
+    "accountMenu": "アカウントメニュー",
+    "chosenProjects": "選択したプロジェクト",
+    "in": "{{name}} 内",
+    "instanceAdmin": "インスタンス管理者",
+    "managesThisSupermixerInstanceSAccounts": "この Supermixer インスタンスのアカウントと設定を管理します",
+    "preferences": "<tuneicon/>個人設定",
+    "instanceAdmin2": "<manageaccountsicon/>インスタンス管理",
+    "apiEndpoints": "<apiicon/>API エンドポイント",
+    "theme": "テーマ",
+    "dark": "ダーク",
+    "light": "ライト",
+    "system": "システム",
+    "logOut": "<logouticon/>ログアウト"
+  },
+  "limitField": {
+    "enterAWholeNumberFrom1": "1 から {{value}} までの整数を入力してください",
+    "limit": "{{lowerCase}}の上限",
+    "unlimited": "無制限"
+  },
+  "permissionButton": {
+    "youNeedAdditionalPermissionsTo": "{{action}}には追加の権限が必要です"
+  },
+  "copy": {
+    "couldNotCopyToTheClipboard": "クリップボードにコピーできませんでした",
+    "copied": "コピーしました",
+    "copy": "コピー"
+  },
+  "dataGrid": {
+    "null": "NULL",
+    "empty": "EMPTY"
+  },
+  "dialog": {
+    "close": "閉じる"
+  },
+  "sheet": {
+    "close": "閉じる"
+  },
+  "navigation": {
+    "projectOverview": "プロジェクトの概要",
+    "tableEditor": "テーブルエディタ",
+    "sqlEditor": "SQL エディタ",
+    "database": "データベース",
+    "authentication": "認証",
+    "storage": "ストレージ",
+    "edgeFunctions": "Edge Functions",
+    "realtime": "Realtime",
+    "advisors": "アドバイザー",
+    "observability": "オブザーバビリティ",
+    "logs": "ログ",
+    "integrations": "連携",
+    "projectSettings": "プロジェクト設定",
+    "projects": "プロジェクト",
+    "team": "チーム",
+    "usage": "使用状況",
+    "organizationSettings": "組織の設定",
+    "databaseManagement": "データベース管理",
+    "schemaVisualizer": "スキーマビジュアライザー",
+    "tables": "テーブル",
+    "functions": "関数",
+    "triggers": "トリガー",
+    "enumeratedTypes": "列挙型",
+    "extensions": "拡張機能",
+    "indexes": "インデックス",
+    "publications": "パブリケーション",
+    "accessControl": "アクセス制御",
+    "policies": "ポリシー",
+    "roles": "ロール",
+    "columnPrivileges": "列の権限",
+    "configuration": "構成",
+    "settings": "設定",
+    "platform": "プラットフォーム",
+    "backups": "バックアップ",
+    "migrations": "マイグレーション",
+    "manage": "管理",
+    "users": "ユーザー",
+    "notifications": "通知",
+    "emails": "メール",
+    "signInProviders": "サインイン / プロバイダー",
+    "sessions": "セッション",
+    "rateLimits": "レート制限",
+    "multiFactor": "多要素認証",
+    "urlConfiguration": "URL 設定",
+    "attackProtection": "攻撃対策",
+    "authHooks": "Auth フック",
+    "auditLogs": "監査ログ",
+    "secrets": "シークレット",
+    "buckets": "バケット",
+    "s3Connection": "S3 接続",
+    "tools": "ツール",
+    "inspector": "インスペクター",
+    "securityAdvisor": "セキュリティアドバイザー",
+    "performanceAdvisor": "パフォーマンスアドバイザー",
+    "queryPerformance": "クエリパフォーマンス",
+    "changes": "変更",
+    "reports": "レポート",
+    "apiGateway": "API ゲートウェイ",
+    "collections": "コレクション",
+    "logsExplorer": "ログエクスプローラー",
+    "pooler": "プーラー",
+    "auth": "Auth",
+    "cron": "Cron",
+    "general": "一般",
+    "infrastructure": "インフラ",
+    "apiKeys": "API キー",
+    "jwtKeys": "JWT キー",
+    "logDrains": "ログドレイン",
+    "dataApi": "Data API",
+    "security": "セキュリティ",
+    "webhooks": "Webhook",
+    "oauthApps": "OAuth アプリ"
+  },
+  "root": {
+    "pageNotFound": "ページが見つかりません",
+    "thePageYouAreLookingFor": "お探しのページは存在しません。",
+    "goToOrganizations": "組織へ移動"
+  },
+  "actions": {
+    "enable": "有効にする",
+    "disable": "無効にする"
+  },
+  "optionalLabel": "{{label}}（任意）",
+  "client": {
+    "requestFailed": "リクエストに失敗しました"
+  },
+  "gateway": {
+    "requestFailed": "リクエストに失敗しました（{{status}}）"
+  },
+  "queries": {
+    "supermixerServerIsUnreachable": "Supermixer サーバーに接続できません"
+  },
+  "roles": {
+    "fullAccessIncludingOrganizationSettingsAnd": "組織の設定とオーナーの管理を含む、すべての操作ができます。",
+    "fullAccessExceptOrganizationSettingsTransferring": "組織の設定、プロジェクトの移管、オーナーの管理以外のすべての操作ができます。",
+    "worksWithProjectDataAndKeys": "プロジェクトのデータとキーを扱い、Edge Functions をデプロイできます。設定は変更できません。",
+    "canViewEverythingExceptSecretApi": "シークレット API キー以外のすべてを閲覧できます。",
+    "noAccess": "アクセスなし",
+    "seesOnlyTheProjectsGivenTo": "下で割り当てたプロジェクトだけを閲覧できます。",
+    "owner": "オーナー",
+    "administrator": "管理者",
+    "developer": "開発者",
+    "readOnly": "閲覧のみ"
+  },
+  "join": {
+    "thisLinkIsMissingItsInvitation": "このリンクには招待トークンがありません。"
+  },
+  "passwords": {
+    "mfaYour": "{{min}} 文字以上（2 段階認証がオンの場合）。よく使われるパスワードやユーザー名は使えません",
+    "mfaTheir": "{{min}} 文字以上（2 段階認証がオンの場合）。よく使われるパスワードや本人のユーザー名は使えません",
+    "singleYour": "{{min}} 文字以上（2 段階認証がオンなら {{mfaMin}} 文字以上）。よく使われるパスワードやユーザー名は使えません",
+    "singleTheir": "{{min}} 文字以上（2 段階認証がオンなら {{mfaMin}} 文字以上）。よく使われるパスワードや本人のユーザー名は使えません",
+    "unknownYour": "{{min}} 文字以上、2 段階認証がオンなら {{mfaMin}} 文字以上。よく使われるパスワードやユーザー名は使えません",
+    "unknownTheir": "{{min}} 文字以上、2 段階認証がオンなら {{mfaMin}} 文字以上。よく使われるパスワードや本人のユーザー名は使えません"
+  }
+}

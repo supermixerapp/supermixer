@@ -1,0 +1,48 @@
+{
+  "realtimeInspector": {
+    "notConnected": "未接続",
+    "connecting": "接続中…",
+    "listening": "受信中",
+    "disconnected": "切断",
+    "error": "エラー",
+    "realtimeInspector": "Realtime インスペクター",
+    "joinAChannelToWatchBroadcast": "チャンネルに参加して、Broadcast、Presence、Postgres Changes をリアルタイムで確認し、テストのブロードキャストを送信できます。ソケットは service ロールを使うため、ポリシーで表示が制限されることはありません。",
+    "theSocketCanSendAsWell": "ソケットは service ロールで、受信だけでなく送信もできます。",
+    "watchingRealtimeNeedsARoleThat": "Realtime を確認するには、データを変更できるロールが必要です",
+    "channel": "チャンネル",
+    "postgresChanges": "Postgres の変更",
+    "table": "テーブル",
+    "donTListen": "受信しない",
+    "allTables": "すべてのテーブル",
+    "privateChannel": "<checkbox/>プライベートチャンネル",
+    "leave": "退出",
+    "joinChannel": "チャンネルに参加",
+    "watchRealtime": "Realtime を確認する",
+    "broadcastEvent": "Broadcast のイベント",
+    "payload": "ペイロード",
+    "mustBeAJsonObject": "JSON オブジェクトである必要があります",
+    "sendBroadcast": "ブロードキャストを送信",
+    "theLatest500": "（直近 500 件）",
+    "clear": "クリア",
+    "waitingForMessages": "メッセージを待っています…",
+    "joinAChannelToSeeMessages": "チャンネルに参加すると、ここにメッセージが表示されます",
+    "messages_other": "{{count}} 件のメッセージ",
+    "schemaNotPublished": "{{schema}} のテーブルはどれも supabase_realtime パブリケーションに含まれていないため、変更は届きません。<link>データベース › パブリケーション</link>で追加してください。",
+    "tableNotPublished": "{{schema}}.{{table}} は supabase_realtime パブリケーションに含まれていないため、変更は届きません。<link>データベース › パブリケーション</link>で追加してください。"
+  },
+  "realtimePolicies": {
+    "policiesOnRealtimeMessagesDecideWho": "realtime.messages のポリシーで、プライベートチャンネルで Broadcast と Presence のメッセージを送受信できる人が決まります。パブリックチャンネルと Postgres Changes はこれを使いません。"
+  },
+  "realtime": {
+    "presenceState": "Presence の状態",
+    "presenceChange": "Presence の変更",
+    "systemMessage": "システムメッセージ",
+    "joinRefused": "参加が拒否されました",
+    "channelError": "チャンネルのエラー",
+    "channelClosed": "チャンネルが閉じられました",
+    "theSocketFailedCheckThatThe": "ソケットが失敗しました。スタックで Realtime が動いているか確認してください。",
+    "joined": "参加しました",
+    "postgresChange": "{{table}} の {{type}}",
+    "change": "変更"
+  }
+}
