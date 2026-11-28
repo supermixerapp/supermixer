@@ -1,0 +1,16 @@
+# More of Supermixer's settings: email, single sign-on, S3 backups, stack
+# port ranges and the like. Every setting, with what it does:
+# .env.example.toml in the repository.
+#
+# compose.yml already sets the server address, the database, the secrets,
+# provisioning and the certificate; those win over this file.
+#
+# If you put a password or secret here, keep the file private:
+#   sudo chown root:65532 config.toml && sudo chmod 640 config.toml
+
+#[email]
+#smtp_host = "smtp.example.com"
+#smtp_port = 587
+#username = "supermixer"
+#password = ""
+#from = "Supermixer <supermixer@example.com>"

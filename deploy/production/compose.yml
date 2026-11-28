@@ -1,0 +1,117 @@
+# Supermixer in production: Supermixer, its own Postgres, and a one-off step
+# that prepares the data folder. Steps: DEPLOY.md.
+#
+#   docker compose up -d      (in the folder with this file, .env and config.toml)
+#
+# Settings: .env (version, host name), then config.toml for the rest. What's
+# set under environment: below wins over config.toml.
+#
+# Ports: Supermixer only on 127.0.0.1, for nginx on this host; its database
+# has none. The stacks Supermixer creates publish their own (api_ports,
+# db_ports and pooler_ports), encrypted with the host's certificate.
+#
+# Supermixer gets the Docker socket to create stacks: that's root-equivalent
+# on this host, so keep the server for Supermixer and its stacks.
+name: supermixer
+
+x-image: &image ${SUPERMIXER_IMAGE:-supermixer/supermixer}:${SUPERMIXER_VERSION:?set SUPERMIXER_VERSION in .env}
+
+services:
+  # Creates the folders under the data folder and generates the encryption
+  # key and the database password, once. Runs as root, then exits.
+  init:
+    image: *image
+    command: ["init", "-dir", "${SUPERMIXER_DATA:-/var/lib/supermixer}"]
+    user: root
+    network_mode: none
+    restart: "no"
+    volumes:
+      - ${SUPERMIXER_DATA:-/var/lib/supermixer}:${SUPERMIXER_DATA:-/var/lib/supermixer}
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: supermixer
+      POSTGRES_DB: supermixer
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres/password
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ${SUPERMIXER_DATA:-/var/lib/supermixer}/secrets/postgres:/run/secrets/postgres:ro
+    # Only Supermixer can reach it: no published port, no way out.
+    networks: [internal]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U supermixer -d supermixer"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    depends_on:
+      init:
+        condition: service_completed_successfully
+
+  supermixer:
+    image: *image
+    command: ["-config", "/etc/supermixer/config.toml"]
+    # Its entrypoint drops to the supermixer user (65532) with the Docker
+    # socket's group.
+    user: root
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    cap_add: [SETUID, SETGID] # to drop to 65532
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      HOME: /tmp
+      SUPERMIXER_SERVER_LISTEN: ":8080"
+      SUPERMIXER_SERVER_PUBLIC_URL: https://${SUPERMIXER_DOMAIN:?set SUPERMIXER_DOMAIN in .env}
+      # Safe: only this host reaches the published port.
+      SUPERMIXER_SERVER_TRUST_PROXY: "true"
+      SUPERMIXER_DATABASE_URL: postgres://supermixer@db:5432/supermixer?sslmode=disable
+      SUPERMIXER_DATABASE_PASSWORD_FILE: ${SUPERMIXER_DATA:-/var/lib/supermixer}/secrets/db_password
+      SUPERMIXER_DATABASE_MIGRATION_BACKUPS_DIR: ${SUPERMIXER_DATA:-/var/lib/supermixer}/backups/supermixer
+      SUPERMIXER_SECURITY_ENCRYPTION_KEY_FILE: ${SUPERMIXER_DATA:-/var/lib/supermixer}/secrets/encryption_key
+      SUPERMIXER_PROVISIONING_ENABLED: "true"
+      SUPERMIXER_PROVISIONING_PUBLIC_HOST: ${SUPERMIXER_DOMAIN}
+      SUPERMIXER_PROVISIONING_CONNECT_HOST: host.docker.internal
+      SUPERMIXER_PROVISIONING_STACKS_DIR: ${SUPERMIXER_DATA:-/var/lib/supermixer}/stacks
+      SUPERMIXER_PROVISIONING_BACKUPS_DIR: ${SUPERMIXER_DATA:-/var/lib/supermixer}/backups/stacks
+      # The host's certificate, copied here by certbot-hook.sh; read again
+      # when it changes.
+      SUPERMIXER_TLS_MODE: files
+      SUPERMIXER_TLS_CERT_FILE: ${SUPERMIXER_DATA:-/var/lib/supermixer}/tls/fullchain.pem
+      SUPERMIXER_TLS_KEY_FILE: ${SUPERMIXER_DATA:-/var/lib/supermixer}/tls/privkey.pem
+    ports:
+      - "127.0.0.1:${SUPERMIXER_PORT:-8080}:8080"
+    volumes:
+      - type: bind
+        source: ./config.toml
+        target: /etc/supermixer/config.toml
+        read_only: true
+        bind:
+          create_host_path: false
+      # The same path inside as outside: docker compose resolves the stacks'
+      # bind mounts on the host.
+      - ${SUPERMIXER_DATA:-/var/lib/supermixer}:${SUPERMIXER_DATA:-/var/lib/supermixer}
+      - /var/run/docker.sock:/var/run/docker.sock
+    # Stacks publish their ports on the host; reach them through it.
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    networks: [internal, default]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      start_period: 3m
+    depends_on:
+      init:
+        condition: service_completed_successfully
+      db:
+        condition: service_healthy
+
+networks:
+  internal:
+    internal: true
+
+volumes:
+  db:
