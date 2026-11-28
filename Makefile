@@ -4,7 +4,7 @@ VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo 0.1.
 SQLC_IMAGE := sqlc/sqlc:1.29.0
 COMPOSE := docker compose -f deploy/docker-compose.yml
 
-.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate build mixer test test-integration lint stack stack-down stack-check-logs image helm-lint e2e
+.PHONY: help setup env app app-stacks db db-down mail sso dev dev-backend dev-web generate webui build release mixer test test-integration lint stack stack-down stack-check-logs image helm-lint e2e
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-12s\033[0m %s\n", $$1, $$2}'
@@ -82,9 +82,11 @@ generate: ## Regenerate code from api/openapi.yaml and SQL queries
 	cd backend && docker run --rm -v "$$PWD":/src -w /src $(SQLC_IMAGE) generate
 	cd web && pnpm generate:api
 
-build: ## Build a single binary with the web UI embedded (bin/supermixer)
+webui: # Build the web app into the backend, to be embedded in the binary
 	cd web && pnpm build
 	rsync -a --delete --exclude .gitkeep web/dist/ backend/internal/webui/dist/
+
+build: webui ## Build a single binary with the web UI embedded (bin/supermixer)
 	cd backend && CGO_ENABLED=0 go build -trimpath \
 		-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
 		-o ../bin/supermixer ./cmd/supermixer
@@ -95,6 +97,30 @@ mixer: ## Build mixer, the command-line link test for a Supermixer server (bin/m
 		-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
 		-o ../bin/mixer ./cmd/mixer
 	@echo "built bin/mixer ($(VERSION))"
+
+# Linux release archives: one per architecture.
+RELEASE_ARCHES ?= amd64 arm64
+
+release: webui ## Linux release archives (amd64, arm64) in bin/release: binaries, example config, systemd unit, nginx config
+	@if [ -n "$$(git status --porcelain)" ]; then echo "warning: uncommitted changes; this release is $(VERSION)" >&2; fi
+	rm -rf bin/release
+	mkdir -p bin/release
+	@set -e; for arch in $(RELEASE_ARCHES); do \
+		name=supermixer-$(VERSION)-linux-$$arch; dir=bin/release/$$name; \
+		mkdir -p $$dir; \
+		for cmd in supermixer mixer; do \
+			(cd backend && CGO_ENABLED=0 GOOS=linux GOARCH=$$arch go build -trimpath \
+				-ldflags "-s -w -X supermixer/internal/version.Version=$(VERSION)" \
+				-o ../$$dir/$$cmd ./cmd/$$cmd); \
+		done; \
+		cp .env.example.toml $$dir/config.example.toml; \
+		cp deploy/systemd/supermixer.service deploy/nginx/supermixer.conf DEPLOY.md LICENSE NOTICE $$dir/; \
+		if tar --version 2>/dev/null | grep -q GNU; then owner="--owner=0 --group=0 --numeric-owner"; else owner="--uid 0 --gid 0"; fi; \
+		COPYFILE_DISABLE=1 tar $$owner -C bin/release -czf bin/release/$$name.tar.gz $$name; \
+		rm -rf $$dir; \
+		echo "built bin/release/$$name.tar.gz"; \
+	done
+	cd bin/release && if command -v sha256sum >/dev/null; then sha256sum *.tar.gz; else shasum -a 256 *.tar.gz; fi > SHA256SUMS
 
 image: ## Build the container image, tagged with the version; IMAGE=registry/name to name it for a registry
 	docker build --build-arg VERSION=$(VERSION) -t $(or $(IMAGE),supermixer):$(VERSION) .

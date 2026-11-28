@@ -1,0 +1,50 @@
+# Supermixer as a systemd service. Install steps: DEPLOY.md.
+#
+#   sudo cp supermixer.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now supermixer
+#   journalctl -u supermixer -f      # the first admin's password is printed here once
+
+[Unit]
+Description=Supermixer
+Documentation=https://github.com/supermixerapp/supermixer
+# Its own Postgres; drop this if the database runs elsewhere.
+After=network-online.target postgresql.service
+Wants=network-online.target
+
+[Service]
+User=supermixer
+Group=supermixer
+ExecStart=/usr/local/bin/supermixer -config /etc/supermixer/config.toml
+# SIGHUP reloads certificate files ([tls] mode = "files").
+ExecReload=kill -HUP $MAINPID
+Restart=on-failure
+RestartSec=5
+# It stops cleanly on SIGTERM; give running requests time to finish.
+TimeoutStopSec=30
+
+# /var/lib/supermixer: created stacks, local backups, ACME certificates.
+# Private, since stacks hold their secrets there.
+StateDirectory=supermixer
+StateDirectoryMode=0700
+
+# Creating stacks (provisioning) runs the docker CLI, which needs the Docker
+# daemon: that's root-equivalent on this host. Uncomment only if you use it.
+#SupplementaryGroups=docker
+
+# Serving HTTPS itself on 80/443 (https_listen, no nginx) needs this:
+#AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

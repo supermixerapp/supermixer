@@ -116,6 +116,7 @@ That's room for 256 networks. Then restart Docker with `sudo systemctl restart d
 | Command | What it does |
 |---|---|
 | `make build` | Single binary with the web UI embedded, written to `bin/supermixer` |
+| `make release` | Linux release archives (amd64, arm64) in `bin/release`: the binaries, an example config, a systemd unit and an nginx config. Deploying them: [DEPLOY.md](DEPLOY.md) |
 | `make mixer` | `bin/mixer`, the command-line link test ([Testing the link](#testing-the-link-with-mixer)) |
 | `make test` | Go and web tests; integration tests are skipped if Postgres isn't running |
 | `make test-integration` | Starts Postgres, then runs every Go test |
